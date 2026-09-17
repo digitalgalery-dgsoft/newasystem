@@ -1,6 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\HomeController;
+use App\Http\Controllers\AuthController;
 use App\Http\Controllers\InterviewController;
 use App\Http\Controllers\PrincipleApprovalController;
 use App\Http\Controllers\EmployeeController;
@@ -13,14 +15,20 @@ use App\Http\Controllers\AiRankingController;
 use App\Http\Controllers\AiSettingController;
 use App\Http\Controllers\PublicJobController;
 
-// Root redirect to Fitur Hub
-Route::get('/', function () {
-    return redirect()->route('fitur.index');
-});
+// ==========================================
+// HALAMAN AWAL WEB & LANDING PAGE (v3/index.php)
+// ==========================================
+Route::get('/', [HomeController::class, 'index'])->name('home.index');
+Route::get('/home', [HomeController::class, 'index'])->name('home');
+Route::get('/index.php', function () { return redirect()->route('home.index'); });
 
-Route::get('/home', function () {
-    return redirect()->route('fitur.index');
-});
+// ==========================================
+// AUTENTIKASI LOGIN USER / KARYAWAN (v3/login.php)
+// ==========================================
+Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
+Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/login.php', function () { return redirect()->route('login'); });
 
 // ==========================================
 // BAGIAN FITUR (FEATURE LAUNCHER HUB)
@@ -58,7 +66,6 @@ Route::post('/interview/{id}/kompt', [InterviewController::class, 'storeComputer
 Route::post('/interview/{id}/remidi', [InterviewController::class, 'setRemidi'])->name('interview.remidi');
 Route::post('/interview/{id}/archive', [InterviewController::class, 'archive'])->name('interview.archive');
 Route::post('/interview/{id}/edit-principle', [InterviewController::class, 'editPrinciple'])->name('interview.editPrinciple');
-Route::post('/interview/{id}/alihkan', [InterviewController::class, 'alihkanAS'])->name('interview.alihkan');
 Route::post('/interview/{id}/ganti-area', [InterviewController::class, 'gantiArea'])->name('interview.ganti-area');
 
 // Submodule Pages
@@ -124,6 +131,7 @@ Route::get('/helpdesk', function () {
 // Public Client Approval Portal
 Route::get('/approval/{token}', [PrincipleApprovalController::class, 'show'])->name('principle.approval');
 Route::post('/approval/{token}/submit', [PrincipleApprovalController::class, 'submit'])->name('principle.approval.submit');
+
 // Download Document PDF (Replikasi v3/printall.php)
 Route::get('/interview/{id}/pdf', [InterviewController::class, 'downloadPdf'])->name('interview.pdf');
 Route::get('/interview/{id}/print', [InterviewController::class, 'downloadPdf'])->name('interview.print');
@@ -131,6 +139,7 @@ Route::get('/printall', function (\Illuminate\Http\Request $request) {
     $id = $request->query('id', 7);
     return redirect()->route('interview.pdf', $id);
 });
+
 // ==========================================
 // FITUR INPUT JOB REQUIREMENT (v3/inputjob.php)
 // ==========================================
@@ -138,6 +147,7 @@ Route::get('/inputjob', [JobController::class, 'index'])->name('job.input');
 Route::post('/inputjob', [JobController::class, 'store'])->name('job.store');
 Route::delete('/inputjob/{id}', [JobController::class, 'destroy'])->name('job.destroy');
 Route::get('/inputjob/{id}/toggle', [JobController::class, 'toggleStatus'])->name('job.toggle');
+
 // ==============================================================
 // FITUR KANDIDAT JOB PORTAL (v3/kandidatportal.php & hasilportal.php)
 // ==============================================================

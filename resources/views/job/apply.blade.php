@@ -1,17 +1,17 @@
-@extends('layouts.app')
+@extends('layouts.public')
 
-@section('title', 'Lamar Posisi: ' . $job->job_title . ' - ASystem Support System')
+@section('title', 'Lamar Posisi: ' . $job->job_title . ' - ASystem Career ESA Groups')
 
 @section('content')
-<div class="space-y-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
     <!-- TOP NAV / BREADCRUMB -->
     <div class="flex items-center justify-between">
-        <a href="{{ route('job.detail', $job->id) }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white border border-slate-200/80 text-xs font-bold text-slate-700 hover:text-primary hover:border-primary/40 shadow-sm transition-all">
+        <a href="{{ route('job.detail', $job->id) }}" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white border border-slate-200/80 text-xs font-bold text-slate-700 hover:text-primary hover:border-primary/40 shadow-sm transition-all">
             <i class="fa-solid fa-arrow-left text-slate-400"></i>
             <span>Kembali ke Detail Lowongan</span>
         </a>
         <div class="flex items-center gap-2">
-            <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-primary border border-blue-200/60">
+            <span class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-primary border border-blue-200/60">
                 <i class="fa-solid fa-file-signature text-xs"></i>
                 <span>Formulir Pendaftaran Online</span>
             </span>
@@ -20,13 +20,13 @@
 
     <!-- FLASH MESSAGES -->
     @if(session('success'))
-        <div class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-6 text-white shadow-lg space-y-4">
+        <div class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-2xl p-6 sm:p-8 text-white shadow-xl space-y-5">
             <div class="flex items-start gap-4">
-                <div class="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-2xl shrink-0">
+                <div class="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-3xl shrink-0">
                     <i class="fa-solid fa-circle-check text-white"></i>
                 </div>
                 <div class="space-y-1">
-                    <h3 class="text-lg font-black tracking-tight">Lamaran Berhasil Dikirim!</h3>
+                    <h3 class="text-xl font-black tracking-tight">Lamaran Berhasil Dikirim!</h3>
                     <p class="text-xs sm:text-sm text-emerald-100 font-normal leading-relaxed">
                         {{ session('success') }}
                     </p>
@@ -34,15 +34,15 @@
             </div>
 
             @if(session('registered_nik'))
-                <div class="bg-black/20 backdrop-blur-md rounded-xl p-4 border border-white/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="bg-black/20 backdrop-blur-md rounded-2xl p-5 border border-white/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                     <div class="space-y-1">
                         <span class="text-[11px] font-bold text-emerald-200 uppercase tracking-wider block">Kredensial Akun Tes Online Anda</span>
-                        <div class="flex flex-wrap items-center gap-4 text-xs font-mono">
-                            <span>Username (NIK): <strong class="text-white text-sm">{{ session('registered_nik') }}</strong></span>
-                            <span>Password: <strong class="text-white text-sm">{{ session('registered_pass') }}</strong></span>
+                        <div class="flex flex-wrap items-center gap-5 text-xs font-mono">
+                            <span>Username (NIK): <strong class="text-white text-base">{{ session('registered_nik') }}</strong></span>
+                            <span>Password: <strong class="text-white text-base">{{ session('registered_pass') }}</strong></span>
                         </div>
                     </div>
-                    <a href="{{ route('kandidatportal.index') }}" class="px-4 py-2.5 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-bold shadow-md transition-all shrink-0 flex items-center gap-2">
+                    <a href="{{ route('kandidatportal.index') }}" class="px-5 py-3 rounded-xl bg-white text-emerald-800 hover:bg-emerald-50 text-xs font-bold shadow-md transition-all shrink-0 flex items-center gap-2">
                         <i class="fa-solid fa-arrow-right-to-bracket"></i>
                         <span>Ke Portal Kandidat</span>
                     </a>
@@ -78,17 +78,17 @@
     @endif
 
     <!-- MAIN GRID -->
-    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         <!-- LEFT COLUMN: APPLICATION FORM -->
-        <div class="lg:col-span-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="lg:col-span-8 bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
             <!-- Form Header -->
-            <div class="bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 p-6 text-white flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl shrink-0">
+            <div class="bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900 p-6 sm:p-8 text-white flex items-center gap-4">
+                <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-2xl shrink-0">
                     <i class="fa-solid fa-user-plus text-sky-400"></i>
                 </div>
                 <div>
-                    <h2 class="text-lg font-black tracking-tight text-white">Formulir Lamaran Pekerjaan</h2>
-                    <p class="text-xs text-slate-300">Posisi: <span class="font-bold text-sky-300">{{ $job->job_title }}</span> &bull; {{ $job->job_area ?? 'Nasional' }}</p>
+                    <h2 class="text-lg sm:text-xl font-black tracking-tight text-white">Formulir Lamaran Pekerjaan</h2>
+                    <p class="text-xs sm:text-sm text-slate-300">Posisi: <span class="font-bold text-sky-300">{{ $job->job_title }}</span> &bull; {{ $job->job_area ?? 'Nasional' }}</p>
                 </div>
             </div>
 
@@ -134,7 +134,7 @@
                         <span class="text-[11px] font-semibold text-rose-500">*Wajib</span>
                     </div>
 
-                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
+                    <div class="p-4 sm:p-5 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-3">
                         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                             <div class="space-y-0.5">
                                 <label class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -143,7 +143,7 @@
                                 </label>
                                 <p class="text-[11px] text-slate-500">Berkas akan disimpan dan dapat diekstrak otomatis oleh asisten AI kami.</p>
                             </div>
-                            <button type="button" id="btnAiExtract" onclick="simulateAiExtraction()" class="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 shrink-0">
+                            <button type="button" id="btnAiExtract" onclick="simulateAiExtraction()" class="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 shrink-0">
                                 <i class="fa-solid fa-wand-magic-sparkles text-amber-300"></i>
                                 <span>Isi Otomatis dengan AI</span>
                             </button>
@@ -151,7 +151,7 @@
 
                         <input type="file" id="cvFileInput" name="file_cv" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90 cursor-pointer">
 
-                        <div id="aiExtractionAlert" class="hidden p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+                        <div id="aiExtractionAlert" class="hidden p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
                             <i class="fa-solid fa-spinner fa-spin text-amber-600"></i>
                             <span id="aiExtractionText">AI sedang menganalisis berkas CV dan mengisi formulir...</span>
                         </div>
@@ -316,15 +316,15 @@
         </div>
 
         <!-- RIGHT COLUMN: OVERVIEW & GUIDELINES -->
-        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-6">
+        <div class="lg:col-span-4 space-y-6 lg:sticky lg:top-24">
             <!-- Job Overview Card -->
-            <div class="bg-white rounded-2xl border border-slate-200/80 p-6 shadow-sm space-y-4">
+            <div class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-7 shadow-sm space-y-4">
                 <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider pb-2 border-b border-slate-100 flex items-center gap-2">
                     <i class="fa-solid fa-briefcase text-primary"></i>
                     <span>Ringkasan Lowongan</span>
                 </h3>
 
-                <div class="space-y-3 text-xs">
+                <div class="space-y-3.5 text-xs">
                     <div class="flex items-start gap-3">
                         <div class="w-7 h-7 rounded-lg bg-blue-50 text-primary flex items-center justify-center shrink-0">
                             <i class="fa-solid fa-layer-group text-xs"></i>
@@ -395,7 +395,7 @@
             </div>
 
             <!-- Help Contact Card -->
-            <div class="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-2xl p-5 text-white shadow-md space-y-3">
+            <div class="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-2xl p-6 text-white shadow-md space-y-3">
                 <div class="flex items-center gap-2 text-xs font-bold text-sky-400 uppercase tracking-wider">
                     <i class="fa-solid fa-headset"></i>
                     <span>Butuh Bantuan Pendaftaran?</span>
@@ -403,7 +403,7 @@
                 <p class="text-[11px] text-slate-300 leading-relaxed">
                     Jika Anda mengalami kendala teknis saat mengunggah berkas atau mengisi data, hubungi tim support rekrutmen kami.
                 </p>
-                <a href="https://wa.me/6283139797309?text=Halo%20Admin%20Rekrutmen,%20saya%20mengalami%20kendala%20saat%20melamar%20posisi%20{{ urlencode($job->job_title) }}" target="_blank" class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow transition-all">
+                <a href="https://wa.me/6283139797309?text=Halo%20Admin%20Rekrutmen,%20saya%20mengalami%20kendala%20saat%20melamar%20posisi%20{{ urlencode($job->job_title) }}" target="_blank" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow transition-all">
                     <i class="fa-brands fa-whatsapp text-sm"></i>
                     <span>Hubungi Support WA</span>
                 </a>

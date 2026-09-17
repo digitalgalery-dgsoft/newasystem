@@ -1,26 +1,26 @@
-@extends('layouts.app')
+@extends('layouts.public')
 
-@section('title', 'Portal Lowongan Kerja - ASystem Support System')
+@section('title', 'Lowongan Kerja - ASystem Career ESA Groups')
 
 @section('content')
-<div class="space-y-6">
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
     <!-- HERO BANNER -->
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-900 via-indigo-900 to-slate-900 text-white p-6 sm:p-10 shadow-xl border border-blue-800/40">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-950 via-indigo-950 to-slate-900 text-white p-6 sm:p-12 shadow-2xl border border-blue-800/40">
         <!-- Ambient background circles -->
-        <div class="absolute -right-10 -bottom-10 w-72 h-72 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
-        <div class="absolute right-1/3 -top-10 w-60 h-60 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
+        <div class="absolute -right-10 -bottom-10 w-80 h-80 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute right-1/3 -top-10 w-72 h-72 bg-indigo-500/20 rounded-full blur-2xl pointer-events-none"></div>
 
         <div class="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
             <div class="max-w-2xl space-y-4">
-                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-semibold backdrop-blur-md">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-200 text-xs font-semibold backdrop-blur-md">
                     <i class="fa-solid fa-sparkles text-amber-400"></i>
-                    <span>Official Career Portal &bull; ESA Groups Support System</span>
+                    <span>Official Career Portal &bull; ESA Groups</span>
                 </div>
                 <h1 class="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
                     Find Your Dream Job <br class="hidden sm:inline"><span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-300">With Us Today</span>
                 </h1>
                 <p class="text-sm sm:text-base text-slate-300 font-normal leading-relaxed max-w-xl">
-                    Jelajahi berbagai peluang karier terbaik di seluruh cabang dan unit bisnis kami. Daftarkan diri Anda sekarang dan manfaatkan penilaian kesesuaian AI kami.
+                    Temukan posisi impian yang sesuai dengan kualifikasi dan passion Anda di seluruh unit bisnis ESA Groups. Nikmati proses seleksi digital cepat dengan penilaian kecocokan profil AI.
                 </p>
                 <div class="flex flex-wrap items-center gap-3 pt-2">
                     <a href="https://whatsapp.com/channel/0029VbDqNdb60eBgrCxsnt07" target="_blank" class="inline-flex items-center gap-2.5 px-5 py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-emerald-900/30 transition-all hover:shadow-emerald-600/40 hover:-translate-y-0.5">
@@ -50,7 +50,7 @@
                 </div>
                 <div class="bg-white/10 backdrop-blur-md border border-white/15 p-4 rounded-2xl text-center">
                     <div class="text-2xl sm:text-3xl font-black text-purple-400 mb-0.5">AI Ready</div>
-                    <div class="text-xs text-slate-300 font-medium">Smart Screening</div>
+                    <div class="text-xs text-slate-300 font-medium">Smart Matcher</div>
                 </div>
             </div>
         </div>
@@ -125,7 +125,7 @@
             <h3 class="text-base font-bold text-slate-800">
                 Daftar Lowongan Tersedia (<span class="text-primary font-black">{{ $jobs->total() }}</span>)
             </h3>
-            <p class="text-xs text-slate-500">Pilih lowongan untuk membaca detail lengkap dan kirimkan lamaran Anda.</p>
+            <p class="text-xs text-slate-500">Pilih lowongan untuk membaca informasi lengkap dan kirimkan lamaran Anda.</p>
         </div>
         
         <div class="text-xs text-slate-400 font-medium">
