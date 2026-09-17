@@ -173,23 +173,6 @@
         </div>
     </div>
 
-        <!-- Download All Document Button & Subtext (Disamakan dengan Kandidat Interview) -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 shadow-xs">
-        <div class="flex items-center gap-3">
-            <a href="{{ route('interview.pdf', $candidate->id) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-md shadow-amber-500/20 transition-all cursor-pointer">
-                <i class="fa-solid fa-file-pdf text-amber-400 text-sm"></i>
-                <span>Download All Document</span>
-            </a>
-            <span class="text-xs italic text-blue-600 font-semibold flex items-center gap-1.5">
-                <i class="fa-solid fa-circle-info text-blue-500 text-xs"></i>
-                Dokument Bisa di Download Jika Sudah Approve Prinsiple
-            </span>
-        </div>
-        <div class="text-[11px] text-slate-400 font-medium flex items-center gap-2">
-            <span>Ukuran Dokumen: Legal (Multi-Page PDF)</span>
-        </div>
-    </div>
-
     <!-- 7 NAVIGATION TABS CONTAINER -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden" x-data="{ activeTab: 'interview' }">
         
@@ -251,10 +234,10 @@
             </button>
 
             <!-- 7. User Prinsiple -->
-            <button @click="activeTab = 'prinsiple'" 
+            <button @click="activeTab = 'userprinsiple'" 
                     type="button" 
                     class="px-4 py-2.5 text-xs font-bold border-b-2 transition-all flex items-center gap-2 whitespace-nowrap"
-                    :class="activeTab === 'prinsiple' ? 'border-primary text-primary bg-white rounded-t-xl' : 'border-transparent text-slate-500 hover:text-slate-800'">
+                    :class="(activeTab === 'userprinsiple' || activeTab === 'prinsiple') ? 'border-primary text-primary bg-white rounded-t-xl' : 'border-transparent text-slate-500 hover:text-slate-800'">
                 <i class="fa-solid fa-building-shield"></i>
                 <span>7. User Prinsiple</span>
             </button>
@@ -815,7 +798,7 @@
         <!-- ============================================================= -->
         <!-- TAB 6: USER PRINCIPLE (Matching Legacy App) -->
         <!-- ============================================================= -->
-        <div x-show="activeTab === 'userprinsiple'" class="space-y-6">
+        <div x-show="activeTab === 'userprinsiple' || activeTab === 'prinsiple'" class="space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
                 <!-- Left: Approval Info & Notes -->
