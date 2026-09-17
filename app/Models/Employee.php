@@ -30,16 +30,26 @@ class Employee extends Model
         'status',
         'has_komponen',
         'foto',
+        'odoo_id',
+        'entity',
+        'last_sync_at',
     ];
 
     protected $casts = [
         'tanggal_join' => 'date',
         'has_komponen' => 'boolean',
+        'last_sync_at' => 'datetime',
+        'odoo_id' => 'integer',
     ];
 
     public function principle(): BelongsTo
     {
         return $this->belongsTo(Principle::class);
+    }
+
+    public function entityModel(): BelongsTo
+    {
+        return $this->belongsTo(OdooEntity::class, 'entity', 'code');
     }
 
     public function getFormattedJoinDateAttribute(): string
@@ -62,9 +72,45 @@ class Employee extends Model
         return $diff->m . ' Bln ' . $diff->d . ' Hari';
     }
 
+    public function getEntityBadgeAttribute(): array
+    {
+        return match(strtoupper($this->entity ?? '')) {
+            'AMK' => [
+                'bg' => 'bg-blue-50 text-blue-700 border-blue-200',
+                'dot' => 'bg-blue-600',
+                'label' => 'AMK',
+            ],
+            'AKP' => [
+                'bg' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
+                'dot' => 'bg-emerald-600',
+                'label' => 'AKP',
+            ],
+            'ATK' => [
+                'bg' => 'bg-purple-50 text-purple-700 border-purple-200',
+                'dot' => 'bg-purple-600',
+                'label' => 'ATK',
+            ],
+            'ABO' => [
+                'bg' => 'bg-amber-50 text-amber-700 border-amber-200',
+                'dot' => 'bg-amber-600',
+                'label' => 'ABO',
+            ],
+            'ATB' => [
+                'bg' => 'bg-cyan-50 text-cyan-700 border-cyan-200',
+                'dot' => 'bg-cyan-600',
+                'label' => 'ATB',
+            ],
+            default => [
+                'bg' => 'bg-slate-50 text-slate-600 border-slate-200',
+                'dot' => 'bg-slate-400',
+                'label' => $this->entity ?: 'MANUAL',
+            ]
+        };
+    }
+
     public function getStatusBadgeAttribute(): array
     {
-        return match(strtolower($this->status)) {
+        return match(strtolower($this->status ?? '')) {
             'aktiv', 'active' => [
                 'bg' => 'bg-emerald-50 text-emerald-700 border-emerald-200',
                 'dot' => 'bg-emerald-500',
@@ -83,7 +129,7 @@ class Employee extends Model
             default => [
                 'bg' => 'bg-slate-100 text-slate-700 border-slate-200',
                 'dot' => 'bg-slate-400',
-                'label' => strtoupper($this->status),
+                'label' => strtoupper($this->status ?: 'UNKNOWN'),
             ]
         };
     }

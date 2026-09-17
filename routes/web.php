@@ -213,3 +213,19 @@ Route::get('/job_apply.php', function(\Illuminate\Http\Request $request) {
     $id = $request->query('id', 1);
     return redirect()->route('job.apply', $id);
 });
+
+
+// ==============================================================
+// INTEGRASI SINKRONISASI ODOO ERP (5 ENTITAS: AMK, AKP, ATK, ABO, ATB)
+// ==============================================================
+Route::prefix('odoo-setting')->name('odoo.setting.')->group(function () {
+    Route::get('/', [App\Http\Controllers\OdooSettingController::class, 'index'])->name('index');
+    Route::put('/{code}', [App\Http\Controllers\OdooSettingController::class, 'update'])->name('update');
+    Route::post('/{code}/test', [App\Http\Controllers\OdooSettingController::class, 'testConnection'])->name('test');
+    Route::post('/{code}/sync', [App\Http\Controllers\OdooSettingController::class, 'sync'])->name('sync');
+    Route::post('/sync-all', [App\Http\Controllers\OdooSettingController::class, 'syncAll'])->name('sync-all');
+    Route::post('/cleanup-duplicates', [App\Http\Controllers\OdooSettingController::class, 'cleanupDuplicates'])->name('cleanup-duplicates');
+});
+// Legacy shortcut alias
+Route::get('/odoo-sync', function() { return redirect()->route('odoo.setting.index'); });
+Route::get('/odoo_setting.php', function() { return redirect()->route('odoo.setting.index'); });

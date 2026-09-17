@@ -46,6 +46,10 @@ class EmployeeController extends Controller
             $query->where('area', $area);
         }
 
+        if ($entity = $request->input('entity')) {
+            $query->where('entity', $entity);
+        }
+
         // Sort order
         $sortBy = $request->input('sort_by', 'id');
         $sortDir = $request->input('sort_dir', 'desc');
@@ -69,7 +73,8 @@ class EmployeeController extends Controller
         $distinctArea = Employee::select('area')->distinct()->whereNotNull('area')->orderBy('area')->pluck('area');
         $distinctPimpinan = Employee::select('nama_karyawan', 'jabatan', 'area')->whereIn('level', ['SPV', 'HEAD', 'TL'])->orderBy('nama_karyawan')->get();
 
-        return view('master.karyawan.index', compact('employees', 'stats', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan'));
+        $entitiesList = \App\Models\OdooEntity::orderBy('code')->get();
+        return view('master.karyawan.index', compact('employees', 'stats', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan', 'entitiesList'));
     }
 
     public function store(Request $request)
@@ -86,6 +91,7 @@ class EmployeeController extends Controller
             'divisi' => 'nullable|string',
             'pimpinan' => 'nullable|string',
             'tipe_karyawan' => 'nullable|string',
+            'entity' => 'nullable|string',
         ]);
 
         $prin = Principle::where('name', $validated['prinsiple'])->first();
@@ -118,6 +124,7 @@ class EmployeeController extends Controller
             'pimpinan' => 'nullable|string',
             'status' => 'required|string',
             'tipe_karyawan' => 'required|string',
+            'entity' => 'nullable|string',
         ]);
 
         $employee->update($validated);

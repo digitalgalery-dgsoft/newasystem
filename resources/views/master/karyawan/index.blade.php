@@ -28,6 +28,10 @@
         </div>
 
         <div class="flex items-center gap-2.5 flex-wrap">
+            <a href="{{ route('odoo.setting.index') }}" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-100 transition-all shadow-sm">
+                <i class="fa-solid fa-arrows-rotate text-blue-600"></i>
+                <span>Sync Odoo (5 Entitas)</span>
+            </a>
             <button onclick="openModal('addEmployeeModal')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-md shadow-primary-600/20">
                 <i class="fa-solid fa-user-plus"></i>
                 <span>Add Karyawan</span>
@@ -164,6 +168,19 @@
                     </select>
                 </div>
 
+                <!-- Entitas Filter (5 Entitas) -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Entitas Odoo</label>
+                    <select name="entity" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
+                        <option value="">Semua Entitas</option>
+                        @foreach(['AMK', 'AKP', 'ATK', 'ABO', 'ATB'] as $eCode)
+                            <option value="{{ $eCode }}" {{ request('entity') == $eCode ? 'selected' : '' }}>
+                                {{ $eCode }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <!-- Status Filter -->
                 <div>
                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
@@ -218,6 +235,7 @@
                         <th class="w-12 text-center">NO</th>
                         <th>NIK (KTP)</th>
                         <th>NAMA KARYAWAN</th>
+                        <th>ENTITAS</th>
                         <th>JABATAN & AREA</th>
                         <th>PRINSIPLE</th>
                         <th>PIMPINAN</th>
@@ -325,7 +343,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="10" class="text-center py-12">
+                            <td colspan="11" class="text-center py-12">
                                 <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-lg">
                                     <i class="fa-solid fa-user-slash"></i>
                                 </div>
@@ -531,6 +549,17 @@
                     <input type="text" id="edit_prinsiple" name="prinsiple" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
                 </div>
                 <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Entitas Odoo</label>
+                    <select id="edit_entity" name="entity" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
+                        <option value="">-- Pilih Entitas --</option>
+                        <option value="AMK">AMK - PT Arina Multi Karya</option>
+                        <option value="AKP">AKP - PT Alva Karya Perkasa</option>
+                        <option value="ATK">ATK - PT Anugrah Terpercaya Kerja</option>
+                        <option value="ABO">ABO - PT Arina Bintang Operasional</option>
+                        <option value="ATB">ATB - PT Anugrah Tri Berkah</option>
+                    </select>
+                </div>
+                <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Status</label>
                     <select id="edit_status" name="status" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
                         <option value="Aktiv">Aktiv</option>
@@ -573,6 +602,7 @@
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
+                <div><span class="text-slate-400 block">Entitas Odoo:</span> <strong class="text-primary font-bold">${emp.entity || '-'}</strong></div>
                 <div><span class="text-slate-400 block">Jabatan:</span> <strong class="text-slate-800">${emp.jabatan}</strong></div>
                 <div><span class="text-slate-400 block">Area:</span> <strong class="text-slate-800">${emp.area}</strong></div>
                 <div><span class="text-slate-400 block">Prinsiple:</span> <strong class="text-slate-800">${emp.prinsiple || '-'}</strong></div>
@@ -596,6 +626,9 @@
         document.getElementById('edit_area').value = emp.area;
         document.getElementById('edit_prinsiple').value = emp.prinsiple || '';
         document.getElementById('edit_status').value = emp.status;
+        if (document.getElementById('edit_entity')) {
+            document.getElementById('edit_entity').value = emp.entity || '';
+        }
         document.getElementById('edit_tanggal_join').value = emp.tanggal_join;
         openModal('editEmployeeModal');
     }

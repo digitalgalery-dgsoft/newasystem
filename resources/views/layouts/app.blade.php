@@ -220,6 +220,14 @@
                                 <span class="flex-1">Master Prinsiple</span>
                             </a>
                         </li>
+                        <li>
+                            <a href="{{ route('odoo.setting.index') }}" 
+                               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('odoo.setting.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}">
+                                <i class="fa-solid fa-arrows-rotate text-base w-5 text-center {{ request()->routeIs('odoo.setting.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span class="flex-1">Setting Sync Odoo</span>
+                                <span class="text-[10px] bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded-md border border-blue-200">5 Entitas</span>
+                            </a>
+                        </li>
                     </ul>
                 </div>
 
