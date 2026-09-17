@@ -216,6 +216,7 @@ class OdooSyncService
                         'divisi'        => $divisi,
                         'principle_id'  => $principleId,
                         'prinsiple'     => $principleName,
+                        'tipe_karyawan' => Employee::determineTipeKaryawan($principleName),
                         'area'          => $area ?: 'Pusat',
                         'status'        => $status,
                         'entity'        => $entity->code,

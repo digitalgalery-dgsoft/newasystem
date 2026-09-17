@@ -17,7 +17,7 @@
                     <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">
                         <i class="fa-solid fa-database text-[10px]"></i> MASTER DATA
                     </span>
-                    <span class="badge-pill bg-blue-50 text-primary border-blue-200">
+                    <span class="badge-pill bg-blue-50 text-primary border-blue-200 font-bold">
                         Inhouse & RateCard
                     </span>
                 </div>
@@ -40,16 +40,17 @@
                 <i class="fa-solid fa-user-clock text-amber-600"></i>
                 <span>New Review ({{ $stats['review'] }})</span>
             </a>
-            <a href="{{ route('master.karyawan.index', ['tipe' => 'RateCard']) }}" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-all">
-                <i class="fa-solid fa-id-card"></i>
+            <a href="{{ route('master.karyawan.index', ['tipe' => 'RateCard', 'status' => $status]) }}" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-all">
+                <i class="fa-solid fa-briefcase"></i>
                 <span>Distributor / RateCard</span>
             </a>
         </div>
     </div>
 
-    <!-- Stats Metric Row -->
+    <!-- Stats Metric Row (Clickable Filters) -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <div class="stat-box">
+        <!-- Total -->
+        <a href="{{ route('master.karyawan.index', ['status' => 'all']) }}" class="stat-box transition-all hover:scale-[1.02] {{ $status === 'all' ? 'ring-2 ring-slate-900 shadow-md' : '' }}" title="Klik untuk lihat Semua Karyawan">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Karyawan</div>
@@ -60,22 +61,24 @@
                     <i class="fa-solid fa-users"></i>
                 </div>
             </div>
-        </div>
+        </a>
 
-        <div class="stat-box">
+        <!-- Aktif -->
+        <a href="{{ route('master.karyawan.index', ['status' => 'Aktiv']) }}" class="stat-box transition-all hover:scale-[1.02] {{ $status === 'Aktiv' ? 'ring-2 ring-emerald-500 shadow-md' : '' }}" title="Klik untuk filter Karyawan Aktif">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Karyawan Aktif</div>
                     <div class="text-2xl font-black text-emerald-600 mt-1">{{ $stats['aktif'] }}</div>
-                    <div class="text-[10px] text-emerald-600 font-medium mt-0.5">Operasional Lapangan</div>
+                    <div class="text-[10px] text-emerald-600 font-medium mt-0.5">Default Aktif Lapangan</div>
                 </div>
                 <div class="stat-box-icon bg-emerald-50 text-emerald-600">
                     <i class="fa-solid fa-user-check"></i>
                 </div>
             </div>
-        </div>
+        </a>
 
-        <div class="stat-box">
+        <!-- Review -->
+        <a href="{{ route('master.karyawan.index', ['status' => 'Review']) }}" class="stat-box transition-all hover:scale-[1.02] {{ $status === 'Review' ? 'ring-2 ring-amber-500 shadow-md' : '' }}" title="Klik untuk filter Karyawan Review">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Review Baru</div>
@@ -86,9 +89,10 @@
                     <i class="fa-solid fa-user-clock"></i>
                 </div>
             </div>
-        </div>
+        </a>
 
-        <div class="stat-box">
+        <!-- Resign -->
+        <a href="{{ route('master.karyawan.index', ['status' => 'Resign']) }}" class="stat-box transition-all hover:scale-[1.02] {{ $status === 'Resign' ? 'ring-2 ring-rose-500 shadow-md' : '' }}" title="Klik untuk filter Karyawan Resign">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Resign / Nonaktif</div>
@@ -99,9 +103,10 @@
                     <i class="fa-solid fa-user-xmark"></i>
                 </div>
             </div>
-        </div>
+        </a>
 
-        <div class="stat-box">
+        <!-- Inhouse & RateCard -->
+        <a href="{{ route('master.karyawan.index', ['tipe' => 'Inhouse', 'status' => $status]) }}" class="stat-box transition-all hover:scale-[1.02] {{ request('tipe') === 'Inhouse' ? 'ring-2 ring-primary shadow-md' : '' }}" title="Klik untuk filter Karyawan Inhouse">
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tipe Inhouse</div>
@@ -109,23 +114,24 @@
                     <div class="text-[10px] text-slate-500 font-medium mt-0.5">{{ $stats['ratecard'] }} RateCard</div>
                 </div>
                 <div class="stat-box-icon bg-blue-50 text-primary">
-                    <i class="fa-solid fa-building-user"></i>
+                    <i class="fa-solid fa-house-chimney"></i>
                 </div>
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- Filter & Advance Search Card -->
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
         <form method="GET" action="{{ route('master.karyawan.index') }}" class="space-y-3">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                <!-- Search Keyword -->
+                <!-- Search Input -->
                 <div class="lg:col-span-2">
                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cari Karyawan</label>
                     <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                        <input type="text" name="search" value="{{ request('search') }}" placeholder="Nama, NIK, Area, Pimpinan..." 
-                               class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent bg-slate-50/50">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                        <input type="text" name="search" value="{{ request('search') }}" 
+                               placeholder="Nama, NIK, NIP, Pimpinan..." 
+                               class="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
                     </div>
                 </div>
 
@@ -168,7 +174,7 @@
                     </select>
                 </div>
 
-                <!-- Entitas Filter (5 Entitas) -->
+                <!-- Entitas Odoo Filter (5 Entitas) -->
                 <div>
                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Entitas Odoo</label>
                     <select name="entity" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
@@ -180,34 +186,46 @@
                         @endforeach
                     </select>
                 </div>
-
-                <!-- Status Filter -->
-                <div>
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
-                    <select name="status" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
-                        <option value="">Semua Status</option>
-                        <option value="Aktiv" {{ request('status') == 'Aktiv' ? 'selected' : '' }}>Aktiv (Aktif)</option>
-                        <option value="Review" {{ request('status') == 'Review' ? 'selected' : '' }}>Review Baru</option>
-                        <option value="Resign" {{ request('status') == 'Resign' ? 'selected' : '' }}>Resign</option>
-                    </select>
-                </div>
             </div>
 
-            <!-- Action buttons -->
-            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
-                <div class="flex items-center gap-2 text-xs text-slate-500">
-                    <span class="inline-flex items-center gap-1.5">
-                        <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                        <span class="text-rose-600 font-semibold">Teks Merah</span>: Belum ada komponen gaji (sesuai legacy)
-                    </span>
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 pt-2 border-t border-slate-100">
+                <!-- Status Filter (Active, Resign, Review, All) -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status Karyawan</label>
+                    <select name="status" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50 font-semibold">
+                        <option value="Aktiv" {{ ($status === 'Aktiv') ? 'selected' : '' }}>Karyawan Aktif (Default)</option>
+                        <option value="Resign" {{ ($status === 'Resign') ? 'selected' : '' }}>Karyawan Resign</option>
+                        <option value="Review" {{ ($status === 'Review') ? 'selected' : '' }}>Review Baru</option>
+                        <option value="all" {{ ($status === 'all') ? 'selected' : '' }}>Semua Status</option>
+                    </select>
                 </div>
-                <div class="flex items-center gap-2">
-                    <a href="{{ route('master.karyawan.index') }}" class="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-100 transition-all">
-                        <i class="fa-solid fa-rotate-left mr-1"></i> Reset
-                    </a>
-                    <button type="submit" class="px-4 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-sm">
-                        <i class="fa-solid fa-filter mr-1"></i> Terapkan Filter
-                    </button>
+
+                <!-- Tipe Karyawan (Inhouse / RateCard) -->
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Tipe (Inhouse / RateCard)</label>
+                    <select name="tipe" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50 font-semibold">
+                        <option value="">Semua Tipe</option>
+                        <option value="Inhouse" {{ request('tipe') === 'Inhouse' ? 'selected' : '' }}>Inhouse (5 Entitas)</option>
+                        <option value="RateCard" {{ request('tipe') === 'RateCard' ? 'selected' : '' }}>RateCard (Client Luar)</option>
+                    </select>
+                </div>
+
+                <!-- Information Note -->
+                <div class="sm:col-span-2 flex items-center justify-between pt-4">
+                    <div class="flex items-center gap-2 text-xs text-slate-500">
+                        <span class="inline-flex items-center gap-1.5">
+                            <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                            <span class="text-rose-600 font-semibold">Teks Merah</span>: Belum ada komponen gaji
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('master.karyawan.index') }}" class="px-3 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-100 transition-all">
+                            <i class="fa-solid fa-rotate-left mr-1"></i> Reset
+                        </a>
+                        <button type="submit" class="px-4 py-1.5 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-sm">
+                            <i class="fa-solid fa-filter mr-1"></i> Terapkan Filter
+                        </button>
+                    </div>
                 </div>
             </div>
         </form>
@@ -215,16 +233,66 @@
 
     <!-- Employee Custom Table Card -->
     <div class="table-card">
-        <div class="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div class="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
-                <h2 class="text-sm font-bold text-slate-900">Daftar Karyawan Inhouse & RateCard</h2>
-                <p class="text-[11px] text-slate-500">Menampilkan {{ $employees->firstItem() ?? 0 }} - {{ $employees->lastItem() ?? 0 }} dari {{ $employees->total() }} data karyawan</p>
+                <div class="flex items-center gap-2">
+                    <h2 class="text-sm font-bold text-slate-900">Daftar Karyawan Inhouse & RateCard</h2>
+                    @if($status === 'Aktiv')
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                            <i class="fa-solid fa-circle-check text-[9px] mr-1"></i>Aktif Saja
+                        </span>
+                    @elseif($status === 'Resign')
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-300">
+                            <i class="fa-solid fa-user-xmark text-[9px] mr-1"></i>Resign Saja
+                        </span>
+                    @elseif($status === 'Review')
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300">
+                            <i class="fa-solid fa-clock text-[9px] mr-1"></i>Review
+                        </span>
+                    @else
+                        <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
+                            Semua Status
+                        </span>
+                    @endif
+                </div>
+                <p class="text-[11px] text-slate-500 mt-0.5">Menampilkan {{ $employees->firstItem() ?? 0 }} - {{ $employees->lastItem() ?? 0 }} dari {{ $employees->total() }} data karyawan</p>
             </div>
-            <div class="flex items-center gap-2 text-xs font-semibold">
-                <span class="text-slate-400">Tipe:</span>
-                <a href="{{ route('master.karyawan.index') }}" class="px-2.5 py-1 rounded-lg {{ !request('tipe') ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600' }}">Semua</a>
-                <a href="{{ route('master.karyawan.index', ['tipe' => 'Inhouse']) }}" class="px-2.5 py-1 rounded-lg {{ request('tipe') == 'Inhouse' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600' }}">Inhouse</a>
-                <a href="{{ route('master.karyawan.index', ['tipe' => 'RateCard']) }}" class="px-2.5 py-1 rounded-lg {{ request('tipe') == 'RateCard' ? 'bg-primary text-white' : 'bg-slate-100 text-slate-600' }}">RateCard</a>
+
+            <!-- Interactive Quick Filter Tabs (Status & Tipe) -->
+            <div class="flex items-center gap-3 flex-wrap">
+                <!-- Status Filter Pills -->
+                <div class="flex items-center gap-1.5 text-xs font-semibold">
+                    <span class="text-slate-400">Status:</span>
+                    <a href="{{ route('master.karyawan.index', array_merge(request()->except(['status', 'page']), ['status' => 'Aktiv'])) }}" 
+                       class="px-2.5 py-1 rounded-lg transition-all {{ ($status === 'Aktiv') ? 'bg-emerald-600 text-white shadow-sm font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                       <i class="fa-solid fa-user-check text-[10px] mr-1"></i>Aktif
+                    </a>
+                    <a href="{{ route('master.karyawan.index', array_merge(request()->except(['status', 'page']), ['status' => 'Resign'])) }}" 
+                       class="px-2.5 py-1 rounded-lg transition-all {{ ($status === 'Resign') ? 'bg-rose-600 text-white shadow-sm font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                       <i class="fa-solid fa-user-xmark text-[10px] mr-1"></i>Resign
+                    </a>
+                    <a href="{{ route('master.karyawan.index', array_merge(request()->except(['status', 'page']), ['status' => 'all'])) }}" 
+                       class="px-2.5 py-1 rounded-lg transition-all {{ ($status === 'all') ? 'bg-slate-900 text-white shadow-sm font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                       Semua
+                    </a>
+                </div>
+
+                <!-- Tipe Filter Pills -->
+                <div class="flex items-center gap-1.5 text-xs font-semibold border-l border-slate-200 pl-3">
+                    <span class="text-slate-400">Tipe:</span>
+                    <a href="{{ route('master.karyawan.index', array_merge(request()->except(['tipe', 'page']), ['status' => $status])) }}" 
+                       class="px-2.5 py-1 rounded-lg transition-all {{ !request('tipe') ? 'bg-primary text-white shadow-sm font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                       Semua
+                    </a>
+                    <a href="{{ route('master.karyawan.index', array_merge(request()->except(['tipe', 'page']), ['tipe' => 'Inhouse', 'status' => $status])) }}" 
+                       class="px-2.5 py-1 rounded-lg transition-all {{ request('tipe') === 'Inhouse' ? 'bg-primary text-white shadow-sm font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                       Inhouse
+                    </a>
+                    <a href="{{ route('master.karyawan.index', array_merge(request()->except(['tipe', 'page']), ['tipe' => 'RateCard', 'status' => $status])) }}" 
+                       class="px-2.5 py-1 rounded-lg transition-all {{ request('tipe') === 'RateCard' ? 'bg-primary text-white shadow-sm font-bold' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                       RateCard
+                    </a>
+                </div>
             </div>
         </div>
 
@@ -235,7 +303,7 @@
                         <th class="w-12 text-center">NO</th>
                         <th>NIK (KTP)</th>
                         <th>NAMA KARYAWAN</th>
-                        <th>ENTITAS</th>
+                        <th class="text-center">ENTITAS</th>
                         <th>JABATAN & AREA</th>
                         <th>PRINSIPLE</th>
                         <th>PIMPINAN</th>
@@ -249,19 +317,24 @@
                     @forelse($employees as $index => $emp)
                         @php
                             $badge = $emp->status_badge;
+                            $eBadge = $emp->entity_badge;
                         @endphp
                         <tr class="hover:bg-slate-50/80 transition-colors">
+                            <!-- Col 1: NO -->
                             <td class="text-center font-bold text-slate-400 text-xs">
                                 {{ $employees->firstItem() + $index }}
                             </td>
+
+                            <!-- Col 2: NIK (KTP) -->
                             <td>
                                 <div class="font-mono text-xs font-semibold text-slate-700">{{ $emp->nik }}</div>
                                 @if($emp->nip)
                                     <div class="text-[10px] text-slate-400 font-mono">{{ $emp->nip }}</div>
                                 @endif
                             </td>
+
+                            <!-- Col 3: NAMA KARYAWAN -->
                             <td>
-                                <!-- Red color if has_komponen is false (exact replica of datain.php line 141) -->
                                 <div class="font-bold text-sm {{ $emp->has_komponen ? 'text-slate-900' : 'text-rose-600 font-extrabold' }}">
                                     {{ $emp->nama_karyawan }}
                                 </div>
@@ -271,6 +344,16 @@
                                     <span><i class="fa-brands fa-whatsapp text-[10px] text-emerald-600"></i> {{ $emp->telepon ?? '-' }}</span>
                                 </div>
                             </td>
+
+                            <!-- Col 4: ENTITAS (Fixed alignment!) -->
+                            <td class="text-center">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border {{ $eBadge['bg'] }}" title="Entitas Odoo: {{ $eBadge['label'] }}">
+                                    <span class="w-1.5 h-1.5 rounded-full {{ $eBadge['dot'] }}"></span>
+                                    <span>{{ $eBadge['label'] }}</span>
+                                </span>
+                            </td>
+
+                            <!-- Col 5: JABATAN & AREA -->
                             <td>
                                 <div class="font-bold text-xs text-slate-800">{{ strtoupper($emp->jabatan) }}</div>
                                 <div class="text-[11px] text-slate-500 flex items-center gap-1 mt-0.5">
@@ -282,34 +365,52 @@
                                     @endif
                                 </div>
                             </td>
+
+                            <!-- Col 6: PRINSIPLE & TIPE (Inhouse vs RateCard) -->
                             <td>
                                 <span class="font-semibold text-xs text-slate-800 block">{{ $emp->prinsiple ?? '-' }}</span>
-                                <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 font-medium">
-                                    {{ $emp->tipe_karyawan }}
-                                </span>
+                                @if($emp->tipe_karyawan === 'Inhouse')
+                                    <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-200 mt-1 shadow-xs">
+                                        <i class="fa-solid fa-house-chimney text-[9px]"></i> Inhouse
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200 mt-1">
+                                        <i class="fa-solid fa-briefcase text-[9px]"></i> RateCard
+                                    </span>
+                                @endif
                             </td>
+
+                            <!-- Col 7: PIMPINAN -->
                             <td>
                                 <div class="font-semibold text-xs text-slate-700">{{ $emp->pimpinan ?? '-' }}</div>
                                 @if($emp->jabatan_pimpinan)
                                     <div class="text-[10px] font-bold text-primary">{{ strtoupper($emp->jabatan_pimpinan) }}</div>
                                 @endif
                             </td>
+
+                            <!-- Col 8: TGL. JOIN -->
                             <td>
                                 <div class="text-xs font-semibold text-slate-700">{{ $emp->formatted_join_date }}</div>
                                 <div class="text-[10px] text-slate-400 font-medium mt-0.5">
                                     {{ $emp->years_of_service }}
                                 </div>
                             </td>
+
+                            <!-- Col 9: 5 TAHUN -->
                             <td>
                                 <div class="text-xs font-bold text-slate-800">{{ $emp->five_years_date }}</div>
                                 <div class="text-[10px] text-slate-400">Masa Evaluasi</div>
                             </td>
+
+                            <!-- Col 10: STATUS -->
                             <td class="text-center">
                                 <span class="badge-pill {{ $badge['bg'] }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $badge['dot'] }}"></span>
                                     <span>{{ $badge['label'] }}</span>
                                 </span>
                             </td>
+
+                            <!-- Col 11: TOOLS -->
                             <td class="text-center">
                                 <div class="inline-flex items-center gap-1">
                                     <!-- Detail button -->
@@ -328,12 +429,12 @@
                                     @if($emp->status !== 'Resign')
                                         <a href="{{ route('master.karyawan.resign', $emp->id) }}" 
                                            onclick="return confirm('Karyawan Benar Sudah Resign? Konfirmasi perubahan status menjadi Resign.');"
-                                           class="w-7 h-7 rounded-lg bg-rose-50 text-rose-700 hover:bg-rose-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Set Resign">
-                                            <i class="ri-user-unfollow-line text-sm"></i>
+                                           class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Tandai Resign">
+                                            <i class="bx bx-user-x text-sm"></i>
                                         </a>
                                     @endif
 
-                                    <!-- Switch User button -->
+                                    <!-- Switch User simulator -->
                                     <a href="{{ route('master.karyawan.switch', $emp->nik) }}" 
                                        class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Switch User Akun">
                                         <i class="ri-user-shared-line text-sm"></i>
@@ -348,7 +449,7 @@
                                     <i class="fa-solid fa-user-slash"></i>
                                 </div>
                                 <div class="text-sm font-bold text-slate-700">Tidak ada data karyawan ditemukan</div>
-                                <div class="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau reset filter.</div>
+                                <div class="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau reset filter status.</div>
                             </td>
                         </tr>
                     @endforelse
@@ -380,8 +481,8 @@
                     <i class="fa-solid fa-user-plus"></i>
                 </div>
                 <div>
-                    <h3 class="text-base font-bold text-slate-900">Add Karyawan Inhouse</h3>
-                    <p class="text-[11px] text-slate-500">Isi formulir data pegawai baru untuk disimpan ke sistem.</p>
+                    <h3 class="text-base font-bold text-slate-900">Add Karyawan Baru</h3>
+                    <p class="text-[11px] text-slate-500">Isi formulir data pegawai baru. Tipe Inhouse / RateCard akan dihitung otomatis sesuai Prinsiple.</p>
                 </div>
             </div>
             <button onclick="closeModal('addEmployeeModal')" class="text-slate-400 hover:text-slate-700">
@@ -432,12 +533,24 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Prinsiple <span class="text-rose-500">*</span></label>
-                    <select name="prinsiple" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
+                    <select name="prinsiple" id="add_prinsiple_select" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
                         <option value="" disabled selected>Pilih Prinsiple</option>
-                        @foreach($distinctPrinciples as $prin)
-                            <option value="{{ $prin->name }}">{{ $prin->name }}</option>
-                        @endforeach
+                        <optgroup label="Entitas Arina Group (Inhouse)">
+                            <option value="PT Arina Multi Karya">PT Arina Multi Karya (AMK)</option>
+                            <option value="PT Alva Karya Perkasa">PT Alva Karya Perkasa (AKP)</option>
+                            <option value="PT Anugrah Terpercaya Kerja">PT Anugrah Terpercaya Kerja (ATK)</option>
+                            <option value="PT Arina Bintang Operasional">PT Arina Bintang Operasional (ABO)</option>
+                            <option value="PT Anugrah Tri Berkah">PT Anugrah Tri Berkah (ATB)</option>
+                        </optgroup>
+                        <optgroup label="Client Luar / Distributor (RateCard)">
+                            @foreach($distinctPrinciples as $prin)
+                                @if(!in_array($prin->name, ['PT Arina Multi Karya', 'PT Alva Karya Perkasa', 'PT Anugrah Terpercaya Kerja', 'PT Arina Bintang Operasional', 'PT Anugrah Tri Berkah']))
+                                    <option value="{{ $prin->name }}">{{ $prin->name }}</option>
+                                @endif
+                            @endforeach
+                        </optgroup>
                     </select>
+                    <p class="text-[10px] text-slate-400 mt-1">Jika memilih salah satu dari 5 entitas maka otomatis Inhouse, selain itu RateCard.</p>
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Jabatan <span class="text-rose-500">*</span></label>
@@ -559,17 +672,24 @@
                         <option value="ATB">ATB - PT Anugrah Tri Berkah</option>
                     </select>
                 </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Status</label>
-                    <select id="edit_status" name="status" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
-                        <option value="Aktiv">Aktiv</option>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Status Karyawan</label>
+                    <select id="edit_status" name="status" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 font-semibold">
+                        <option value="Aktiv">Aktiv (Aktif)</option>
                         <option value="Review">Review</option>
                         <option value="Resign">Resign</option>
                     </select>
                 </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Keterangan Tipe</label>
+                    <div class="text-xs text-slate-500 py-2">
+                        Tipe (Inhouse / RateCard) akan disesuaikan otomatis dari nama Prinsiple.
+                    </div>
+                </div>
             </div>
             <input type="hidden" id="edit_tanggal_join" name="tanggal_join">
-            <input type="hidden" id="edit_tipe_karyawan" name="tipe_karyawan" value="Inhouse">
             <div class="pt-4 border-t border-slate-200 flex justify-end gap-2">
                 <button type="button" onclick="closeModal('editEmployeeModal')" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold">Batal</button>
                 <button type="submit" class="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold">Update Data</button>
@@ -591,9 +711,10 @@
 
     function viewEmployeeDetail(emp) {
         const body = document.getElementById('detailModalBody');
+        const isEmployeeInhouse = emp.tipe_karyawan === 'Inhouse';
         body.innerHTML = `
-            <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-3">
-                <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-base">
+            <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-3 border border-slate-100">
+                <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-base shadow-sm">
                     ${emp.nama_karyawan.charAt(0)}
                 </div>
                 <div>
@@ -602,15 +723,27 @@
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-3">
-                <div><span class="text-slate-400 block">Entitas Odoo:</span> <strong class="text-primary font-bold">${emp.entity || '-'}</strong></div>
-                <div><span class="text-slate-400 block">Jabatan:</span> <strong class="text-slate-800">${emp.jabatan}</strong></div>
-                <div><span class="text-slate-400 block">Area:</span> <strong class="text-slate-800">${emp.area}</strong></div>
-                <div><span class="text-slate-400 block">Prinsiple:</span> <strong class="text-slate-800">${emp.prinsiple || '-'}</strong></div>
-                <div><span class="text-slate-400 block">Pimpinan:</span> <strong class="text-slate-800">${emp.pimpinan || '-'}</strong></div>
-                <div><span class="text-slate-400 block">Tanggal Join:</span> <strong class="text-slate-800">${emp.tanggal_join || '-'}</strong></div>
-                <div><span class="text-slate-400 block">Status:</span> <span class="badge-pill bg-blue-50 text-primary border-blue-200 font-bold">${emp.status}</span></div>
-                <div><span class="text-slate-400 block">Email:</span> <strong class="text-slate-800">${emp.email || '-'}</strong></div>
-                <div><span class="text-slate-400 block">WhatsApp:</span> <strong class="text-emerald-700">${emp.telepon || '-'}</strong></div>
+                <div>
+                    <span class="text-slate-400 block text-[11px]">Entitas Odoo:</span> 
+                    <span class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-primary border border-blue-200 mt-0.5">${emp.entity || 'AMK'}</span>
+                </div>
+                <div>
+                    <span class="text-slate-400 block text-[11px]">Tipe Karyawan:</span> 
+                    <span class="inline-block px-2 py-0.5 rounded text-xs font-bold ${isEmployeeInhouse ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-slate-100 text-slate-700 border border-slate-200'} mt-0.5">
+                        ${emp.tipe_karyawan || 'RateCard'}
+                    </span>
+                </div>
+                <div><span class="text-slate-400 block text-[11px]">Jabatan:</span> <strong class="text-slate-800">${emp.jabatan}</strong></div>
+                <div><span class="text-slate-400 block text-[11px]">Area:</span> <strong class="text-slate-800">${emp.area}</strong></div>
+                <div><span class="text-slate-400 block text-[11px]">Prinsiple:</span> <strong class="text-slate-800">${emp.prinsiple || '-'}</strong></div>
+                <div><span class="text-slate-400 block text-[11px]">Pimpinan:</span> <strong class="text-slate-800">${emp.pimpinan || '-'}</strong></div>
+                <div><span class="text-slate-400 block text-[11px]">Tanggal Join:</span> <strong class="text-slate-800">${emp.tanggal_join || '-'}</strong></div>
+                <div>
+                    <span class="text-slate-400 block text-[11px]">Status:</span> 
+                    <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200 font-bold mt-0.5">${emp.status}</span>
+                </div>
+                <div><span class="text-slate-400 block text-[11px]">Email:</span> <strong class="text-slate-800">${emp.email || '-'}</strong></div>
+                <div><span class="text-slate-400 block text-[11px]">WhatsApp:</span> <strong class="text-emerald-700">${emp.telepon || '-'}</strong></div>
             </div>
         `;
         openModal('detailEmployeeModal');

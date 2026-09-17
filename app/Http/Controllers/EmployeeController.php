@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\Principle;
+use App\Models\OdooEntity;
 
 class EmployeeController extends Controller
 {
@@ -25,11 +26,13 @@ class EmployeeController extends Controller
             });
         }
 
-        // Filters
-        if ($status = $request->input('status')) {
+        // Status filter: Default to 'Aktiv' only unless explicitly set otherwise
+        $status = $request->input('status', 'Aktiv');
+        if (!empty($status) && !in_array(strtolower($status), ['all', 'semua'])) {
             $query->where('status', $status);
         }
 
+        // Tipe filter (Inhouse / RateCard)
         if ($tipe = $request->input('tipe')) {
             $query->where('tipe_karyawan', $tipe);
         }
@@ -57,7 +60,7 @@ class EmployeeController extends Controller
 
         $employees = $query->paginate(10)->withQueryString();
 
-        // Metric Statistics
+        // Metric Statistics (Global overview)
         $stats = [
             'total' => Employee::count(),
             'aktif' => Employee::where('status', 'Aktiv')->count(),
@@ -73,8 +76,8 @@ class EmployeeController extends Controller
         $distinctArea = Employee::select('area')->distinct()->whereNotNull('area')->orderBy('area')->pluck('area');
         $distinctPimpinan = Employee::select('nama_karyawan', 'jabatan', 'area')->whereIn('level', ['SPV', 'HEAD', 'TL'])->orderBy('nama_karyawan')->get();
 
-        $entitiesList = \App\Models\OdooEntity::orderBy('code')->get();
-        return view('master.karyawan.index', compact('employees', 'stats', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan', 'entitiesList'));
+        $entitiesList = OdooEntity::orderBy('code')->get();
+        return view('master.karyawan.index', compact('employees', 'stats', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan', 'entitiesList', 'status', 'tipe'));
     }
 
     public function store(Request $request)
@@ -97,6 +100,12 @@ class EmployeeController extends Controller
         $prin = Principle::where('name', $validated['prinsiple'])->first();
         if ($prin) {
             $validated['principle_id'] = $prin->id;
+        }
+
+        // Automatic Inhouse / RateCard determination
+        $validated['tipe_karyawan'] = Employee::determineTipeKaryawan($validated['prinsiple']);
+        if (empty($validated['entity'])) {
+            $validated['entity'] = Employee::getEntityCodeFromPrinciple($validated['prinsiple']) ?: 'AMK';
         }
 
         $validated['status'] = 'Aktiv';
@@ -123,9 +132,15 @@ class EmployeeController extends Controller
             'divisi' => 'nullable|string',
             'pimpinan' => 'nullable|string',
             'status' => 'required|string',
-            'tipe_karyawan' => 'required|string',
+            'tipe_karyawan' => 'nullable|string',
             'entity' => 'nullable|string',
         ]);
+
+        // Automatic Inhouse / RateCard determination
+        $validated['tipe_karyawan'] = Employee::determineTipeKaryawan($validated['prinsiple']);
+        if (empty($validated['entity'])) {
+            $validated['entity'] = Employee::getEntityCodeFromPrinciple($validated['prinsiple']) ?: ($employee->entity ?: 'AMK');
+        }
 
         $employee->update($validated);
 
