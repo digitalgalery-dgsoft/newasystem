@@ -147,9 +147,14 @@ class InterviewController extends Controller
             'principleApprovals'
         ])->findOrFail($id);
 
-        $principles = Principle::where('is_active', true)->orderBy('name')->get();
+                $principles = Principle::where('is_active', true)->orderBy('name')->get();
+        $areas = [
+            'JAKARTA', 'SURABAYA', 'BANDUNG', 'SEMARANG', 'MEDAN', 
+            'MAKASSAR', 'DENPARAS', 'PALEMBANG', 'BALIKPAPAN', 'YOGYAKARTA',
+            'MALANG', 'BOGOR', 'BEKASI', 'TANGERANG', 'DEPOK'
+        ];
 
-        return view('interview.show', compact('candidate', 'user', 'principles'));
+        return view('interview.show', compact('candidate', 'user', 'principles', 'areas'));
     }
 
     /**
@@ -515,5 +520,41 @@ class InterviewController extends Controller
 
         return redirect()->route('interview.show', $candidate->id)
             ->with('success', 'Status dan Bukti Approval User Principle berhasil disimpan!');
+    }
+
+    /**
+     * Alihkan Kandidat ke Account Supervisor (AS) / Prinsiple
+     */
+    public function alihkanAS(Request $request, $id)
+    {
+        $candidate = Candidate::findOrFail($id);
+        if ($request->filled('prinsiple_id')) {
+            $candidate->principle_id = $request->prinsiple_id;
+        }
+        if ($request->filled('useras')) {
+            $candidate->useras = $request->useras;
+        }
+        if ($request->filled('notes')) {
+            $candidate->notes = $request->notes;
+        }
+        $candidate->status = 'Interview';
+        $candidate->status_kandidat = 'Interview';
+        $candidate->save();
+
+        return redirect()->route('interview.show', $candidate->id)
+            ->with('success', 'Data kandidat ' . $candidate->full_name . ' berhasil dialihkan.');
+    }
+
+    /**
+     * Ganti Area Penempatan Kandidat
+     */
+    public function gantiArea(Request $request, $id)
+    {
+        $candidate = Candidate::findOrFail($id);
+        $candidate->area = $request->area;
+        $candidate->save();
+
+        return redirect()->route('interview.show', $candidate->id)
+            ->with('success', 'Area penempatan kandidat berhasil diubah menjadi: ' . $candidate->area);
     }
 }

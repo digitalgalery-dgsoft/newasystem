@@ -54,6 +54,8 @@ Route::post('/interview/{id}/kompt', [InterviewController::class, 'storeComputer
 Route::post('/interview/{id}/remidi', [InterviewController::class, 'setRemidi'])->name('interview.remidi');
 Route::post('/interview/{id}/archive', [InterviewController::class, 'archive'])->name('interview.archive');
 Route::post('/interview/{id}/edit-principle', [InterviewController::class, 'editPrinciple'])->name('interview.editPrinciple');
+Route::post('/interview/{id}/alihkan', [InterviewController::class, 'alihkanAS'])->name('interview.alihkan');
+Route::post('/interview/{id}/ganti-area', [InterviewController::class, 'gantiArea'])->name('interview.ganti-area');
 
 // Submodule Pages
 Route::get('/walkinterview', [InterviewController::class, 'walkInterview'])->name('interview.walk');

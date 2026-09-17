@@ -7,212 +7,180 @@
 @section('content')
 <div x-data="{ 
     activeTab: 'interview', 
+    alihkanModalOpen: false,
+    gantiAreaModalOpen: false,
     editPrincipleModal: false, 
     archiveModal: false,
     computerEnabled: true,
     photoUploadModal: false
 }" class="space-y-6">
 
-    <!-- Top Action Bar -->
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-white border border-slate-200/80 rounded-2xl p-4 shadow-sm">
-        <div class="flex items-center gap-3">
-            <a href="{{ route('interview.index') }}" 
-               class="inline-flex items-center justify-center w-10 h-10 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors shadow-sm"
-               title="Kembali ke Daftar Interview">
-                <i class="fa-solid fa-arrow-left text-sm"></i>
-            </a>
-            <div>
-                <div class="flex items-center gap-2">
-                    <span class="text-[10px] font-bold uppercase tracking-wider text-primary-600 bg-primary-50 px-2 py-0.5 rounded-md border border-primary-100">
-                        Evaluasi Kandidat
-                    </span>
-                    <span class="text-xs text-slate-400">&bull;</span>
-                    <span class="text-xs text-slate-500 font-medium">ID #{{ $candidate->id }}</span>
-                </div>
-                <h1 class="text-lg font-black text-slate-800 tracking-tight">HASIL TEST KANDIDAT</h1>
+    <!-- TOP BAR / BREADCRUMB & HEADER (Identik dengan Detail Kandidat Portal) -->
+    <div class="page-header-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2.5">
+                <a href="{{ route('interview.index') }}" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors shadow-xs">
+                    <i class="fa-solid fa-arrow-left text-sm"></i>
+                </a>
+                <h1 class="text-xl font-bold text-slate-900 tracking-tight">{{ $candidate->full_name }}</h1>
+                <span class="badge-pill bg-blue-50 text-blue-700 border-blue-200">
+                    {{ $candidate->status_kandidat ?? $candidate->status ?? 'Interview' }}
+                </span>
+            </div>
+            <div class="text-xs text-slate-500 mt-1 flex items-center gap-2">
+                <span>Posisi: <b class="text-slate-800">{{ $candidate->applied_job ?? $candidate->position ?? '-' }}</b></span>
+                <span>•</span>
+                <span>Area: <b class="text-slate-800">{{ $candidate->area ?? 'JAKARTA' }}</b></span>
             </div>
         </div>
 
-        <div class="flex items-center flex-wrap gap-2.5">
-            <!-- Toggle Tes Komputer (From Legacy App) -->
+        <!-- ACTION BUTTONS -->
+        <div class="flex items-center flex-wrap gap-2">
+            <!-- Toggle Tes Komputer -->
             <button @click="computerEnabled = !computerEnabled" 
                     type="button" 
-                    class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
+                    class="inline-flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-bold transition-all shadow-sm"
                     :class="computerEnabled ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20' : 'bg-slate-600 hover:bg-slate-700 text-white shadow-slate-600/20'">
                 <i class="fa-solid fa-laptop-code text-xs"></i>
                 <span x-text="computerEnabled ? 'Tes Komputer: Set OFF (Disable)' : 'Tes Komputer: Set ON (Enable)'">Tes Komputer: Set OFF (Disable)</span>
             </button>
 
-            <!-- Back Button -->
-            <a href="{{ route('interview.index') }}" 
-               class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-primary-600 hover:bg-primary-700 text-white shadow-sm shadow-primary-500/20 transition-all">
-                <i class="fa-solid fa-arrow-left text-xs"></i>
-                <span>Back</span>
-            </a>
-        </div>
-    </div>
+            <!-- Alihkan ke AS -->
+            <button @click="alihkanModalOpen = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition-all">
+                <i class="fa-solid fa-user-plus text-primary"></i>
+                <span>Alihkan ke AS</span>
+            </button>
 
-    <!-- Profil Kandidat Card (Executive Layout with 11 Authentic Rows) -->
-    <div class="bg-white border border-slate-200/80 rounded-2xl p-6 shadow-sm">
-        <div class="flex items-center justify-between pb-3.5 mb-4 border-b border-slate-100">
-            <div class="flex items-center gap-2.5">
-                <div class="w-8 h-8 rounded-lg bg-primary-50 text-primary-600 flex items-center justify-center font-bold text-sm">
-                    <i class="fa-solid fa-address-card"></i>
-                </div>
-                <h2 class="text-base font-bold text-slate-800">Profil Kandidat</h2>
-            </div>
+            <!-- Ganti Area -->
+            <button @click="gantiAreaModalOpen = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 shadow-sm transition-all">
+                <i class="fa-solid fa-location-dot text-amber-600"></i>
+                <span>Ganti Area</span>
+            </button>
 
-            <!-- 2 Action Buttons on Top Right of Table (Edit Prinsiple & Arsip) -->
-            <div class="flex items-center gap-2">
-                <button @click="editPrincipleModal = true" 
-                        type="button" 
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-sky-50 text-sky-700 border border-sky-200 hover:bg-sky-100 transition-all shadow-sm">
-                    <i class="fa-solid fa-pen-to-square text-sky-600 text-[11px]"></i>
-                    <span>Edit Prinsiple</span>
-                </button>
+            <!-- Arsipkan -->
+            <button @click="archiveModal = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-sm transition-all">
+                <i class="fa-solid fa-box-archive"></i>
+                <span>Arsipkan</span>
+            </button>
 
-                <button @click="archiveModal = true" 
-                        type="button" 
-                        class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 transition-all shadow-sm">
-                    <i class="fa-solid fa-box-archive text-rose-600 text-[11px]"></i>
-                    <span>Arsipkan Kandidat</span>
-                </button>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-            
-            <!-- Left Side: Clean Professional Table with 11 Authentic Rows -->
-            <div class="lg:col-span-9 overflow-x-auto">
-                <table class="w-full text-xs border-collapse">
-                    <tbody class="divide-y divide-slate-100">
-                        <tr class="hover:bg-slate-50/50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700 w-44">No. KTP</th>
-                            <td class="py-2.5 px-3 text-slate-800">: <strong class="font-mono bg-slate-100 px-2 py-0.5 rounded text-slate-900 border border-slate-200">{{ $candidate->nik }}</strong></td>
-                        </tr>
-                        <tr class="bg-slate-50/60 hover:bg-slate-50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Nama Kandidat</th>
-                            <td class="py-2.5 px-3 text-slate-900 font-bold text-sm">: {{ $candidate->full_name }}</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50/50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Alamat KTP</th>
-                            <td class="py-2.5 px-3 text-slate-700 leading-relaxed">: {{ $candidate->address_ktp ?? '-' }}</td>
-                        </tr>
-                        <tr class="bg-slate-50/60 hover:bg-slate-50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Usia</th>
-                            <td class="py-2.5 px-3 text-slate-800">: <span class="font-semibold">{{ $candidate->age }} Tahun</span></td>
-                        </tr>
-                        <tr class="hover:bg-slate-50/50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Pendidikan Terakhir</th>
-                            <td class="py-2.5 px-3 text-slate-800">: <span class="font-semibold">{{ $candidate->education ?? '-' }}</span></td>
-                        </tr>
-                        <tr class="bg-slate-50/60 hover:bg-slate-50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Mobile</th>
-                            <td class="py-2.5 px-3 text-slate-800">
-                                : <a href="https://wa.me/{{ $candidate->clean_whatsapp }}" target="_blank" class="text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 px-2.5 py-1 rounded-md font-semibold inline-flex items-center gap-1.5 transition-colors">
-                                    <i class="fa-brands fa-whatsapp text-emerald-600 text-xs"></i>
-                                    <span>{{ $candidate->phone ?? '-' }}</span>
-                                </a>
-                            </td>
-                        </tr>
-                        <tr class="hover:bg-slate-50/50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Prinsiple</th>
-                            <td class="py-2.5 px-3 text-slate-800 font-semibold">: <strong class="text-primary-700">{{ $candidate->principle->name ?? 'PT ARINA MULTI KARYA' }}</strong> - {{ $candidate->area ?? 'JAKARTA' }}</td>
-                        </tr>
-                        <tr class="bg-slate-50/60 hover:bg-slate-50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Jabatan</th>
-                            <td class="py-2.5 px-3 text-slate-800 font-semibold">: {{ $candidate->applied_job ?? 'Principal' }}</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50/50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Status</th>
-                            <td class="py-2.5 px-3">
-                                : <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[11px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
-                                    <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                                    {{ $candidate->status_approval ?? 'Proses' }}
-                                </span>
-                            </td>
-                        </tr>
-                        <tr class="bg-slate-50/60 hover:bg-slate-50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Nama AS</th>
-                            <td class="py-2.5 px-3 text-slate-800 font-mono">: {{ $candidate->useras ?? $candidate->recruiter->email ?? 'susanti162021@gmail.com' }}</td>
-                        </tr>
-                        <tr class="hover:bg-slate-50/50">
-                            <th class="py-2.5 px-3 text-left font-bold text-slate-700">Catatan</th>
-                            <td class="py-2.5 px-3 text-slate-700 italic">: {{ $candidate->notes ?? '-' }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-
-            <!-- Right Side: Highly Attractive Photo Box with Live Upload/Dropzone -->
-            <div class="lg:col-span-3 flex flex-col items-center justify-center">
-                <div class="relative group w-full max-w-[190px]">
-                    <!-- Photo Container Frame -->
-                    <div class="w-full h-[220px] rounded-2xl bg-gradient-to-b from-slate-100 to-slate-200 border-2 border-dashed border-slate-300 group-hover:border-primary-500 transition-all flex flex-col items-center justify-center p-3 text-center shadow-inner overflow-hidden relative">
-                        
-                        @if(!empty($candidate->photo_path))
-                            <img id="candidatePhotoPreview" 
-                                 src="{{ asset('storage/' . $candidate->photo_path) }}" 
-                                 alt="Foto {{ $candidate->full_name }}" 
-                                 class="w-full h-full object-cover rounded-xl shadow-sm">
-                        @else
-                            <div id="candidatePhotoPlaceholder" class="flex flex-col items-center justify-center space-y-2">
-                                <div class="w-14 h-14 rounded-full bg-white text-slate-400 flex items-center justify-center shadow-sm group-hover:text-primary-600 transition-colors">
-                                    <i class="fa-regular fa-image text-2xl"></i>
-                                </div>
-                                <div>
-                                    <span class="text-xs font-bold text-slate-700 block">Foto Tidak Ada</span>
-                                    <span class="text-[10px] text-slate-400">Klik untuk upload foto</span>
-                                </div>
-                            </div>
-                            <img id="candidatePhotoPreview" class="hidden w-full h-full object-cover rounded-xl shadow-sm">
-                        @endif
-
-                        <!-- Hover Overlay to Upload / Change Photo -->
-                        <label for="candidatePhotoInput" 
-                               class="absolute inset-0 bg-slate-900/60 backdrop-blur-xs opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white cursor-pointer p-3 text-center">
-                            <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center mb-1 text-base">
-                                <i class="fa-solid fa-camera"></i>
-                            </div>
-                            <span class="text-xs font-bold">Ganti / Upload Foto</span>
-                            <span class="text-[9px] text-slate-300 mt-0.5">JPG / PNG maks 2MB</span>
-                        </label>
-                    </div>
-
-                    <!-- Hidden File Input for Direct Photo Upload -->
-                    <form action="#" method="POST" enctype="multipart/form-data" id="photoUploadForm">
-                        @csrf
-                        <input type="file" 
-                               id="candidatePhotoInput" 
-                               name="photo" 
-                               accept="image/jpeg,image/png,image/jpg" 
-                               class="hidden" 
-                               onchange="handleCandidatePhotoPreview(this)">
-                    </form>
-
-                    <div class="text-center mt-2">
-                        <span class="text-[11px] text-slate-400 font-medium">Foto Profil Kandidat (3x4)</span>
-                    </div>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- Download All Document Button & Subtext -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50 border border-slate-200/80 rounded-2xl p-4 shadow-xs">
-        <div class="flex items-center gap-3">
-            <a href="{{ route('interview.pdf', $candidate->id) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-amber-500 hover:bg-amber-600 text-slate-900 shadow-md shadow-amber-500/20 transition-all cursor-pointer">
-                <i class="fa-solid fa-file-pdf text-amber-400 text-sm"></i>
+            <!-- Download PDF (Blue Button) -->
+            <a href="{{ route('interview.pdf', $candidate->id) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-700 shadow-md shadow-primary-500/20 transition-all">
+                <i class="fa-solid fa-file-pdf"></i>
                 <span>Download All Document</span>
             </a>
-            <span class="text-xs italic text-blue-600 font-semibold flex items-center gap-1.5">
-                <i class="fa-solid fa-circle-info text-[11px]"></i>
-                Dokument Bisa di Download Jika Sudah Approve Prinsiple
-            </span>
         </div>
+    </div>
 
-        <span class="text-xs font-mono text-slate-500 font-medium">Status: Standar Rekrutmen Terverifikasi</span>
+    <!-- PROFIL KANDIDAT CARD (11 DATA POINTS + FOTO DROPZONE - Identik dengan Detail Kandidat Portal) -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
+        <div class="flex flex-col lg:flex-row gap-6">
+            
+            <!-- Left: 11 Data Points Table -->
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-7 h-7 rounded-lg bg-blue-50 text-primary flex items-center justify-center font-bold text-xs">
+                        <i class="fa-solid fa-id-card"></i>
+                    </div>
+                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Profil Lengkap Pelamar</h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-xs">
+                    <!-- 1. No KTP -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">No. KTP / NIK:</span>
+                        <code class="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{{ $candidate->nik }}</code>
+                    </div>
+
+                    <!-- 2. Nama Lengkap -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Nama Lengkap:</span>
+                        <span class="font-bold text-slate-900">{{ $candidate->full_name }}</span>
+                    </div>
+
+                    <!-- 3. Alamat KTP -->
+                    <div class="flex items-start gap-2 md:col-span-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Alamat KTP:</span>
+                        <span class="text-slate-700 font-medium leading-relaxed">{{ $candidate->address_ktp ?? '-' }}</span>
+                    </div>
+
+                    <!-- 4. Usia & Tgl Lahir -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Tgl. Lahir & Usia:</span>
+                        <span class="text-slate-800 font-semibold">{{ $candidate->formatted_birth_date }} (<b>{{ $candidate->age }} Tahun</b>)</span>
+                    </div>
+
+                    <!-- 5. Pendidikan Terakhir -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Pendidikan:</span>
+                        <span class="font-bold text-slate-800">{{ $candidate->education ?? '-' }}</span>
+                    </div>
+
+                    <!-- 6. Mobile / WhatsApp -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Nomor WhatsApp:</span>
+                        <a href="https://api.whatsapp.com/send?phone={{ $candidate->clean_whatsapp }}" target="_blank" class="text-emerald-700 font-bold hover:underline flex items-center gap-1">
+                            <i class="fa-brands fa-whatsapp text-emerald-600"></i>
+                            <span>{{ $candidate->phone ?? '-' }}</span>
+                        </a>
+                    </div>
+
+                    <!-- 7. Prinsiple & Area -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Prinsiple & Area:</span>
+                        <span class="font-bold text-primary">{{ $candidate->principle ? $candidate->principle->name : 'PT ARINA MULTI KARYA' }}</span>
+                        <span class="text-slate-400"> - {{ $candidate->area ?? 'JAKARTA' }}</span>
+                    </div>
+
+                    <!-- 8. Posisi Dilamar -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Posisi Dilamar:</span>
+                        <span class="font-bold text-slate-900">{{ $candidate->applied_job ?? $candidate->position ?? '-' }}</span>
+                    </div>
+
+                    <!-- 9. Status Seleksi -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Status Seleksi:</span>
+                        <span class="badge-pill bg-blue-50 text-blue-700 border-blue-200">
+                            {{ $candidate->status_kandidat ?? $candidate->status ?? 'Interview' }}
+                        </span>
+                    </div>
+
+                    <!-- 10. Nama User / AS -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">User AS / Rekruter:</span>
+                        <span class="text-slate-700 font-medium">{{ $candidate->useras ?? 'admin.pusat@arina.co.id' }}</span>
+                    </div>
+
+                    <!-- 11. Catatan Khusus -->
+                    <div class="flex items-start gap-2 md:col-span-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Catatan Khusus:</span>
+                        <span class="text-slate-600 italic">{{ $candidate->notes ?? 'Tidak ada catatan tambahan.' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Foto Profil 3x4 Dropzone (Identik dengan Detail Kandidat Portal) -->
+            <div class="w-full lg:w-48 flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center">
+                <div class="relative group cursor-pointer w-32 h-40 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 hover:border-primary-400 bg-white flex flex-col items-center justify-center transition-all shadow-sm">
+                    @if($candidate->photo_path)
+                        <img id="photoPreview" src="https://ui-avatars.com/api/?name={{ urlencode($candidate->full_name) }}&background=0F52BA&color=fff&size=256" alt="Foto Kandidat" class="w-full h-full object-cover">
+                    @else
+                        <div id="photoPlaceholder" class="flex flex-col items-center text-slate-400 p-2">
+                            <i class="fa-solid fa-camera text-2xl mb-1 text-slate-300 group-hover:text-primary transition-colors"></i>
+                            <span class="text-[11px] font-bold">Pasfoto 3x4</span>
+                            <span class="text-[9px] text-slate-400 mt-0.5">JPG / PNG</span>
+                        </div>
+                    @endif
+                    <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-semibold transition-opacity">
+                        <i class="fa-solid fa-upload mr-1"></i> Ganti
+                    </div>
+                    <input type="file" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onchange="previewImage(this)">
+                </div>
+                <span class="text-[11px] font-bold text-slate-700 mt-2.5">Foto Resmi Pelamar</span>
+                <span class="text-[10px] text-slate-400">Ukuran Rekomendasi 3x4</span>
+            </div>
+
+        </div>
     </div>
 
     <!-- 6 Tabs Navigation Bar (Modern Attendance Tabs) -->
@@ -1016,6 +984,102 @@
         </div>
     </div>
 
+
+
+    <!-- MODAL ALIKAN KE AS -->
+    <div x-show="alihkanModalOpen" 
+         x-cloak 
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div @click.away="alihkanModalOpen = false" 
+             class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-user-plus text-primary"></i>
+                    Alihkan Kandidat ke AS Lain
+                </h4>
+                <button @click="alihkanModalOpen = false" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <form action="{{ route('interview.alihkan', $candidate->id) }}" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Pilih Prinsiple</label>
+                    <select name="prinsiple_id" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">
+                        @foreach($principles as $p)
+                            <option value="{{ $p->id }}" {{ ($candidate->principle_id == $p->id) ? 'selected' : '' }}>{{ $p->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">User AS / Rekruter Tujuan</label>
+                    <input type="email" name="useras" value="{{ $candidate->useras ?? 'admin.pusat@arina.co.id' }}" required class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Catatan Pengalihan (Opsional)</label>
+                    <textarea name="notes" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none" placeholder="Alasan pengalihan kandidat..."></textarea>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button @click="alihkanModalOpen = false" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-primary hover:bg-primary-700 text-white shadow-sm">
+                        Simpan & Alihkan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL GANTI AREA -->
+    <div x-show="gantiAreaModalOpen" 
+         x-cloak 
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div @click.away="gantiAreaModalOpen = false" 
+             class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-location-dot text-amber-600"></i>
+                    Ganti Area Penempatan
+                </h4>
+                <button @click="gantiAreaModalOpen = false" class="text-slate-400 hover:text-slate-600">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <form action="{{ route('interview.ganti-area', $candidate->id) }}" method="POST" class="space-y-4">
+                @csrf
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Pilih Area Baru</label>
+                    <select name="area" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-amber-100 focus:border-amber-500 outline-none" required>
+                        @php
+                            $allAreas = $areas ?? [
+                                'JAKARTA', 'SURABAYA', 'BANDUNG', 'SEMARANG', 'MEDAN', 
+                                'MAKASSAR', 'DENPASAR', 'PALEMBANG', 'BALIKPAPAN', 'YOGYAKARTA',
+                                'MALANG', 'BOGOR', 'BEKASI', 'TANGERANG', 'DEPOK'
+                            ];
+                        @endphp
+                        @foreach($allAreas as $ar)
+                            <option value="{{ $ar }}" {{ ($candidate->area == $ar) ? 'selected' : '' }}>{{ $ar }}</option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                    <button @click="gantiAreaModalOpen = false" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm">
+                        Perbarui Area
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
