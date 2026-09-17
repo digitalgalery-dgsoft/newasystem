@@ -248,9 +248,6 @@
                                     class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all {{ $isInterviewActive ? 'bg-primary-50 text-primary' : 'text-slate-700 hover:bg-slate-50 hover:text-primary' }}">
                                 <i class="fa-solid fa-user-tie text-base w-5 text-center {{ $isInterviewActive ? 'text-primary' : 'text-slate-400' }}"></i>
                                 <span class="flex-1 text-left">Talent Pool / Rekrutment</span>
-                                <span class="text-[10px] px-1.5 py-0.5 rounded font-bold {{ $isInterviewActive ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500' }}">
-                                    SUB-MENU
-                                </span>
                                 <i class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': interviewOpen }"></i>
                             </button>
 
