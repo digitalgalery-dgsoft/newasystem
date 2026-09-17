@@ -105,10 +105,28 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 8. 🛠️ Penyiapan Environment & Validasi Server Lokal (Laravel 12 & PHP 8.3)
+- **Instalasi & Konfigurasi PHP 8.3**:
+  - Pemasangan PHP 8.3.33 dengan ekstensi pendukung lengkap: `pdo_sqlite`, `pdo_mysql`, `curl`, `mbstring`, `fileinfo`, `openssl`, `intl`, `gd`, dan `zip`.
+  - Peningkatan limit memori (`memory_limit = 512M`) pada `php.ini`.
+- **Instalasi Composer & Manajemen Dependensi**:
+  - Pemasangan Composer v2.10.3 dan instalasi seluruh dependensi backend via `composer install` (memastikan kompatibilitas penuh dengan Laravel 12 dan `laravel/pint` v1.32.1).
+- **Konfigurasi Environment & Application Key**:
+  - Penyalinan konfigurasi `.env` dari `.env.example` dan pembuatan kunci aplikasi via `php artisan key:generate`.
+- **Validasi Konektivitas Database SQLite**:
+  - Penghubungan database SQLite `asystem_interview` dengan 63 tabel aktif, data relasi, serta ketersediaan akun uji coba multi-role (Admin, Recruiter, Karyawan Inhouse, dan Karyawan Ratecard).
+- **Eksekusi Server Development**:
+  - Menjalankan server lokal menggunakan `php artisan serve --host=127.0.0.1 --port=8000`.
+  - Pengujian endpoint publik (`/login`, `/job`) menghasilkan status `200 OK`.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `f41beba` | docs: update progres penyiapan environment PHP 8.3, Composer, dan eksekusi server lokal |
+| `8bd86c1` | docs: tambahkan dokumentasi progres update lengkap ke UPDATE_PROGRESS.md |
 | `aeafd7a` | Buat tampilan card sambutan dan informasi akun menjadi fullwidth |
 | `76bc098` | Sederhanakan halaman Home: hilangkan katalog modul dan statistik, tampilkan kartu sambutan dan identitas profil pengguna |
 | `2b58ab7` | Batasi menu Master Data hanya untuk Administrator dan tampilkan modul saja untuk user lain |
