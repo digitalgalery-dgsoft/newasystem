@@ -20,6 +20,10 @@
         </div>
 
         <div class="flex items-center gap-2">
+            <a href="{{ route('airanking.index') }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all shadow-sm">
+                <i class="fa-solid fa-ranking-star text-amber-500"></i>
+                <span>AI Ranking Leaderboard</span>
+            </a>
             <a href="{{ route('job.input') }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition-all shadow-sm">
                 <i class="fa-solid fa-briefcase text-primary"></i>
                 <span>Kelola Lowongan Job</span>

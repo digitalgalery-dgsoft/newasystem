@@ -9,6 +9,7 @@ use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\KandidatPortalController;
 use App\Http\Controllers\InterviewInhouseController;
+use App\Http\Controllers\AiRankingController;
 
 // Root redirect to Fitur Hub
 Route::get('/', function () {
@@ -160,4 +161,14 @@ Route::get('/interview/inhouse/{id}', function($id) { return redirect()->route('
 Route::get('/hasilinhouse.php', function(\Illuminate\Http\Request $request) {
     $id = $request->query('id', 7);
     return redirect()->route('interviewinhouse.show', $id);
+});
+
+// ==============================================================
+// FITUR AI CANDIDATE RANKING (v3/ai_ranking.php)
+// ==============================================================
+Route::get('/airanking', [AiRankingController::class, 'index'])->name('airanking.index');
+Route::get('/kandidatportal/ranking', [AiRankingController::class, 'index'])->name('kandidatportal.ranking');
+Route::get('/ai_ranking.php', function(\Illuminate\Http\Request $request) {
+    $job = $request->query('job');
+    return redirect()->route('airanking.index', $job ? ['job' => $job] : []);
 });

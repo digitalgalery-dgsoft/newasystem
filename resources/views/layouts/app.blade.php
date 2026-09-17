@@ -225,7 +225,7 @@
 
                 <!-- GROUP 3: BAGIAN FITUR (DENGAN SUB-MENU INTERVIEW) -->
                 @php
-                    $isInterviewActive = request()->is('interview*') || request()->is('interviewinhouse*') || request()->is('interviewdone*') || request()->is('interviewarsip*') || request()->is('inputjob*') || request()->is('kandidatportal*');
+                    $isInterviewActive = request()->is('interview*') || request()->is('interviewinhouse*') || request()->is('airanking*') || request()->is('interviewdone*') || request()->is('interviewarsip*') || request()->is('inputjob*') || request()->is('kandidatportal*');
                 @endphp
                 <div x-data="{ interviewOpen: {{ $isInterviewActive ? 'true' : 'false' }} }">
                     <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between">
@@ -268,7 +268,20 @@
                                     @endif
                                 </a>
 
-                                <!-- 2. Kandidat Interview -->
+                                                                <!-- 3. AI Ranking -->
+                                <a href="{{ route('airanking.index') }}" 
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('airanking.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                    <i class="fa-solid fa-ranking-star text-[11px] w-4 text-center {{ request()->routeIs('airanking.*') ? 'text-white' : 'text-amber-500' }}"></i>
+                                    <span>AI Ranking</span>
+                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('airanking.*') ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700' }}">
+                                        AI
+                                    </span>
+                                    @if(request()->routeIs('airanking.*'))
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
+                                    @endif
+                                </a>
+
+                                <!-- 4. Kandidat Interview -->
                                 <a href="{{ route('interview.index') }}" 
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interview.index') || request()->routeIs('interview.show') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-clipboard-user text-[11px] w-4 text-center"></i>
