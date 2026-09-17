@@ -35,10 +35,10 @@
     };
 @endphp
 
-<div class="space-y-6 max-w-7xl mx-auto">
+<div class="space-y-6 w-full">
 
     <!-- 1. HERO SAMBUTAN UTAMA -->
-    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-primary-950 to-primary-900 text-white p-6 sm:p-8 lg:p-10 shadow-xl shadow-primary-950/20 border border-slate-800">
+    <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-primary-950 to-primary-900 text-white p-6 sm:p-8 lg:p-8 shadow-xl shadow-primary-950/20 border border-slate-800">
         <!-- Background Ambient Glow & Patterns -->
         <div class="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-primary-500/20 blur-3xl pointer-events-none"></div>
         <div class="absolute -bottom-24 -left-24 w-80 h-80 rounded-full bg-blue-500/15 blur-3xl pointer-events-none"></div>
@@ -114,7 +114,7 @@
                     </span>
                 </div>
 
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-4 gap-x-6 text-xs">
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-y-5 gap-x-6 text-xs">
                     <div class="space-y-1">
                         <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Nama Lengkap</div>
                         <div class="text-slate-800 font-bold text-sm">{{ $userName }}</div>
