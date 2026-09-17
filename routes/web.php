@@ -38,7 +38,7 @@ Route::get('/fitur', [FeatureController::class, 'index'])->name('fitur.index');
 // ==========================================
 // MASTER DATA: KARYAWAN & PRINSIPLE
 // ==========================================
-Route::prefix('master')->name('master.')->group(function () {
+Route::middleware(['admin'])->prefix('master')->name('master.')->group(function () {
     // Master Karyawan
     Route::get('/karyawan', [EmployeeController::class, 'index'])->name('karyawan.index');
     Route::post('/karyawan', [EmployeeController::class, 'store'])->name('karyawan.store');
@@ -190,10 +190,12 @@ Route::get('/ai_ranking.php', function(\Illuminate\Http\Request $request) {
 // ==============================================================
 // FITUR PENGATURAN AI & WHATSAPP (v3/ai_settings.php)
 // ==============================================================
-Route::get('/ai-settings', [AiSettingController::class, 'index'])->name('aisetting.index');
-Route::post('/ai-settings', [AiSettingController::class, 'update'])->name('aisetting.update');
-Route::post('/ai-settings/test-gemini', [AiSettingController::class, 'testGemini'])->name('aisetting.test_gemini');
-Route::post('/ai-settings/test-wa', [AiSettingController::class, 'testWa'])->name('aisetting.test_wa');
+Route::middleware(['admin'])->group(function () {
+    Route::get('/ai-settings', [AiSettingController::class, 'index'])->name('aisetting.index');
+    Route::post('/ai-settings', [AiSettingController::class, 'update'])->name('aisetting.update');
+    Route::post('/ai-settings/test-gemini', [AiSettingController::class, 'testGemini'])->name('aisetting.test_gemini');
+    Route::post('/ai-settings/test-wa', [AiSettingController::class, 'testWa'])->name('aisetting.test_wa');
+});
 Route::get('/ai_settings.php', function() { return redirect()->route('aisetting.index'); });
 
 // ==============================================================
@@ -219,7 +221,7 @@ Route::get('/job_apply.php', function(\Illuminate\Http\Request $request) {
 // ==============================================================
 // INTEGRASI SINKRONISASI ODOO ERP (5 ENTITAS: AMK, AKP, ATK, ABO, ATB)
 // ==============================================================
-Route::prefix('odoo-setting')->name('odoo.setting.')->group(function () {
+Route::middleware(['admin'])->prefix('odoo-setting')->name('odoo.setting.')->group(function () {
     Route::get('/', [App\Http\Controllers\OdooSettingController::class, 'index'])->name('index');
     Route::put('/{code}', [App\Http\Controllers\OdooSettingController::class, 'update'])->name('update');
     Route::post('/{code}/test', [App\Http\Controllers\OdooSettingController::class, 'testConnection'])->name('test');
@@ -235,7 +237,9 @@ Route::get('/odoo_setting.php', function() { return redirect()->route('odoo.sett
 // ==============================================================
 // MASTER USER PRINSIPLE (v3/dataprinsiple.php)
 // ==============================================================
-Route::resource('user-prinsiple', App\Http\Controllers\UserPrinsipleController::class)->names('userprinsiple');
-Route::post('user-prinsiple/{id}/send-access', [App\Http\Controllers\UserPrinsipleController::class, 'sendAccess'])->name('userprinsiple.send_access');
+Route::middleware(['admin'])->group(function () {
+    Route::resource('user-prinsiple', App\Http\Controllers\UserPrinsipleController::class)->names('userprinsiple');
+    Route::post('user-prinsiple/{id}/send-access', [App\Http\Controllers\UserPrinsipleController::class, 'sendAccess'])->name('userprinsiple.send_access');
+});
 Route::get('/dataprinsiple', function() { return redirect()->route('userprinsiple.index'); });
 Route::get('/dataprinsiple.php', function() { return redirect()->route('userprinsiple.index'); });

@@ -199,10 +199,12 @@
                     </ul>
                 </div>
 
-                <!-- GROUP 2: MASTER DATA -->
+                <!-- GROUP 2: MASTER DATA (ADMINISTRATOR ONLY) -->
+                @if(Auth::check() && Auth::user()->isAdmin())
                 <div>
-                    <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5">
+                    <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between">
                         <span>Master Data</span>
+                        <span class="text-[9px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.2 rounded border border-indigo-200">ADMIN</span>
                     </div>
                     <ul class="space-y-1">
                         <li>
@@ -230,6 +232,7 @@
                         </li>
                     </ul>
                 </div>
+                @endif
 
                 <!-- GROUP 3: BAGIAN FITUR (DENGAN SUB-MENU INTERVIEW) -->
                 @php
@@ -296,7 +299,8 @@
                                     @endif
                                 </a>
 
-                                                                <!-- 5. Setting AI -->
+                                                                @if(Auth::check() && Auth::user()->isAdmin())
+                                <!-- 5. Setting AI (Admin Only) -->
                                 <a href="{{ route('aisetting.index') }}" 
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('aisetting.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-sliders text-[11px] w-4 text-center"></i>
@@ -306,7 +310,7 @@
                                     @endif
                                 </a>
 
-                                <!-- Master User Prinsiple -->
+                                <!-- Master User Prinsiple (Admin Only) -->
                                 <a href="{{ route('userprinsiple.index') }}" 
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('userprinsiple.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-users-viewfinder text-[11px] w-4 text-center"></i>
@@ -318,6 +322,7 @@
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
                                 </a>
+                                @endif
 
                                 <!-- 6. Kandidat Interview -->
                                 <a href="{{ route('interview.index') }}" 
@@ -358,15 +363,41 @@
 
             <!-- Sidebar User Profile Footer -->
             <div class="p-3 border-t border-slate-200 bg-slate-50/50">
-                <div class="flex items-center gap-3 p-2 rounded-xl bg-white border border-slate-200 shadow-sm">
-                    <img src="https://ui-avatars.com/api/?name=Admin+HRD&background=0F52BA&color=fff" alt="User Avatar" class="w-9 h-9 rounded-lg border border-primary-100">
+                @php
+                    $currentUser = Auth::user();
+                    $userName = $currentUser ? $currentUser->name : 'Administrator HRD';
+                    $userEmail = $currentUser ? ($currentUser->job_title ?: $currentUser->email) : 'admin.pusat@arina.co.id';
+                    $userRole = $currentUser ? ($currentUser->role ?? 'admin') : 'admin';
+                    $roleLabel = match($userRole) {
+                        'admin' => 'Administrator',
+                        'karyawan_inhouse' => 'Karyawan Inhouse',
+                        'karyawan_ratecard' => 'Karyawan RateCard',
+                        'recruiter' => 'Recruiter Team',
+                        'head_hr' => 'Head of HR',
+                        default => ucfirst(str_replace('_', ' ', $userRole))
+                    };
+                    $avatarColor = match($userRole) {
+                        'admin' => '0F52BA',
+                        'karyawan_inhouse' => '059669',
+                        'karyawan_ratecard' => 'D97706',
+                        default => '6366F1'
+                    };
+                @endphp
+                <div class="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 shadow-sm">
+                    <img src="https://ui-avatars.com/api/?name={{ urlencode($userName) }}&background={{ $avatarColor }}&color=fff" alt="User Avatar" class="w-9 h-9 rounded-lg border border-slate-100 flex-shrink-0">
                     <div class="flex-1 min-w-0">
-                        <div class="text-xs font-bold text-slate-900 truncate">Administrator HRD</div>
-                        <div class="text-[11px] text-slate-500 truncate">admin.pusat@arina.co.id</div>
+                        <div class="text-xs font-bold text-slate-900 truncate">{{ $userName }}</div>
+                        <div class="text-[10px] text-slate-500 font-medium truncate flex items-center gap-1">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full {{ $userRole === 'admin' ? 'bg-blue-500' : ($userRole === 'karyawan_inhouse' ? 'bg-emerald-500' : 'bg-amber-500') }}"></span>
+                            <span>{{ $roleLabel }}</span>
+                        </div>
                     </div>
-                    <a href="{{ route('fitur.index') }}" class="text-slate-400 hover:text-primary p-1">
-                        <i class="fa-solid fa-gear text-sm"></i>
-                    </a>
+                    <form method="POST" action="{{ route('logout') }}" class="inline m-0 p-0">
+                        @csrf
+                        <button type="submit" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all">
+                            <i class="fa-solid fa-arrow-right-from-bracket text-sm"></i>
+                        </button>
+                    </form>
                 </div>
             </div>
         </aside>
@@ -414,11 +445,17 @@
 
                     <!-- Topbar Profile -->
                     <div class="flex items-center gap-2 pl-2">
-                        <img src="https://ui-avatars.com/api/?name=Admin+HRD&background=0F52BA&color=fff" alt="User" class="w-8 h-8 rounded-lg border border-slate-200">
+                        <img src="https://ui-avatars.com/api/?name={{ urlencode($userName) }}&background={{ $avatarColor }}&color=fff" alt="User" class="w-8 h-8 rounded-lg border border-slate-200">
                         <div class="hidden md:block text-left">
-                            <div class="text-xs font-bold text-slate-800 leading-none">Super Admin</div>
-                            <div class="text-[10px] text-slate-500 leading-none mt-1">HR & Operasional</div>
+                            <div class="text-xs font-bold text-slate-800 leading-none">{{ $userName }}</div>
+                            <div class="text-[10px] text-slate-500 leading-none mt-1 font-medium">{{ $roleLabel }}</div>
                         </div>
+                        <form method="POST" action="{{ route('logout') }}" class="inline m-0 p-0 ml-1">
+                            @csrf
+                            <button type="submit" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-slate-100 transition-all">
+                                <i class="fa-solid fa-power-off text-xs"></i>
+                            </button>
+                        </form>
                     </div>
                 </div>
             </header>

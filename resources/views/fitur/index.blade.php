@@ -12,17 +12,27 @@
                 <i class="fa-solid fa-grid-2"></i>
             </div>
             <div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                     <h1 class="text-xl font-bold text-slate-900 tracking-tight">Pusat Fitur & Modul Aplikasi</h1>
+                    @if(Auth::check() && Auth::user()->isAdmin())
+                        <span class="badge-pill bg-indigo-50 text-indigo-700 border-indigo-200">
+                            <i class="fa-solid fa-shield-halved text-[10px]"></i> AKSES: ADMINISTRATOR
+                        </span>
+                    @else
+                        <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">
+                            <i class="fa-solid fa-user-check text-[10px]"></i> AKSES: MODUL OPERASIONAL
+                        </span>
+                    @endif
                     <span class="badge-pill bg-blue-50 text-primary border-blue-200">
-                        <i class="fa-solid fa-layer-group text-[10px]"></i> ATT-ADMIN-V12
-                    </span>
-                    <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">
-                        <i class="fa-solid fa-circle-check text-[10px]"></i> Laravel 12
+                        <i class="fa-solid fa-circle-check text-[10px]"></i> Cloud Active
                     </span>
                 </div>
                 <p class="text-xs text-slate-500 mt-1">
-                    Direktori lengkap fitur operasional HRD, manajemen rekrutmen kandidat interview, database master data karyawan & prinsiple.
+                    @if(Auth::check() && Auth::user()->isAdmin())
+                        Direktori lengkap fitur operasional HRD, rekrutmen kandidat interview, serta kontrol penuh Master Data karyawan & prinsiple.
+                    @else
+                        Direktori modul operasional, presensi GPS kehadiran, pengajuan izin & cuti, evaluasi kinerja KPI, dan portal lowongan rekrutmen.
+                    @endif
                 </p>
             </div>
         </div>
@@ -35,11 +45,11 @@
     </div>
 
     <!-- Quick Stats Metric Row -->
-    <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+    <div class="grid grid-cols-2 {{ (Auth::check() && Auth::user()->isAdmin()) ? 'lg:grid-cols-4' : 'lg:grid-cols-3' }} gap-4">
         <div class="stat-box">
             <div class="flex items-center justify-between">
                 <div>
-                    <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Sub-Menu Rekrutmen</div>
+                    <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Talent Pool Rekrutmen</div>
                     <div class="text-2xl font-black text-slate-900 mt-1">{{ $interviewStats['total'] }}</div>
                     <div class="text-[11px] text-primary font-semibold mt-0.5">
                         <i class="fa-solid fa-circle-check"></i> {{ $interviewStats['active'] }} Kandidat Aktif
@@ -51,6 +61,7 @@
             </div>
         </div>
 
+        @if(Auth::check() && Auth::user()->isAdmin())
         <div class="stat-box">
             <div class="flex items-center justify-between">
                 <div>
@@ -80,12 +91,28 @@
                 </div>
             </div>
         </div>
+        @else
+        <div class="stat-box">
+            <div class="flex items-center justify-between">
+                <div>
+                    <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Layanan Kepegawaian</div>
+                    <div class="text-2xl font-black text-emerald-600 mt-1">Aktif</div>
+                    <div class="text-[11px] text-emerald-600 font-semibold mt-0.5">
+                        <i class="fa-solid fa-shield-check"></i> Presensi, Cuti & KPI
+                    </div>
+                </div>
+                <div class="stat-box-icon bg-emerald-50 text-emerald-600">
+                    <i class="fa-solid fa-id-badge"></i>
+                </div>
+            </div>
+        </div>
+        @endif
 
         <div class="stat-box">
             <div class="flex items-center justify-between">
                 <div>
-                    <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Total Fitur Portal</div>
-                    <div class="text-2xl font-black text-slate-900 mt-1">9 Modul</div>
+                    <div class="text-[11px] font-semibold tracking-wider text-slate-400 uppercase">Total Modul Portal</div>
+                    <div class="text-2xl font-black text-slate-900 mt-1">{{ (Auth::check() && Auth::user()->isAdmin()) ? '9 Modul' : '7 Modul' }}</div>
                     <div class="text-[11px] text-slate-500 font-medium mt-0.5">
                         Terhubung & Terintegrasi
                     </div>
@@ -173,6 +200,7 @@
             </a>
         </div>
 
+        @if(Auth::check() && Auth::user()->isAdmin())
         <!-- CARD 2: MASTER KARYAWAN -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between hover:border-slate-300 hover:shadow-md transition-all">
             <div>
@@ -280,6 +308,8 @@
                 <i class="fa-solid fa-arrow-right"></i>
             </a>
         </div>
+
+        @endif
 
         <!-- CARD 4: PRESENSI & ATTENDANCE GPS -->
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 flex flex-col justify-between hover:border-slate-300 hover:shadow-md transition-all">
