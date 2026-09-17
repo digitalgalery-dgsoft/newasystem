@@ -22,7 +22,7 @@
                     </span>
                 </div>
                 <p class="text-xs text-slate-500 mt-1">
-                    Database induk informasi seluruh pegawai aktif, verifikasi komponen gaji, peringatan masa kerja 5 tahun, dan status review.
+                    Database induk informasi seluruh pegawai aktif, verifikasi komponen gaji, hak akses login, dan status evaluasi kerja.
                 </p>
             </div>
         </div>
@@ -305,12 +305,12 @@
                         <th>NAMA KARYAWAN</th>
                         <th class="text-center">ENTITAS</th>
                         <th>JABATAN & AREA</th>
-                        <th>PRINSIPLE</th>
+                        <th>PRINSIPLE & LOGIN</th>
                         <th>PIMPINAN</th>
                         <th>TGL. JOIN</th>
                         <th>5 TAHUN</th>
                         <th class="text-center">STATUS</th>
-                        <th class="text-center min-w-[150px]">TOOLS</th>
+                        <th class="text-center min-w-[170px]">TOOLS</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
@@ -345,7 +345,7 @@
                                 </div>
                             </td>
 
-                            <!-- Col 4: ENTITAS (Fixed alignment!) -->
+                            <!-- Col 4: ENTITAS -->
                             <td class="text-center">
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold border {{ $eBadge['bg'] }}" title="Entitas Odoo: {{ $eBadge['label'] }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $eBadge['dot'] }}"></span>
@@ -366,18 +366,32 @@
                                 </div>
                             </td>
 
-                            <!-- Col 6: PRINSIPLE & TIPE (Inhouse vs RateCard) -->
+                            <!-- Col 6: PRINSIPLE & TIPE + LOGIN ACCESS BADGE -->
                             <td>
                                 <span class="font-semibold text-xs text-slate-800 block">{{ $emp->prinsiple ?? '-' }}</span>
-                                @if($emp->tipe_karyawan === 'Inhouse')
-                                    <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-200 mt-1 shadow-xs">
-                                        <i class="fa-solid fa-house-chimney text-[9px]"></i> Inhouse
-                                    </span>
-                                @else
-                                    <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200 mt-1">
-                                        <i class="fa-solid fa-briefcase text-[9px]"></i> RateCard
-                                    </span>
-                                @endif
+                                <div class="flex items-center gap-1 flex-wrap mt-1">
+                                    @if($emp->tipe_karyawan === 'Inhouse')
+                                        <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-200 shadow-xs">
+                                            <i class="fa-solid fa-house-chimney text-[9px]"></i> Inhouse
+                                        </span>
+                                        <span class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200" title="Karyawan Inhouse otomatis dapat login">
+                                            <i class="fa-solid fa-lock-open text-[8px]"></i> Login
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200">
+                                            <i class="fa-solid fa-briefcase text-[9px]"></i> RateCard
+                                        </span>
+                                        @if($emp->akses_login)
+                                            <span class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200" title="Akses Login Diberikan oleh HR">
+                                                <i class="fa-solid fa-lock-open text-[8px]"></i> Login Diizinkan
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-400 font-medium border border-slate-200" title="Akses Login Belum Diberikan (Terkunci)">
+                                                <i class="fa-solid fa-lock text-[8px]"></i> No Login
+                                            </span>
+                                        @endif
+                                    @endif
+                                </div>
                             </td>
 
                             <!-- Col 7: PIMPINAN -->
@@ -415,15 +429,28 @@
                                 <div class="inline-flex items-center gap-1">
                                     <!-- Detail button -->
                                     <button onclick="viewEmployeeDetail({{ json_encode($emp) }})" 
-                                            class="w-7 h-7 rounded-lg bg-blue-50 text-primary hover:bg-primary hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Detail Profil">
+                                            class="w-7 h-7 rounded-lg bg-blue-50 text-primary hover:bg-primary hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Detail Profil & Kredensial Login">
                                         <i class="bx bx-list-ul text-sm"></i>
                                     </button>
 
                                     <!-- Edit button -->
                                     <button onclick="editEmployee({{ json_encode($emp) }})" 
-                                            class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Edit Data">
+                                            class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Edit Data & Hak Akses">
                                         <i class="bx bx-edit text-sm"></i>
                                     </button>
+
+                                    <!-- Quick Toggle Akses Login button for RateCard -->
+                                    @if($emp->tipe_karyawan === 'RateCard' && $emp->status !== 'Resign')
+                                        <form action="{{ route('master.karyawan.toggle-login', $emp->id) }}" method="POST" class="inline">
+                                            @csrf
+                                            <button type="submit" 
+                                                    onclick="return confirm('{{ $emp->akses_login ? 'Cabut izin akses login untuk ' . $emp->nama_karyawan . '?' : 'Beri izin akses login untuk ' . $emp->nama_karyawan . '?' }}');"
+                                                    class="w-7 h-7 rounded-lg {{ $emp->akses_login ? 'bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700' : 'bg-slate-100 text-slate-400 hover:bg-emerald-600 hover:text-white' }} flex items-center justify-center text-xs transition-all shadow-sm" 
+                                                    title="{{ $emp->akses_login ? 'Akses Login Aktif (Klik untuk cabut izin)' : 'Akses Login Terkunci (Klik untuk beri izin login)' }}">
+                                                <i class="fa-solid {{ $emp->akses_login ? 'fa-lock-open text-emerald-600' : 'fa-lock text-slate-400' }} text-[11px]"></i>
+                                            </button>
+                                        </form>
+                                    @endif
 
                                     <!-- Resign button with confirmation -->
                                     @if($emp->status !== 'Resign')
@@ -482,7 +509,7 @@
                 </div>
                 <div>
                     <h3 class="text-base font-bold text-slate-900">Add Karyawan Baru</h3>
-                    <p class="text-[11px] text-slate-500">Isi formulir data pegawai baru. Tipe Inhouse / RateCard akan dihitung otomatis sesuai Prinsiple.</p>
+                    <p class="text-[11px] text-slate-500">Isi data pegawai baru. Password default otomatis diset ke Tanggal Lahir (ddmmyyyy).</p>
                 </div>
             </div>
             <button onclick="closeModal('addEmployeeModal')" class="text-slate-400 hover:text-slate-700">
@@ -505,8 +532,8 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Email</label>
-                    <input type="email" name="email" placeholder="karyawan@arina.co.id" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Email Karyawan (Username Login) <span class="text-rose-500">*</span></label>
+                    <input type="email" name="email" required placeholder="karyawan@arina.co.id" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Nomor HP / WhatsApp <span class="text-rose-500">*</span></label>
@@ -516,15 +543,32 @@
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Lahir <span class="text-rose-500">*</span></label>
+                    <input type="date" name="tanggal_lahir" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
+                    <p class="text-[10px] text-slate-400 mt-1">Format <strong>ddmmyyyy</strong> (contoh: 28051997) otomatis menjadi password login.</p>
+                </div>
+                <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Join <span class="text-rose-500">*</span></label>
                     <input type="date" name="tanggal_join" required value="{{ date('Y-m-d') }}" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
                 </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Area <span class="text-rose-500">*</span></label>
                     <select name="area" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
                         <option value="" disabled selected>Pilih Area</option>
                         @foreach($distinctArea as $ar)
                             <option value="{{ $ar }}">{{ $ar }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Jabatan <span class="text-rose-500">*</span></label>
+                    <select name="jabatan" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
+                        <option value="" disabled selected>Pilih Jabatan</option>
+                        @foreach($distinctJabatan as $jab)
+                            <option value="{{ $jab }}">{{ strtoupper($jab) }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -550,20 +594,8 @@
                             @endforeach
                         </optgroup>
                     </select>
-                    <p class="text-[10px] text-slate-400 mt-1">Jika memilih salah satu dari 5 entitas maka otomatis Inhouse, selain itu RateCard.</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Jika memilih 5 entitas maka otomatis Inhouse, selain itu RateCard.</p>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Jabatan <span class="text-rose-500">*</span></label>
-                    <select name="jabatan" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
-                        <option value="" disabled selected>Pilih Jabatan</option>
-                        @foreach($distinctJabatan as $jab)
-                            <option value="{{ $jab }}">{{ strtoupper($jab) }}</option>
-                        @endforeach
-                    </select>
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Divisi</label>
                     <select name="divisi" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
@@ -573,15 +605,27 @@
                         <option value="FINANCE & GA">FINANCE & GA</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Pimpinan Langsung</label>
-                    <select name="pimpinan" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
-                        <option value="" selected>Pilih Pimpinan</option>
-                        @foreach($distinctPimpinan as $pim)
-                            <option value="{{ $pim->nama_karyawan }}">{{ $pim->nama_karyawan }} - {{ $pim->jabatan }} ({{ $pim->area }})</option>
-                        @endforeach
-                    </select>
-                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">Pimpinan Langsung</label>
+                <select name="pimpinan" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
+                    <option value="" selected>Pilih Pimpinan</option>
+                    @foreach($distinctPimpinan as $pim)
+                        <option value="{{ $pim->nama_karyawan }}">{{ $pim->nama_karyawan }} - {{ $pim->jabatan }} ({{ $pim->area }})</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <!-- Pengaturan Akses Login (Untuk RateCard) -->
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="akses_login" value="1" class="rounded text-primary focus:ring-primary h-4 w-4">
+                    <span class="text-xs font-bold text-slate-800">Beri Izin Akses Login Sistem (Untuk RateCard)</span>
+                </label>
+                <p class="text-[11px] text-slate-500 pl-6">
+                    Karyawan <strong>Inhouse</strong> otomatis memiliki izin login. Untuk <strong>RateCard</strong>, centang opsi ini agar karyawan diberikan izin akses masuk ke aplikasi.
+                </p>
             </div>
 
             <div class="pt-4 border-t border-slate-200 flex items-center justify-end gap-2">
@@ -602,7 +646,9 @@
 <div id="detailEmployeeModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden">
         <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-            <h3 class="text-sm font-bold text-slate-900">Detail Lengkap Karyawan</h3>
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <i class="fa-solid fa-id-card text-primary"></i> Detail Lengkap & Akses Login Karyawan
+            </h3>
             <button onclick="closeModal('detailEmployeeModal')" class="text-slate-400 hover:text-slate-700">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -624,7 +670,7 @@
 <div id="editEmployeeModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
     <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8">
         <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
-            <h3 class="text-sm font-bold text-slate-900">Edit Data Karyawan</h3>
+            <h3 class="text-sm font-bold text-slate-900">Edit Data & Pengaturan Akses Karyawan</h3>
             <button onclick="closeModal('editEmployeeModal')" class="text-slate-400 hover:text-slate-700">
                 <i class="fa-solid fa-xmark"></i>
             </button>
@@ -644,7 +690,7 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Email</label>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Email (Username Login)</label>
                     <input type="email" id="edit_email" name="email" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
                 </div>
                 <div>
@@ -675,6 +721,11 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Lahir (Default Password)</label>
+                    <input type="date" id="edit_tanggal_lahir" name="tanggal_lahir" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Password default dihitung dari format ddmmyyyy.</p>
+                </div>
+                <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Status Karyawan</label>
                     <select id="edit_status" name="status" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 font-semibold">
                         <option value="Aktiv">Aktiv (Aktif)</option>
@@ -682,13 +733,19 @@
                         <option value="Resign">Resign</option>
                     </select>
                 </div>
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Keterangan Tipe</label>
-                    <div class="text-xs text-slate-500 py-2">
-                        Tipe (Inhouse / RateCard) akan disesuaikan otomatis dari nama Prinsiple.
-                    </div>
-                </div>
             </div>
+
+            <!-- Setting Akses Login RateCard -->
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="edit_akses_login" name="akses_login" value="1" class="rounded text-primary focus:ring-primary h-4 w-4">
+                    <span class="text-xs font-bold text-slate-800">Beri Izin Akses Login Sistem (Untuk RateCard)</span>
+                </label>
+                <p class="text-[11px] text-slate-500 pl-6">
+                    Karyawan Inhouse otomatis memiliki hak login. Centang opsi ini jika karyawan RateCard ini diizinkan login ke aplikasi.
+                </p>
+            </div>
+
             <input type="hidden" id="edit_tanggal_join" name="tanggal_join">
             <div class="pt-4 border-t border-slate-200 flex justify-end gap-2">
                 <button type="button" onclick="closeModal('editEmployeeModal')" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold">Batal</button>
@@ -712,6 +769,9 @@
     function viewEmployeeDetail(emp) {
         const body = document.getElementById('detailModalBody');
         const isEmployeeInhouse = emp.tipe_karyawan === 'Inhouse';
+        const hasAccess = isEmployeeInhouse || Boolean(emp.akses_login);
+        const defPassword = emp.default_password || 'ddmmyyyy';
+
         body.innerHTML = `
             <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-3 border border-slate-100">
                 <div class="w-10 h-10 rounded-xl bg-primary text-white flex items-center justify-center font-bold text-base shadow-sm">
@@ -722,7 +782,34 @@
                     <div class="text-slate-500 font-mono text-[11px]">${emp.nik} • ${emp.nip || 'N/A'}</div>
                 </div>
             </div>
-            <div class="grid grid-cols-2 gap-3">
+
+            <!-- Kredensial Login Card -->
+            <div class="p-3.5 rounded-xl ${hasAccess ? 'bg-emerald-50/80 border border-emerald-200' : 'bg-slate-100 border border-slate-200'} space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold ${hasAccess ? 'text-emerald-900' : 'text-slate-700'} flex items-center gap-1.5">
+                        <i class="fa-solid ${hasAccess ? 'fa-lock-open text-emerald-600' : 'fa-lock text-slate-500'}"></i> Status Akses Login
+                    </span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${hasAccess ? 'bg-emerald-200 text-emerald-800' : 'bg-slate-200 text-slate-600'}">
+                        ${isEmployeeInhouse ? 'Aktif (Inhouse)' : (emp.akses_login ? 'Aktif (RateCard Berizin)' : 'Terkunci (RateCard)')}
+                    </span>
+                </div>
+                <div class="grid grid-cols-2 gap-2 text-xs pt-1 border-t ${hasAccess ? 'border-emerald-200/60' : 'border-slate-200'}">
+                    <div>
+                        <span class="text-slate-500 text-[10px] uppercase font-bold block">Username (Email):</span>
+                        <strong class="font-mono text-slate-900 text-xs">${emp.email || '-'}</strong>
+                    </div>
+                    <div>
+                        <span class="text-slate-500 text-[10px] uppercase font-bold block">Default Password:</span>
+                        <div class="inline-flex items-center gap-1 mt-0.5">
+                            <code class="bg-white px-2 py-0.5 rounded border border-slate-300 font-bold text-primary text-xs">${defPassword}</code>
+                            <span class="text-[10px] text-slate-400 font-medium">(ddmmyyyy)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Info Grid -->
+            <div class="grid grid-cols-2 gap-3 pt-2">
                 <div>
                     <span class="text-slate-400 block text-[11px]">Entitas Odoo:</span> 
                     <span class="inline-block px-2 py-0.5 rounded text-xs font-bold bg-blue-50 text-primary border border-blue-200 mt-0.5">${emp.entity || 'AMK'}</span>
@@ -733,16 +820,16 @@
                         ${emp.tipe_karyawan || 'RateCard'}
                     </span>
                 </div>
+                <div><span class="text-slate-400 block text-[11px]">Tanggal Lahir:</span> <strong class="text-slate-800">${emp.formatted_birth_date || emp.tanggal_lahir || '-'}</strong></div>
+                <div><span class="text-slate-400 block text-[11px]">Tanggal Join:</span> <strong class="text-slate-800">${emp.formatted_join_date || emp.tanggal_join || '-'}</strong></div>
                 <div><span class="text-slate-400 block text-[11px]">Jabatan:</span> <strong class="text-slate-800">${emp.jabatan}</strong></div>
                 <div><span class="text-slate-400 block text-[11px]">Area:</span> <strong class="text-slate-800">${emp.area}</strong></div>
                 <div><span class="text-slate-400 block text-[11px]">Prinsiple:</span> <strong class="text-slate-800">${emp.prinsiple || '-'}</strong></div>
                 <div><span class="text-slate-400 block text-[11px]">Pimpinan:</span> <strong class="text-slate-800">${emp.pimpinan || '-'}</strong></div>
-                <div><span class="text-slate-400 block text-[11px]">Tanggal Join:</span> <strong class="text-slate-800">${emp.tanggal_join || '-'}</strong></div>
                 <div>
-                    <span class="text-slate-400 block text-[11px]">Status:</span> 
+                    <span class="text-slate-400 block text-[11px]">Status Karyawan:</span> 
                     <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200 font-bold mt-0.5">${emp.status}</span>
                 </div>
-                <div><span class="text-slate-400 block text-[11px]">Email:</span> <strong class="text-slate-800">${emp.email || '-'}</strong></div>
                 <div><span class="text-slate-400 block text-[11px]">WhatsApp:</span> <strong class="text-emerald-700">${emp.telepon || '-'}</strong></div>
             </div>
         `;
@@ -761,6 +848,12 @@
         document.getElementById('edit_status').value = emp.status;
         if (document.getElementById('edit_entity')) {
             document.getElementById('edit_entity').value = emp.entity || '';
+        }
+        if (document.getElementById('edit_tanggal_lahir')) {
+            document.getElementById('edit_tanggal_lahir').value = emp.tanggal_lahir ? emp.tanggal_lahir.substring(0, 10) : '';
+        }
+        if (document.getElementById('edit_akses_login')) {
+            document.getElementById('edit_akses_login').checked = Boolean(emp.akses_login);
         }
         document.getElementById('edit_tanggal_join').value = emp.tanggal_join;
         openModal('editEmployeeModal');

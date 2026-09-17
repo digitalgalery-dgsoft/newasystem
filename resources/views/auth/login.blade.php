@@ -88,6 +88,20 @@
                 </div>
             @endif
 
+            <!-- Employee Login Guidance Card -->
+            <div class="p-3.5 rounded-2xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200/80 text-blue-950 text-xs flex items-start gap-2.5 shadow-sm">
+                <i class="fa-solid fa-circle-info text-primary shrink-0 text-sm mt-0.5"></i>
+                <div class="space-y-0.5">
+                    <div class="font-bold text-xs text-blue-900 flex items-center gap-1.5">
+                        <span>Akses Login Karyawan</span>
+                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-200/80 text-blue-800">Inhouse &amp; RateCard</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-relaxed">
+                        Gunakan <strong>Email Karyawan</strong> terdaftar dengan kata sandi default <strong>Tanggal Lahir (DDMMYYYY)</strong>. Karyawan RateCard harus memiliki izin aktif dari Admin HR.
+                    </p>
+                </div>
+            </div>
+
             <!-- Form -->
             <form action="{{ route('login.post') }}" method="POST" class="space-y-4" id="loginForm">
                 @csrf
@@ -99,7 +113,7 @@
                         <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                             <i class="fa-regular fa-envelope text-xs"></i>
                         </div>
-                        <input type="email" id="email" name="email" value="{{ old('email', 'admin@asystem.co.id') }}" placeholder="nama@asystem.co.id" required autofocus class="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                        <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="karyawan@arina.co.id atau admin@asystem.co.id" required autofocus class="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
                     </div>
                 </div>
 
@@ -115,7 +129,7 @@
                         <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                             <i class="fa-solid fa-key text-xs"></i>
                         </div>
-                        <input type="password" id="password" name="password" value="password" placeholder="Masukkan kata sandi" required class="w-full pl-9 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                        <input type="password" id="password" name="password" placeholder="Tanggal lahir (DDMMYYYY) atau kata sandi" required class="w-full pl-9 pr-10 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
                         <button type="button" onclick="togglePasswordVisibility()" class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 transition-colors">
                             <i class="fa-regular fa-eye" id="eyeIcon"></i>
                         </button>

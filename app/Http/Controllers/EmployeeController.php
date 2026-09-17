@@ -6,6 +6,9 @@ use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\Principle;
 use App\Models\OdooEntity;
+use App\Models\User;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Hash;
 
 class EmployeeController extends Controller
 {
@@ -87,6 +90,7 @@ class EmployeeController extends Controller
             'nama_karyawan' => 'required|string|max:255',
             'email' => 'nullable|email',
             'telepon' => 'nullable|string',
+            'tanggal_lahir' => 'nullable|date',
             'tanggal_join' => 'required|date',
             'area' => 'required|string',
             'prinsiple' => 'required|string',
@@ -95,6 +99,7 @@ class EmployeeController extends Controller
             'pimpinan' => 'nullable|string',
             'tipe_karyawan' => 'nullable|string',
             'entity' => 'nullable|string',
+            'akses_login' => 'nullable',
         ]);
 
         $prin = Principle::where('name', $validated['prinsiple'])->first();
@@ -106,6 +111,21 @@ class EmployeeController extends Controller
         $validated['tipe_karyawan'] = Employee::determineTipeKaryawan($validated['prinsiple']);
         if (empty($validated['entity'])) {
             $validated['entity'] = Employee::getEntityCodeFromPrinciple($validated['prinsiple']) ?: 'AMK';
+        }
+
+        // Birth date & default password (ddmmyyyy)
+        if (empty($validated['tanggal_lahir'])) {
+            $validated['tanggal_lahir'] = Employee::extractBirthDateFromNik($validated['nik']);
+        }
+        $dt = Carbon::parse($validated['tanggal_lahir']);
+        $defaultPassword = $dt->format('dmY');
+        $validated['password'] = Hash::make($defaultPassword);
+
+        // Login access rule: Inhouse always has access; RateCard requires explicit toggle
+        if ($validated['tipe_karyawan'] === 'Inhouse') {
+            $validated['akses_login'] = true;
+        } else {
+            $validated['akses_login'] = $request->has('akses_login') && in_array($request->input('akses_login'), ['1', 'on', 'true'], true);
         }
 
         $validated['status'] = 'Aktiv';
@@ -125,6 +145,7 @@ class EmployeeController extends Controller
             'nama_karyawan' => 'required|string|max:255',
             'email' => 'nullable|email',
             'telepon' => 'nullable|string',
+            'tanggal_lahir' => 'nullable|date',
             'tanggal_join' => 'required|date',
             'area' => 'required|string',
             'prinsiple' => 'required|string',
@@ -134,6 +155,7 @@ class EmployeeController extends Controller
             'status' => 'required|string',
             'tipe_karyawan' => 'nullable|string',
             'entity' => 'nullable|string',
+            'akses_login' => 'nullable',
         ]);
 
         // Automatic Inhouse / RateCard determination
@@ -142,15 +164,78 @@ class EmployeeController extends Controller
             $validated['entity'] = Employee::getEntityCodeFromPrinciple($validated['prinsiple']) ?: ($employee->entity ?: 'AMK');
         }
 
+        // Birth date & default password check
+        if (!empty($validated['tanggal_lahir'])) {
+            $dt = Carbon::parse($validated['tanggal_lahir']);
+            $defaultPassword = $dt->format('dmY');
+            // If password is empty or birthdate changed, update default password
+            if (empty($employee->password) || $employee->tanggal_lahir?->format('Y-m-d') !== $validated['tanggal_lahir']) {
+                $validated['password'] = Hash::make($defaultPassword);
+            }
+        }
+
+        // Login access rule: Inhouse always has access; RateCard respects setting
+        if ($validated['tipe_karyawan'] === 'Inhouse') {
+            $validated['akses_login'] = true;
+        } else {
+            $validated['akses_login'] = $request->has('akses_login') && in_array($request->input('akses_login'), ['1', 'on', 'true'], true);
+        }
+
         $employee->update($validated);
 
+        // Sync to User table if existing
+        if ($employee->email) {
+            $user = User::where('email', $employee->email)->first();
+            if ($user) {
+                $user->update([
+                    'name' => $employee->nama_karyawan,
+                    'area' => $employee->area,
+                    'job_title' => $employee->jabatan,
+                    'phone' => $employee->telepon,
+                    'is_active' => $employee->hasLoginAccess() && $employee->status === 'Aktiv',
+                ]);
+            }
+        }
+
         return redirect()->route('master.karyawan.index')->with('success', 'Data Karyawan berhasil diperbarui!');
+    }
+
+    /**
+     * Toggle Akses Login untuk Karyawan RateCard
+     */
+    public function toggleLoginAccess($id)
+    {
+        $employee = Employee::findOrFail($id);
+
+        if ($employee->tipe_karyawan === 'Inhouse') {
+            return redirect()->back()->with('info', "Karyawan Inhouse ({$employee->nama_karyawan}) otomatis memiliki akses login.");
+        }
+
+        $employee->akses_login = !$employee->akses_login;
+        $employee->save();
+
+        if ($employee->email) {
+            $user = User::where('email', $employee->email)->first();
+            if ($user) {
+                $user->update(['is_active' => $employee->akses_login]);
+            }
+        }
+
+        $statusText = $employee->akses_login ? 'diberikan izin akses login' : 'dicabut izin akses loginnya';
+        return redirect()->back()->with('success', "Karyawan RateCard {$employee->nama_karyawan} berhasil {$statusText}.");
     }
 
     public function resign($id)
     {
         $employee = Employee::findOrFail($id);
-        $employee->update(['status' => 'Resign']);
+        $employee->update(['status' => 'Resign', 'akses_login' => false]);
+
+        if ($employee->email) {
+            $user = User::where('email', $employee->email)->first();
+            if ($user) {
+                $user->update(['is_active' => false]);
+            }
+        }
 
         return redirect()->route('master.karyawan.index')->with('info', "Karyawan {$employee->nama_karyawan} berhasil di-resignkan.");
     }

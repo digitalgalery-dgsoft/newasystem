@@ -45,6 +45,7 @@ Route::prefix('master')->name('master.')->group(function () {
     Route::put('/karyawan/{id}', [EmployeeController::class, 'update'])->name('karyawan.update');
     Route::get('/karyawan/{id}/resign', [EmployeeController::class, 'resign'])->name('karyawan.resign');
     Route::get('/karyawan/{nik}/switch', [EmployeeController::class, 'switchUser'])->name('karyawan.switch');
+    Route::post('/karyawan/{id}/toggle-login', [EmployeeController::class, 'toggleLoginAccess'])->name('karyawan.toggle-login');
 
     // Master Prinsiple
     Route::get('/prinsiple', [PrincipleController::class, 'index'])->name('prinsiple.index');
