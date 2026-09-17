@@ -50,6 +50,12 @@ class Candidate extends Model
         return $this->hasMany(TestResult::class);
     }
 
+    
+    public function inhouseApprovals()
+    {
+        return $this->hasMany(InhouseApproval::class)->orderBy('id', 'desc');
+    }
+
     // --- ACCESSORS & ALIASES (Matching Legacy tb_kandidat & Modern schema) ---
 
     public function getApplicantsNameAttribute()

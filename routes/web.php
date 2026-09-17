@@ -8,6 +8,7 @@ use App\Http\Controllers\PrincipleController;
 use App\Http\Controllers\FeatureController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\KandidatPortalController;
+use App\Http\Controllers\InterviewInhouseController;
 
 // Root redirect to Fitur Hub
 Route::get('/', function () {
@@ -144,3 +145,19 @@ Route::post('/kandidatportal/{id}/interview', [KandidatPortalController::class, 
 Route::post('/kandidatportal/{id}/alihkan', [KandidatPortalController::class, 'alihkanAS'])->name('kandidatportal.alihkan');
 Route::post('/kandidatportal/{id}/ganti-area', [KandidatPortalController::class, 'gantiArea'])->name('kandidatportal.ganti_area');
 Route::post('/kandidatportal/{id}/arsipkan', [KandidatPortalController::class, 'arsipkan'])->name('kandidatportal.arsipkan');
+
+// ==============================================================
+// FITUR KANDIDAT INHOUSE (v3/interviewinhouse.php & hasilinhouse.php)
+// ==============================================================
+Route::get('/interviewinhouse', [InterviewInhouseController::class, 'index'])->name('interviewinhouse.index');
+Route::get('/interviewinhouse/{id}', [InterviewInhouseController::class, 'show'])->name('interviewinhouse.show');
+Route::post('/interviewinhouse/{id}/approval', [InterviewInhouseController::class, 'storeApproval'])->name('interviewinhouse.approval');
+Route::get('/interviewinhouse/{id}/berkas', [InterviewInhouseController::class, 'downloadBerkas'])->name('interviewinhouse.berkas');
+
+// Fallback legacy link support
+Route::get('/interview/inhouse', function() { return redirect()->route('interviewinhouse.index'); });
+Route::get('/interview/inhouse/{id}', function($id) { return redirect()->route('interviewinhouse.show', $id); });
+Route::get('/hasilinhouse.php', function(\Illuminate\Http\Request $request) {
+    $id = $request->query('id', 7);
+    return redirect()->route('interviewinhouse.show', $id);
+});

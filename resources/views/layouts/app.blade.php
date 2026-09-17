@@ -225,7 +225,7 @@
 
                 <!-- GROUP 3: BAGIAN FITUR (DENGAN SUB-MENU INTERVIEW) -->
                 @php
-                    $isInterviewActive = request()->is('interview*') || request()->is('interviewdone*') || request()->is('interviewarsip*') || request()->is('inputjob*') || request()->is('kandidatportal*');
+                    $isInterviewActive = request()->is('interview*') || request()->is('interviewinhouse*') || request()->is('interviewdone*') || request()->is('interviewarsip*') || request()->is('inputjob*') || request()->is('kandidatportal*');
                 @endphp
                 <div x-data="{ interviewOpen: {{ $isInterviewActive ? 'true' : 'false' }} }">
                     <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between">
@@ -275,7 +275,17 @@
                                     <span>Kandidat Interview</span>
                                 </a>
 
-                                <!-- 3. Interview Selesai -->
+                                                                <!-- 3. Kandidat Inhouse -->
+                                <a href="{{ route('interviewinhouse.index') }}" 
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interviewinhouse.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                    <i class="fa-solid fa-house-user text-[11px] w-4 text-center"></i>
+                                    <span>Kandidat Inhouse</span>
+                                    @if(request()->routeIs('interviewinhouse.*'))
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
+                                    @endif
+                                </a>
+
+                                <!-- 4. Interview Selesai -->
                                 <a href="{{ route('interview.done') }}" 
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interview.done') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-circle-check text-[11px] w-4 text-center"></i>
