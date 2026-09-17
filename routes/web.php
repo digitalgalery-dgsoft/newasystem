@@ -10,6 +10,8 @@ use App\Http\Controllers\JobController;
 use App\Http\Controllers\KandidatPortalController;
 use App\Http\Controllers\InterviewInhouseController;
 use App\Http\Controllers\AiRankingController;
+use App\Http\Controllers\AiSettingController;
+use App\Http\Controllers\PublicJobController;
 
 // Root redirect to Fitur Hub
 Route::get('/', function () {
@@ -171,4 +173,32 @@ Route::get('/kandidatportal/ranking', [AiRankingController::class, 'index'])->na
 Route::get('/ai_ranking.php', function(\Illuminate\Http\Request $request) {
     $job = $request->query('job');
     return redirect()->route('airanking.index', $job ? ['job' => $job] : []);
+});
+
+// ==============================================================
+// FITUR PENGATURAN AI & WHATSAPP (v3/ai_settings.php)
+// ==============================================================
+Route::get('/ai-settings', [AiSettingController::class, 'index'])->name('aisetting.index');
+Route::post('/ai-settings', [AiSettingController::class, 'update'])->name('aisetting.update');
+Route::post('/ai-settings/test-gemini', [AiSettingController::class, 'testGemini'])->name('aisetting.test_gemini');
+Route::post('/ai-settings/test-wa', [AiSettingController::class, 'testWa'])->name('aisetting.test_wa');
+Route::get('/ai_settings.php', function() { return redirect()->route('aisetting.index'); });
+
+// ==============================================================
+// FITUR PORTAL LOWONGAN KERJA, DETAIL & APPLY (v3/job.php, job_detail.php, job_apply.php)
+// ==============================================================
+Route::get('/job', [PublicJobController::class, 'index'])->name('job.public');
+Route::get('/job/{id}', [PublicJobController::class, 'show'])->name('job.detail');
+Route::get('/job/{id}/apply', [PublicJobController::class, 'applyForm'])->name('job.apply');
+Route::post('/job/{id}/apply', [PublicJobController::class, 'submitApply'])->name('job.apply.submit');
+
+// Legacy fallback redirects
+Route::get('/job.php', function() { return redirect()->route('job.public'); });
+Route::get('/job_detail.php', function(\Illuminate\Http\Request $request) {
+    $id = $request->query('id', 1);
+    return redirect()->route('job.detail', $id);
+});
+Route::get('/job_apply.php', function(\Illuminate\Http\Request $request) {
+    $id = $request->query('id', 1);
+    return redirect()->route('job.apply', $id);
 });

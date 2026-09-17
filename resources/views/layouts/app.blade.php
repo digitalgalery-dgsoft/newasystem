@@ -225,7 +225,7 @@
 
                 <!-- GROUP 3: BAGIAN FITUR (DENGAN SUB-MENU INTERVIEW) -->
                 @php
-                    $isInterviewActive = request()->is('interview*') || request()->is('interviewinhouse*') || request()->is('airanking*') || request()->is('interviewdone*') || request()->is('interviewarsip*') || request()->is('inputjob*') || request()->is('kandidatportal*');
+                    $isInterviewActive = request()->is('interview*') || request()->is('interviewinhouse*') || request()->is('airanking*') || request()->is('ai-settings*') || request()->is('inputjob*') || request()->is('kandidatportal*') || request()->is('job*') || request()->is('interviewdone*') || request()->is('interviewarsip*') || request()->is('inputjob*') || request()->is('kandidatportal*');
                 @endphp
                 <div x-data="{ interviewOpen: {{ $isInterviewActive ? 'true' : 'false' }} }">
                     <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between">
@@ -258,7 +258,17 @@
                                     @endif
                                 </a>
 
-                                <!-- 2. Kandidat Portal -->
+                                                                <!-- 2. Portal Lowongan Job -->
+                                <a href="{{ route('job.public') }}" target="_blank"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('job.public') || request()->routeIs('job.detail') || request()->routeIs('job.apply') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[11px] w-4 text-center"></i>
+                                    <span>Portal Lowongan Job</span>
+                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase bg-slate-100 text-slate-500">
+                                        PUB
+                                    </span>
+                                </a>
+
+                                <!-- 3. Kandidat Portal -->
                                 <a href="{{ route('kandidatportal.index') }}" 
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('kandidatportal.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-globe text-[11px] w-4 text-center"></i>
@@ -281,7 +291,17 @@
                                     @endif
                                 </a>
 
-                                <!-- 4. Kandidat Interview -->
+                                                                <!-- 5. Setting AI -->
+                                <a href="{{ route('aisetting.index') }}" 
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('aisetting.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                    <i class="fa-solid fa-sliders text-[11px] w-4 text-center"></i>
+                                    <span>Setting AI & WA</span>
+                                    @if(request()->routeIs('aisetting.*'))
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
+                                    @endif
+                                </a>
+
+                                <!-- 6. Kandidat Interview -->
                                 <a href="{{ route('interview.index') }}" 
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interview.index') || request()->routeIs('interview.show') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-clipboard-user text-[11px] w-4 text-center"></i>
