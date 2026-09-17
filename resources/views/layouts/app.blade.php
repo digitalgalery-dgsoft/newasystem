@@ -191,8 +191,8 @@
                         <li>
                             <a href="{{ route('fitur.index') }}" 
                                class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('fitur.index') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}">
-                                <i class="fa-solid fa-grid-2 text-base w-5 text-center {{ request()->routeIs('fitur.index') ? 'text-white' : 'text-slate-400' }}"></i>
-                                <span class="flex-1">Pusat Fitur (Hub)</span>
+                                <i class="fa-solid fa-house text-base w-5 text-center {{ request()->routeIs('fitur.index') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span class="flex-1">Beranda</span>
                                 <span class="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-md">HOME</span>
                             </a>
                         </li>
