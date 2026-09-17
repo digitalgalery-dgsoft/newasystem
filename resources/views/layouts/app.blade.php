@@ -233,7 +233,7 @@
 
                 <!-- GROUP 3: BAGIAN FITUR (DENGAN SUB-MENU INTERVIEW) -->
                 @php
-                    $isInterviewActive = request()->is('interview*') || request()->is('interviewinhouse*') || request()->is('airanking*') || request()->is('ai-settings*') || request()->is('inputjob*') || request()->is('kandidatportal*') || request()->is('job*') || request()->is('interviewdone*') || request()->is('interviewarsip*') || request()->is('inputjob*') || request()->is('kandidatportal*');
+                    $isInterviewActive = request()->is('interview*') || request()->is('interviewinhouse*') || request()->is('user-prinsiple*') || request()->is('airanking*') || request()->is('ai-settings*') || request()->is('inputjob*') || request()->is('kandidatportal*') || request()->is('job*') || request()->is('interviewdone*') || request()->is('interviewarsip*') || request()->is('inputjob*') || request()->is('kandidatportal*');
                 @endphp
                 <div x-data="{ interviewOpen: {{ $isInterviewActive ? 'true' : 'false' }} }">
                     <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between">
@@ -247,7 +247,7 @@
                                     type="button"
                                     class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all {{ $isInterviewActive ? 'bg-primary-50 text-primary' : 'text-slate-700 hover:bg-slate-50 hover:text-primary' }}">
                                 <i class="fa-solid fa-user-tie text-base w-5 text-center {{ $isInterviewActive ? 'text-primary' : 'text-slate-400' }}"></i>
-                                <span class="flex-1 text-left">Interview</span>
+                                <span class="flex-1 text-left">Talent Pool / Rekrutment</span>
                                 <span class="text-[10px] px-1.5 py-0.5 rounded font-bold {{ $isInterviewActive ? 'bg-primary text-white' : 'bg-slate-100 text-slate-500' }}">
                                     SUB-MENU
                                 </span>
@@ -305,6 +305,19 @@
                                     <i class="fa-solid fa-sliders text-[11px] w-4 text-center"></i>
                                     <span>Setting AI & WA</span>
                                     @if(request()->routeIs('aisetting.*'))
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
+                                    @endif
+                                </a>
+
+                                <!-- Master User Prinsiple -->
+                                <a href="{{ route('userprinsiple.index') }}" 
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('userprinsiple.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                    <i class="fa-solid fa-users-viewfinder text-[11px] w-4 text-center"></i>
+                                    <span>Master User Prinsiple</span>
+                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('userprinsiple.*') ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700' }}">
+                                        PRIN
+                                    </span>
+                                    @if(request()->routeIs('userprinsiple.*'))
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
                                 </a>

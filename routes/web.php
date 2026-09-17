@@ -229,3 +229,12 @@ Route::prefix('odoo-setting')->name('odoo.setting.')->group(function () {
 // Legacy shortcut alias
 Route::get('/odoo-sync', function() { return redirect()->route('odoo.setting.index'); });
 Route::get('/odoo_setting.php', function() { return redirect()->route('odoo.setting.index'); });
+
+
+// ==============================================================
+// MASTER USER PRINSIPLE (v3/dataprinsiple.php)
+// ==============================================================
+Route::resource('user-prinsiple', App\Http\Controllers\UserPrinsipleController::class)->names('userprinsiple');
+Route::post('user-prinsiple/{id}/send-access', [App\Http\Controllers\UserPrinsipleController::class, 'sendAccess'])->name('userprinsiple.send_access');
+Route::get('/dataprinsiple', function() { return redirect()->route('userprinsiple.index'); });
+Route::get('/dataprinsiple.php', function() { return redirect()->route('userprinsiple.index'); });
