@@ -542,6 +542,30 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 33. 📈 Line Chart Statistik Progress Pertumbuhan Employee (12 Jam Terakhir) (19 September 2026)
+- **4 Kartu Ringkasan Metrik Utama (Top Stat Cards)**:
+  - **TOTAL EMPLOYEE AKTIF**: Menampilkan total karyawan dengan status `Aktiv` saat ini (contoh: 20,572 Karyawan) dilengkapi indikator dot hijau aktif bersinar. Berfungsi juga sebagai filter instan ke data aktif.
+  - **RESIGN / NON-AKTIF**: Menampilkan total akumulasi karyawan resign / non-aktif (contoh: 350 Orang) dengan ikon gedung kantor profesional.
+  - **KARYAWAN BARU (+)**: Menghitung secara dinamis total karyawan yang baru bertambah dalam rentang 12 jam terakhir (baik via sinkronisasi Odoo XML-RPC maupun penambahan master data langsung).
+  - **MUTASI RESIGN (-)**: Menghitung secara dinamis jumlah karyawan yang bermutasi menjadi non-aktif / resign dalam 12 jam terakhir.
+- **Dual-Axis Interactive Line Chart (Chart.js)**:
+  - **Sumbu Y Kiri (Total Employee Aktif)**: Skala linear dinamis yang memetakan perkembangan jumlah riil karyawan aktif per slot waktu dengan pembagi ribuan titik (`id-ID`).
+  - **Sumbu Y Kanan (Perubahan Odoo + / -)**: Skala perubahan bertingkat (0, 2, 4, 6, 8, 10+) khusus untuk mencatat fluktuasi masuk dan keluarnya karyawan dari Odoo.
+  - **Sumbu X (Waktu 12 Jam Terakhir)**: 24 titik interval waktu per 30 menit (misal: 16:00, 16:30, 17:00 ... 03:30 WIB) yang bergerak dinamis mengikuti waktu sistem.
+  - **3 Seri Data Visual Presisi**:
+    1. **Total Employee Aktif**: Garis solid biru tua elegan (`#1d68d8`, tebal 2.8px) dengan arsiran gradient halus (*linear gradient translucent*) di bagian bawah kurva dan titik simpul berlingkar biru berpusat putih.
+    2. **Karyawan Baru (+) Odoo**: Garis putus-putus emerald (`#10b981`, stroke `[4, 4]`) yang langsung melompat (*spike*) saat ada penambahan karyawan baru.
+    3. **Resign / Non-Aktif (-) Odoo**: Garis putus-putus rose/merah (`#ef4444`, stroke `[2, 3]`) yang mencatat mutasi karyawan keluar.
+  - **Desain & Interaktivitas**:
+    - Legend visual kustom di pojok kanan atas grafik dengan indikator lingkaran bergaris persis desain referensi.
+    - Tooltip interaktif yang menampilkan rincian angka saat kursor mouse digeser di atas titik grafik.
+  - **Performa & Caching Teroptimasi**:
+    - Perhitungan data time-series dikelompokkan dalam satu query rentang waktu di [EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php) dan disimpan dalam cache memori cerdas (`Cache::remember` 60 detik) sehingga kecepatan loading halaman tetap sangat tinggi tanpa membebani server database.
+- **Bilah Filter Cepat (Quick Filter Badges)**:
+  - Ditempatkan tepat di bawah chart untuk akses satu klik ke kategori: *Semua, Aktif, Resign, Inhouse, dan RateCard* dengan indikator total keseluruhan database.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |

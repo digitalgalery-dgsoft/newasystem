@@ -6,10 +6,12 @@ use Illuminate\Http\Request;
 use App\Models\Employee;
 use App\Models\Principle;
 use App\Models\OdooEntity;
+use App\Models\OdooSyncLog;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 
 class EmployeeController extends Controller
 {
@@ -200,7 +202,109 @@ class EmployeeController extends Controller
             ->all();
 
         $entitiesList = OdooEntity::orderBy('code')->get();
-        return view('master.karyawan.index', compact('employees', 'stats', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan', 'pimpinanSuggestions', 'inhouseLeadersGrouped', 'entitiesList', 'status', 'tipe'));
+
+        // 12-Hour Employee Growth Progress Chart Data (every 30 mins, 24 slots)
+        $chartData = Cache::remember('emp_growth_chart_12h', 60, function () use ($stats) {
+            $tz = 'Asia/Jakarta';
+            $now = Carbon::now($tz);
+
+            // Round to nearest 30-minute boundary for clean labels
+            if ($now->minute < 30) {
+                $now = $now->minute(0)->second(0);
+            } else {
+                $now = $now->minute(30)->second(0);
+            }
+
+            $slotMinutes = 30;
+            $numSlots = 24;
+
+            $chartLabels = [];
+            $slots = [];
+
+            for ($i = $numSlots - 1; $i >= 0; $i--) {
+                $slotEnd = $now->copy()->subMinutes($i * $slotMinutes);
+                $slotStart = $slotEnd->copy()->subMinutes($slotMinutes);
+                $chartLabels[] = $slotEnd->format('H:i');
+                $slots[] = [
+                    'start' => $slotStart->copy()->setTimezone('UTC'),
+                    'end' => $slotEnd->copy()->setTimezone('UTC'),
+                ];
+            }
+
+            $windowStart = $slots[0]['start'];
+            $windowEnd = $slots[$numSlots - 1]['end'];
+
+            $newEmployees = Employee::whereBetween('created_at', [$windowStart, $windowEnd])
+                ->select('id', 'created_at')
+                ->get();
+
+            $resignedEmployees = Employee::where('status', 'Resign')
+                ->whereBetween('updated_at', [$windowStart, $windowEnd])
+                ->select('id', 'updated_at')
+                ->get();
+
+            $syncLogs = OdooSyncLog::whereBetween('created_at', [$windowStart, $windowEnd])
+                ->select('id', 'created_at', 'new_count', 'resign_count', 'total_employee_count')
+                ->get();
+
+            $newSeries = array_fill(0, $numSlots, 0);
+            $resignSeries = array_fill(0, $numSlots, 0);
+
+            foreach ($slots as $idx => $slot) {
+                $slotNewEmp = $newEmployees->filter(function ($emp) use ($slot) {
+                    return $emp->created_at >= $slot['start'] && $emp->created_at <= $slot['end'];
+                })->count();
+
+                $slotResignEmp = $resignedEmployees->filter(function ($emp) use ($slot) {
+                    return $emp->updated_at >= $slot['start'] && $emp->updated_at <= $slot['end'];
+                })->count();
+
+                $slotLogs = $syncLogs->filter(function ($log) use ($slot) {
+                    return $log->created_at >= $slot['start'] && $log->created_at <= $slot['end'];
+                });
+                $syncNew = $slotLogs->sum('new_count');
+                $syncRes = $slotLogs->sum('resign_count');
+
+                $newSeries[$idx] = max($slotNewEmp, (int)$syncNew);
+                $resignSeries[$idx] = max($slotResignEmp, (int)$syncRes);
+            }
+
+            $currentActive = (int)($stats['aktif'] ?? 0);
+            $activeSeries = array_fill(0, $numSlots, $currentActive);
+
+            for ($i = $numSlots - 2; $i >= 0; $i--) {
+                $diff = $newSeries[$i + 1] - $resignSeries[$i + 1];
+                $val = $activeSeries[$i + 1] - $diff;
+                if ($val < 0) {
+                    $val = 0;
+                }
+                $activeSeries[$i] = $val;
+            }
+
+            $totalNew12h = array_sum($newSeries);
+            $totalResign12h = array_sum($resignSeries);
+
+            return [
+                'labels' => $chartLabels,
+                'active_series' => $activeSeries,
+                'new_series' => $newSeries,
+                'resign_series' => $resignSeries,
+                'total_new_12h' => $totalNew12h,
+                'total_resign_12h' => $totalResign12h,
+                'min_active' => count($activeSeries) ? min($activeSeries) : 0,
+                'max_active' => count($activeSeries) ? max($activeSeries) : 0,
+                'max_change' => max(array_merge($newSeries, $resignSeries, [0])),
+            ];
+        });
+
+        $chartSummary = [
+            'total_active' => $stats['aktif'] ?? 0,
+            'total_resign' => $stats['resign'] ?? 0,
+            'new_employees_12h' => $chartData['total_new_12h'] ?? 0,
+            'resigned_employees_12h' => $chartData['total_resign_12h'] ?? 0,
+        ];
+
+        return view('master.karyawan.index', compact('employees', 'stats', 'chartData', 'chartSummary', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan', 'pimpinanSuggestions', 'inhouseLeadersGrouped', 'entitiesList', 'status', 'tipe'));
     }
 
     public function store(Request $request)

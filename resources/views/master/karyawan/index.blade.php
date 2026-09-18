@@ -51,63 +51,37 @@
         </div>
     </div>
 
-    <!-- Stats Metric Row (Clickable Filters) -->
-    <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Total -->
-        <a href="{{ route('master.karyawan.index', ['status' => 'all']) }}" class="stat-box transition-all hover:scale-[1.02] {{ $status === 'all' ? 'ring-2 ring-slate-900 shadow-md' : '' }}" title="Klik untuk lihat Semua Karyawan">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total Karyawan</div>
-                    <div class="text-2xl font-black text-slate-900 mt-1">{{ $stats['total'] }}</div>
-                    <div class="text-[10px] text-slate-500 font-medium mt-0.5">Seluruh Database</div>
-                </div>
-                <div class="stat-box-icon bg-slate-100 text-slate-700">
-                    <i class="fa-solid fa-users"></i>
-                </div>
-            </div>
-        </a>
+    <!-- 12-HOUR EMPLOYEE GROWTH PROGRESS CHART & STAT CARDS -->
+    @include('master.karyawan._growth_chart')
 
-        <!-- Aktif -->
-        <a href="{{ route('master.karyawan.index', ['status' => 'Aktiv']) }}" class="stat-box transition-all hover:scale-[1.02] {{ $status === 'Aktiv' ? 'ring-2 ring-emerald-500 shadow-md' : '' }}" title="Klik untuk filter Karyawan Aktif">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Karyawan Aktif</div>
-                    <div class="text-2xl font-black text-emerald-600 mt-1">{{ $stats['aktif'] }}</div>
-                    <div class="text-[10px] text-emerald-600 font-medium mt-0.5">Default Aktif Lapangan</div>
-                </div>
-                <div class="stat-box-icon bg-emerald-50 text-emerald-600">
-                    <i class="fa-solid fa-user-check"></i>
-                </div>
-            </div>
-        </a>
-
-        <!-- Resign -->
-        <a href="{{ route('master.karyawan.index', ['status' => 'Resign']) }}" class="stat-box transition-all hover:scale-[1.02] {{ $status === 'Resign' ? 'ring-2 ring-rose-500 shadow-md' : '' }}" title="Klik untuk filter Karyawan Resign">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Resign / Nonaktif</div>
-                    <div class="text-2xl font-black text-rose-600 mt-1">{{ $stats['resign'] }}</div>
-                    <div class="text-[10px] text-rose-500 font-medium mt-0.5">Status Pengunduran</div>
-                </div>
-                <div class="stat-box-icon bg-rose-50 text-rose-600">
-                    <i class="fa-solid fa-user-xmark"></i>
-                </div>
-            </div>
-        </a>
-
-        <!-- Inhouse & RateCard -->
-        <a href="{{ route('master.karyawan.index', ['tipe' => 'Inhouse', 'status' => $status]) }}" class="stat-box transition-all hover:scale-[1.02] {{ request('tipe') === 'Inhouse' ? 'ring-2 ring-primary shadow-md' : '' }}" title="Klik untuk filter Karyawan Inhouse">
-            <div class="flex items-center justify-between">
-                <div>
-                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Tipe Inhouse</div>
-                    <div class="text-2xl font-black text-primary mt-1">{{ $stats['inhouse'] }}</div>
-                    <div class="text-[10px] text-slate-500 font-medium mt-0.5">{{ $stats['ratecard'] }} RateCard</div>
-                </div>
-                <div class="stat-box-icon bg-blue-50 text-primary">
-                    <i class="fa-solid fa-house-chimney"></i>
-                </div>
-            </div>
-        </a>
+    <!-- Quick Filter Badges -->
+    <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold px-1">
+        <div class="flex items-center gap-1.5 flex-wrap">
+            <span class="text-slate-400 text-[11px] font-bold uppercase tracking-wider mr-1">Filter Cepat:</span>
+            <a href="{{ route('master.karyawan.index', ['status' => 'all']) }}" 
+               class="px-3 py-1 rounded-xl border transition-all {{ ($status ?? '') === 'all' ? 'bg-slate-800 text-white border-slate-800 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50' }}">
+                Semua ({{ number_format($stats['total'] ?? 0) }})
+            </a>
+            <a href="{{ route('master.karyawan.index', ['status' => 'Aktiv']) }}" 
+               class="px-3 py-1 rounded-xl border transition-all {{ ($status ?? '') === 'Aktiv' && !request('tipe') ? 'bg-blue-600 text-white border-blue-600 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-blue-50 hover:text-blue-700' }}">
+                Aktif ({{ number_format($stats['aktif'] ?? 0) }})
+            </a>
+            <a href="{{ route('master.karyawan.index', ['status' => 'Resign']) }}" 
+               class="px-3 py-1 rounded-xl border transition-all {{ ($status ?? '') === 'Resign' ? 'bg-rose-600 text-white border-rose-600 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-rose-50 hover:text-rose-700' }}">
+                Resign ({{ number_format($stats['resign'] ?? 0) }})
+            </a>
+            <a href="{{ route('master.karyawan.index', ['tipe' => 'Inhouse', 'status' => $status]) }}" 
+               class="px-3 py-1 rounded-xl border transition-all {{ request('tipe') === 'Inhouse' ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700' }}">
+                Inhouse ({{ number_format($stats['inhouse'] ?? 0) }})
+            </a>
+            <a href="{{ route('master.karyawan.index', ['tipe' => 'RateCard', 'status' => $status]) }}" 
+               class="px-3 py-1 rounded-xl border transition-all {{ request('tipe') === 'RateCard' ? 'bg-purple-600 text-white border-purple-600 shadow-xs' : 'bg-white text-slate-600 border-slate-200 hover:bg-purple-50 hover:text-purple-700' }}">
+                RateCard ({{ number_format($stats['ratecard'] ?? 0) }})
+            </a>
+        </div>
+        <div class="text-[11px] text-slate-400">
+            Total Seluruh Database: <strong class="text-slate-700 font-bold">{{ number_format($stats['total'] ?? 0) }}</strong> Karyawan
+        </div>
     </div>
 
     <!-- Filter & Advance Search Card -->
