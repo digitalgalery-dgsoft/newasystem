@@ -8,9 +8,15 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-// Automated Odoo Synchronization (runs every 30 minutes, replicating att-admin-v12)
-Schedule::command('odoo:sync --trigger=cron')
-    ->everyThirtyMinutes()
+// 1. Cron Job: Sync Employee Aktif Baru Setiap Jam (Hanya karyawan aktif, NIK yang sudah ada TIDAK diupdate)
+Schedule::command('odoo:sync-active --silent')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();
+
+// 2. Cron Job: Pengecekan Update Data & Resign Karyawan Setiap Tengah Malam (Pukul 00:00)
+Schedule::command('odoo:sync-updates-resigns --silent')
+    ->dailyAt('00:00')
     ->withoutOverlapping()
     ->runInBackground();
 

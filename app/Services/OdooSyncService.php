@@ -107,11 +107,12 @@ class OdooSyncService
     }
 
     /**
+    /**
      * Sync Employees from Odoo for a specific entity.
      * Supports category filtering: 'all', 'inhouse', 'ratecard'.
-     * Only synchronizes active employees.
+     * By default, only synchronizes active non-departed employees and SKIPS existing NIKs ($updateExisting = false).
      */
-    public function syncEmployees(OdooEntity $entity, ?callable $progressCallback = null, string $category = 'all'): array
+    public function syncEmployees(OdooEntity $entity, ?callable $progressCallback = null, string $category = 'all', bool $updateExisting = false): array
     {
         $log = function(string $type, string $message, ?array $meta = null) use ($progressCallback) {
             if ($progressCallback && is_callable($progressCallback)) {
@@ -157,7 +158,7 @@ class OdooSyncService
                 $records = $this->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
                     $this->db, $uid, $this->apiKey,
                     'hr.employee', 'search_read',
-                    [[['active', '=', true]]],
+                    [[['active', '=', true], ['departure_date', '=', false]]],
                     [
                         'fields' => [
                             'id', 'name', 'registration_number', 'identification_id',
@@ -264,19 +265,6 @@ class OdooSyncService
 
                     $status = 'Aktiv';
 
-                    // 1. Search by odoo_id & entity first
-                    $employee = Employee::where('odoo_id', $odooId)->where('entity', $entity->code)->first();
-
-                    // 2. Search by NIK if not found
-                    if (!$employee && !empty($rawNik)) {
-                        $employee = Employee::where('nik', $rawNik)->first();
-                    }
-
-                    // 3. Search by NIP if not found
-                    if (!$employee && !empty($nip)) {
-                        $employee = Employee::where('nip', $nip)->first();
-                    }
-
                     $dataToSave = [
                         'nik'           => $nik,
                         'nip'           => $nip,
@@ -296,7 +284,39 @@ class OdooSyncService
                         'last_sync_at'  => now(),
                     ];
 
+                    // 1. Search by NIK if exists
+                    $employee = null;
+                    if (!empty($rawNik)) {
+                        $employee = Employee::where('nik', $rawNik)->first();
+                    }
+
+                    // 2. Search by NIP if not found
+                    if (!$employee && !empty($nip)) {
+                        $employee = Employee::where('nip', $nip)->first();
+                    }
+
+                    // 3. Search by odoo_id & entity if not found
+                    if (!$employee && !empty($odooId)) {
+                        $employee = Employee::where('odoo_id', $odooId)->where('entity', $entity->code)->first();
+                    }
+
                     if ($employee) {
+                        // Aturan: NIK yang sudah masuk JANGAN DIUPDATE pada sync active biasa/hourly
+                        if (!$updateExisting) {
+                            $skipped++;
+                            $log('item_skip', "⏭️ [{$entity->code}] Lewati {$nik} - {$nama}: NIK sudah ada di database (tidak diupdate)", [
+                                'action'    => 'skipped',
+                                'reason'    => 'nik_exists',
+                                'nik'       => $nik,
+                                'name'      => $nama,
+                                'processed' => $processed,
+                                'created'   => $created,
+                                'updated'   => $updated,
+                                'skipped'   => $skipped,
+                            ]);
+                            continue;
+                        }
+
                         $employee->update($dataToSave);
                         $updated++;
                         $log('item_update', "🔄 [{$entity->code}] #{$processed} {$nik} - {$nama} ({$jabatan} | {$tipeKaryawan}) -> DIPERBARUI", [
@@ -398,6 +418,270 @@ class OdooSyncService
             'updated'   => $updated,
             'resigned'  => 0,
             'total'     => $totalActive,
+            'message'   => $syncMessage,
+            'errors'    => $errors,
+        ];
+    }
+
+    /**
+     * Midnight sync: Check employee data updates and resignation status from Odoo.
+     * Dijalankan setiap tengah malam (00:00).
+     *
+     * 1. Pengecekan Resign:
+     *    Mengambil daftar seluruh karyawan berstatus 'Aktiv' di database lokal untuk entitas ini.
+     *    Memeriksa status mereka di Odoo (active == false ATAU departure_date terisi).
+     *    Jika di Odoo sudah non-aktif / resign, ubah status di database lokal menjadi 'Resign'.
+     *
+     * 2. Pengecekan Update Data:
+     *    Jika di Odoo masih aktif dan tidak ada departure_date, perbarui data lokal (jabatan, area, divisi, prinsip, dll).
+     */
+    public function syncUpdatesAndResigns(OdooEntity $entity, ?callable $progressCallback = null): array
+    {
+        $log = function(string $type, string $message, ?array $meta = null) use ($progressCallback) {
+            if ($progressCallback && is_callable($progressCallback)) {
+                call_user_func($progressCallback, $type, $message, $meta);
+            }
+        };
+
+        $uid = $this->authenticate();
+        $batchId = 'SYNC-MIDNIGHT-' . $entity->code . '-' . date('Ymd-His') . '-' . Str::random(4);
+
+        $updated   = 0;
+        $resigned  = 0;
+        $skipped   = 0;
+        $processed = 0;
+        $errors    = [];
+
+        // Ambil seluruh karyawan berstatus 'Aktiv' di entitas ini
+        $activeEmployees = Employee::where('entity', $entity->code)
+            ->where('status', 'Aktiv')
+            ->orderBy('id')
+            ->get();
+
+        $totalLocal = $activeEmployees->count();
+        $log('info', "Memulai pemeriksaan tengah malam (Update & Resign) untuk entitas [{$entity->code}] {$entity->name} ({$totalLocal} karyawan lokal aktif)...", [
+            'entity' => $entity->code,
+            'total'  => $totalLocal,
+        ]);
+
+        if ($totalLocal === 0) {
+            $log('info', "Tidak ada karyawan aktif lokal yang perlu diperiksa untuk entitas {$entity->code}.");
+            return [
+                'success'  => true,
+                'updated'  => 0,
+                'resigned' => 0,
+                'total'    => 0,
+                'message'  => "Tidak ada karyawan aktif lokal untuk [{$entity->code}].",
+                'errors'   => [],
+            ];
+        }
+
+        // Process in chunks of 200 employees to avoid overloading XML-RPC
+        $chunks = $activeEmployees->chunk(200);
+
+        foreach ($chunks as $chunkIndex => $chunk) {
+            $chunkNum = $chunkIndex + 1;
+            $log('batch', "Memeriksa batch #{$chunkNum} (" . $chunk->count() . " karyawan) ke Odoo...", [
+                'chunk' => $chunkNum,
+                'count' => $chunk->count(),
+            ]);
+
+            $odooIdMap = [];
+            $nikMap = [];
+
+            foreach ($chunk as $emp) {
+                if (!empty($emp->odoo_id)) {
+                    $odooIdMap[$emp->odoo_id] = $emp;
+                }
+                if (!empty($emp->nik) && !str_starts_with($emp->nik, 'OD-')) {
+                    $nikMap[$emp->nik] = $emp;
+                }
+            }
+
+            $odooIds = array_keys($odooIdMap);
+            $niks = array_keys($nikMap);
+
+            $domain = [];
+            if (!empty($odooIds) && !empty($niks)) {
+                $domain = [
+                    '|',
+                    ['id', 'in', $odooIds],
+                    ['identification_id', 'in', $niks],
+                ];
+            } elseif (!empty($odooIds)) {
+                $domain = [['id', 'in', $odooIds]];
+            } elseif (!empty($niks)) {
+                $domain = [['identification_id', 'in', $niks]];
+            } else {
+                continue;
+            }
+
+            try {
+                $records = $this->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
+                    $this->db, $uid, $this->apiKey,
+                    'hr.employee', 'search_read',
+                    [$domain],
+                    [
+                        'fields' => [
+                            'id', 'name', 'registration_number', 'identification_id',
+                            'mobile_phone', 'work_email', 'private_email',
+                            'department_id', 'job_id', 'principle_id', 'area_id',
+                            'first_contract_date', 'active', 'departure_date',
+                        ],
+                        'context' => ['active_test' => false],
+                        'limit'   => count($chunk) * 2,
+                    ],
+                ]);
+            } catch (\Throwable $e) {
+                $errMsg = "Gagal memeriksa batch #{$chunkNum}: " . $e->getMessage();
+                $errors[] = $errMsg;
+                $log('error', $errMsg, ['error' => $errMsg]);
+                continue;
+            }
+
+            if (is_array($records)) {
+                foreach ($records as $rec) {
+                    $processed++;
+                    $recOdooId = $rec['id'] ?? null;
+                    $recNik = trim((string)($rec['identification_id'] ?: $rec['registration_number'] ?: ''));
+                    $recName = trim((string)($rec['name'] ?? 'Tanpa Nama'));
+
+                    // Find the local employee
+                    $localEmp = null;
+                    if ($recOdooId && isset($odooIdMap[$recOdooId])) {
+                        $localEmp = $odooIdMap[$recOdooId];
+                    } elseif (!empty($recNik) && isset($nikMap[$recNik])) {
+                        $localEmp = $nikMap[$recNik];
+                    }
+
+                    if (!$localEmp) {
+                        continue;
+                    }
+
+                    $isActive = (bool)($rec['active'] ?? true);
+                    $departureDate = !empty($rec['departure_date']) ? $rec['departure_date'] : null;
+
+                    // 1. Check if Resigned
+                    if (!$isActive || !empty($departureDate)) {
+                        $localEmp->update([
+                            'status'       => 'Resign',
+                            'last_sync_at' => now(),
+                        ]);
+                        $resigned++;
+                        $log('item_resign', "🚪 [{$entity->code}] #{$processed} {$localEmp->nik} - {$localEmp->nama_karyawan} -> STATUS RESIGN (Odoo: " . ($departureDate ? "Departure {$departureDate}" : "Non-Aktif") . ")", [
+                            'action'    => 'resigned',
+                            'entity'    => $entity->code,
+                            'nik'       => $localEmp->nik,
+                            'name'      => $localEmp->nama_karyawan,
+                            'processed' => $processed,
+                            'updated'   => $updated,
+                            'resigned'  => $resigned,
+                        ]);
+                    } else {
+                        // 2. Check Data Updates for active employee
+                        $principleName = is_array($rec['principle_id']) ? $rec['principle_id'][1] : null;
+                        $principleId = null;
+                        if (!empty($principleName)) {
+                            $p = Principle::firstOrCreate(['name' => $principleName]);
+                            $principleId = $p->id;
+                        }
+
+                        $tipeKaryawan = Employee::determineTipeKaryawan($principleName);
+                        $nip = trim((string)($rec['registration_number'] ?: '')) ?: null;
+                        $email = $rec['work_email'] ?: ($rec['private_email'] ?: null);
+                        $telepon = $rec['mobile_phone'] ?: null;
+                        $tanggalJoin = !empty($rec['first_contract_date']) ? $rec['first_contract_date'] : null;
+
+                        $jabatan = is_array($rec['job_id']) ? $rec['job_id'][1] : null;
+                        $divisi = is_array($rec['department_id']) ? $rec['department_id'][1] : null;
+                        $area = is_array($rec['area_id']) ? $rec['area_id'][1] : null;
+
+                        $localEmp->update([
+                            'nip'           => $nip ?: $localEmp->nip,
+                            'nama_karyawan' => $recName,
+                            'email'         => $email ?: $localEmp->email,
+                            'telepon'       => $telepon ?: $localEmp->telepon,
+                            'tanggal_join'  => $tanggalJoin ?: $localEmp->tanggal_join,
+                            'jabatan'       => $jabatan ?: $localEmp->jabatan,
+                            'divisi'        => $divisi ?: $localEmp->divisi,
+                            'principle_id'  => $principleId ?: $localEmp->principle_id,
+                            'prinsiple'     => $principleName ?: $localEmp->prinsiple,
+                            'tipe_karyawan' => $tipeKaryawan,
+                            'area'          => $area ?: $localEmp->area,
+                            'status'        => 'Aktiv',
+                            'odoo_id'       => $recOdooId,
+                            'last_sync_at'  => now(),
+                        ]);
+
+                        $updated++;
+                        $log('item_update', "🔄 [{$entity->code}] #{$processed} {$localEmp->nik} - {$localEmp->nama_karyawan} ({$jabatan} | {$principleName}) -> DATA DIPERBARUI", [
+                            'action'    => 'updated',
+                            'entity'    => $entity->code,
+                            'nik'       => $localEmp->nik,
+                            'name'      => $localEmp->nama_karyawan,
+                            'job'       => $jabatan,
+                            'processed' => $processed,
+                            'updated'   => $updated,
+                            'resigned'  => $resigned,
+                        ]);
+                    }
+                }
+            }
+        }
+
+        $totalActiveNow = Employee::where('entity', $entity->code)->where('status', 'Aktiv')->count();
+        $totalResignNow = Employee::where('entity', $entity->code)->where('status', 'Resign')->count();
+
+        $syncStatus = empty($errors) ? 'success' : ($updated > 0 || $resigned > 0 ? 'partial' : 'failed');
+        $syncMessage = "Midnight check selesai [{$entity->code}]. Diperbarui: {$updated} | Resign: {$resigned} | Total Aktif Sekarang: {$totalActiveNow}";
+
+        // Update entity
+        $entity->update([
+            'last_sync_at'      => now(),
+            'last_sync_status'  => $syncStatus,
+            'last_sync_message' => $syncMessage,
+            'sync_counts'       => [
+                'created'  => 0,
+                'updated'  => $updated,
+                'resigned' => $resigned,
+                'total'    => $totalActiveNow,
+                'errors'   => count($errors),
+            ],
+        ]);
+
+        // Log to OdooSyncLog
+        OdooSyncLog::create([
+            'batch_id'             => $batchId,
+            'entity_code'          => $entity->code,
+            'sync_type'            => 'employee_midnight_updates_resigns',
+            'trigger_type'         => 'cron_midnight',
+            'status'               => $syncStatus,
+            'new_count'            => 0,
+            'update_count'         => $updated,
+            'resign_count'         => $resigned,
+            'total_employee_count' => $totalActiveNow,
+            'details'              => [
+                'entity_name'     => $entity->name,
+                'batch_id'        => $batchId,
+                'updated_count'   => $updated,
+                'resigned_count'  => $resigned,
+                'total_active'    => $totalActiveNow,
+                'total_resigned'  => $totalResignNow,
+                'errors'          => array_slice($errors, 0, 10),
+            ],
+            'error_message'        => !empty($errors) ? implode('; ', array_slice($errors, 0, 3)) : null,
+        ]);
+
+        $log('summary', $syncMessage);
+
+        return [
+            'success'   => ($syncStatus !== 'failed'),
+            'status'    => $syncStatus,
+            'batch_id'  => $batchId,
+            'created'   => 0,
+            'updated'   => $updated,
+            'resigned'  => $resigned,
+            'total'     => $totalActiveNow,
             'message'   => $syncMessage,
             'errors'    => $errors,
         ];
@@ -635,7 +919,7 @@ class OdooSyncService
     /**
      * Low-level cURL XML-RPC call.
      */
-    private function xmlRpcCall(string $path, string $method, array $params): mixed
+    public function xmlRpcCall(string $path, string $method, array $params): mixed
     {
         $endpoint = $this->url . $path;
 

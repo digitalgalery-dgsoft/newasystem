@@ -393,10 +393,41 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 24. 🔄 Rekonfigurasi Sinkronisasi Odoo ERP & Arsitektur Dual Background Cron Job
+- **Penyempurnaan Metode Sinkronisasi Odoo**:
+  - **Hanya Ambil Karyawan Aktif**: Query XML-RPC Odoo difilter ketat `['active', '=', true]` dan `['departure_date', '=', false]`, memastikan data karyawan yang telah resign / non-aktif tidak ikut tersedot ke database lokal saat sinkronisasi rutin.
+- **Dual Background Cron Job Architecture**:
+  1. **Hourly Cron Job — Sinkronisasi Karyawan Baru (`odoo:sync-active`)**:
+     - **Aturan Proteksi Data**: NIK yang sudah masuk di database lokal **JANGAN DIUPDATE** (dilewati / skip secara instan).
+     - **Tujuan**: Hanya meng-insert record baru untuk karyawan yang baru terdaftar di Odoo tanpa menimpa data karyawan lama yang telah ada di sistem lokal.
+     - **Jadwal**: Berjalan otomatis **setiap 1 jam** (`hourly`), di latar belakang (`runInBackground()`), dan anti-tumpang-tindih (`withoutOverlapping()`).
+     - **Command**: `php artisan odoo:sync-active --silent`
+     - **Skrip Runner**: `scripts/cron_odoo_active_hourly.sh` (Linux) dan `scripts/cron_odoo_active_hourly.bat` (Windows).
+  2. **Midnight Cron Job — Pengecekan Update Data & Resign (`odoo:sync-updates-resigns`)**:
+     - **Aturan Pemeriksaan**: Dijalankan secara terpisah setiap tengah malam pada pukul 00:00 (`dailyAt('00:00')`).
+     - **Deteksi Karyawan Resign**: Mengambil seluruh karyawan berstatus `'Aktiv'` di database lokal, lalu memeriksa status riil di Odoo dalam batch chunk 200 data dengan flag `active_test => false`. Jika di Odoo karyawan berstatus `active = false` atau memiliki tanggal keluar (`departure_date`), status di database lokal otomatis diubah menjadi `'Resign'`.
+     - **Sinkronisasi Perubahan Data**: Jika karyawan masih aktif, field atribut kerja (jabatan, divisi, area, principle, tipe karyawan, kontak) disinkronkan dengan data terbaru di Odoo.
+     - **Command**: `php artisan odoo:sync-updates-resigns --silent`
+     - **Skrip Runner**: `scripts/cron_odoo_updates_resigns_midnight.sh` (Linux) dan `scripts/cron_odoo_updates_resigns_midnight.bat` (Windows).
+- **Konfigurasi Crontab Server Produksi (`crontab -e`)**:
+  ```bash
+  # 1. Sinkronisasi Karyawan Aktif Baru (Tiap Jam, Skip NIK yang sudah ada)
+  0 * * * * /bin/bash /var/www/newasystem/scripts/cron_odoo_active_hourly.sh >> /var/www/newasystem/storage/logs/cron_odoo_active.log 2>&1
+
+  # 2. Pengecekan Update Data & Status Resign (Tengah Malam 00:00)
+  0 0 * * * /bin/bash /var/www/newasystem/scripts/cron_odoo_updates_resigns_midnight.sh >> /var/www/newasystem/storage/logs/cron_odoo_midnight.log 2>&1
+
+  # Atau menggunakan Laravel Schedule Runner terpusat (otomatis menjalankan kedua job di atas):
+  * * * * * cd /var/www/newasystem && php artisan schedule:run >> /dev/null 2>&1
+  ```
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `d43c808` | feat: Rekonfigurasi sync Odoo hanya ambil employee aktif, skip NIK lama tiap jam, dan buat cron tengah malam untuk update & resign |
 | `df8789e` | Kembalikan Master User Prinsiple untuk AS, isolasi data per user, dan cegah duplikat email/no hp |
 | `a9cc8c4` | fix: Fix JS variable name mySavedSigUrl in interview.show |
 | `319b784` | fix: Perbaiki default tanda tangan: tampilkan TTD AS sendiri jika ada, atau kosong jika belum ada TTD |
