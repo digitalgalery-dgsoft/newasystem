@@ -499,37 +499,40 @@ class InterviewController extends Controller
         );
 
         $sigData = $request->input("signature_data");
+        $userSigFile = 'signatures/user_' . $user->id . '.png';
+
         if (!empty($sigData)) {
             if (str_contains($sigData, 'base64')) {
                 $imageData = explode(',', $sigData)[1];
                 $decoded = base64_decode($imageData);
 
-                // Save signature for candidate's assessment
-                $fileName = 'signatures/interviewer_' . $candidate->id . '_' . time() . '.png';
-                \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, $decoded);
-                $assessment->update(['interviewer_signature_path' => $fileName]);
-
-                // Save signature permanently for AS user so it auto-loads for all future candidates
-                $userSigFile = 'signatures/user_' . $user->id . '.png';
+                // Replace / timpa file tanda tangan permanen AS user (1 file per AS agar tidak menumpuk)
                 \Illuminate\Support\Facades\Storage::disk('public')->put($userSigFile, $decoded);
                 $user->update(['signature_path' => $userSigFile]);
+
+                $assessment->update([
+                    'interviewer_id' => $user->id,
+                    'interviewer_signature_path' => $userSigFile,
+                ]);
             } else {
-                $assessment->update(['interviewer_signature_path' => $sigData]);
+                // Menggunakan TTD tersimpan milik AS
+                $assessment->update([
+                    'interviewer_id' => $user->id,
+                    'interviewer_signature_path' => $userSigFile,
+                ]);
                 if (empty($user->signature_path)) {
-                    $user->update(['signature_path' => $sigData]);
+                    $user->update(['signature_path' => $userSigFile]);
                 }
             }
         } else {
-            // If not drawn this time, check if AS user already has a saved signature and reuse automatically
-            $userSig = $user->signature_path ?? (
-                \Illuminate\Support\Facades\Storage::disk('public')->exists('signatures/user_' . $user->id . '.png')
-                    ? 'signatures/user_' . $user->id . '.png'
-                    : null
-            );
-            if ($userSig) {
-                $assessment->update(['interviewer_signature_path' => $userSig]);
+            // Jika kosong tapi user AS sudah punya TTD tersimpan, gunakan TTD milik AS user ini
+            if ($user->signature_path || \Illuminate\Support\Facades\Storage::disk('public')->exists($userSigFile)) {
+                $assessment->update([
+                    'interviewer_id' => $user->id,
+                    'interviewer_signature_path' => $userSigFile,
+                ]);
                 if (empty($user->signature_path)) {
-                    $user->update(['signature_path' => $userSig]);
+                    $user->update(['signature_path' => $userSigFile]);
                 }
             }
         }
@@ -1008,6 +1011,15 @@ class InterviewController extends Controller
             'testResults',
             'principleApprovals'
         ])->findOrFail($id);
+
+        $evalData = \App\Services\CandidateEvaluationDataService::getEvaluationData($candidate);
+        if ($evalData['isUserPrinsipleDisabled'] ?? false) {
+            $msg = 'Download Dokumen Dinonaktifkan: ' . implode(' | ', $evalData['userPrinsipleDisableReasons'] ?? ['Kandidat tidak memenuhi kriteria kelulusan.']);
+            if (url()->previous() && url()->previous() !== url()->current()) {
+                return redirect()->back()->with('error', $msg);
+            }
+            return redirect()->route('interview.show', $candidate->id)->with('error', $msg);
+        }
 
         $pdfService = new \App\Services\InterviewPdfService();
         $output = $pdfService->generate($candidate);

@@ -64,10 +64,21 @@
             </button>
 
             <!-- Download PDF (Blue Button) -->
-            <a href="{{ route('interview.pdf', $candidate->id) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-700 shadow-md shadow-primary-500/20 transition-all">
-                <i class="fa-solid fa-file-pdf"></i>
-                <span>Download All Document</span>
-            </a>
+            @if(!empty($isUserPrinsipleDisabled))
+                <button type="button" 
+                        disabled 
+                        title="{{ implode(' &#10; ', $userPrinsipleDisableReasons ?? ['Download dinonaktifkan: kandidat tidak memenuhi syarat kelulusan']) }}"
+                        class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-400 bg-slate-100 border border-dashed border-slate-300 cursor-not-allowed opacity-60 shadow-none">
+                    <i class="fa-solid fa-file-pdf text-rose-400"></i>
+                    <span>Download All Document</span>
+                    <span class="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-tight">Disabled</span>
+                </button>
+            @else
+                <a href="{{ route('interview.pdf', $candidate->id) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-700 shadow-md shadow-primary-500/20 transition-all">
+                    <i class="fa-solid fa-file-pdf"></i>
+                    <span>Download All Document</span>
+                </a>
+            @endif
         </div>
     </div>
 
@@ -356,46 +367,51 @@
         <div x-show="activeTab === 'interview'" class="space-y-6">
             @php
                 $assess = $candidate->interviewAssessment;
-                $existingSigUrl = null;
-                $isSavedUserSig = false;
+                $currentUser = $user ?? auth()->user();
+                $currentUserId = $currentUser?->id;
+                $currentUserName = $currentUser?->name ?? 'User AS';
 
-                // Priority 1: Assessment interviewer signature for this candidate
-                $sigPath = $assess?->interviewer_signature_path;
-
-                // Priority 2: Logged-in AS User saved permanent signature
-                if (empty($sigPath) && !empty($user)) {
-                    $sigPath = $user->signature_path ?? (
-                        \Illuminate\Support\Facades\Storage::disk('public')->exists('signatures/user_' . $user->id . '.png')
-                            ? 'signatures/user_' . $user->id . '.png'
-                            : null
-                    );
-                    if (!empty($sigPath)) {
-                        $isSavedUserSig = true;
+                // 1. Tanda tangan tersimpan milik User AS yang sedang login
+                $userSavedSigUrl = null;
+                $userSigPath = $currentUser?->signature_path;
+                if (empty($userSigPath) && $currentUserId) {
+                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists('signatures/user_' . $currentUserId . '.png')) {
+                        $userSigPath = 'signatures/user_' . $currentUserId . '.png';
+                    }
+                }
+                if (!empty($userSigPath)) {
+                    if (str_starts_with($userSigPath, 'data:image')) {
+                        $userSavedSigUrl = $userSigPath;
+                    } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($userSigPath)) {
+                        $userSavedSigUrl = 'data:image/png;base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($userSigPath));
+                    } elseif (file_exists(public_path($userSigPath))) {
+                        $userSavedSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(public_path($userSigPath)));
+                    } elseif (file_exists(storage_path('app/public/' . $userSigPath))) {
+                        $userSavedSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(storage_path('app/public/' . $userSigPath)));
                     }
                 }
 
-                // Priority 3: Fallback to candidate signature
-                if (empty($sigPath)) {
-                    $sigPath = $candidate->signature_path ?? null;
-                }
-
-                if (!empty($sigPath)) {
-                    if (str_starts_with($sigPath, 'data:image')) {
-                        $existingSigUrl = $sigPath;
-                    } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($sigPath)) {
-                        $existingSigUrl = 'data:image/png;base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($sigPath));
-                    } elseif (file_exists(public_path($sigPath))) {
-                        $existingSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(public_path($sigPath)));
-                    } elseif (file_exists(public_path('uploads/ttd/' . $sigPath))) {
-                        $existingSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('uploads/ttd/' . $sigPath)));
-                    } elseif (file_exists(storage_path('app/public/' . $sigPath))) {
-                        $existingSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(storage_path('app/public/' . $sigPath)));
+                // 2. Tanda tangan yang tersimpan pada penilaian kandidat ini (jika sudah dinilai sebelumnya)
+                $assessSigUrl = null;
+                $assessSigPath = $assess?->interviewer_signature_path;
+                if (!empty($assessSigPath)) {
+                    if (str_starts_with($assessSigPath, 'data:image')) {
+                        $assessSigUrl = $assessSigPath;
+                    } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($assessSigPath)) {
+                        $assessSigUrl = 'data:image/png;base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($assessSigPath));
+                    } elseif (file_exists(public_path($assessSigPath))) {
+                        $assessSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(public_path($assessSigPath)));
+                    } elseif (file_exists(storage_path('app/public/' . $assessSigPath))) {
+                        $assessSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(storage_path('app/public/' . $assessSigPath)));
                     }
                 }
+
+                // Prioritas awal: TTD penilaian kandidat (jika sudah ada) -> TTD tersimpan AS -> kosong
+                $initialSigUrl = $assessSigUrl ?: $userSavedSigUrl;
             @endphp
             <form action="{{ route('interview.assess', $candidate->id) }}" method="POST" id="interviewForm" class="space-y-6">
                 @csrf
-                <input type="hidden" name="signature_data" id="signatureDataInput" value="{{ $existingSigUrl ?? '' }}">
+                <input type="hidden" name="signature_data" id="signatureDataInput" value="{{ $initialSigUrl ?? '' }}">
 
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
@@ -482,14 +498,53 @@
 
                     <!-- Right: Tanda Tangan Canvas / Signature Pad -->
                     <div class="lg:col-span-4 space-y-3">
-                        <div class="flex items-center justify-between">
-                            <label class="block text-xs font-bold text-slate-700">Tanda Tangan</label>
-                            @if(!empty($existingSigUrl))
-                                <span id="sigAutoBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
-                                    <i class="fa-solid fa-circle-check text-emerald-600"></i>
-                                    <span>{{ $isSavedUserSig ? 'TTD AS Otomatis' : 'TTD Tersimpan' }}</span>
+                        <div class="flex items-center justify-between flex-wrap gap-2">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-800">Tanda Tangan Pewawancara</label>
+                                <span class="text-[10px] text-slate-500 font-medium">User AS: <b class="text-slate-700">{{ $currentUserName }}</b></span>
+                            </div>
+                            
+                            <span id="sigBadge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold {{ $assessSigUrl ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : ($userSavedSigUrl ? 'bg-blue-50 border border-blue-200 text-blue-700' : 'bg-slate-100 text-slate-500') }}">
+                                <i id="sigBadgeIcon" class="fa-solid {{ $assessSigUrl ? 'fa-circle-check text-emerald-600' : ($userSavedSigUrl ? 'fa-stamp text-blue-600' : 'fa-pen-nib text-slate-400') }}"></i>
+                                <span id="sigBadgeText">
+                                    @if($assessSigUrl)
+                                        TTD Interview Tersimpan
+                                    @elseif($userSavedSigUrl)
+                                        TTD Tersimpan (Siap)
+                                    @else
+                                        Belum Ada TTD
+                                    @endif
                                 </span>
+                            </span>
+                        </div>
+
+                        <!-- Toolbar Opsi: Tempel TTD Tersimpan ATAU Gambar TTD Baru -->
+                        <div class="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
+                            @if(!empty($userSavedSigUrl))
+                                <button type="button" 
+                                        onclick="pasteMySavedSignature()" 
+                                        class="flex-1 py-1.5 px-2.5 rounded-lg bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs group"
+                                        title="Tempel tanda tangan profil tersimpan milik {{ $currentUserName }}">
+                                    <i class="fa-solid fa-stamp text-emerald-600 group-hover:scale-110 transition-transform"></i>
+                                    <span>Tempel TTD Saya</span>
+                                </button>
                             @endif
+
+                            <button type="button" 
+                                    onclick="startNewSignature()" 
+                                    class="flex-1 py-1.5 px-2.5 rounded-lg bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-300 text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs group"
+                                    title="Gambar tanda tangan baru (akan menggantikan file TTD Anda)">
+                                <i class="fa-solid fa-pen-nib text-blue-600 group-hover:scale-110 transition-transform"></i>
+                                <span>{{ !empty($userSavedSigUrl) ? 'Gambar TTD Baru' : 'Buat TTD Baru' }}</span>
+                            </button>
+
+                            <button type="button" 
+                                    onclick="clearSignatureCanvas()" 
+                                    class="py-1.5 px-2.5 rounded-lg bg-white hover:bg-rose-50 text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-300 text-[11px] font-semibold transition-all flex items-center justify-center gap-1 shadow-2xs"
+                                    title="Hapus / Bersihkan Tanda Tangan">
+                                <i class="fa-solid fa-rotate-left text-rose-500"></i>
+                                <span>Reset</span>
+                            </button>
                         </div>
                         
                         <div class="border border-slate-200 rounded-2xl bg-white p-4 shadow-sm text-center">
@@ -501,19 +556,16 @@
                                         style="touch-action: none;"
                                         class="w-full h-52 bg-slate-50/50 rounded-xl border border-dashed border-slate-300 cursor-crosshair touch-none shadow-inner"></canvas>
                                 
-                                <div class="absolute bottom-2 left-3 pointer-events-none text-[10px] text-slate-400">
+                                <div class="absolute bottom-2 left-3 pointer-events-none text-[10px] text-slate-400 font-medium">
                                     <span>Tanda Tangan Pewawancara</span>
                                 </div>
                             </div>
                             
                             <div class="flex items-center justify-between pt-2.5 text-xs">
-                                <button type="button" 
-                                        onclick="clearSignatureCanvas()" 
-                                        class="text-slate-500 hover:text-rose-600 font-semibold text-[11px] flex items-center gap-1 transition-colors">
-                                    <i class="fa-solid fa-rotate-left"></i>
-                                    <span>Hapus / Ulangi</span>
-                                </button>
-                                <span class="text-[10px] text-slate-400 italic">Gambar TTD di area kotak</span>
+                                <span class="text-[10px] text-slate-400 italic">
+                                    * TTD baru akan menggantikan file tanda tangan tersimpan Anda
+                                </span>
+                                <span id="sigStatusLabel" class="text-[10px] text-primary-600 font-bold not-italic"></span>
                             </div>
                         </div>
 
@@ -1735,6 +1787,8 @@
     }
 
     // Signature Pad logic using HTML5 Canvas
+    const mySavedSigUrl = @json($userSavedSigUrl);
+    const initialSigUrl = @json($initialSigUrl);
     let canvas, ctx, isDrawing = false, hasDrawn = false;
 
     function initSignatureCanvas() {
@@ -1759,19 +1813,8 @@
         ctx.lineJoin = 'round';
         ctx.strokeStyle = '#0f172a';
 
-        const existingSigUrl = @json($existingSigUrl);
-        if (existingSigUrl) {
-            const img = new Image();
-            img.onload = function() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-                hasDrawn = true;
-            };
-            img.src = existingSigUrl;
-            const input = document.getElementById('signatureDataInput');
-            if (input && !input.value) {
-                input.value = existingSigUrl;
-            }
+        if (initialSigUrl) {
+            loadSigImageToCanvas(initialSigUrl);
         }
 
         function getPos(e) {
@@ -1870,20 +1913,67 @@
         }
     });
 
+    function loadSigImageToCanvas(dataUrl) {
+        if (!canvas || !ctx || !dataUrl) return;
+        const img = new Image();
+        img.onload = function() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            hasDrawn = true;
+            const input = document.getElementById('signatureDataInput');
+            if (input) input.value = dataUrl;
+        };
+        img.src = dataUrl;
+    }
+
+    function pasteMySavedSignature() {
+        if (!mySavedSigUrl) {
+            alert('Anda belum memiliki tanda tangan tersimpan. Silakan gambar tanda tangan baru terlebih dahulu.');
+            return;
+        }
+        loadSigImageToCanvas(mySavedSigUrl);
+        updateSigBadge('TTD Saya Ditempel', 'emerald');
+    }
+
+    function startNewSignature() {
+        clearSignatureCanvas();
+        updateSigBadge('Mode Gambar TTD Baru', 'blue');
+    }
+
     function clearSignatureCanvas() {
         if (!ctx || !canvas) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         hasDrawn = false;
         const input = document.getElementById('signatureDataInput');
         if (input) input.value = '';
-        const badge = document.getElementById('sigAutoBadge');
-        if (badge) badge.style.display = 'none';
+        updateSigBadge('Belum Ada TTD', 'slate');
+    }
+
+    function updateSigBadge(text, color) {
+        const badge = document.getElementById('sigBadge');
+        const badgeText = document.getElementById('sigBadgeText');
+        const badgeIcon = document.getElementById('sigBadgeIcon');
+        if (!badge || !badgeText) return;
+
+        badgeText.textContent = text;
+        badge.className = 'inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold';
+        if (color === 'emerald') {
+            badge.classList.add('bg-emerald-50', 'border', 'border-emerald-200', 'text-emerald-700');
+            if (badgeIcon) badgeIcon.className = 'fa-solid fa-circle-check text-emerald-600';
+        } else if (color === 'blue') {
+            badge.classList.add('bg-blue-50', 'border', 'border-blue-200', 'text-blue-700');
+            if (badgeIcon) badgeIcon.className = 'fa-solid fa-pen-nib text-blue-600';
+        } else {
+            badge.classList.add('bg-slate-100', 'text-slate-500');
+            if (badgeIcon) badgeIcon.className = 'fa-solid fa-eraser text-slate-400';
+        }
     }
 
     function syncSignatureData() {
         const input = document.getElementById('signatureDataInput');
         if (canvas && hasDrawn && input) {
             try {
+                // If it's a freshly drawn signature, export canvas to dataUrl
                 input.value = canvas.toDataURL('image/png');
             } catch (e) {
                 console.warn('Signature canvas export note:', e);

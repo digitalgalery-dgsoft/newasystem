@@ -367,8 +367,11 @@ class KandidatPortalController extends Controller
             ->limit(5)
             ->get();
 
+        $user = $this->getCurrentUser();
+
         return view('kandidatportal.show', array_merge([
             'candidate' => $candidate,
+            'user' => $user,
             'principles' => $principles,
             'userPrinsiples' => $userPrinsiples,
             'areas' => $areas,
@@ -597,17 +600,31 @@ class KandidatPortalController extends Controller
             'assessor_signature' => 'nullable|string',
         ]);
 
+        $user = $this->getCurrentUser();
+        $userSigFile = 'signatures/user_' . $user->id . '.png';
+        $sigData = $validated['assessor_signature'] ?? null;
+
+        if (!empty($sigData)) {
+            if (str_contains($sigData, 'base64')) {
+                $imageData = explode(',', $sigData)[1];
+                $decoded = base64_decode($imageData);
+                \Illuminate\Support\Facades\Storage::disk('public')->put($userSigFile, $decoded);
+                $user->update(['signature_path' => $userSigFile]);
+            }
+        }
+
         // Update assessment
         InterviewAssessment::updateOrCreate(
             ['candidate_id' => $candidate->id],
             [
+                'interviewer_id' => $user->id,
                 'work_willingness' => $validated['work_willingness'],
                 'appearance' => $validated['appearance'],
                 'attitude' => $validated['attitude'],
                 'comprehension' => $validated['comprehension'],
                 'notes' => $validated['notes'] ?? null,
                 'interview_date' => $validated['interview_date'],
-                'assessor_signature' => $validated['assessor_signature'] ?? null,
+                'interviewer_signature_path' => (!empty($sigData) || $user->signature_path) ? $userSigFile : null,
             ]
         );
 
