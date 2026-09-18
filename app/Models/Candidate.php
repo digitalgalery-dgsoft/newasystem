@@ -20,6 +20,57 @@ class Candidate extends Model
         'last_salary' => 'decimal:2',
     ];
 
+    protected static function booted()
+    {
+        static::created(function (Candidate $candidate) {
+            if (empty($candidate->nik)) {
+                return;
+            }
+
+            // Cek apakah ada record lain dengan NIK sama yang sudah memiliki hasil tes
+            $donor = static::where('nik', $candidate->nik)
+                ->where('id', '!=', $candidate->id)
+                ->whereNotNull('tes_kepribadian')
+                ->where('tes_kepribadian', '!=', '')
+                ->where('tes_kepribadian', '!=', '-')
+                ->where('tes_kepribadian', '!=', '00:00:00')
+                ->orderByDesc('id')
+                ->first();
+
+            if ($donor) {
+                $candidate->tes_kepribadian = $donor->tes_kepribadian;
+                if (empty($candidate->tes_matematika) || $candidate->tes_matematika === '00:00:00' || $candidate->tes_matematika === '-') {
+                    $candidate->tes_matematika = $donor->tes_matematika;
+                }
+                if (empty($candidate->tes_komputer) || $candidate->tes_komputer === '00:00:00' || $candidate->tes_komputer === '-') {
+                    $candidate->tes_komputer = $donor->tes_komputer;
+                }
+                if (empty($candidate->buktikomputer)) {
+                    $candidate->buktikomputer = $donor->buktikomputer;
+                }
+                if (empty($candidate->signature_path)) {
+                    $candidate->signature_path = $donor->signature_path;
+                    $candidate->statement_agreed = $donor->statement_agreed;
+                }
+                $candidate->saveQuietly();
+
+                $donorResults = TestResult::where('candidate_id', $donor->id)->get();
+                foreach ($donorResults as $dr) {
+                    TestResult::firstOrCreate(
+                        ['candidate_id' => $candidate->id, 'test_type' => $dr->test_type],
+                        [
+                            'score' => $dr->score,
+                            'duration_seconds' => $dr->duration_seconds,
+                            'test_details' => $dr->test_details,
+                        ]
+                    );
+                }
+
+                $candidate->checkProfileCompleteness();
+            }
+        });
+    }
+
     public function principle()
     {
         return $this->belongsTo(Principle::class);

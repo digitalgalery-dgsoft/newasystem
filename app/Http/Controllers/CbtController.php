@@ -36,7 +36,10 @@ class CbtController extends Controller
         $nik = trim($request->nik);
         $password = trim($request->password);
 
-        $candidate = Candidate::where('nik', $nik)->first();
+        $candidate = Candidate::where('nik', $nik)
+            ->orderByRaw("CASE WHEN (status IS NULL OR status NOT IN ('Arsip', 'archived')) AND (jenis IS NULL OR jenis = '') THEN 0 ELSE 1 END")
+            ->orderByDesc('id')
+            ->first();
 
         if (!$candidate) {
             return back()->withInput()->with('error', 'NIK tidak terdaftar dalam database penerimaan kandidat.');
@@ -274,6 +277,7 @@ class CbtController extends Controller
             }
 
             $candidate->save();
+            $this->syncSignatureAcrossCandidates($candidate);
             $this->logActivity($candidate, 'Menyimpan Tanda Tangan Digital & Pernyataan Integritas', $request);
         }
 
@@ -402,6 +406,7 @@ class CbtController extends Controller
 
         $candidate->tes_kepribadian = $formattedDuration;
         $candidate->saveQuietly();
+        $this->syncTestAcrossCandidates($candidate, 'psychology', $formattedDuration, $details);
 
         $this->logActivity($candidate, 'Selesai Mengerjakan Tes Kepribadian (' . $formattedDuration . ')', $request);
 
@@ -496,6 +501,7 @@ class CbtController extends Controller
 
         $candidate->tes_matematika = $formattedDuration;
         $candidate->saveQuietly();
+        $this->syncTestAcrossCandidates($candidate, 'math', $formattedDuration, $details);
 
         $this->logActivity($candidate, 'Selesai Mengerjakan Tes Matematika (Nilai: ' . $score . ')', $request);
 
@@ -575,6 +581,7 @@ class CbtController extends Controller
         $candidate->tes_komputer = $formattedDuration;
         $candidate->buktikomputer = $fileName;
         $candidate->saveQuietly();
+        $this->syncTestAcrossCandidates($candidate, 'computer', $formattedDuration, $details, $fileName);
 
         $this->logActivity($candidate, 'Selesai Mengerjakan Tes Komputer & Unggah Bukti (' . $formattedDuration . ')', $request);
 
@@ -606,5 +613,58 @@ class CbtController extends Controller
         } catch (\Exception $e) {
             // Abaikan kesalahan penulisan log agar tidak memutus alur
         }
+    }
+
+    private function syncTestAcrossCandidates(Candidate $candidate, string $testType, ?string $duration, array $details, ?string $file = null): void
+    {
+        if (empty($candidate->nik)) {
+            return;
+        }
+
+        $otherCandidates = Candidate::where('nik', $candidate->nik)
+            ->where('id', '!=', $candidate->id)
+            ->get();
+
+        foreach ($otherCandidates as $other) {
+            if ($testType === 'psychology') {
+                $other->tes_kepribadian = $duration;
+            } elseif ($testType === 'math') {
+                $other->tes_matematika = $duration;
+            } elseif ($testType === 'computer') {
+                $other->tes_komputer = $duration;
+                if ($file) {
+                    $other->buktikomputer = $file;
+                }
+            }
+            $other->saveQuietly();
+
+            TestResult::updateOrCreate(
+                ['candidate_id' => $other->id, 'test_type' => $testType],
+                [
+                    'score' => $details['score'] ?? 100.00,
+                    'duration_seconds' => $details['duration_seconds'] ?? ($details['duration'] ?? 0),
+                    'test_details' => $details,
+                ]
+            );
+
+            $other->checkProfileCompleteness();
+        }
+    }
+
+    private function syncSignatureAcrossCandidates(Candidate $candidate): void
+    {
+        if (empty($candidate->nik) || empty($candidate->signature_path)) {
+            return;
+        }
+
+        Candidate::where('nik', $candidate->nik)
+            ->where('id', '!=', $candidate->id)
+            ->where(function ($q) {
+                $q->whereNull('signature_path')->orWhere('signature_path', '');
+            })
+            ->update([
+                'signature_path' => $candidate->signature_path,
+                'statement_agreed' => true,
+            ]);
     }
 }
