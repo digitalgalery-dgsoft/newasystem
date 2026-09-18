@@ -468,7 +468,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
-| `3e5516c` | fix: Batasi tipe Inhouse strictly hanya untuk 5 entitas resmi dan nonaktifkan akses login untuk prinsiple klien luar seperti PT Sanghiang Perkasa |
+| `e6d4a21` | fix: Batasi tipe Inhouse strictly hanya untuk 5 entitas resmi dan nonaktifkan akses login untuk prinsiple klien luar seperti PT Sanghiang Perkasa |
 | `84606a9` | feat: Searchable dropdown filter area dan urutan data karyawan paling atas berdasarkan join date terbaru |
 | `2e4cdbc` | feat: Tambahkan searchable dropdown pada filter prinsiple & jabatan, eksklusi employee PT BUDGET, dan distinct list prinsiple |
 | `c51a294` | feat: Rekonfigurasi sync Odoo hanya ambil employee aktif, skip NIK lama tiap jam, dan buat cron tengah malam untuk update & resign |
