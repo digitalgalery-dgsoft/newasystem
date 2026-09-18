@@ -464,6 +464,25 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 28. 👔 Penambahan Field Pimpinan di Form Edit Karyawan & Fitur Bulk Edit Pimpinan Massal (19 September 2026)
+- **Field Pimpinan Langsung & Jabatan Pimpinan pada Modal Edit**:
+  - Menambahkan input teks **Pimpinan Langsung** (dilengkapi auto-suggest `datalist` dari daftar pimpinan/atasan yang sudah ada di database) dan **Jabatan Pimpinan** (contoh: *Supervisor / SPV, Area Manager, Koordinator, Team Leader*) pada modal edit karyawan ([index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/karyawan/index.blade.php)).
+  - Memperbarui fungsi JavaScript `editEmployee(emp)` untuk secara otomatis memuat data `emp.pimpinan` dan `emp.jabatan_pimpinan`.
+  - Memperbarui validasi dan penyimpanan pada [EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php) (`update` dan `store`).
+  - Memperbarui modal detail karyawan dan tabel Master Karyawan untuk menampilkan nama pimpinan beserta jabatannya.
+- **Fitur Bulk Edit Pimpinan Massal**:
+  - **Multi-Select Checkbox pada Tabel**: Menambahkan kotak centang (*checkbox*) di setiap baris data tabel serta checkbox *"Pilih Semua"* di header tabel.
+  - **Floating Action Bar**: Bilah aksi mengambang otomatis muncul di bagian bawah layar saat 1 atau lebih karyawan dicentang, menampilkan jumlah karyawan terpilih dengan tombol cepat *"Isi Pimpinan (Bulk)"*.
+  - **Tombol Toolbar Header**: Disediakan tombol *"Bulk Edit Pimpinan"* pada baris tombol atas halaman Master Karyawan.
+  - **Modal Interaktif Bulk Edit Pimpinan**:
+    - **Mode 1 (Karyawan Dicentang)**: Menerapkan pimpinan hanya kepada karyawan-karyawan yang dicentang secara spesifik.
+    - **Mode 2 (Berdasarkan Filter Data)**: Memungkinkan penetapan pimpinan massal berdasarkan kriteria tertentu (*Filter Prinsiple, Filter Area Penempatan, Filter Entitas, dan Filter Status*), sangat memudahkan penugasan atasan untuk ratusan karyawan sekaligus tanpa perlu mencentang satu per satu per halaman.
+    - **Proteksi Penimpaan Data**: Dilengkapi checkbox *"Hanya isi karyawan yang pimpinannya masih KOSONG"* (aktif secara default) agar pimpinan yang telah terisi sebelumnya tidak tertimpa tanpa sengaja.
+  - **Backend Controller & Endpoint**:
+    - Route `POST /master/karyawan/bulk-pimpinan` (`EmployeeController@bulkUpdatePimpinan`) yang memproses pembaruan massal secara cepat dan aman dengan respon JSON/SweetAlert2.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |

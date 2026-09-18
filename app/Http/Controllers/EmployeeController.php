@@ -101,10 +101,46 @@ class EmployeeController extends Controller
             ->map(fn($n) => (object)['name' => $n]);
         $distinctJabatan = Employee::select('jabatan')->distinct()->whereNotNull('jabatan')->orderBy('jabatan')->pluck('jabatan');
         $distinctArea = Employee::select('area')->distinct()->whereNotNull('area')->orderBy('area')->pluck('area');
-        $distinctPimpinan = Employee::select('nama_karyawan', 'jabatan', 'area')->whereIn('level', ['SPV', 'HEAD', 'TL'])->orderBy('nama_karyawan')->get();
+        
+        // Pimpinan suggestions for datalist
+        $existingPimpinan = Employee::whereNotNull('pimpinan')
+            ->where('pimpinan', '!=', '')
+            ->distinct()
+            ->pluck('pimpinan');
+
+        $leadersByJabatan = Employee::where(function ($q) {
+            $q->where('jabatan', 'like', '%SPV%')
+              ->orWhere('jabatan', 'like', '%SUPERVISOR%')
+              ->orWhere('jabatan', 'like', '%KOORDINATOR%')
+              ->orWhere('jabatan', 'like', '%HEAD%')
+              ->orWhere('jabatan', 'like', '%MANAGER%')
+              ->orWhere('jabatan', 'like', '%AS %')
+              ->orWhere('jabatan', 'like', '%LEAD%')
+              ->orWhereIn('level', ['SPV', 'HEAD', 'TL']);
+        })->distinct()->pluck('nama_karyawan');
+
+        $pimpinanSuggestions = $existingPimpinan->merge($leadersByJabatan)
+            ->unique()
+            ->filter()
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->values();
+
+        $distinctPimpinan = Employee::select('nama_karyawan', 'jabatan', 'area')
+            ->where(function ($q) {
+                $q->whereIn('level', ['SPV', 'HEAD', 'TL'])
+                  ->orWhere('jabatan', 'like', '%SPV%')
+                  ->orWhere('jabatan', 'like', '%SUPERVISOR%')
+                  ->orWhere('jabatan', 'like', '%KOORDINATOR%')
+                  ->orWhere('jabatan', 'like', '%HEAD%')
+                  ->orWhere('jabatan', 'like', '%MANAGER%')
+                  ->orWhere('jabatan', 'like', '%AS %')
+                  ->orWhere('jabatan', 'like', '%LEAD%');
+            })
+            ->orderBy('nama_karyawan')
+            ->get();
 
         $entitiesList = OdooEntity::orderBy('code')->get();
-        return view('master.karyawan.index', compact('employees', 'stats', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan', 'entitiesList', 'status', 'tipe'));
+        return view('master.karyawan.index', compact('employees', 'stats', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan', 'pimpinanSuggestions', 'entitiesList', 'status', 'tipe'));
     }
 
     public function store(Request $request)
@@ -121,6 +157,7 @@ class EmployeeController extends Controller
             'jabatan' => 'required|string',
             'divisi' => 'nullable|string',
             'pimpinan' => 'nullable|string',
+            'jabatan_pimpinan' => 'nullable|string',
             'tipe_karyawan' => 'nullable|string',
             'entity' => 'nullable|string',
             'akses_login' => 'nullable',
@@ -176,6 +213,7 @@ class EmployeeController extends Controller
             'jabatan' => 'required|string',
             'divisi' => 'nullable|string',
             'pimpinan' => 'nullable|string',
+            'jabatan_pimpinan' => 'nullable|string',
             'status' => 'required|string',
             'tipe_karyawan' => 'nullable|string',
             'entity' => 'nullable|string',
@@ -247,6 +285,75 @@ class EmployeeController extends Controller
 
         $statusText = $employee->akses_login ? 'diberikan izin akses login' : 'dicabut izin akses loginnya';
         return redirect()->back()->with('success', "Karyawan RateCard {$employee->nama_karyawan} berhasil {$statusText}.");
+    }
+
+    public function bulkUpdatePimpinan(Request $request)
+    {
+        $validated = $request->validate([
+            'target_type' => 'required|in:selected,filter',
+            'employee_ids' => 'nullable|array',
+            'employee_ids.*' => 'integer',
+            'filter_prinsiple' => 'nullable|string',
+            'filter_area' => 'nullable|string',
+            'filter_entity' => 'nullable|string',
+            'filter_status' => 'nullable|string',
+            'pimpinan' => 'required|string|max:255',
+            'jabatan_pimpinan' => 'nullable|string|max:255',
+            'only_empty' => 'nullable|boolean',
+        ]);
+
+        $pimpinan = trim($validated['pimpinan']);
+        $jabatanPimpinan = !empty($validated['jabatan_pimpinan']) ? trim($validated['jabatan_pimpinan']) : null;
+        $onlyEmpty = $request->boolean('only_empty');
+
+        if ($validated['target_type'] === 'selected') {
+            if (empty($validated['employee_ids'])) {
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => 'Pilih minimal 1 karyawan yang ingin diperbarui.'], 422);
+                }
+                return redirect()->back()->with('error', 'Pilih minimal 1 karyawan yang ingin diperbarui.');
+            }
+            $query = Employee::whereIn('id', $validated['employee_ids']);
+        } else {
+            $query = Employee::query();
+            if (!empty($validated['filter_prinsiple'])) {
+                $query->where('prinsiple', $validated['filter_prinsiple']);
+            }
+            if (!empty($validated['filter_area'])) {
+                $query->where('area', $validated['filter_area']);
+            }
+            if (!empty($validated['filter_entity'])) {
+                $query->where('entity', $validated['filter_entity']);
+            }
+            if (!empty($validated['filter_status'])) {
+                $query->where('status', $validated['filter_status']);
+            }
+        }
+
+        if ($onlyEmpty) {
+            $query->where(function ($q) {
+                $q->whereNull('pimpinan')->orWhere('pimpinan', '');
+            });
+        }
+
+        $updateData = ['pimpinan' => $pimpinan];
+        if (!empty($jabatanPimpinan)) {
+            $updateData['jabatan_pimpinan'] = $jabatanPimpinan;
+        }
+
+        $affected = $query->update($updateData);
+
+        $msg = "Berhasil menetapkan pimpinan '{$pimpinan}' untuk {$affected} data karyawan.";
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => $msg,
+                'affected' => $affected,
+            ]);
+        }
+
+        return redirect()->back()->with('success', $msg);
     }
 
     public function resign($id)

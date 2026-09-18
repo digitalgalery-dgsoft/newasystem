@@ -44,6 +44,7 @@ Route::middleware(['admin'])->prefix('master')->name('master.')->group(function 
     // Master Karyawan
     Route::get('/karyawan', [EmployeeController::class, 'index'])->name('karyawan.index');
     Route::post('/karyawan', [EmployeeController::class, 'store'])->name('karyawan.store');
+    Route::post('/karyawan/bulk-pimpinan', [EmployeeController::class, 'bulkUpdatePimpinan'])->name('karyawan.bulk-pimpinan');
     Route::put('/karyawan/{id}', [EmployeeController::class, 'update'])->name('karyawan.update');
     Route::get('/karyawan/{id}/resign', [EmployeeController::class, 'resign'])->name('karyawan.resign');
     Route::get('/karyawan/{nik}/switch', [EmployeeController::class, 'switchUser'])->name('karyawan.switch');

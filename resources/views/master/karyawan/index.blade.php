@@ -40,6 +40,10 @@
                 <i class="fa-solid fa-user-plus"></i>
                 <span>Add Karyawan</span>
             </button>
+            <button type="button" onclick="openBulkPimpinanModal()" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold transition-all shadow-md shadow-indigo-600/20">
+                <i class="fa-solid fa-user-tie"></i>
+                <span>Bulk Edit Pimpinan</span>
+            </button>
             <a href="{{ route('master.karyawan.index', ['tipe' => 'RateCard', 'status' => $status]) }}" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-200 transition-all">
                 <i class="fa-solid fa-briefcase"></i>
                 <span>Distributor / RateCard</span>
@@ -488,6 +492,9 @@
             <table class="w-full text-left custom-table">
                 <thead>
                     <tr>
+                        <th class="w-10 text-center">
+                            <input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll(this)" title="Pilih Semua di Halaman Ini" class="rounded text-primary focus:ring-primary h-4 w-4 cursor-pointer">
+                        </th>
                         <th class="w-12 text-center">NO</th>
                         <th>NIK (KTP)</th>
                         <th>NAMA KARYAWAN</th>
@@ -508,6 +515,11 @@
                             $eBadge = $emp->entity_badge;
                         @endphp
                         <tr class="hover:bg-slate-50/80 transition-colors">
+                            <!-- Col 0: Checkbox -->
+                            <td class="text-center">
+                                <input type="checkbox" class="emp-checkbox rounded text-primary focus:ring-primary h-4 w-4 cursor-pointer" value="{{ $emp->id }}" data-nama="{{ $emp->nama_karyawan }}" onchange="onCheckboxChange()">
+                            </td>
+
                             <!-- Col 1: NO -->
                             <td class="text-center font-bold text-slate-400 text-xs">
                                 {{ $employees->firstItem() + $index }}
@@ -659,7 +671,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="text-center py-12">
+                            <td colspan="12" class="text-center py-12">
                                 <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-lg">
                                     <i class="fa-solid fa-user-slash"></i>
                                 </div>
@@ -795,14 +807,17 @@
                 </div>
             </div>
 
-            <div>
-                <label class="block text-xs font-bold text-slate-700 mb-1">Pimpinan Langsung</label>
-                <select name="pimpinan" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
-                    <option value="" selected>Pilih Pimpinan</option>
-                    @foreach($distinctPimpinan as $pim)
-                        <option value="{{ $pim->nama_karyawan }}">{{ $pim->nama_karyawan }} - {{ $pim->jabatan }} ({{ $pim->area }})</option>
-                    @endforeach
-                </select>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Pimpinan Langsung</label>
+                    <input type="text" name="pimpinan" list="pimpinanDatalist" placeholder="Pilih atau ketik pimpinan..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Ketik nama atasan / pimpinan langsung.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Jabatan Pimpinan</label>
+                    <input type="text" name="jabatan_pimpinan" placeholder="Contoh: SPV, Area Manager, Koordinator..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Opsional (posisi / level pimpinan).</p>
+                </div>
             </div>
 
             <!-- Pengaturan Akses Login (Untuk RateCard) -->
@@ -909,6 +924,18 @@
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Pimpinan Langsung</label>
+                    <input type="text" id="edit_pimpinan" name="pimpinan" list="pimpinanDatalist" placeholder="Ketik nama pimpinan..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Ketik nama atasan / pimpinan langsung.</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">Jabatan Pimpinan</label>
+                    <input type="text" id="edit_jabatan_pimpinan" name="jabatan_pimpinan" placeholder="Contoh: SPV, Area Manager, Koordinator..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Opsional (posisi / title pimpinan).</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Lahir (Default Password)</label>
                     <input type="date" id="edit_tanggal_lahir" name="tanggal_lahir" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50">
                     <p class="text-[10px] text-slate-400 mt-0.5">Password default dihitung dari format ddmmyyyy.</p>
@@ -937,6 +964,190 @@
             <div class="pt-4 border-t border-slate-200 flex justify-end gap-2">
                 <button type="button" onclick="closeModal('editEmployeeModal')" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold">Batal</button>
                 <button type="submit" class="px-5 py-2 rounded-xl bg-primary text-white text-xs font-bold">Update Data</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ========================================== -->
+<!-- DATALIST: PIMPINAN SUGGESTIONS             -->
+<!-- ========================================== -->
+<datalist id="pimpinanDatalist">
+    @foreach($pimpinanSuggestions as $pName)
+        <option value="{{ $pName }}"></option>
+    @endforeach
+</datalist>
+
+<!-- ========================================== -->
+<!-- FLOATING ACTION BAR: BULK SELECTION        -->
+<!-- ========================================== -->
+<div id="bulkActionBar" class="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-40 hidden bg-slate-900/95 backdrop-blur-md text-white px-5 py-3 rounded-2xl shadow-2xl border border-slate-700/80 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-5 duration-200">
+    <div class="flex items-center gap-2.5">
+        <span class="relative flex h-3 w-3">
+            <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+            <span class="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+        </span>
+        <span class="text-xs font-bold tracking-wide" id="bulkSelectedText">0 Karyawan Dipilih</span>
+    </div>
+    <div class="h-4 w-px bg-slate-700"></div>
+    <button type="button" onclick="openBulkPimpinanModal('selected')" class="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-md shadow-indigo-600/30">
+        <i class="fa-solid fa-user-tie text-[11px]"></i>
+        <span>Isi Pimpinan (Bulk)</span>
+    </button>
+    <button type="button" onclick="clearAllSelections()" class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition-all">
+        Batal
+    </button>
+</div>
+
+<!-- ========================================== -->
+<!-- MODAL: BULK EDIT PIMPINAN                  -->
+<!-- ========================================== -->
+<div id="bulkPimpinanModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+        <div class="p-5 bg-gradient-to-r from-indigo-600 via-purple-600 to-primary text-white flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-lg shadow-sm">
+                    <i class="fa-solid fa-user-tie"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold tracking-tight">Bulk Edit Pimpinan Karyawan</h3>
+                    <p class="text-[11px] text-indigo-100">Tetapkan nama &amp; jabatan pimpinan untuk banyak karyawan sekaligus</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeModal('bulkPimpinanModal')" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="bulkPimpinanForm" onsubmit="handleBulkPimpinanSubmit(event)" class="p-6 space-y-4">
+            @csrf
+            
+            <!-- Selection Mode Tabs -->
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-2">Pilih Sasaran Karyawan:</label>
+                <div class="grid grid-cols-2 gap-2 p-1 bg-slate-100 rounded-2xl border border-slate-200">
+                    <button type="button" id="tabModeSelected" onclick="switchBulkMode('selected')" class="py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm">
+                        <i class="fa-solid fa-square-check"></i>
+                        <span>Karyawan Dicentang (<span id="bulkBadgeCount">0</span>)</span>
+                    </button>
+                    <button type="button" id="tabModeFilter" onclick="switchBulkMode('filter')" class="py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800">
+                        <i class="fa-solid fa-filter"></i>
+                        <span>Berdasarkan Filter Data</span>
+                    </button>
+                </div>
+                <input type="hidden" name="target_type" id="bulk_target_type" value="selected">
+            </div>
+
+            <!-- Mode 1: Selected Employees -->
+            <div id="bulkSelectedSection" class="space-y-2">
+                <div class="p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-indigo-900 flex items-center gap-1.5">
+                            <i class="fa-solid fa-users text-indigo-600"></i> Karyawan Terpilih:
+                        </span>
+                        <span id="bulkCountDisplay" class="text-xs font-extrabold text-indigo-700 bg-indigo-200/60 px-2 py-0.5 rounded-full">0 Orang</span>
+                    </div>
+                    <p class="text-[11px] text-indigo-600/80 mt-1" id="bulkSelectedHint">
+                        Silakan centang kotak di samping nama karyawan pada tabel sebelum membuka modal ini, atau gunakan tab "Berdasarkan Filter Data" untuk memproses seluruh data sekaligus.
+                    </p>
+                    <div id="bulkSelectedNamesList" class="mt-2 text-[11px] text-slate-600 max-h-24 overflow-y-auto space-y-1 hidden bg-white/70 p-2 rounded-xl border border-indigo-100 font-medium">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mode 2: Filter Section -->
+            <div id="bulkFilterSection" class="hidden space-y-3 p-3.5 bg-slate-50 border border-slate-200 rounded-2xl">
+                <div class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-sliders text-primary"></i> Filter Karyawan Sasaran:
+                </div>
+                
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Prinsiple</label>
+                        <select name="filter_prinsiple" id="bulk_filter_prinsiple" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white">
+                            <option value="">-- Semua Prinsiple --</option>
+                            @foreach($distinctPrinciples as $p)
+                                <option value="{{ $p->name }}">{{ $p->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Area Penempatan</label>
+                        <select name="filter_area" id="bulk_filter_area" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white">
+                            <option value="">-- Semua Area --</option>
+                            @foreach($distinctArea as $a)
+                                <option value="{{ $a }}">{{ $a }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Entitas</label>
+                        <select name="filter_entity" id="bulk_filter_entity" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white">
+                            <option value="">-- Semua Entitas --</option>
+                            <option value="AMK">AMK - PT Arina Multi Karya</option>
+                            <option value="AKP">AKP - PT Alva Karya Perkasa</option>
+                            <option value="ATK">ATK - PT Anugrah Terpercaya Kerja</option>
+                            <option value="ABO">ABO - PT Arina Bintang Operasional</option>
+                            <option value="ATB">ATB - PT Anugrah Tri Berkah</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-600 mb-1">Status Karyawan</label>
+                        <select name="filter_status" id="bulk_filter_status" class="w-full px-2.5 py-1.5 text-xs rounded-xl border border-slate-200 bg-white">
+                            <option value="Aktiv" selected>Hanya Karyawan Aktif (Aktiv)</option>
+                            <option value="">Semua Status (Aktif &amp; Resign)</option>
+                            <option value="Resign">Hanya Resign</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input Nama Pimpinan & Jabatan -->
+            <div class="space-y-3 pt-1">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Nama Pimpinan <span class="text-rose-500">*</span>
+                    </label>
+                    <input type="text" name="pimpinan" id="bulk_pimpinan_input" list="pimpinanDatalist" required
+                           placeholder="Ketik atau pilih nama pimpinan..."
+                           class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Ketik nama lengkap pimpinan / atasan langsung.</p>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Jabatan Pimpinan (Opsional)
+                    </label>
+                    <input type="text" name="jabatan_pimpinan" id="bulk_jabatan_pimpinan_input"
+                           placeholder="Contoh: Supervisor (SPV), Area Manager, Koordinator, TL..."
+                           class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+                </div>
+            </div>
+
+            <!-- Checkbox Option: Only Empty -->
+            <div class="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                <label class="inline-flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" name="only_empty" id="bulk_only_empty" value="1" checked class="rounded text-indigo-600 focus:ring-indigo-500 h-4 w-4">
+                    <span class="text-xs font-bold text-slate-800">Hanya isi karyawan yang pimpinannya masih KOSONG</span>
+                </label>
+                <p class="text-[10px] text-slate-500 pl-6 mt-0.5">
+                    Centang opsi ini agar data karyawan yang sudah memiliki nama pimpinan tidak tertimpa secara tidak sengaja.
+                </p>
+            </div>
+
+            <!-- Form Actions -->
+            <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2.5">
+                <button type="button" onclick="closeModal('bulkPimpinanModal')" class="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-100 transition-all">
+                    Batal
+                </button>
+                <button type="submit" id="btnSubmitBulkPimpinan" class="px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-xs font-bold shadow-md shadow-indigo-500/20 transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Terapkan Pimpinan</span>
+                </button>
             </div>
         </form>
     </div>
@@ -1097,7 +1308,7 @@
                 <div><span class="text-slate-400 block text-[11px]">Jabatan:</span> <strong class="text-slate-800">${emp.jabatan}</strong></div>
                 <div><span class="text-slate-400 block text-[11px]">Area:</span> <strong class="text-slate-800">${emp.area}</strong></div>
                 <div><span class="text-slate-400 block text-[11px]">Prinsiple:</span> <strong class="text-slate-800">${emp.prinsiple || '-'}</strong></div>
-                <div><span class="text-slate-400 block text-[11px]">Pimpinan:</span> <strong class="text-slate-800">${emp.pimpinan || '-'}</strong></div>
+                <div><span class="text-slate-400 block text-[11px]">Pimpinan:</span> <strong class="text-slate-800">${emp.pimpinan || '-'} ${emp.jabatan_pimpinan ? '(' + emp.jabatan_pimpinan + ')' : ''}</strong></div>
                 <div>
                     <span class="text-slate-400 block text-[11px]">Status Karyawan:</span> 
                     <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200 font-bold mt-0.5">${emp.status}</span>
@@ -1117,6 +1328,12 @@
         document.getElementById('edit_telepon').value = emp.telepon || '';
         document.getElementById('edit_area').value = emp.area;
         document.getElementById('edit_prinsiple').value = emp.prinsiple || '';
+        if (document.getElementById('edit_pimpinan')) {
+            document.getElementById('edit_pimpinan').value = emp.pimpinan || '';
+        }
+        if (document.getElementById('edit_jabatan_pimpinan')) {
+            document.getElementById('edit_jabatan_pimpinan').value = emp.jabatan_pimpinan || '';
+        }
         document.getElementById('edit_status').value = emp.status;
         if (document.getElementById('edit_entity')) {
             document.getElementById('edit_entity').value = emp.entity || '';
@@ -1362,6 +1579,238 @@
                 this.searchQuery = '';
                 this.open = false;
             }
+        }
+    }
+
+    // ==========================================
+    // BULK EDIT PIMPINAN JAVASCRIPT LOGIC
+    // ==========================================
+    function getSelectedEmployees() {
+        const checkboxes = document.querySelectorAll('.emp-checkbox:checked');
+        const selected = [];
+        checkboxes.forEach(cb => {
+            selected.push({
+                id: parseInt(cb.value, 10),
+                nama: cb.getAttribute('data-nama') || 'Karyawan'
+            });
+        });
+        return selected;
+    }
+
+    function onCheckboxChange() {
+        const checkboxes = document.querySelectorAll('.emp-checkbox');
+        const checked = document.querySelectorAll('.emp-checkbox:checked');
+        const selectAll = document.getElementById('selectAllCheckbox');
+        const bulkBar = document.getElementById('bulkActionBar');
+        const countText = document.getElementById('bulkSelectedText');
+        const badgeCount = document.getElementById('bulkBadgeCount');
+
+        if (selectAll) {
+            selectAll.checked = checkboxes.length > 0 && checked.length === checkboxes.length;
+            selectAll.indeterminate = checked.length > 0 && checked.length < checkboxes.length;
+        }
+
+        if (checked.length > 0) {
+            if (bulkBar) bulkBar.classList.remove('hidden');
+            if (countText) countText.textContent = `${checked.length} Karyawan Dipilih`;
+            if (badgeCount) badgeCount.textContent = checked.length;
+        } else {
+            if (bulkBar) bulkBar.classList.add('hidden');
+            if (badgeCount) badgeCount.textContent = '0';
+        }
+    }
+
+    function toggleSelectAll(masterCb) {
+        const checkboxes = document.querySelectorAll('.emp-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = masterCb.checked;
+        });
+        onCheckboxChange();
+    }
+
+    function clearAllSelections() {
+        const checkboxes = document.querySelectorAll('.emp-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = false;
+        });
+        const selectAll = document.getElementById('selectAllCheckbox');
+        if (selectAll) {
+            selectAll.checked = false;
+            selectAll.indeterminate = false;
+        }
+        onCheckboxChange();
+    }
+
+    function openBulkPimpinanModal(preferredMode) {
+        const selected = getSelectedEmployees();
+        const badgeCount = document.getElementById('bulkBadgeCount');
+        const countDisplay = document.getElementById('bulkCountDisplay');
+        const namesList = document.getElementById('bulkSelectedNamesList');
+        const hint = document.getElementById('bulkSelectedHint');
+
+        if (badgeCount) badgeCount.textContent = selected.length;
+        if (countDisplay) countDisplay.textContent = `${selected.length} Orang`;
+
+        if (selected.length > 0) {
+            if (namesList) {
+                namesList.classList.remove('hidden');
+                namesList.innerHTML = selected.map(s => `
+                    <div class="flex items-center gap-1.5 py-0.5 border-b border-indigo-50 last:border-0">
+                        <i class="fa-solid fa-check text-[10px] text-emerald-600"></i>
+                        <span class="font-semibold text-slate-700">${s.nama}</span>
+                    </div>
+                `).join('');
+            }
+            if (hint) {
+                hint.textContent = `Akan menerapkan nama pimpinan pada ${selected.length} karyawan terpilih di atas.`;
+            }
+            switchBulkMode(preferredMode === 'filter' ? 'filter' : 'selected');
+        } else {
+            if (namesList) {
+                namesList.classList.add('hidden');
+                namesList.innerHTML = '';
+            }
+            if (hint) {
+                hint.textContent = 'Belum ada karyawan yang dicentang pada tabel. Anda dapat mencentang karyawan pada tabel atau menggunakan mode "Berdasarkan Filter Data" di bawah.';
+            }
+            switchBulkMode('filter');
+        }
+
+        openModal('bulkPimpinanModal');
+    }
+
+    function switchBulkMode(mode) {
+        const targetTypeInput = document.getElementById('bulk_target_type');
+        const tabSelected = document.getElementById('tabModeSelected');
+        const tabFilter = document.getElementById('tabModeFilter');
+        const sectionSelected = document.getElementById('bulkSelectedSection');
+        const sectionFilter = document.getElementById('bulkFilterSection');
+
+        if (targetTypeInput) targetTypeInput.value = mode;
+
+        if (mode === 'selected') {
+            if (tabSelected) {
+                tabSelected.className = 'py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm';
+            }
+            if (tabFilter) {
+                tabFilter.className = 'py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800';
+            }
+            if (sectionSelected) sectionSelected.classList.remove('hidden');
+            if (sectionFilter) sectionFilter.classList.add('hidden');
+        } else {
+            if (tabSelected) {
+                tabSelected.className = 'py-2 px-3 rounded-xl text-xs font-semibold transition-all flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-800';
+            }
+            if (tabFilter) {
+                tabFilter.className = 'py-2 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 bg-white text-indigo-700 shadow-sm';
+            }
+            if (sectionSelected) sectionSelected.classList.add('hidden');
+            if (sectionFilter) sectionFilter.classList.remove('hidden');
+        }
+    }
+
+    async function handleBulkPimpinanSubmit(event) {
+        event.preventDefault();
+        const targetType = document.getElementById('bulk_target_type').value;
+        const pimpinan = document.getElementById('bulk_pimpinan_input').value.trim();
+        const jabatan = document.getElementById('bulk_jabatan_pimpinan_input').value.trim();
+        const onlyEmpty = document.getElementById('bulk_only_empty').checked;
+        const selected = getSelectedEmployees();
+        const btn = document.getElementById('btnSubmitBulkPimpinan');
+
+        if (!pimpinan) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Nama Pimpinan Kosong',
+                text: 'Mohon isi nama pimpinan terlebih dahulu.',
+                confirmButtonColor: '#4f46e5'
+            });
+            return;
+        }
+
+        if (targetType === 'selected' && selected.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Tidak Ada Karyawan Terpilih',
+                text: 'Silakan pilih/centang minimal 1 karyawan pada tabel, atau gunakan tab "Berdasarkan Filter Data".',
+                confirmButtonColor: '#4f46e5'
+            });
+            return;
+        }
+
+        const confirmText = targetType === 'selected' 
+            ? `Tetapkan pimpinan '${pimpinan}' untuk ${selected.length} karyawan terpilih?`
+            : `Tetapkan pimpinan '${pimpinan}' untuk seluruh karyawan yang sesuai kriteria filter?`;
+
+        const confirmResult = await Swal.fire({
+            title: 'Konfirmasi Bulk Edit Pimpinan',
+            html: `<div class="text-xs text-slate-600 space-y-1 text-left">
+                <p>${confirmText}</p>
+                ${onlyEmpty ? '<p class="text-amber-600 font-semibold">* Hanya mengisi karyawan yang pimpinannya saat ini kosong.</p>' : '<p class="text-rose-600 font-semibold">* Akan menimpa pimpinan lama jika ada.</p>'}
+            </div>`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#4f46e5',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Ya, Terapkan Pimpinan',
+            cancelButtonText: 'Batal'
+        });
+
+        if (!confirmResult.isConfirmed) return;
+
+        const originalBtnHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-white"></i> <span>Menyimpan...</span>`;
+
+        const payload = {
+            target_type: targetType,
+            pimpinan: pimpinan,
+            jabatan_pimpinan: jabatan,
+            only_empty: onlyEmpty ? 1 : 0,
+        };
+
+        if (targetType === 'selected') {
+            payload.employee_ids = selected.map(s => s.id);
+        } else {
+            payload.filter_prinsiple = document.getElementById('bulk_filter_prinsiple').value;
+            payload.filter_area = document.getElementById('bulk_filter_area').value;
+            payload.filter_entity = document.getElementById('bulk_filter_entity').value;
+            payload.filter_status = document.getElementById('bulk_filter_status').value;
+        }
+
+        try {
+            const res = await fetch(`{{ route('master.karyawan.bulk-pimpinan') }}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            const data = await res.json();
+
+            if (res.ok && data.success) {
+                await Swal.fire({
+                    icon: 'success',
+                    title: 'Berhasil!',
+                    text: data.message || 'Pimpinan karyawan berhasil diperbarui.',
+                    confirmButtonColor: '#4f46e5'
+                });
+                window.location.reload();
+            } else {
+                throw new Error(data.message || 'Terjadi kesalahan saat memproses data.');
+            }
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Memperbarui',
+                text: err.message,
+                confirmButtonColor: '#ef4444'
+            });
+            btn.disabled = false;
+            btn.innerHTML = originalBtnHtml;
         }
     }
 </script>
