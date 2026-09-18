@@ -654,7 +654,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
-| `[PENDING]` | feat: Sesuaikan 27 kolom export dengan format sistem lama, link PDF AI ke domain production new.asystem.co.id, dan label CV Analisa AI |
+| `0c9307a` | feat: Sesuaikan 27 kolom export dengan format sistem lama, link PDF AI ke domain production new.asystem.co.id, dan label CV Analisa AI |
 | `c920766` | fix: Perbaiki filter export kandidat portal untuk admin, parsing tanggal rentang, dan default semua status |
 | `f2e1425` | feat: Fitur export data kandidat job portal ke file XLSX profesional dengan filter area, jenis kelamin, ringkasan pengalaman, dan link PDF AI |
 | `599a696` | feat: Tambahkan line chart statistik progress pertumbuhan employee 12 jam terakhir dan 4 kartu metrik sesuai referensi desain |
