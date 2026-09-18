@@ -13,7 +13,13 @@
                     <i class="fa-solid fa-globe"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Kandidat Job Portal</h1>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Kandidat Job Portal</h1>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold">
+                            <i class="fa-solid fa-user-check text-primary"></i>
+                            <span>{{ $displayUserName }}</span>
+                        </span>
+                    </div>
                     <p class="text-xs text-slate-500 font-medium mt-0.5">Monitoring pelamar lowongan kerja daring, hasil pemindaian AI CV Analyzer, dan tahapan seleksi</p>
                 </div>
             </div>
@@ -45,7 +51,7 @@
             <div>
                 <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Pelamar</div>
                 <div class="text-2xl font-black text-slate-900 leading-tight">{{ $totalPelamar }}</div>
-                <div class="text-[11px] font-semibold text-primary mt-0.5">Seluruh Lowongan</div>
+                <div class="text-[11px] font-semibold text-primary mt-0.5 truncate" title="{{ $scopeTitle }}">{{ $scopeTitle }}</div>
             </div>
         </div>
 
@@ -109,6 +115,21 @@
                 <form action="{{ route('kandidatportal.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
                     <input type="hidden" name="tab" value="{{ $tab }}">
 
+                    @if(!empty($isAdmin) && !empty($allRecruiters) && count($allRecruiters) > 0)
+                    <!-- Filter Rekruter (Khusus Administrator) -->
+                    <select name="recruiter" onchange="this.form.submit()" class="px-2.5 py-1.5 rounded-xl border border-blue-200 text-xs font-bold text-blue-900 bg-blue-50/80 focus:ring-2 focus:ring-primary outline-none">
+                        <option value="my" {{ ($filterRecruiter === 'my' || empty($filterRecruiter)) ? 'selected' : '' }}>👤 Data Saya ({{ auth()->user()->name ?? 'Admin' }})</option>
+                        <option value="all" {{ $filterRecruiter === 'all' ? 'selected' : '' }}>🌐 Semua Rekruter (Nasional)</option>
+                        <optgroup label="Pilih Rekruter Spesifik:">
+                            @foreach($allRecruiters as $r)
+                                <option value="{{ $r->useras }}" {{ $filterRecruiter === $r->useras ? 'selected' : '' }}>
+                                    {{ $r->display_name }} ({{ $r->total }} pelamar)
+                                </option>
+                            @endforeach
+                        </optgroup>
+                    </select>
+                    @endif
+
                     <!-- Kategori AI Filter -->
                     <select name="kategori" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 outline-none">
                         <option value="">Semua Kategori AI</option>
@@ -145,7 +166,7 @@
                         <i class="fa-solid fa-filter mr-1"></i> Filter
                     </button>
 
-                    @if($kategori || $start || $end || $search)
+                    @if($kategori || $start || $end || $search || ($isAdmin && !empty($filterRecruiter)))
                     <a href="{{ route('kandidatportal.index', ['tab' => $tab]) }}" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all">
                         Reset
                     </a>
@@ -505,38 +526,49 @@
                 </button>
             </div>
 
-            <div class="space-y-3">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Kategori AI</label>
-                    <select class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white outline-none">
-                        <option value="">Semua Kategori (Green, Yellow, Red)</option>
-                        <option value="Green">Hanya Green</option>
-                        <option value="Yellow">Hanya Yellow</option>
-                        <option value="Red">Hanya Red</option>
-                    </select>
+            <form action="{{ route('kandidatportal.export') }}" method="GET" class="space-y-4">
+                <input type="hidden" name="recruiter" value="{{ $filterRecruiter }}">
+                <input type="hidden" name="q" value="{{ $search }}">
+                <input type="hidden" name="start" value="{{ $start }}">
+                <input type="hidden" name="end" value="{{ $end }}">
+
+                <div class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Status Seleksi / Tab</label>
+                        <select name="tab" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white outline-none">
+                            <option value="baru" {{ $tab === 'baru' ? 'selected' : '' }}>Baru / Semua</option>
+                            <option value="interview" {{ $tab === 'interview' ? 'selected' : '' }}>Interview</option>
+                            <option value="terima" {{ $tab === 'terima' ? 'selected' : '' }}>Terima</option>
+                            <option value="arsip" {{ $tab === 'arsip' ? 'selected' : '' }}>Arsip</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Pilih Kategori AI</label>
+                        <select name="kategori" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white outline-none">
+                            <option value="">Semua Kategori (Green, Yellow, Red)</option>
+                            <option value="Green" {{ $kategori === 'Green' ? 'selected' : '' }}>Hanya Green</option>
+                            <option value="Yellow" {{ $kategori === 'Yellow' ? 'selected' : '' }}>Hanya Yellow</option>
+                            <option value="Red" {{ $kategori === 'Red' ? 'selected' : '' }}>Hanya Red</option>
+                        </select>
+                    </div>
+
+                    <div class="p-2.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-info text-primary"></i>
+                        <span>Data yang diexport otomatis sesuai rekruter: <strong>{{ $displayUserName }}</strong></span>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Status Seleksi</label>
-                    <select class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white outline-none">
-                        <option value="">Semua Tahapan</option>
-                        <option value="Baru">Baru</option>
-                        <option value="Interview">Interview</option>
-                        <option value="Terima">Terima</option>
-                        <option value="Arsip">Arsip</option>
-                    </select>
+                <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+                    <button type="button" @click="openExportModal = false" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all">
+                        Tutup
+                    </button>
+                    <button type="submit" @click="openExportModal = false" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Download Excel (.csv)</span>
+                    </button>
                 </div>
-            </div>
-
-            <div class="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
-                <button type="button" @click="openExportModal = false" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all">
-                    Tutup
-                </button>
-                <button type="button" @click="alert('Fitur download spreadsheet diaktifkan'); openExportModal = false;" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5">
-                    <i class="fa-solid fa-download"></i>
-                    <span>Download Excel</span>
-                </button>
-            </div>
+            </form>
         </div>
     </div>
 

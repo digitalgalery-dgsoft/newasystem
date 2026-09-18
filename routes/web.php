@@ -159,6 +159,8 @@ Route::get('/inputjob/{id}/toggle', [JobController::class, 'toggleStatus'])->nam
 // FITUR KANDIDAT JOB PORTAL (v3/kandidatportal.php & hasilportal.php)
 // ==============================================================
 Route::get('/kandidatportal', [KandidatPortalController::class, 'index'])->name('kandidatportal.index');
+Route::get('/kandidat-portal', fn() => redirect()->route('kandidatportal.index'));
+Route::get('/kandidatportal/export', [KandidatPortalController::class, 'exportExcel'])->name('kandidatportal.export');
 Route::get('/kandidatportal/{id}', [KandidatPortalController::class, 'show'])->name('kandidatportal.show');
 Route::post('/kandidatportal/{id}/reset-password', [KandidatPortalController::class, 'resetPassword'])->name('kandidatportal.reset_password');
 Route::post('/kandidatportal/{id}/interview', [KandidatPortalController::class, 'updateInterview'])->name('kandidatportal.interview');
