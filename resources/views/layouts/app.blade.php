@@ -348,8 +348,9 @@
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
                                 </a>
+                                @endif
 
-                                <!-- Master User Prinsiple (Admin Only) -->
+                                <!-- Master User Prinsiple -->
                                 <a href="{{ route('userprinsiple.index') }}" 
                                    title="Master User Prinsiple"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('userprinsiple.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
@@ -362,7 +363,6 @@
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
                                 </a>
-                                @endif
 
                                 <!-- 6. Kandidat Interview -->
                                 <a href="{{ route('interview.index') }}" 

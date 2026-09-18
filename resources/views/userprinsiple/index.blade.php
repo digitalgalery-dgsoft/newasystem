@@ -13,15 +13,25 @@
             <div>
                 <div class="flex flex-wrap items-center gap-2 mb-1">
                     <h1 class="text-2xl font-black text-slate-800 tracking-tight">Master User Prinsiple</h1>
-                    <span class="badge-pill bg-blue-50 text-primary border-blue-200">
-                        <i class="fa-solid fa-shield-halved text-[10px]"></i> TALENT POOL / REKRUTMENT
-                    </span>
+                    @if(!$isAdmin)
+                        <span class="badge-pill bg-indigo-50 text-indigo-700 border-indigo-200 font-bold">
+                            <i class="fa-solid fa-user-check text-[10px]"></i> DATA SAYA ({{ strtoupper($currentUser->name) }})
+                        </span>
+                    @else
+                        <span class="badge-pill bg-blue-50 text-primary border-blue-200">
+                            <i class="fa-solid fa-shield-halved text-[10px]"></i> MODE ADMIN
+                        </span>
+                    @endif
                     <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">
                         AKSES KLIEN PRINSIPLE
                     </span>
                 </div>
                 <p class="text-xs text-slate-500">
-                    Kelola data akun PIC prinsiple klien untuk proses review pelamar, input evaluasi interview prinsiple, dan persetujuan kandidat.
+                    @if(!$isAdmin)
+                        Kelola data kontak PIC prinsiple klien yang Anda tambahkan. Data Anda terisolasi aman dan tidak tercampur dengan user prinsiple lain.
+                    @else
+                        Kelola seluruh data akun PIC prinsiple klien untuk proses review pelamar dan evaluasi interview prinsiple di sistem.
+                    @endif
                 </p>
             </div>
         </div>
@@ -59,13 +69,29 @@
         </div>
     @endif
 
+    @if($errors->any())
+        <div class="bg-rose-50 border-2 border-rose-300 text-rose-800 px-5 py-3.5 rounded-2xl text-xs shadow-sm space-y-1.5">
+            <div class="flex items-center gap-2 font-bold text-rose-700">
+                <i class="fa-solid fa-triangle-exclamation text-sm"></i>
+                <span>Gagal Menyimpan Data Master User Prinsiple:</span>
+            </div>
+            <ul class="list-disc list-inside space-y-0.5 pl-1 font-medium text-rose-600">
+                @foreach($errors->all() as $err)
+                    <li>{{ $err }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <!-- METRIC SUMMARY CARDS -->
     <div class="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- 1. Total User Prinsiple -->
         <div class="stat-box">
             <div class="flex items-center justify-between">
                 <div>
-                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">Total User Prinsiple</div>
+                    <div class="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
+                        {{ $isAdmin ? 'Total User Prinsiple' : 'User Prinsiple Saya' }}
+                    </div>
                     <div class="text-2xl font-black text-slate-900 mt-1">{{ number_format($stats['total']) }}</div>
                     <div class="text-[10px] text-slate-500 font-medium mt-0.5">PIC Prinsiple Terdaftar</div>
                 </div>
@@ -122,8 +148,8 @@
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4">
         <form method="GET" action="{{ route('userprinsiple.index') }}" class="space-y-3">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-12 gap-3">
-                <!-- Search Input (5 Cols) -->
-                <div class="lg:col-span-4">
+                <!-- Search Input -->
+                <div class="{{ $isAdmin ? 'lg:col-span-3' : 'lg:col-span-4' }}">
                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Pencarian Kata Kunci</label>
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
@@ -132,8 +158,8 @@
                     </div>
                 </div>
 
-                <!-- Prinsiple Filter (3 Cols) -->
-                <div class="lg:col-span-3">
+                <!-- Prinsiple Filter -->
+                <div class="{{ $isAdmin ? 'lg:col-span-2' : 'lg:col-span-3' }}">
                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Prinsiple</label>
                     <select name="prinsiple" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
                         <option value="">Semua Prinsiple</option>
@@ -145,7 +171,7 @@
                     </select>
                 </div>
 
-                <!-- Area Filter (2 Cols) -->
+                <!-- Area Filter -->
                 <div class="lg:col-span-2">
                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Area</label>
                     <select name="area" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
@@ -158,7 +184,7 @@
                     </select>
                 </div>
 
-                <!-- Status Filter (1 Col) -->
+                <!-- Status Filter -->
                 <div class="lg:col-span-1">
                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Status</label>
                     <select name="status" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
@@ -168,7 +194,23 @@
                     </select>
                 </div>
 
-                <!-- Action Buttons (2 Cols) -->
+                <!-- Admin Creator Filter -->
+                @if($isAdmin)
+                <div class="lg:col-span-2">
+                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Dibuat Oleh</label>
+                    <select name="created_by" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
+                        <option value="">Semua User</option>
+                        <option value="mine" {{ request('created_by') === 'mine' ? 'selected' : '' }}>Hanya Saya</option>
+                        @foreach($allCreators as $cr)
+                            <option value="{{ $cr->id }}" {{ request('created_by') == $cr->id ? 'selected' : '' }}>
+                                {{ $cr->name }} ({{ $cr->area ?: 'All' }})
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
+
+                <!-- Action Buttons -->
                 <div class="lg:col-span-2 flex items-end gap-2">
                     <button type="submit" class="flex-1 py-2 px-3 rounded-xl bg-slate-900 text-white text-xs font-bold hover:bg-slate-800 transition-all shadow-sm flex items-center justify-center gap-1.5">
                         <i class="fa-solid fa-filter"></i>
@@ -187,12 +229,14 @@
         <div class="px-6 py-4 border-b border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-slate-50/40">
             <div>
                 <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                    <span>Daftar User Prinsiple Klien</span>
+                    <span>{{ $isAdmin ? 'Daftar User Prinsiple Klien' : 'Daftar Master User Prinsiple Saya' }}</span>
                     <span class="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-blue-50 text-primary border border-blue-200">
                         {{ $users->total() }} USER
                     </span>
                 </h2>
-                <p class="text-[11px] text-slate-500">Menampilkan {{ $users->firstItem() ?? 0 }} - {{ $users->lastItem() ?? 0 }} data user yang memiliki wewenang interview di ASystem.</p>
+                <p class="text-[11px] text-slate-500">
+                    Menampilkan {{ $users->firstItem() ?? 0 }} - {{ $users->lastItem() ?? 0 }} data master user prinsiple yang terdaftar.
+                </p>
             </div>
         </div>
 
@@ -205,6 +249,9 @@
                         <th>PRINSIPLE &amp; AREA</th>
                         <th>KONTAK RESMI</th>
                         <th>PIN AKSES / KATA KUNCI</th>
+                        @if($isAdmin)
+                            <th>DIBUAT OLEH</th>
+                        @endif
                         <th class="text-center">STATUS</th>
                         <th class="text-center min-w-[140px]">AKSI</th>
                     </tr>
@@ -256,6 +303,18 @@
                                     </button>
                                 </div>
                             </td>
+                            @if($isAdmin)
+                            <td>
+                                @if($u->creator)
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                                        <i class="fa-solid fa-user-pen text-[9px]"></i>
+                                        {{ $u->creator->name }}
+                                    </span>
+                                @else
+                                    <span class="text-[10px] text-slate-400 italic">Sistem Legacy</span>
+                                @endif
+                            </td>
+                            @endif
                             <td class="text-center">
                                 <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-md border {{ $badge['bg'] }}">
                                     <span class="w-1.5 h-1.5 rounded-full {{ $badge['dot'] }}"></span>
@@ -291,12 +350,18 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-12">
+                            <td colspan="{{ $isAdmin ? 8 : 7 }}" class="text-center py-12">
                                 <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-lg">
                                     <i class="fa-solid fa-user-shield"></i>
                                 </div>
-                                <div class="text-sm font-bold text-slate-700">Tidak ada data User Prinsiple ditemukan</div>
-                                <div class="text-xs text-slate-400 mt-1">Gunakan tombol "Add User Prinsiple" di atas untuk menambahkan pengguna baru.</div>
+                                <div class="text-sm font-bold text-slate-700">Tidak ada data Master User Prinsiple ditemukan</div>
+                                <div class="text-xs text-slate-400 mt-1">
+                                    @if(!$isAdmin)
+                                        Anda belum menambahkan Master User Prinsiple. Silakan klik tombol "Add User Prinsiple" di atas.
+                                    @else
+                                        Tidak ada data yang cocok dengan kriteria filter yang dipilih.
+                                    @endif
+                                </div>
                             </td>
                         </tr>
                     @endforelse
@@ -340,17 +405,17 @@
             @csrf
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap <span class="text-rose-500">*</span></label>
-                <input type="text" name="nama_lengkap" required placeholder="Contoh: Budi Santoso, S.T." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
+                <input type="text" name="nama_lengkap" value="{{ old('nama_lengkap') }}" required placeholder="Contoh: Budi Santoso, S.T." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
             </div>
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Jabatan <span class="text-rose-500">*</span></label>
-                    <input type="text" name="jabatan" required placeholder="Contoh: Area Sales Manager" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
+                    <input type="text" name="jabatan" value="{{ old('jabatan') }}" required placeholder="Contoh: Area Sales Manager" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
                 </div>
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">Area Penugasan <span class="text-rose-500">*</span></label>
-                    <input type="text" name="area" required placeholder="Contoh: Surabaya / Nasional" list="areaList" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
+                    <input type="text" name="area" value="{{ old('area') }}" required placeholder="Contoh: Surabaya / Nasional" list="areaList" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
                     <datalist id="areaList">
                         @foreach($distinctAreas as $ar)
                             <option value="{{ $ar }}">
@@ -362,28 +427,34 @@
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Prinsiple Klien <span class="text-rose-500">*</span></label>
                 <select name="prinsiple" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
-                    <option value="" disabled selected>-- Pilih Prinsiple --</option>
+                    <option value="" disabled {{ old('prinsiple') ? '' : 'selected' }}>-- Pilih Prinsiple --</option>
                     @foreach($principlesList as $p)
-                        <option value="{{ $p->name }}">{{ $p->name }}</option>
+                        <option value="{{ $p->name }}" {{ old('prinsiple') == $p->name ? 'selected' : '' }}>{{ $p->name }}</option>
                     @endforeach
                 </select>
             </div>
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Email Resmi <span class="text-rose-500">*</span></label>
-                    <input type="email" name="email" required placeholder="budi@perusahaan.com" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-bold text-slate-700">Email Resmi <span class="text-rose-500">*</span></label>
+                        <span class="text-[10px] text-amber-600 font-semibold">Bebas Duplikat</span>
+                    </div>
+                    <input type="email" name="email" value="{{ old('email') }}" required placeholder="budi@perusahaan.com" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">No. WhatsApp</label>
-                    <input type="text" name="no_wa" placeholder="08123456789" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50 font-mono">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-bold text-slate-700">No. WhatsApp / HP <span class="text-rose-500">*</span></label>
+                        <span class="text-[10px] text-amber-600 font-semibold">Bebas Duplikat</span>
+                    </div>
+                    <input type="text" name="no_wa" value="{{ old('no_wa') }}" required placeholder="08123456789" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50 font-mono">
                 </div>
             </div>
 
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1">Kata Kunci / PIN Akses</label>
-                <input type="text" name="katakunci" placeholder="Kosongkan untuk generate otomatis 6 digit" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50 font-mono">
-                <p class="text-[10px] text-slate-400 mt-1">Jika dikosongkan, sistem akan membuatkan PIN acak otomatis.</p>
+                <input type="text" name="katakunci" value="{{ old('katakunci') }}" placeholder="Kosongkan untuk generate otomatis 6 digit" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50 font-mono">
+                <p class="text-[10px] text-slate-400 mt-1">Jika dikosongkan, sistem akan membuatkan PIN acak otomatis 6 digit.</p>
             </div>
 
             <div class="pt-4 border-t border-slate-200 flex justify-end gap-2">
@@ -444,12 +515,18 @@
 
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Email Resmi <span class="text-rose-500">*</span></label>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-bold text-slate-700">Email Resmi <span class="text-rose-500">*</span></label>
+                        <span class="text-[10px] text-amber-600 font-semibold">Bebas Duplikat</span>
+                    </div>
                     <input type="email" id="edit_email" name="email" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50">
                 </div>
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">No. WhatsApp</label>
-                    <input type="text" id="edit_no_wa" name="no_wa" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50 font-mono">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-bold text-slate-700">No. WhatsApp / HP <span class="text-rose-500">*</span></label>
+                        <span class="text-[10px] text-amber-600 font-semibold">Bebas Duplikat</span>
+                    </div>
+                    <input type="text" id="edit_no_wa" name="no_wa" required class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary focus:outline-none bg-slate-50/50 font-mono">
                 </div>
             </div>
 
@@ -496,5 +573,11 @@ function editUserPrinsiple(user) {
     document.getElementById('edit_status').value = user.status;
     openModal('editUserModal');
 }
+
+@if($errors->any())
+document.addEventListener('DOMContentLoaded', function() {
+    openModal('addUserModal');
+});
+@endif
 </script>
 @endsection

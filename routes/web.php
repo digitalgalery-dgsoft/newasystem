@@ -280,7 +280,7 @@ Route::get('/odoo_setting.php', function() { return redirect()->route('odoo.sett
 // ==============================================================
 // MASTER USER PRINSIPLE (v3/dataprinsiple.php)
 // ==============================================================
-Route::middleware(['admin'])->group(function () {
+Route::middleware(['auth'])->group(function () {
     Route::resource('user-prinsiple', App\Http\Controllers\UserPrinsipleController::class)->names('userprinsiple');
     Route::post('user-prinsiple/{id}/send-access', [App\Http\Controllers\UserPrinsipleController::class, 'sendAccess'])->name('userprinsiple.send_access');
 });

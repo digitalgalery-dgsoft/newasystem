@@ -22,7 +22,13 @@ class UserPrinsiple extends Model
         'no_wa',
         'katakunci',
         'status',
+        'created_by',
     ];
+
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
 
     public function principle(): BelongsTo
     {
