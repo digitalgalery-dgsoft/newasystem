@@ -319,7 +319,10 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
     - Menambahkan filter pengecualian form pada `page-loader.blade.php` agar form sync (`formSyncAll`, `formSingleSync_*`, `formSyncByNik`, `formKaryawanSyncNik`) dan modal terminal tidak memicu loading overlay.
     - Pada fungsi `showOverlay()`, menambahkan pengecekan otomatis: Jika `#terminalSyncModal` sedang terbuka/aktif, overlay layar penuh otomatis dibatalkan/tidak dimunculkan.
     - Menaikkan z-index `#terminalSyncModal` ke `z-[999995]` dan modal sync massal ke `z-[999991]`.
-    - Menambahkan pemanggilan `hideOverlay()` saat modal terminal streaming dibuka.
+- **Penanganan Permanen Berkas Konfigurasi Orphan / Sisa di Server**:
+  - Berkas sisa dari instalasi Laravel standar seperti `config/octane.php` dan `config/sanctum.php` yang tidak ada di `composer.json` menyebabkan error fatal saat artisan memuat konfigurasi (`LoadConfiguration`).
+  - Menambahkan mekanisme *auto self-cleaning* di [bootstrap/app.php](file:///d:/ASystem/newasystem/bootstrap/app.php) dan [public/index.php](file:///d:/ASystem/newasystem/public/index.php) untuk secara otomatis mendeteksi dan menghapus berkas orphan (`octane.php`, `sanctum.php`, `telescope.php`, `horizon.php`, `pennant.php`, `reverb.php`) jika class dependensinya tidak terpasang.
+  - Menambahkan [config/sanctum.php](file:///d:/ASystem/newasystem/config/sanctum.php) dan [config/octane.php](file:///d:/ASystem/newasystem/config/octane.php) yang berstatus *safe-guard* langsung ke dalam repositori Git agar setiap kali server di-update, berkas tersebut selalu aman dan tidak pernah memicu error.
 
 ---
 
