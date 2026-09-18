@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 18 September 2026*
+*Terakhir diperbarui: 19 September 2026*
 
 ---
 
@@ -341,10 +341,68 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 20. 🎯 Sinkronisasi Evaluasi Nilai CBT & Status Hasil Tes Kandidat di Dashboard Rekruter
+- **Identifikasi Masalah**:
+  - Kandidat yang telah menyelesaikan psikotes DISC dan ujian matematika CBT masih terindikasi silang merah (*belum menyelesaikan tes*) di dashboard rekruter (`/interview` dan `/kandidatportal`).
+- **Solusi & Sinkronisasi Real-Time**:
+  - Memperbarui `CandidateEvaluationDataService` agar mampu mendeteksi hasil tes baik dari tabel modern (`test_results`) maupun tabel warisan (`tb_hasilpsikotes` dan `tb_hasilmath`) secara cascading.
+  - Memastikan pencatatan rekap hasil tes ke kolom `tes_kepribadian` dan `tes_matematika` pada data kandidat saat ujian CBT disubmit.
+  - Menyelaraskan kartu status kelulusan dan rincian skor di seluruh view detail kandidat ([interview/show.blade.php](file:///d:/ASystem/newasystem/resources/views/interview/show.blade.php), [kandidatportal/show.blade.php](file:///d:/ASystem/newasystem/resources/views/kandidatportal/show.blade.php), dan [interviewinhouse/show.blade.php](file:///d:/ASystem/newasystem/resources/views/interviewinhouse/show.blade.php)).
+
+---
+
+### 21. 🛑 Validasi Kriteria Kelulusan Interview, Disable Tab User Prinsiple & Tombol Download Dokumen
+- **Kriteria Pembatasan Kelulusan**:
+  1. **Nilai Tes Matematika**: Minimal kelulusan adalah grade **B** (skor >= 60). Kandidat dengan nilai **C** (skor 40-59) atau **D** (< 40) dinyatakan **Gugur / Tidak Memenuhi Syarat**.
+  2. **Hasil Psikotes DISC untuk Posisi Penjualan / Sales**: Untuk seluruh jabatan yang berkaitan dengan sales (seperti *SPG, SPB, BA, BC, Beauty Advisor, Brand Ambassador, Direct Consultant, Salesman, Merchandiser, SMD, MD, Sales Executive, dll.*), kandidat **tidak boleh** memiliki kepribadian dominan **Melankolis** atau **Plegmatis**.
+- **Penerapan Disable Tab User Prinsiple**:
+  - Tab 7 **User Prinsiple** pada halaman detail kandidat otomatis dalam kondisi **Disabled** jika salah satu kriteria di atas tidak terpenuhi.
+  - Menampilkan kartu peringatan visual bertinta merah/rose dengan teks rekomendasi:  
+    > *"Catatan: Disarankan Mencari Kandidat Baru / Yang Lain."*
+- **Penerapan Disable Tombol Download Document & Proteksi Backend**:
+  - Tombol **Download All Document** di halaman detail kandidat otomatis berubah menjadi **Disabled** dengan indikator gembok / tooltip keterangan penyebab penolakan.
+  - Endpoint `downloadPdf` di backend controller (`InterviewController::downloadPdf`) memproteksi pengunduhan file PDF: jika kandidat tidak memenuhi kriteria, proses unduh dibatalkan dan dialihkan kembali dengan pesan penolakan yang informatif.
+
+---
+
+### 22. ✍️ Isolasi & Personalisasi Tanda Tangan Pewawancara (AS)
+- **Akar Masalah**:
+  - Sebelumnya, file tanda tangan salah satu user AS termuat secara global di kanvas semua kandidat, sehingga tanda tangan tampak identik/nyangkut antar user.
+- **Penyempurnaan Alur Tanda Tangan Mandiri**:
+  - **Tampilan Default Kanvas**: Jika kandidat belum dinilai dan AS kandidat belum memiliki tanda tangan tersimpan, kanvas secara default **tampil bersih/kosong (blank)** dengan badge status `Belum Ada TTD`.
+  - **Prioritas Tanda Tangan AS Kandidat**: Jika AS yang menangani kandidat tersebut sudah memiliki tanda tangan miliknya sendiri, tanda tangan tersebut langsung dimuat otomatis.
+  - **Tombol "Tempel TTD Saya"**: Tersedia tombol khusus bagi user yang sedang login untuk menempelkan tanda tangannya ke kanvas dengan 1 klik.
+  - **Opsi "Gambar TTD Baru" & Reset**: User dapat menggambar tanda tangan baru di kanvas yang akan otomatis mereplace file tanda tangan miliknya sendiri (`signatures/user_{id}.png`) tanpa menumpuk banyak file sampah di storage server.
+  - **Pembersihan File Uji Coba**: Seluruh file tanda tangan dummy uji coba di server production telah dibersihkan sehingga sistem berada dalam kondisi fresh dan siap operasional.
+
+---
+
+### 23. 👥 Pemulihan Master User Prinsiple, Isolasi Data Per Pengguna, & Proteksi Anti-Duplikat Email/No HP
+- **Pengembalian Menu Master User Prinsiple**:
+  - Membuka pembungkus middleware dan blade directive agar menu **Master User Prinsiple** kembali dapat diakses oleh user AS dan rekruter non-admin di sidebar navigasi.
+- **Isolasi Data Per Pengguna (Per User Data Scoping)**:
+  - **Migrasi Skema Database**: Menambahkan kolom `created_by` pada tabel `user_prinsiples` dan tabel warisan `userprinsiple` ([database/migrations/2026_09_18_220000_add_created_by_to_user_prinsiples_table.php](file:///d:/ASystem/newasystem/database/migrations/2026_09_18_220000_add_created_by_to_user_prinsiples_table.php)) serta melakukan backfilling relasi kandidat otomatis.
+  - **Tampilan Data Terisolasi**: User AS non-admin **hanya melihat data Master User Prinsiple yang ditambahkan oleh dirinya sendiri** (`created_by = Auth::id()`). Data master user prinsiple antar-cabang atau antar-rekruter tidak akan tercampur aduk.
+  - **Metrik & Filter**: Ringkasan total user, user aktif, dan cakupan area otomatis terisolasi sesuai data milik user yang sedang aktif.
+  - **Mode Administrator**: Admin tetap dapat melihat seluruh data secara menyeluruh (*all*) maupun menyaring berdasarkan pembuat data (*creator*).
+- **Proteksi Ketat Bebas Duplikat Email & No. HP / WhatsApp**:
+  - **Email**: Divalidasi secara ketat (*case-insensitive*). Jika email sudah terdaftar di sistem, sistem langsung menolak dan menampilkan informasi pemilik email tersebut.
+  - **Nomor HP / WhatsApp**: Dinormalisasi secara kanonikal ke format standar `08xxx`. Variasi input internasional `+628xxx`, `628xxx`, spasi, tanda hubung, dan tanda kurung dideteksi secara akurat. Jika nomor sudah digunakan, sistem langsung menolak proses simpan.
+  - **User Experience**: Penanda `Bebas Duplikat` ditampilkan pada modal, dan form modal otomatis terbuka kembali saat terjadi kegagalan validasi tanpa menghapus data yang sudah diketik pengguna.
+  - **Sinkronisasi Ganda (Double-Sync)**: Setiap penambahan, pembaruan, dan penghapusan data secara otomatis disinkronkan ke tabel warisan `userprinsiple` guna menjamin konsistensi query legacy.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `df8789e` | Kembalikan Master User Prinsiple untuk AS, isolasi data per user, dan cegah duplikat email/no hp |
+| `a9cc8c4` | fix: Fix JS variable name mySavedSigUrl in interview.show |
+| `319b784` | fix: Perbaiki default tanda tangan: tampilkan TTD AS sendiri jika ada, atau kosong jika belum ada TTD |
+| `7ce93a0` | feat: Disable tombol Download Document jika tidak memenuhi kriteria dan perbaiki tanda tangan per masing-masing user AS |
+| `786ddda` | feat: Disable Tab 7 User Prinsiple jika nilai matematika C atau psikotes Melankolis/Plegmatis untuk sales |
+| `d690a61` | fix: sinkronisasi evaluasi hasil psikotes dan matematika kandidat di dashboard rekruter |
 | `ba06d43` | feat(deploy): add automated deploy.sh script for one-click server deployment |
 | `b1b9cf9` | fix: dynamic AS name and signature in PDF, auto-preload saved AS signature |
 | `949994a` | fix: auto-cleanup legacy filament provider in fix_cache |
