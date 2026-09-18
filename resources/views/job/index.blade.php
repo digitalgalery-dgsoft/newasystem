@@ -79,34 +79,244 @@
                 <input type="text" name="search" value="{{ $search }}" placeholder="Cari posisi, skill, atau kata kunci..." class="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
             </div>
 
-            <!-- Jabatan Filter -->
-            <div class="lg:col-span-3">
-                <select name="job" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
-                    <option value="">Semua Jabatan</option>
-                    @foreach($distinctJobs as $jab)
-                        <option value="{{ $jab }}" {{ $selectedJob == $jab ? 'selected' : '' }}>{{ $jab }}</option>
-                    @endforeach
-                </select>
+            <!-- Jabatan Filter (Searchable Dropdown) -->
+            <div class="lg:col-span-3" x-data="searchableSelect({
+                name: 'job',
+                placeholder: 'Semua Jabatan',
+                searchPlaceholder: 'Ketik cari jabatan...',
+                selected: '{{ addslashes($selectedJob ?? '') }}',
+                options: {{ json_encode(array_values($distinctJobs)) }}
+            })">
+                <input type="hidden" :name="name" :value="selectedValue">
+                <div class="relative" @click.outside="open = false">
+                    <button type="button" 
+                            @click="toggle()" 
+                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all flex items-center justify-between text-left gap-1 cursor-pointer">
+                        <span class="truncate" :class="selectedValue ? 'font-bold text-slate-900' : 'text-slate-500'" x-text="displayLabel"></span>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <span x-show="selectedValue" @click="clear($event)" class="text-slate-400 hover:text-rose-500 p-0.5 rounded transition" title="Hapus pilihan">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                        </div>
+                    </button>
+
+                    <!-- Dropdown Search Menu -->
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 translate-y-1"
+                         class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden min-w-[240px]" 
+                         style="display: none;">
+                        
+                        <!-- Search Box in Dropdown -->
+                        <div class="p-2 border-b border-slate-100 bg-slate-50/70">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                                </div>
+                                <input type="text" 
+                                       x-ref="searchInput" 
+                                       x-model="searchQuery" 
+                                       @keydown.escape="open = false" 
+                                       :placeholder="searchPlaceholder" 
+                                       class="w-full pl-7 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+                                <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Options List -->
+                        <div class="max-h-56 overflow-y-auto p-1 text-xs space-y-0.5">
+                            <button type="button" 
+                                    @click="select('')" 
+                                    class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between font-medium cursor-pointer"
+                                    :class="!selectedValue ? 'bg-primary-50 text-primary font-bold' : 'text-slate-600 hover:bg-slate-50'">
+                                <span>Semua Jabatan</span>
+                                <i x-show="!selectedValue" class="fa-solid fa-check text-[10px] text-primary"></i>
+                            </button>
+                            
+                            <template x-for="item in filteredOptions" :key="item">
+                                <button type="button" 
+                                        @click="select(item)" 
+                                        class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between text-xs cursor-pointer"
+                                        :class="selectedValue === item ? 'bg-primary/10 text-primary font-bold' : 'text-slate-700 hover:bg-slate-100'">
+                                    <span class="truncate" x-text="item"></span>
+                                    <i x-show="selectedValue === item" class="fa-solid fa-check text-[10px] text-primary shrink-0 ml-1"></i>
+                                </button>
+                            </template>
+
+                            <div x-show="filteredOptions.length === 0" class="py-4 text-center text-slate-400 text-xs">
+                                <i class="fa-solid fa-inbox text-sm mb-1 block opacity-60"></i>
+                                <span>Tidak ada jabatan cocok</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Area Filter -->
-            <div class="lg:col-span-2">
-                <select name="area" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
-                    <option value="">Semua Area</option>
-                    @foreach($distinctAreas as $ar)
-                        <option value="{{ $ar }}" {{ $selectedArea == $ar ? 'selected' : '' }}>{{ $ar }}</option>
-                    @endforeach
-                </select>
+            <!-- Area Filter (Searchable Dropdown) -->
+            <div class="lg:col-span-2" x-data="searchableSelect({
+                name: 'area',
+                placeholder: 'Semua Area',
+                searchPlaceholder: 'Ketik cari area...',
+                selected: '{{ addslashes($selectedArea ?? '') }}',
+                options: {{ json_encode(array_values($distinctAreas)) }}
+            })">
+                <input type="hidden" :name="name" :value="selectedValue">
+                <div class="relative" @click.outside="open = false">
+                    <button type="button" 
+                            @click="toggle()" 
+                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all flex items-center justify-between text-left gap-1 cursor-pointer">
+                        <span class="truncate" :class="selectedValue ? 'font-bold text-slate-900' : 'text-slate-500'" x-text="displayLabel"></span>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <span x-show="selectedValue" @click="clear($event)" class="text-slate-400 hover:text-rose-500 p-0.5 rounded transition" title="Hapus pilihan">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                        </div>
+                    </button>
+
+                    <!-- Dropdown Search Menu -->
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 translate-y-1"
+                         class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden min-w-[220px]" 
+                         style="display: none;">
+                        
+                        <!-- Search Box in Dropdown -->
+                        <div class="p-2 border-b border-slate-100 bg-slate-50/70">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                                </div>
+                                <input type="text" 
+                                       x-ref="searchInput" 
+                                       x-model="searchQuery" 
+                                       @keydown.escape="open = false" 
+                                       :placeholder="searchPlaceholder" 
+                                       class="w-full pl-7 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+                                <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Options List -->
+                        <div class="max-h-56 overflow-y-auto p-1 text-xs space-y-0.5">
+                            <button type="button" 
+                                    @click="select('')" 
+                                    class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between font-medium cursor-pointer"
+                                    :class="!selectedValue ? 'bg-primary-50 text-primary font-bold' : 'text-slate-600 hover:bg-slate-50'">
+                                <span>Semua Area</span>
+                                <i x-show="!selectedValue" class="fa-solid fa-check text-[10px] text-primary"></i>
+                            </button>
+                            
+                            <template x-for="item in filteredOptions" :key="item">
+                                <button type="button" 
+                                        @click="select(item)" 
+                                        class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between text-xs cursor-pointer"
+                                        :class="selectedValue === item ? 'bg-primary/10 text-primary font-bold' : 'text-slate-700 hover:bg-slate-100'">
+                                    <span class="truncate" x-text="item"></span>
+                                    <i x-show="selectedValue === item" class="fa-solid fa-check text-[10px] text-primary shrink-0 ml-1"></i>
+                                </button>
+                            </template>
+
+                            <div x-show="filteredOptions.length === 0" class="py-4 text-center text-slate-400 text-xs">
+                                <i class="fa-solid fa-inbox text-sm mb-1 block opacity-60"></i>
+                                <span>Tidak ada area cocok</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <!-- Kota Filter -->
-            <div class="lg:col-span-2">
-                <select name="city" class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
-                    <option value="">Semua Kota</option>
-                    @foreach($distinctCities as $cty)
-                        <option value="{{ $cty }}" {{ $selectedCity == $cty ? 'selected' : '' }}>{{ $cty }}</option>
-                    @endforeach
-                </select>
+            <!-- Kota Filter (Searchable Dropdown) -->
+            <div class="lg:col-span-2" x-data="searchableSelect({
+                name: 'city',
+                placeholder: 'Semua Kota',
+                searchPlaceholder: 'Ketik cari kota...',
+                selected: '{{ addslashes($selectedCity ?? '') }}',
+                options: {{ json_encode(array_values($distinctCities)) }}
+            })">
+                <input type="hidden" :name="name" :value="selectedValue">
+                <div class="relative" @click.outside="open = false">
+                    <button type="button" 
+                            @click="toggle()" 
+                            class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all flex items-center justify-between text-left gap-1 cursor-pointer">
+                        <span class="truncate" :class="selectedValue ? 'font-bold text-slate-900' : 'text-slate-500'" x-text="displayLabel"></span>
+                        <div class="flex items-center gap-1 shrink-0">
+                            <span x-show="selectedValue" @click="clear($event)" class="text-slate-400 hover:text-rose-500 p-0.5 rounded transition" title="Hapus pilihan">
+                                <i class="fa-solid fa-xmark text-[10px]"></i>
+                            </span>
+                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                        </div>
+                    </button>
+
+                    <!-- Dropdown Search Menu -->
+                    <div x-show="open" 
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 translate-y-1"
+                         x-transition:enter-end="opacity-100 translate-y-0"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 translate-y-0"
+                         x-transition:leave-end="opacity-0 translate-y-1"
+                         class="absolute left-0 right-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden min-w-[220px]" 
+                         style="display: none;">
+                        
+                        <!-- Search Box in Dropdown -->
+                        <div class="p-2 border-b border-slate-100 bg-slate-50/70">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                                </div>
+                                <input type="text" 
+                                       x-ref="searchInput" 
+                                       x-model="searchQuery" 
+                                       @keydown.escape="open = false" 
+                                       :placeholder="searchPlaceholder" 
+                                       class="w-full pl-7 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+                                <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Options List -->
+                        <div class="max-h-56 overflow-y-auto p-1 text-xs space-y-0.5">
+                            <button type="button" 
+                                    @click="select('')" 
+                                    class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between font-medium cursor-pointer"
+                                    :class="!selectedValue ? 'bg-primary-50 text-primary font-bold' : 'text-slate-600 hover:bg-slate-50'">
+                                <span>Semua Kota</span>
+                                <i x-show="!selectedValue" class="fa-solid fa-check text-[10px] text-primary"></i>
+                            </button>
+                            
+                            <template x-for="item in filteredOptions" :key="item">
+                                <button type="button" 
+                                        @click="select(item)" 
+                                        class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between text-xs cursor-pointer"
+                                        :class="selectedValue === item ? 'bg-primary/10 text-primary font-bold' : 'text-slate-700 hover:bg-slate-100'">
+                                    <span class="truncate" x-text="item"></span>
+                                    <i x-show="selectedValue === item" class="fa-solid fa-check text-[10px] text-primary shrink-0 ml-1"></i>
+                                </button>
+                            </template>
+
+                            <div x-show="filteredOptions.length === 0" class="py-4 text-center text-slate-400 text-xs">
+                                <i class="fa-solid fa-inbox text-sm mb-1 block opacity-60"></i>
+                                <span>Tidak ada kota cocok</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Submit Button -->
@@ -263,4 +473,58 @@
         </div>
     @endif
 </div>
+@endsection
+
+@section('scripts')
+<script>
+    function searchableSelect(config) {
+        return {
+            open: false,
+            name: config.name,
+            placeholder: config.placeholder,
+            searchPlaceholder: config.searchPlaceholder || 'Ketik untuk mencari...',
+            selectedValue: config.selected || '',
+            searchQuery: '',
+            options: config.options || [],
+
+            get displayLabel() {
+                if (!this.selectedValue) return this.placeholder;
+                return this.selectedValue;
+            },
+
+            get filteredOptions() {
+                if (!this.searchQuery || !this.searchQuery.trim()) {
+                    return this.options;
+                }
+                const q = this.searchQuery.toLowerCase();
+                return this.options.filter(opt => (opt + '').toLowerCase().includes(q));
+            },
+
+            toggle() {
+                this.open = !this.open;
+                if (this.open) {
+                    this.searchQuery = '';
+                    this.$nextTick(() => {
+                        if (this.$refs.searchInput) {
+                            this.$refs.searchInput.focus();
+                        }
+                    });
+                }
+            },
+
+            select(val) {
+                this.selectedValue = val;
+                this.open = false;
+                this.searchQuery = '';
+            },
+
+            clear(e) {
+                if (e) e.stopPropagation();
+                this.selectedValue = '';
+                this.searchQuery = '';
+                this.open = false;
+            }
+        }
+    }
+</script>
 @endsection

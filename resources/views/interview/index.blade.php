@@ -42,10 +42,10 @@
             </a>
 
             <!-- 3. Import Data Button -->
-            <a href="{{ url('/importcalontest') }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-primary border border-blue-200 text-xs font-bold transition-all shadow-sm">
+            <button onclick="openImportCandidateModal()" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-primary border border-blue-200 text-xs font-bold transition-all shadow-sm cursor-pointer">
                 <i class="fa-solid fa-cloud-arrow-up text-primary"></i>
                 <span>Import Data</span>
-            </a>
+            </button>
 
             <!-- 4. Export Data Button -->
             <a href="{{ route('interview.export') }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all shadow-sm">
@@ -606,6 +606,186 @@
     </div>
 </div>
 
+<!-- ============================================================== -->
+<!-- MODAL UPLOAD EXCEL KANDIDAT INTERVIEW -->
+<!-- ============================================================== -->
+<div id="modalImportCandidate" class="fixed inset-0 z-[999990] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all">
+        <!-- Modal Header -->
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-blue-50/50 via-white to-indigo-50/30">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-100 text-primary flex items-center justify-center text-lg font-bold">
+                    <i class="fa-solid fa-file-excel"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Import Kandidat Walkin</h3>
+                    <p class="text-xs text-slate-500">Unggah file Excel format Odoo hr.applicant.xlsx</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeImportCandidateModal()" class="w-8 h-8 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-5 space-y-4">
+            <!-- Info Alert -->
+            <div class="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200 text-xs text-blue-900 space-y-1.5">
+                <div class="flex items-center gap-2 font-bold text-blue-950">
+                    <i class="fa-solid fa-circle-info text-primary"></i>
+                    <span>Ketentuan Format Template</span>
+                </div>
+                <p class="text-[11px] leading-relaxed text-blue-800">
+                    Template import mengacu pada file <span class="font-bold">hr.applicant.xlsx</span> (31 kolom). Jika NIK sudah terdaftar sebelumnya, data lama otomatis diarsipkan dan data baru dibuat dengan status aktif.
+                </p>
+            </div>
+
+            <!-- Download Template Button -->
+            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+                <div class="flex items-center gap-2.5">
+                    <i class="fa-solid fa-download text-slate-400 text-sm"></i>
+                    <div>
+                        <div class="text-xs font-bold text-slate-800">Belum punya template?</div>
+                        <div class="text-[10px] text-slate-400">Unduh format template resmi</div>
+                    </div>
+                </div>
+                <a href="{{ route('interview.import.template') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:border-primary hover:text-primary text-xs font-bold text-slate-700 transition shadow-xs">
+                    <i class="fa-solid fa-file-arrow-down text-emerald-600"></i>
+                    <span>Unduh hr.applicant.xlsx</span>
+                </a>
+            </div>
+
+            <!-- File Upload Dropzone -->
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">Pilih File Excel (.xlsx)</label>
+                <div id="dropzoneImport" onclick="document.getElementById('fileExcelImport').click()" class="border-2 border-dashed border-slate-300 hover:border-primary/60 rounded-2xl p-6 text-center cursor-pointer bg-slate-50/50 hover:bg-blue-50/30 transition group">
+                    <input type="file" id="fileExcelImport" accept=".xlsx" class="hidden" onchange="handleFileSelected(this)">
+                    <div class="w-12 h-12 rounded-2xl bg-white shadow-sm border border-slate-200 flex items-center justify-center text-primary text-xl mx-auto mb-2.5 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-cloud-arrow-up text-primary"></i>
+                    </div>
+                    <div id="dropzoneText" class="space-y-1">
+                        <div class="text-xs font-bold text-slate-800">Klik untuk memilih file atau drag & drop</div>
+                        <div class="text-[11px] text-slate-400">Format yang didukung: <b>.xlsx</b> (Maksimal 30 MB)</div>
+                    </div>
+                    <div id="selectedFileInfo" class="hidden mt-2 p-2.5 rounded-xl bg-white border border-emerald-200 text-emerald-800 text-xs font-bold inline-flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-emerald-500"></i>
+                        <span id="selectedFileName">file.xlsx</span>
+                        <span id="selectedFileSize" class="text-[10px] font-normal text-slate-400"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer -->
+        <div class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <button type="button" onclick="closeImportCandidateModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition">
+                Batal
+            </button>
+            <button type="button" id="btnStartImport" onclick="submitImportFile()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold shadow-md shadow-primary/20 transition hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed">
+                <i class="fa-solid fa-terminal"></i>
+                <span>Mulai Import (Terminal Live)</span>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- TERMINAL CONSOLE MODAL (LIVE STREAMING IMPORT ENGINE) -->
+<!-- ============================================================== -->
+<div id="terminalImportModal" class="fixed inset-0 z-[999995] flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md hidden transition-all duration-300">
+    <div class="bg-[#0a0e14] border border-slate-700/80 rounded-2xl w-full max-w-4xl shadow-2xl overflow-hidden flex flex-col transition-all duration-300">
+        <!-- Terminal Titlebar (macOS Style) -->
+        <div class="px-4 py-3 bg-[#161b22] border-b border-slate-800 flex items-center justify-between shrink-0 select-none">
+            <div class="flex items-center gap-2">
+                <button type="button" onclick="closeTerminalImportModal()" class="w-3.5 h-3.5 rounded-full bg-rose-500 hover:bg-rose-600 transition shadow-xs flex items-center justify-center text-[9px] text-rose-950 font-black group" title="Tutup / Hentikan">
+                    <span class="opacity-0 group-hover:opacity-100">✕</span>
+                </button>
+                <button type="button" onclick="clearTerminalImportLogs()" class="w-3.5 h-3.5 rounded-full bg-amber-400 hover:bg-amber-500 transition shadow-xs flex items-center justify-center text-[9px] text-amber-950 font-black group" title="Bersihkan Layar">
+                    <span class="opacity-0 group-hover:opacity-100">−</span>
+                </button>
+                <button type="button" onclick="toggleTerminalImportFullscreen()" class="w-3.5 h-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 transition shadow-xs flex items-center justify-center text-[9px] text-emerald-950 font-black group" title="Layar Penuh">
+                    <span class="opacity-0 group-hover:opacity-100">⤢</span>
+                </button>
+                <div class="h-4 w-[1px] bg-slate-700 mx-1.5"></div>
+                <div class="flex items-center gap-2 text-xs font-mono text-slate-300 font-semibold">
+                    <i class="fa-solid fa-terminal text-emerald-400"></i>
+                    <span id="terminalImportTitle">ASystem HR Terminal - Import Kandidat Walkin</span>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <span id="terminalImportStatusBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span id="terminalImportStatusText">STREAMING ACTIVE</span>
+                </span>
+                <button type="button" onclick="copyTerminalImportLogs()" class="text-[11px] font-mono px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition" title="Salin Seluruh Log">
+                    <i class="fa-regular fa-copy"></i>
+                </button>
+                <button type="button" onclick="closeTerminalImportModal()" class="text-slate-400 hover:text-white transition p-1">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Terminal Live Metrics Bar -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 p-3 bg-[#0d1117] border-b border-slate-800 text-slate-300 font-mono text-xs">
+            <div class="bg-slate-900/80 border border-slate-800 rounded-lg p-2 flex items-center justify-between">
+                <span class="text-slate-400 text-[11px]">Total Baris:</span>
+                <span id="termMetricTotal" class="font-bold text-white text-sm">0</span>
+            </div>
+            <div class="bg-emerald-950/30 border border-emerald-800/40 rounded-lg p-2 flex items-center justify-between">
+                <span class="text-emerald-400 text-[11px]">Sukses:</span>
+                <span id="termMetricSuccess" class="font-bold text-emerald-300 text-sm">0</span>
+            </div>
+            <div class="bg-rose-950/30 border border-rose-800/40 rounded-lg p-2 flex items-center justify-between">
+                <span class="text-rose-400 text-[11px]">Gagal / Skip:</span>
+                <span id="termMetricFailed" class="font-bold text-rose-300 text-sm">0</span>
+            </div>
+            <div class="bg-amber-950/30 border border-amber-800/40 rounded-lg p-2 flex items-center justify-between">
+                <span class="text-amber-400 text-[11px]">Pengalaman:</span>
+                <span id="termMetricExp" class="font-bold text-amber-300 text-sm">0</span>
+            </div>
+        </div>
+
+        <!-- Terminal Console Logs Body -->
+        <div id="terminalImportConsoleBody" class="flex-1 min-h-[380px] max-h-[480px] overflow-y-auto p-4 font-mono text-[11px] sm:text-xs text-slate-200 bg-[#0a0e14] leading-relaxed select-text space-y-1">
+            <div class="text-slate-500 pb-2 border-b border-slate-800/80 text-[10px] flex items-center justify-between">
+                <span>[ASYSTEM IMPORT ENGINE v3.5 - ARCHIVE EXISTING & WALKIN ENROLLMENT]</span>
+                <span id="termImportClock">00:00:00</span>
+            </div>
+            <div id="terminalImportLogList" class="space-y-0.5 pt-2">
+                <!-- Log items rendered dynamically here -->
+            </div>
+            <!-- Blinking Terminal Prompt -->
+            <div id="termImportPromptLine" class="flex items-center gap-1.5 text-emerald-400 pt-1 text-[11px]">
+                <span class="text-sky-400">admin@asystem</span>:<span class="text-amber-400">~/interview-import</span>$
+                <span class="inline-block w-2 h-3.5 bg-emerald-400 animate-pulse ml-0.5"></span>
+            </div>
+        </div>
+
+        <!-- Terminal Footer Controls -->
+        <div class="px-4 py-3 bg-[#161b22] border-t border-slate-800 flex items-center justify-between shrink-0">
+            <div class="text-[11px] font-mono text-slate-400 flex items-center gap-2">
+                <i class="fa-solid fa-circle-nodes text-emerald-400"></i>
+                <span id="terminalImportFooterNote">Proses import sedang berjalan...</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <button type="button" id="btnAbortImport" onclick="abortTerminalImport()" class="px-3 py-1.5 rounded-lg font-bold text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-stop text-[10px]"></i>
+                    <span>Hentikan</span>
+                </button>
+                <button type="button" id="btnRefreshAfterImport" onclick="finishAndRefresh()" class="hidden px-4 py-1.5 rounded-lg font-bold text-xs bg-emerald-600 hover:bg-emerald-500 text-white shadow-md transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-rotate-right"></i>
+                    <span>Selesai & Refresh Halaman</span>
+                </button>
+                <button type="button" onclick="closeTerminalImportModal()" class="btn-att-primary text-xs px-4 py-1.5">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @endsection
 
 @section('scripts')
@@ -635,10 +815,360 @@
         document.getElementById('editPrincipleModal').classList.add('hidden');
     }
 
+    // ==============================================================
+    // IMPORT KANDIDAT WALKIN WITH LIVE TERMINAL ENGINE
+    // ==============================================================
+    let currentEventSource = null;
+    let importTotalCount = 0;
+    let importSuccessCount = 0;
+    let importFailedCount = 0;
+    let importExpCount = 0;
+
+    function openImportCandidateModal() {
+        document.getElementById('modalImportCandidate').classList.remove('hidden');
+    }
+
+    function closeImportCandidateModal() {
+        document.getElementById('modalImportCandidate').classList.add('hidden');
+    }
+
+    function handleFileSelected(input) {
+        if (!input.files || input.files.length === 0) return;
+        const file = input.files[0];
+        document.getElementById('selectedFileName').textContent = file.name;
+        document.getElementById('selectedFileSize').textContent = `(${(file.size / 1024).toFixed(1)} KB)`;
+        document.getElementById('selectedFileInfo').classList.remove('hidden');
+        document.getElementById('dropzoneText').classList.add('hidden');
+    }
+
+    // Drag & drop dropzone handlers
+    const dropzone = document.getElementById('dropzoneImport');
+    if (dropzone) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.add('border-primary', 'bg-blue-50/50');
+            }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropzone.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dropzone.classList.remove('border-primary', 'bg-blue-50/50');
+            }, false);
+        });
+        dropzone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                const fileInput = document.getElementById('fileExcelImport');
+                fileInput.files = files;
+                handleFileSelected(fileInput);
+            }
+        });
+    }
+
+    async function submitImportFile() {
+        const fileInput = document.getElementById('fileExcelImport');
+        if (!fileInput.files || fileInput.files.length === 0) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Pilih File Terlebih Dahulu',
+                text: 'Silakan pilih file Excel (.xlsx) sebelum memulai proses import.',
+            });
+            return;
+        }
+
+        const file = fileInput.files[0];
+        if (!file.name.toLowerCase().endsWith('.xlsx')) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Format File Tidak Didukung',
+                text: 'Hanya file format .xlsx yang diperbolehkan.',
+            });
+            return;
+        }
+
+        const btn = document.getElementById('btnStartImport');
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i><span>Mengunggah File...</span>`;
+
+        const formData = new FormData();
+        formData.append('excel_file', file);
+        formData.append('_token', '{{ csrf_token() }}');
+
+        try {
+            const resp = await fetch("{{ route('interview.import.upload') }}", {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                }
+            });
+
+            const data = await resp.json();
+
+            if (!resp.ok || !data.success) {
+                throw new Error(data.message || 'Gagal mengunggah file.');
+            }
+
+            // Tutup modal upload, buka terminal modal
+            closeImportCandidateModal();
+            openTerminalImportModal(file.name);
+
+            // Sambungkan ke Live SSE Stream
+            startTerminalStream(data.stream_url);
+
+        } catch (err) {
+            Swal.fire({
+                icon: 'error',
+                title: 'Gagal Upload',
+                text: err.message || 'Terjadi kesalahan saat mengunggah file.',
+            });
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = `<i class="fa-solid fa-terminal"></i><span>Mulai Import (Terminal Live)</span>`;
+        }
+    }
+
+    function openTerminalImportModal(fileName) {
+        importTotalCount = 0;
+        importSuccessCount = 0;
+        importFailedCount = 0;
+        importExpCount = 0;
+        updateTerminalImportMetrics();
+
+        document.getElementById('terminalImportTitle').textContent = `ASystem HR Terminal - ${fileName}`;
+        document.getElementById('terminalImportLogList').innerHTML = '';
+        document.getElementById('terminalImportStatusBadge').className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30';
+        document.getElementById('terminalImportStatusText').textContent = 'STREAMING ACTIVE';
+        document.getElementById('terminalImportFooterNote').textContent = 'Mempersiapkan proses import stream...';
+        document.getElementById('btnAbortImport').classList.remove('hidden');
+        document.getElementById('btnRefreshAfterImport').classList.add('hidden');
+
+        document.getElementById('terminalImportModal').classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    }
+
+    function closeTerminalImportModal() {
+        if (currentEventSource) {
+            if (!confirm('Proses import sedang berjalan. Yakin ingin menutup terminal dan membatalkan pemantauan?')) {
+                return;
+            }
+            abortTerminalImport();
+        }
+        document.getElementById('terminalImportModal').classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    }
+
+    function clearTerminalImportLogs() {
+        document.getElementById('terminalImportLogList').innerHTML = '';
+    }
+
+    function toggleTerminalImportFullscreen() {
+        const modalWin = document.querySelector('#terminalImportModal > div');
+        if (modalWin.classList.contains('max-w-4xl')) {
+            modalWin.classList.remove('max-w-4xl');
+            modalWin.classList.add('max-w-[98vw]', 'h-[96vh]');
+            document.getElementById('terminalImportConsoleBody').classList.remove('max-h-[480px]');
+            document.getElementById('terminalImportConsoleBody').classList.add('max-h-[calc(96vh-180px)]');
+        } else {
+            modalWin.classList.add('max-w-4xl');
+            modalWin.classList.remove('max-w-[98vw]', 'h-[96vh]');
+            document.getElementById('terminalImportConsoleBody').classList.add('max-h-[480px]');
+            document.getElementById('terminalImportConsoleBody').classList.remove('max-h-[calc(96vh-180px)]');
+        }
+    }
+
+    function copyTerminalImportLogs() {
+        const container = document.getElementById('terminalImportLogList');
+        navigator.clipboard.writeText(container.innerText).then(() => {
+            Swal.fire({
+                icon: 'success',
+                title: 'Tersalin',
+                text: 'Seluruh log terminal berhasil disalin ke clipboard!',
+                timer: 1500,
+                showConfirmButton: false,
+            });
+        });
+    }
+
+    function updateTerminalImportMetrics() {
+        document.getElementById('termMetricTotal').textContent = importTotalCount;
+        document.getElementById('termMetricSuccess').textContent = importSuccessCount;
+        document.getElementById('termMetricFailed').textContent = importFailedCount;
+        document.getElementById('termMetricExp').textContent = importExpCount;
+    }
+
+    function appendTerminalLog(payload) {
+        const list = document.getElementById('terminalImportLogList');
+        const line = document.createElement('div');
+        line.className = 'flex items-start gap-2 py-0.5 leading-snug';
+
+        const timeSpan = `<span class="text-slate-500 shrink-0 select-none">[${payload.time || new Date().toLocaleTimeString('id-ID')}]</span>`;
+        let badge = '';
+        let msgColor = 'text-slate-200';
+
+        switch (payload.type) {
+            case 'init':
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">INIT</span>`;
+                msgColor = 'text-sky-300 font-semibold';
+                break;
+            case 'info':
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-500/30">INFO</span>`;
+                msgColor = 'text-slate-300';
+                break;
+            case 'success':
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">SUCCESS</span>`;
+                msgColor = 'text-emerald-300';
+                importSuccessCount++;
+                break;
+            case 'archive':
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">ARCHIVE</span>`;
+                msgColor = 'text-purple-200';
+                break;
+            case 'experience':
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">WORK-EXP</span>`;
+                msgColor = 'text-amber-200';
+                importExpCount++;
+                break;
+            case 'warning':
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">WARN</span>`;
+                msgColor = 'text-amber-300';
+                break;
+            case 'error':
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">FAILED</span>`;
+                msgColor = 'text-rose-400 font-semibold';
+                importFailedCount++;
+                break;
+            case 'complete':
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-emerald-500/30 text-emerald-300 border border-emerald-400">DONE</span>`;
+                msgColor = 'text-emerald-200 font-bold';
+                break;
+            default:
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-slate-700 text-slate-300">LOG</span>`;
+        }
+
+        if (payload.meta && payload.meta.total_rows) {
+            importTotalCount = payload.meta.total_rows;
+        }
+
+        updateTerminalImportMetrics();
+
+        line.innerHTML = `${timeSpan} ${badge} <span class="${msgColor}">${payload.message}</span>`;
+        list.appendChild(line);
+
+        // Auto-scroll ke bawah
+        const body = document.getElementById('terminalImportConsoleBody');
+        body.scrollTop = body.scrollHeight;
+    }
+
+    function startTerminalStream(streamUrl) {
+        if (currentEventSource) {
+            currentEventSource.close();
+        }
+
+        currentEventSource = new EventSource(streamUrl);
+
+        currentEventSource.onmessage = function(e) {
+            try {
+                const payload = JSON.parse(e.data);
+                appendTerminalLog(payload);
+
+                if (payload.type === 'complete') {
+                    finishTerminalImport(payload);
+                }
+            } catch (err) {
+                console.error("Gagal parse SSE payload:", err, e.data);
+            }
+        };
+
+        currentEventSource.onerror = function(err) {
+            console.warn("EventSource stream terputus:", err);
+            appendTerminalLog({
+                type: 'info',
+                message: 'Koneksi stream ditutup oleh server (proses tuntas).',
+            });
+            if (currentEventSource) {
+                currentEventSource.close();
+                currentEventSource = null;
+            }
+            document.getElementById('terminalImportStatusBadge').className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-slate-700 text-slate-300';
+            document.getElementById('terminalImportStatusText').textContent = 'SELESAI';
+            document.getElementById('terminalImportFooterNote').textContent = 'Import selesai diproses.';
+            document.getElementById('btnAbortImport').classList.add('hidden');
+            document.getElementById('btnRefreshAfterImport').classList.remove('hidden');
+        };
+    }
+
+    function finishTerminalImport(payload) {
+        if (currentEventSource) {
+            currentEventSource.close();
+            currentEventSource = null;
+        }
+
+        document.getElementById('terminalImportStatusBadge').className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+        document.getElementById('terminalImportStatusText').textContent = 'SELESAI';
+        document.getElementById('terminalImportFooterNote').textContent = 'Import telah selesai diproses sepenuhnya.';
+        document.getElementById('btnAbortImport').classList.add('hidden');
+        document.getElementById('btnRefreshAfterImport').classList.remove('hidden');
+
+        Swal.fire({
+            icon: importFailedCount > 0 ? 'warning' : 'success',
+            title: 'Import Selesai',
+            html: `<div style="text-align: left; font-size: 13px;">
+                Sukses Diimport: <b>${importSuccessCount} kandidat</b><br>
+                Gagal / Skip: <b>${importFailedCount} baris</b><br>
+                Pengalaman Ditambahkan: <b>${importExpCount}</b>
+            </div>`,
+            confirmButtonText: 'Refresh Data',
+        }).then((result) => {
+            if (result.isConfirmed) {
+                finishAndRefresh();
+            }
+        });
+    }
+
+    function abortTerminalImport() {
+        if (currentEventSource) {
+            currentEventSource.close();
+            currentEventSource = null;
+        }
+        appendTerminalLog({
+            type: 'warning',
+            message: 'Proses import dibatalkan oleh pengguna.',
+        });
+        document.getElementById('terminalImportStatusBadge').className = 'inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold bg-rose-500/20 text-rose-300';
+        document.getElementById('terminalImportStatusText').textContent = 'DIBATALKAN';
+        document.getElementById('btnAbortImport').classList.add('hidden');
+    }
+
+    function finishAndRefresh() {
+        window.location.href = "{{ route('interview.index') }}";
+    }
+
+    // Auto open modal jika URL mengandung ?open_import=1
+    document.addEventListener('DOMContentLoaded', function() {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('open_import') === '1') {
+            openImportCandidateModal();
+        }
+
+        // Live clock di console
+        setInterval(() => {
+            const clockEl = document.getElementById('termImportClock');
+            if (clockEl) {
+                clockEl.textContent = new Date().toLocaleTimeString('id-ID');
+            }
+        }, 1000);
+    });
+
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
             closeTutorialModal();
             closeEditPrincipleModal();
+            closeImportCandidateModal();
         }
     });
 </script>

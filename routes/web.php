@@ -15,6 +15,7 @@ use App\Http\Controllers\AiRankingController;
 use App\Http\Controllers\AiSettingController;
 use App\Http\Controllers\PublicJobController;
 use App\Http\Controllers\CbtController;
+use App\Http\Controllers\CandidateImportController;
 
 // ==========================================
 // HALAMAN AWAL WEB & LANDING PAGE (v3/index.php)
@@ -76,6 +77,13 @@ Route::post('/interview/{id}/alihkan', [InterviewController::class, 'alihkanAS']
 Route::get('/walkinterview', [InterviewController::class, 'walkInterview'])->name('interview.walk');
 Route::get('/interviewdone', [InterviewController::class, 'done'])->name('interview.done');
 Route::get('/interviewarsip', [InterviewController::class, 'arsip'])->name('interview.arsip');
+
+// Fitur Import Kandidat Walkin (Live Terminal Streaming)
+Route::get('/interview/import/template', [CandidateImportController::class, 'downloadTemplate'])->name('interview.import.template');
+Route::post('/interview/import/upload', [CandidateImportController::class, 'upload'])->name('interview.import.upload');
+Route::get('/interview/import/stream', [CandidateImportController::class, 'stream'])->name('interview.import.stream');
+Route::get('/importcalontest', fn() => redirect()->route('interview.index', ['open_import' => 1]));
+Route::get('/importkandidatint.php', fn() => redirect()->route('interview.index', ['open_import' => 1]));
 
 // Export Route
 Route::get('/export/interview', function () {
