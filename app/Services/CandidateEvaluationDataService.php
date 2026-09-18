@@ -205,6 +205,32 @@ class CandidateEvaluationDataService
         $komptPercentage = count($compSkills) > 0 ? round((($baikCount + ($cukupCount * 0.5)) / count($compSkills)) * 100) : 75;
         $komptSummaryLabel = ($komptPercentage >= 80) ? 'Baik (' . $komptPercentage . '%)' : (($komptPercentage >= 60) ? 'Cukup (' . $komptPercentage . '%)' : 'Kurang (' . $komptPercentage . '%)');
 
+        // 4. Validasi Kelayakan Tab User Prinsiple
+        $job = trim($candidate->applied_job ?? $candidate->position ?? '');
+        $isSalesRelated = (bool) preg_match('/\b(spg|spb|dc|sales|salest promotion girl|sales promotion girl|sales promotion boy|ba|beauty advisor|bc|beauty consultant|dulux consultant|promotor|promoter|canvasser|md|smd|merchandiser)\b/i', $job);
+
+        $dominantType = strtolower($dominantDisc['type'] ?? '');
+        $isMelankolisOrPlegmatis = in_array($dominantType, ['melankolis', 'plegmatis', 'pragmatis']);
+        $psikotestNama = ($dominantType === 'melankolis') ? 'Melankolis' : (($dominantType === 'plegmatis' || $dominantType === 'pragmatis') ? 'Plegmatis' : ucfirst($dominantType));
+
+        // Syarat 1: Nilai Matematika tidak boleh C / D (minimal B untuk lolos)
+        $isMathFailed = $hasMath && !in_array(strtoupper($mathGrade ?? ''), ['A', 'B']);
+
+        // Syarat 2: Psikotes tidak boleh Melankolis / Plegmatis untuk posisi penjualan/sales
+        $isPsikotestFailed = $hasPsikotes && $isSalesRelated && $isMelankolisOrPlegmatis;
+
+        $isUserPrinsipleDisabled = $isMathFailed || $isPsikotestFailed;
+
+        $userPrinsipleDisableReasons = [];
+        if ($isPsikotestFailed) {
+            $userPrinsipleDisableReasons[] = "Hasil Psikotest {$psikotestNama} Tidak Disarankan Untuk Jabatan " . ($job ?: 'Sales') . ". Harap Cari Kandidat Lain (Disarankan Mencari Kandidat Baru / Yang Lain).";
+        }
+        if ($isMathFailed) {
+            $userPrinsipleDisableReasons[] = "Nilai Matematika kandidat adalah {$mathGrade}. Untuk lolos, minimal nilai Matematika adalah B.";
+        }
+
+        $catatanRekomendasi = !empty($userPrinsipleDisableReasons) ? implode(' | ', $userPrinsipleDisableReasons) : null;
+
         return [
             'hasPsikotes' => $hasPsikotes,
             'psikotesItems' => $psikotesItems,
@@ -224,6 +250,13 @@ class CandidateEvaluationDataService
             'compSkills' => $compSkills,
             'komptDuration' => $komptDuration,
             'komptSummaryLabel' => $komptSummaryLabel,
+            'isSalesRelated' => $isSalesRelated,
+            'psikotestNama' => $psikotestNama,
+            'isPsikotestFailed' => $isPsikotestFailed,
+            'isMathFailed' => $isMathFailed,
+            'isUserPrinsipleDisabled' => $isUserPrinsipleDisabled,
+            'userPrinsipleDisableReasons' => $userPrinsipleDisableReasons,
+            'catatanRekomendasi' => $catatanRekomendasi,
         ];
     }
 }

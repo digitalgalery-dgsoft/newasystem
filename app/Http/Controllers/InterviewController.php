@@ -1035,6 +1035,12 @@ class InterviewController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
+        $evalData = \App\Services\CandidateEvaluationDataService::getEvaluationData($candidate);
+        if ($evalData['isUserPrinsipleDisabled'] ?? false) {
+            $reasonText = implode(' | ', $evalData['userPrinsipleDisableReasons'] ?? ['Kandidat tidak memenuhi kriteria kelulusan.']);
+            return back()->with('error', 'Gagal: Tab User Principle dinonaktifkan untuk kandidat ini. ' . $reasonText);
+        }
+
         $status = $request->input('statusapprove') === 'Yes' ? 'Approved' : 'Rejected';
         $notes = $request->input('notes') ?? 'Approval By WA - Email';
         $userPrinsipleId = $request->input('userprinsiple');

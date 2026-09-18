@@ -186,7 +186,15 @@
                     <!-- 12. Catatan Khusus -->
                     <div class="flex items-start gap-2 md:col-span-2">
                         <span class="w-32 text-slate-400 font-medium flex-shrink-0">Catatan Khusus:</span>
-                        <span class="text-slate-600 italic">{{ $candidate->notes ?? 'Tidak ada catatan tambahan.' }}</span>
+                        <div class="space-y-1.5 flex-1">
+                            @if(!empty($catatanRekomendasi))
+                                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-semibold shadow-2xs">
+                                    <i class="fa-solid fa-triangle-exclamation text-rose-500 text-xs"></i>
+                                    <span>{{ $catatanRekomendasi }}</span>
+                                </div>
+                            @endif
+                            <span class="text-slate-600 italic block">{{ $candidate->notes ?? (!empty($catatanRekomendasi) ? '' : 'Tidak ada catatan tambahan.') }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -320,12 +328,23 @@
         </button>
 
         <!-- 7. User Principle -->
-        <button @click="activeTab = 'userprinsiple'" 
-                :class="activeTab === 'userprinsiple' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
-                class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
-            <i class="fa-solid fa-building-circle-check text-xs"></i>
-            <span>7. User Principle</span>
-        </button>
+        @if(!empty($isUserPrinsipleDisabled))
+            <button type="button" 
+                    disabled 
+                    title="{{ implode(' &#10; ', $userPrinsipleDisableReasons ?? []) }}"
+                    class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed border border-dashed border-slate-300">
+                <i class="fa-solid fa-ban text-rose-500 text-xs"></i>
+                <span>7. User Principle</span>
+                <span class="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-tight">Disabled</span>
+            </button>
+        @else
+            <button @click="activeTab = 'userprinsiple'" 
+                    :class="activeTab === 'userprinsiple' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
+                    class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-building-circle-check text-xs"></i>
+                <span>7. User Principle</span>
+            </button>
+        @endif
     </div>
 
     <!-- TAB CONTENTS CONTAINER -->
@@ -1217,6 +1236,31 @@
         <!-- TAB 7: USER PRINCIPLE (Matching Legacy App) -->
         <!-- ============================================================= -->
         <div x-show="activeTab === 'userprinsiple'" class="space-y-6">
+            @if(!empty($isUserPrinsipleDisabled))
+                <!-- Warning / Disqualification Banner -->
+                <div class="p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-900 shadow-sm flex items-start gap-3.5">
+                    <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center flex-shrink-0 text-lg">
+                        <i class="fa-solid fa-ban"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2">
+                            <h4 class="text-sm font-bold text-rose-900">Tab User Principle Dinonaktifkan</h4>
+                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-200 text-rose-800 uppercase">Tidak Memenuhi Kriteria</span>
+                        </div>
+                        <div class="mt-2 space-y-1.5">
+                            @foreach($userPrinsipleDisableReasons ?? [] as $reason)
+                                <div class="text-xs font-semibold text-rose-800 flex items-start gap-2">
+                                    <i class="fa-solid fa-circle-xmark text-rose-500 mt-0.5 flex-shrink-0"></i>
+                                    <span>{{ $reason }}</span>
+                                </div>
+                            @endforeach
+                        </div>
+                        <p class="text-[11px] text-rose-600 font-medium mt-2.5 border-t border-rose-200/60 pt-2">
+                            * Kandidat tidak dapat diajukan / dikirim ke User Prinsiple karena tidak memenuhi syarat kelulusan seleksi.
+                        </p>
+                    </div>
+                </div>
+            @endif
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
                 <!-- Left: Approval Info & Notes -->
@@ -1360,10 +1404,17 @@
                         </div>
 
                         <div class="pt-2">
-                            <button type="submit" class="w-full py-3 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-paper-plane text-xs"></i>
-                                <span>Set & Send To User Prinsiple</span>
-                            </button>
+                            @if(!empty($isUserPrinsipleDisabled))
+                                <button type="button" disabled class="w-full py-3 rounded-xl text-xs font-bold bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 flex items-center justify-center gap-2 shadow-none">
+                                    <i class="fa-solid fa-ban text-xs text-rose-500"></i>
+                                    <span>Pengajuan Dinonaktifkan (Tidak Memenuhi Syarat)</span>
+                                </button>
+                            @else
+                                <button type="submit" class="w-full py-3 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2">
+                                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                                    <span>Set & Send To User Prinsiple</span>
+                                </button>
+                            @endif
                         </div>
                     </form>
                 </div>
