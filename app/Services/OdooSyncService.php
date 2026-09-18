@@ -217,6 +217,23 @@ class OdooSyncService
 
                     // Principle
                     $principleName = is_array($rec['principle_id']) ? $rec['principle_id'][1] : null;
+
+                    // Filter: Abaikan karyawan dengan prinsiple PT BUDGET (AMK, AKP, ATK)
+                    if (!empty($principleName) && stripos($principleName, 'BUDGET') !== false) {
+                        $skipped++;
+                        $log('item_skip', "⏭️ [{$entity->code}] Lewati {$nik} - {$nama}: Prinsiple BUDGET ({$principleName})", [
+                            'action'    => 'skipped',
+                            'reason'    => 'budget_principle',
+                            'nik'       => $nik,
+                            'name'      => $nama,
+                            'processed' => $processed,
+                            'created'   => $created,
+                            'updated'   => $updated,
+                            'skipped'   => $skipped,
+                        ]);
+                        continue;
+                    }
+
                     $principleId = null;
                     if (!empty($principleName)) {
                         $p = Principle::firstOrCreate(['name' => $principleName]);
@@ -580,6 +597,12 @@ class OdooSyncService
                     } else {
                         // 2. Check Data Updates for active employee
                         $principleName = is_array($rec['principle_id']) ? $rec['principle_id'][1] : null;
+
+                        // Filter: Abaikan karyawan dengan prinsiple PT BUDGET (AMK, AKP, ATK)
+                        if (!empty($principleName) && stripos($principleName, 'BUDGET') !== false) {
+                            continue;
+                        }
+
                         $principleId = null;
                         if (!empty($principleName)) {
                             $p = Principle::firstOrCreate(['name' => $principleName]);
@@ -766,6 +789,12 @@ class OdooSyncService
         $area = is_array($rec['area_id']) ? $rec['area_id'][1] : null;
 
         $principleName = is_array($rec['principle_id']) ? $rec['principle_id'][1] : null;
+
+        // Filter: Abaikan karyawan dengan prinsiple PT BUDGET (AMK, AKP, ATK)
+        if (!empty($principleName) && stripos($principleName, 'BUDGET') !== false) {
+            return null;
+        }
+
         $principleId = null;
         if (!empty($principleName)) {
             $p = Principle::firstOrCreate(['name' => $principleName]);

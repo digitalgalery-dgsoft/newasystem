@@ -73,8 +73,27 @@ class EmployeeController extends Controller
             'ratecard' => Employee::where('tipe_karyawan', 'RateCard')->count(),
         ];
 
-        // Dropdown options
-        $distinctPrinciples = Principle::orderBy('name')->get();
+        // Dropdown options (Distinct, exclude BUDGET, sorted naturally)
+        $principleNamesFromTable = Principle::where('name', 'not like', '%BUDGET%')
+            ->select('name')
+            ->distinct()
+            ->whereNotNull('name')
+            ->where('name', '!=', '')
+            ->pluck('name');
+
+        $principleNamesFromEmployees = Employee::where('prinsiple', 'not like', '%BUDGET%')
+            ->select('prinsiple')
+            ->distinct()
+            ->whereNotNull('prinsiple')
+            ->where('prinsiple', '!=', '')
+            ->pluck('prinsiple');
+
+        $distinctPrinciples = $principleNamesFromTable->merge($principleNamesFromEmployees)
+            ->unique()
+            ->filter()
+            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->values()
+            ->map(fn($n) => (object)['name' => $n]);
         $distinctJabatan = Employee::select('jabatan')->distinct()->whereNotNull('jabatan')->orderBy('jabatan')->pluck('jabatan');
         $distinctArea = Employee::select('area')->distinct()->whereNotNull('area')->orderBy('area')->pluck('area');
         $distinctPimpinan = Employee::select('nama_karyawan', 'jabatan', 'area')->whereIn('level', ['SPV', 'HEAD', 'TL'])->orderBy('nama_karyawan')->get();

@@ -423,11 +423,26 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 25. 🔍 Filter Searchable Dropdown Prinsiple/Jabatan, Eksklusi PT BUDGET, & Deduplikasi Master Prinsiple (19 September 2026)
+- **Fitur Searchable Dropdown di Filter Bar Master Karyawan**:
+  - Mengubah dropdown standar HTML `<select>` untuk **Prinsiple** dan **Jabatan** di [master/karyawan/index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/karyawan/index.blade.php) menjadi komponen interaktif **Searchable Dropdown (Alpine.js)**.
+  - Dilengkapi kolom input pencarian langsung di dalam dropdown menu popup, tombol clear `(x)` sekali klik, indikator centang untuk opsi aktif, dan navigasi cepat dengan keyboard.
+- **Eksklusi Penuh Karyawan Prinsiple PT BUDGET (AMK, AKP, ATK)**:
+  - **Pencegahan Sinkronisasi Odoo**: Di [OdooSyncService.php](file:///d:/ASystem/newasystem/app/Services/OdooSyncService.php) (`syncEmployees`, `syncUpdatesAndResigns`, dan `createOrUpdateFromOdoo`), seluruh data karyawan dengan nama prinsiple mengandung kata `'BUDGET'` (seperti `PT BUDGET AMK`, `PT BUDGET AKP`, `PT BUDGET ATK`) otomatis diabaikan (*skipped*) dan tidak akan di-insert/update ke database lokal.
+  - **Pembersihan Database**: Menghapus 269 data karyawan dengan prinsiple BUDGET yang sempat masuk dari Odoo, serta menghapus seluruh entri prinsiple BUDGET dari tabel `principles`.
+- **Deduplikasi List Prinsiple (Distinct & Bebas Ganda)**:
+  - Mengonsolidasikan 28 nama prinsiple yang sebelumnya muncul ganda di tabel `principles` karena terdaftar di entitas berbeda (seperti *PT AMERTA INDAH OTSUKA, PT BLACKHAWK NETWORK INDONESIA, PT LION WINGS*, dll).
+  - Mengarahkan seluruh foreign key relasi `principle_id` pada tabel `employees`, `candidates`, dan `user_prinsiples` ke ID kanonikal tunggal.
+  - Menghasilkan daftar list prinsiple yang 100% unik (`distinct()`), rapi, dan terurut secara alfabetis tanpa ada duplikasi lagi.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
-| `d43c808` | feat: Rekonfigurasi sync Odoo hanya ambil employee aktif, skip NIK lama tiap jam, dan buat cron tengah malam untuk update & resign |
+| `b13ab35` | feat: Tambahkan searchable dropdown pada filter prinsiple & jabatan, eksklusi employee PT BUDGET, dan distinct list prinsiple |
+| `c51a294` | feat: Rekonfigurasi sync Odoo hanya ambil employee aktif, skip NIK lama tiap jam, dan buat cron tengah malam untuk update & resign |
 | `df8789e` | Kembalikan Master User Prinsiple untuk AS, isolasi data per user, dan cegah duplikat email/no hp |
 | `a9cc8c4` | fix: Fix JS variable name mySavedSigUrl in interview.show |
 | `319b784` | fix: Perbaiki default tanda tangan: tampilkan TTD AS sendiri jika ada, atau kosong jika belum ada TTD |
