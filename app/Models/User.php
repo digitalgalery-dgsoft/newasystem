@@ -81,24 +81,24 @@ class User extends Authenticatable
 
     public function getSignatureUrlAttribute(): ?string
     {
-        if (!empty($this->signature_path)) {
-            if (str_starts_with($this->signature_path, 'data:image')) {
-                return $this->signature_path;
-            }
-            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($this->signature_path)) {
-                return \Illuminate\Support\Facades\Storage::disk('public')->url($this->signature_path);
-            }
-            if (file_exists(public_path($this->signature_path))) {
-                return asset($this->signature_path);
-            }
-            if (file_exists(public_path('uploads/ttd/' . $this->signature_path))) {
-                return asset('uploads/ttd/' . $this->signature_path);
-            }
+        if (empty($this->signature_path)) {
+            return null;
         }
 
-        $defaultSig = 'signatures/user_' . $this->id . '.png';
-        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($defaultSig)) {
-            return \Illuminate\Support\Facades\Storage::disk('public')->url($defaultSig);
+        if (str_starts_with($this->signature_path, 'data:image')) {
+            return $this->signature_path;
+        }
+
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($this->signature_path)) {
+            return \Illuminate\Support\Facades\Storage::disk('public')->url($this->signature_path);
+        }
+
+        if (file_exists(public_path($this->signature_path))) {
+            return asset($this->signature_path);
+        }
+
+        if (file_exists(public_path('uploads/ttd/' . $this->signature_path))) {
+            return asset('uploads/ttd/' . $this->signature_path);
         }
 
         return null;
@@ -106,17 +106,11 @@ class User extends Authenticatable
 
     public function getSignatureBase64(): ?string
     {
-        $path = $this->signature_path;
-        if (empty($path)) {
-            $defaultSig = 'signatures/user_' . $this->id . '.png';
-            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($defaultSig)) {
-                $path = $defaultSig;
-            }
-        }
-
-        if (empty($path)) {
+        if (empty($this->signature_path)) {
             return null;
         }
+
+        $path = $this->signature_path;
 
         if (str_starts_with($path, 'data:image')) {
             return $path;
@@ -142,7 +136,11 @@ class User extends Authenticatable
 
     public function hasSavedSignature(): bool
     {
-        return !empty($this->signature_path) ||
-            \Illuminate\Support\Facades\Storage::disk('public')->exists('signatures/user_' . $this->id . '.png');
+        if (empty($this->signature_path)) {
+            return false;
+        }
+
+        return \Illuminate\Support\Facades\Storage::disk('public')->exists($this->signature_path) ||
+            file_exists(public_path($this->signature_path));
     }
 }

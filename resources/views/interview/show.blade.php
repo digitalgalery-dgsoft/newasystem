@@ -371,27 +371,22 @@
                 $currentUserId = $currentUser?->id;
                 $currentUserName = $currentUser?->name ?? 'User AS';
 
-                // 1. Tanda tangan tersimpan milik User AS yang sedang login
-                $userSavedSigUrl = null;
-                $userSigPath = $currentUser?->signature_path;
-                if (empty($userSigPath) && $currentUserId) {
-                    if (\Illuminate\Support\Facades\Storage::disk('public')->exists('signatures/user_' . $currentUserId . '.png')) {
-                        $userSigPath = 'signatures/user_' . $currentUserId . '.png';
-                    }
-                }
-                if (!empty($userSigPath)) {
-                    if (str_starts_with($userSigPath, 'data:image')) {
-                        $userSavedSigUrl = $userSigPath;
-                    } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($userSigPath)) {
-                        $userSavedSigUrl = 'data:image/png;base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($userSigPath));
-                    } elseif (file_exists(public_path($userSigPath))) {
-                        $userSavedSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(public_path($userSigPath)));
-                    } elseif (file_exists(storage_path('app/public/' . $userSigPath))) {
-                        $userSavedSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(storage_path('app/public/' . $userSigPath)));
-                    }
+                // 1. Tanda tangan tersimpan milik User AS yang sedang login (untuk tombol "Tempel TTD Saya")
+                $mySavedSigUrl = null;
+                if ($currentUser && !empty($currentUser->signature_path)) {
+                    $mySavedSigUrl = $currentUser->getSignatureBase64();
                 }
 
-                // 2. Tanda tangan yang tersimpan pada penilaian kandidat ini (jika sudah dinilai sebelumnya)
+                // 2. Resolve AS yang ditugaskan untuk kandidat ini ("AS Sendiri")
+                $asDetails = \App\Http\Controllers\InterviewController::resolveCandidateAsDetails($candidate, $currentUser);
+                $candidateAsUser = $asDetails['user'] ?? null;
+                $candidateAsName = $asDetails['name'] ?? $currentUserName;
+                $candidateAsSigUrl = null;
+                if ($candidateAsUser && !empty($candidateAsUser->signature_path)) {
+                    $candidateAsSigUrl = $candidateAsUser->getSignatureBase64();
+                }
+
+                // 3. Tanda tangan yang sudah tersimpan pada penilaian kandidat ini (jika sudah dinilai sebelumnya)
                 $assessSigUrl = null;
                 $assessSigPath = $assess?->interviewer_signature_path;
                 if (!empty($assessSigPath)) {
@@ -406,8 +401,11 @@
                     }
                 }
 
-                // Prioritas awal: TTD penilaian kandidat (jika sudah ada) -> TTD tersimpan AS -> kosong
-                $initialSigUrl = $assessSigUrl ?: $userSavedSigUrl;
+                // 4. Prioritas default:
+                // - Jika sudah ada TTD penilaian kandidat -> gunakan TTD penilaian ($assessSigUrl)
+                // - Jika belum ada, dan AS sendiri milik kandidat punya TTD -> gunakan TTD AS sendiri ($candidateAsSigUrl)
+                // - Jika memang belum ada -> KOSONG (null)
+                $initialSigUrl = $assessSigUrl ?: $candidateAsSigUrl;
             @endphp
             <form action="{{ route('interview.assess', $candidate->id) }}" method="POST" id="interviewForm" class="space-y-6">
                 @csrf
@@ -501,16 +499,16 @@
                         <div class="flex items-center justify-between flex-wrap gap-2">
                             <div>
                                 <label class="block text-xs font-bold text-slate-800">Tanda Tangan Pewawancara</label>
-                                <span class="text-[10px] text-slate-500 font-medium">User AS: <b class="text-slate-700">{{ $currentUserName }}</b></span>
+                                <span class="text-[10px] text-slate-500 font-medium">User AS: <b class="text-slate-700">{{ $candidateAsName }}</b></span>
                             </div>
                             
-                            <span id="sigBadge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold {{ $assessSigUrl ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : ($userSavedSigUrl ? 'bg-blue-50 border border-blue-200 text-blue-700' : 'bg-slate-100 text-slate-500') }}">
-                                <i id="sigBadgeIcon" class="fa-solid {{ $assessSigUrl ? 'fa-circle-check text-emerald-600' : ($userSavedSigUrl ? 'fa-stamp text-blue-600' : 'fa-pen-nib text-slate-400') }}"></i>
+                            <span id="sigBadge" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold {{ $assessSigUrl ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : ($candidateAsSigUrl ? 'bg-blue-50 border border-blue-200 text-blue-700' : 'bg-slate-100 text-slate-500') }}">
+                                <i id="sigBadgeIcon" class="fa-solid {{ $assessSigUrl ? 'fa-circle-check text-emerald-600' : ($candidateAsSigUrl ? 'fa-stamp text-blue-600' : 'fa-pen-nib text-slate-400') }}"></i>
                                 <span id="sigBadgeText">
                                     @if($assessSigUrl)
                                         TTD Interview Tersimpan
-                                    @elseif($userSavedSigUrl)
-                                        TTD Tersimpan (Siap)
+                                    @elseif($candidateAsSigUrl)
+                                        TTD AS (Siap)
                                     @else
                                         Belum Ada TTD
                                     @endif
@@ -520,11 +518,11 @@
 
                         <!-- Toolbar Opsi: Tempel TTD Tersimpan ATAU Gambar TTD Baru -->
                         <div class="flex items-center gap-2 p-1.5 bg-slate-100/90 rounded-xl border border-slate-200 shadow-2xs">
-                            @if(!empty($userSavedSigUrl))
+                            @if(!empty($mySavedSigUrl))
                                 <button type="button" 
                                         onclick="pasteMySavedSignature()" 
                                         class="flex-1 py-1.5 px-2.5 rounded-lg bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs group"
-                                        title="Tempel tanda tangan profil tersimpan milik {{ $currentUserName }}">
+                                        title="Tempel tanda tangan profil tersimpan milik Anda ({{ $currentUserName }})">
                                     <i class="fa-solid fa-stamp text-emerald-600 group-hover:scale-110 transition-transform"></i>
                                     <span>Tempel TTD Saya</span>
                                 </button>
@@ -535,7 +533,7 @@
                                     class="flex-1 py-1.5 px-2.5 rounded-lg bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 hover:border-blue-300 text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 shadow-2xs group"
                                     title="Gambar tanda tangan baru (akan menggantikan file TTD Anda)">
                                 <i class="fa-solid fa-pen-nib text-blue-600 group-hover:scale-110 transition-transform"></i>
-                                <span>{{ !empty($userSavedSigUrl) ? 'Gambar TTD Baru' : 'Buat TTD Baru' }}</span>
+                                <span>{{ !empty($mySavedSigUrl) ? 'Gambar TTD Baru' : 'Buat TTD Baru' }}</span>
                             </button>
 
                             <button type="button" 

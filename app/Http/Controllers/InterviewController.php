@@ -515,25 +515,18 @@ class InterviewController extends Controller
                     'interviewer_signature_path' => $userSigFile,
                 ]);
             } else {
-                // Menggunakan TTD tersimpan milik AS
+                // Menggunakan TTD tersimpan
                 $assessment->update([
                     'interviewer_id' => $user->id,
-                    'interviewer_signature_path' => $userSigFile,
+                    'interviewer_signature_path' => $sigData,
                 ]);
-                if (empty($user->signature_path)) {
-                    $user->update(['signature_path' => $userSigFile]);
-                }
             }
         } else {
-            // Jika kosong tapi user AS sudah punya TTD tersimpan, gunakan TTD milik AS user ini
-            if ($user->signature_path || \Illuminate\Support\Facades\Storage::disk('public')->exists($userSigFile)) {
+            // Jika kosong (misal di-reset / belum bertanda tangan), biarkan kosong
+            if ($request->has('signature_data')) {
                 $assessment->update([
-                    'interviewer_id' => $user->id,
-                    'interviewer_signature_path' => $userSigFile,
+                    'interviewer_signature_path' => null,
                 ]);
-                if (empty($user->signature_path)) {
-                    $user->update(['signature_path' => $userSigFile]);
-                }
             }
         }
 

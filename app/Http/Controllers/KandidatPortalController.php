@@ -604,12 +604,16 @@ class KandidatPortalController extends Controller
         $userSigFile = 'signatures/user_' . $user->id . '.png';
         $sigData = $validated['assessor_signature'] ?? null;
 
+        $savedSigPath = null;
         if (!empty($sigData)) {
             if (str_contains($sigData, 'base64')) {
                 $imageData = explode(',', $sigData)[1];
                 $decoded = base64_decode($imageData);
                 \Illuminate\Support\Facades\Storage::disk('public')->put($userSigFile, $decoded);
                 $user->update(['signature_path' => $userSigFile]);
+                $savedSigPath = $userSigFile;
+            } else {
+                $savedSigPath = $sigData;
             }
         }
 
@@ -624,7 +628,7 @@ class KandidatPortalController extends Controller
                 'comprehension' => $validated['comprehension'],
                 'notes' => $validated['notes'] ?? null,
                 'interview_date' => $validated['interview_date'],
-                'interviewer_signature_path' => (!empty($sigData) || $user->signature_path) ? $userSigFile : null,
+                'interviewer_signature_path' => $savedSigPath,
             ]
         );
 
