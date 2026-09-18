@@ -302,6 +302,27 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 18. 🛠️ Perbaikan Lampiran Dokumen Hasil Interview & Penyesuaian Modal Sync Odoo
+- **Koreksi Tautan Server Lama Approval Prinsiple**:
+  - Memperbaiki rute `/approval/{filename}` dan fallback legacy di `routes/web.php` serta `app/Services/LegacyAttachmentService.php` agar mengarah ke direktori yang benar: `https://asystem.co.id/v3/approval/{filename}` (dan untuk berkas tanda tangan digital digital: `https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/{filename}`).
+- **Penjaminan Tampilnya Lampiran Ref Cek & Approval Prinsiple di Dokumen PDF/HTML**:
+  - Pada `app/Services/InterviewPdfService.php`:
+    - Mengubah kondisi pembuatan halaman: Sebelumnya halaman lampiran hanya dibuat jika Base64 data berhasil ter-generate secara lokal (`if ($approvalBase64)` & `if ($refCekBase64)`). Jika berkas belum terunduh, halaman terlewati.
+    - Logika baru: Selama kandidat memiliki berkas approval (`approvalFilename`), halaman Bukti Approval Prinsiple **pasti dibuat**.
+    - Cascading fallback image source: Base64 URI &rarr; Jalur Berkas Lokal &rarr; URL Server Lama (`https://asystem.co.id/v3/approval/{filename}`) dengan atribut `onerror` cadangan otomatis di browser.
+    - Menangani seluruh lampiran referensi cek kerja (`workExperiences`) kandidat yang memiliki berkas lampiran (`proof_attachment_path`), sehingga baik 1 maupun lebih lampiran (seperti sertifikat/surat referensi) ter-render lengkap di halaman dokumen.
+- **Perbaikan Animasi Loading yang Menutupi Layar saat Sync Modal Odoo**:
+  - **Akar Masalah**:
+    - Skrip global pada `page-loader.blade.php` mencegat semua event form `submit` dan menampilkan `#asystem-loading-overlay` ber-z-index `z-[999990]`.
+    - Modal Terminal Streaming Odoo sebelumnya menggunakan `z-50`, sehingga tertutup oleh animasi loading layar penuh saat tombol sync diklik.
+  - **Solusi**:
+    - Menambahkan filter pengecualian form pada `page-loader.blade.php` agar form sync (`formSyncAll`, `formSingleSync_*`, `formSyncByNik`, `formKaryawanSyncNik`) dan modal terminal tidak memicu loading overlay.
+    - Pada fungsi `showOverlay()`, menambahkan pengecekan otomatis: Jika `#terminalSyncModal` sedang terbuka/aktif, overlay layar penuh otomatis dibatalkan/tidak dimunculkan.
+    - Menaikkan z-index `#terminalSyncModal` ke `z-[999995]` dan modal sync massal ke `z-[999991]`.
+    - Menambahkan pemanggilan `hideOverlay()` saat modal terminal streaming dibuka.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
