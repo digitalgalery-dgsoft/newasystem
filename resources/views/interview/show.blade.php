@@ -1785,7 +1785,7 @@
     }
 
     // Signature Pad logic using HTML5 Canvas
-    const mySavedSigUrl = @json($userSavedSigUrl);
+    const mySavedSigUrl = @json($mySavedSigUrl);
     const initialSigUrl = @json($initialSigUrl);
     let canvas, ctx, isDrawing = false, hasDrawn = false;
 
