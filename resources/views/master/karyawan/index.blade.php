@@ -36,7 +36,7 @@
                 <i class="fa-solid fa-arrows-rotate text-blue-600"></i>
                 <span>Sync Odoo (5 Entitas)</span>
             </a>
-            <button onclick="openModal('addEmployeeModal')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-md shadow-primary-600/20">
+            <button onclick="openAddEmployeeModal()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-md shadow-primary-600/20">
                 <i class="fa-solid fa-user-plus"></i>
                 <span>Add Karyawan</span>
             </button>
@@ -808,15 +808,108 @@
             </div>
 
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Pimpinan Langsung</label>
-                    <input type="text" name="pimpinan" list="pimpinanDatalist" placeholder="Pilih atau ketik pimpinan..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
-                    <p class="text-[10px] text-slate-400 mt-0.5">Ketik nama atasan / pimpinan langsung.</p>
+                <!-- Pimpinan Searchable Dropdown Grouped by Area -->
+                <div x-data="searchablePimpinanSelect({
+                    name: 'pimpinan',
+                    inputId: 'add_pimpinan',
+                    jabatanInputId: 'add_jabatan_pimpinan',
+                    placeholder: 'Pilih Pimpinan Inhouse...',
+                    eventPrefix: 'add-pimpinan'
+                })" @set-add-pimpinan.window="setExternal($event.detail.pimpinan, $event.detail.jabatan)" class="relative">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Pimpinan Langsung <span class="text-[10px] font-semibold text-primary">(Inhouse per Area)</span>
+                    </label>
+                    <input type="hidden" id="add_pimpinan" name="pimpinan" :value="selectedValue">
+                    
+                    <div class="relative" @click.outside="open = false">
+                        <button type="button" 
+                                @click="toggle()" 
+                                class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50 flex items-center justify-between text-left gap-1 transition-all cursor-pointer">
+                            <span class="truncate" :class="selectedValue ? 'font-bold text-slate-900' : 'text-slate-400'" x-text="displayLabel"></span>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <span x-show="selectedValue" @click="clear($event)" class="text-slate-400 hover:text-rose-500 p-0.5 rounded transition" title="Hapus pilihan">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </span>
+                                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                            </div>
+                        </button>
+
+                        <!-- Dropdown Menu -->
+                        <div x-show="open" 
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 w-full min-w-[300px] max-h-72 flex flex-col overflow-hidden" 
+                             style="display: none;">
+                            
+                            <!-- Search Header -->
+                            <div class="p-2 border-b border-slate-100 bg-slate-50/80">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                                    </div>
+                                    <input type="text" 
+                                           x-ref="searchInput" 
+                                           x-model="searchQuery" 
+                                           @keydown.escape="open = false" 
+                                           placeholder="Cari nama, jabatan, atau area..." 
+                                           class="w-full pl-7 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+                                    <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600">
+                                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- List Grouped by Area -->
+                            <div class="overflow-y-auto flex-1 divide-y divide-slate-100 text-xs max-h-56">
+                                <template x-if="searchQuery.trim().length > 0">
+                                    <div @click="selectCustom(searchQuery.trim())" class="p-2 bg-indigo-50/60 hover:bg-indigo-100/70 text-indigo-700 cursor-pointer flex items-center justify-between border-b border-indigo-100">
+                                        <span class="flex items-center gap-1.5 font-bold text-[11px]">
+                                            <i class="fa-solid fa-pen text-[10px]"></i> Gunakan: "<span x-text="searchQuery.trim()"></span>"
+                                        </span>
+                                        <span class="text-[9px] bg-indigo-200/70 text-indigo-800 px-1.5 py-0.5 rounded font-semibold">Teks Bebas</span>
+                                    </div>
+                                </template>
+
+                                <template x-for="grp in filteredGroups" :key="grp.area">
+                                    <div>
+                                        <div class="px-3 py-1 bg-slate-100/90 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider sticky top-0 flex items-center justify-between border-y border-slate-200/50">
+                                            <span class="flex items-center gap-1">
+                                                <i class="fa-solid fa-location-dot text-primary text-[9px]"></i>
+                                                <span x-text="grp.area"></span>
+                                            </span>
+                                            <span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded-full font-bold" x-text="grp.items.length"></span>
+                                        </div>
+
+                                        <template x-for="item in grp.items" :key="item.id">
+                                            <div @click="select(item)" 
+                                                 class="px-3 py-2 hover:bg-primary-50/80 cursor-pointer transition-colors flex items-center justify-between group"
+                                                 :class="selectedValue === item.name ? 'bg-primary/10 font-bold' : ''">
+                                                <div>
+                                                    <div class="text-slate-800 text-xs group-hover:text-primary font-semibold" x-text="item.name"></div>
+                                                    <div class="text-[10px] text-slate-400" x-text="item.jabatan || ('Inhouse • ' + grp.area)"></div>
+                                                </div>
+                                                <span x-show="selectedValue === item.name" class="text-primary text-xs">
+                                                    <i class="fa-solid fa-check"></i>
+                                                </span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Jabatan Pimpinan</label>
-                    <input type="text" name="jabatan_pimpinan" placeholder="Contoh: SPV, Area Manager, Koordinator..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary bg-slate-50/50">
-                    <p class="text-[10px] text-slate-400 mt-0.5">Opsional (posisi / level pimpinan).</p>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Jabatan Pimpinan <span class="text-[10px] font-normal text-emerald-600">(Terisi Otomatis)</span>
+                    </label>
+                    <input type="text" id="add_jabatan_pimpinan" name="jabatan_pimpinan" placeholder="Contoh: AS OPS, SPV, Area Manager..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary transition-all duration-300">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Otomatis terisi saat pimpinan dipilih.</p>
                 </div>
             </div>
 
@@ -870,7 +963,7 @@
 <!-- ========================================== -->
 <!-- MODAL: EDIT KARYAWAN                       -->
 <!-- ========================================== -->
-<div id="editEmployeeModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4">
+<div id="editEmployeeModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl border border-slate-200 overflow-hidden my-8">
         <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
             <h3 class="text-sm font-bold text-slate-900">Edit Data & Pengaturan Akses Karyawan</h3>
@@ -923,15 +1016,108 @@
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Pimpinan Langsung</label>
-                    <input type="text" id="edit_pimpinan" name="pimpinan" list="pimpinanDatalist" placeholder="Ketik nama pimpinan..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary">
-                    <p class="text-[10px] text-slate-400 mt-0.5">Ketik nama atasan / pimpinan langsung.</p>
+                <!-- Pimpinan Searchable Dropdown Grouped by Area -->
+                <div x-data="searchablePimpinanSelect({
+                    name: 'pimpinan',
+                    inputId: 'edit_pimpinan',
+                    jabatanInputId: 'edit_jabatan_pimpinan',
+                    placeholder: 'Pilih Pimpinan Inhouse...',
+                    eventPrefix: 'edit-pimpinan'
+                })" @set-edit-pimpinan.window="setExternal($event.detail.pimpinan, $event.detail.jabatan)" class="relative">
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Pimpinan Langsung <span class="text-[10px] font-semibold text-primary">(Inhouse per Area)</span>
+                    </label>
+                    <input type="hidden" id="edit_pimpinan" name="pimpinan" :value="selectedValue">
+                    
+                    <div class="relative" @click.outside="open = false">
+                        <button type="button" 
+                                @click="toggle()" 
+                                class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50 flex items-center justify-between text-left gap-1 transition-all cursor-pointer">
+                            <span class="truncate" :class="selectedValue ? 'font-bold text-slate-900' : 'text-slate-400'" x-text="displayLabel"></span>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <span x-show="selectedValue" @click="clear($event)" class="text-slate-400 hover:text-rose-500 p-0.5 rounded transition" title="Hapus pilihan">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </span>
+                                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                            </div>
+                        </button>
+
+                        <!-- Dropdown Menu -->
+                        <div x-show="open" 
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 w-full min-w-[300px] max-h-72 flex flex-col overflow-hidden" 
+                             style="display: none;">
+                            
+                            <!-- Search Header -->
+                            <div class="p-2 border-b border-slate-100 bg-slate-50/80">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                                    </div>
+                                    <input type="text" 
+                                           x-ref="searchInput" 
+                                           x-model="searchQuery" 
+                                           @keydown.escape="open = false" 
+                                           placeholder="Cari nama, jabatan, atau area..." 
+                                           class="w-full pl-7 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+                                    <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600">
+                                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- List Grouped by Area -->
+                            <div class="overflow-y-auto flex-1 divide-y divide-slate-100 text-xs max-h-56">
+                                <template x-if="searchQuery.trim().length > 0">
+                                    <div @click="selectCustom(searchQuery.trim())" class="p-2 bg-indigo-50/60 hover:bg-indigo-100/70 text-indigo-700 cursor-pointer flex items-center justify-between border-b border-indigo-100">
+                                        <span class="flex items-center gap-1.5 font-bold text-[11px]">
+                                            <i class="fa-solid fa-pen text-[10px]"></i> Gunakan: "<span x-text="searchQuery.trim()"></span>"
+                                        </span>
+                                        <span class="text-[9px] bg-indigo-200/70 text-indigo-800 px-1.5 py-0.5 rounded font-semibold">Teks Bebas</span>
+                                    </div>
+                                </template>
+
+                                <template x-for="grp in filteredGroups" :key="grp.area">
+                                    <div>
+                                        <div class="px-3 py-1 bg-slate-100/90 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider sticky top-0 flex items-center justify-between border-y border-slate-200/50">
+                                            <span class="flex items-center gap-1">
+                                                <i class="fa-solid fa-location-dot text-primary text-[9px]"></i>
+                                                <span x-text="grp.area"></span>
+                                            </span>
+                                            <span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded-full font-bold" x-text="grp.items.length"></span>
+                                        </div>
+
+                                        <template x-for="item in grp.items" :key="item.id">
+                                            <div @click="select(item)" 
+                                                 class="px-3 py-2 hover:bg-primary-50/80 cursor-pointer transition-colors flex items-center justify-between group"
+                                                 :class="selectedValue === item.name ? 'bg-primary/10 font-bold' : ''">
+                                                <div>
+                                                    <div class="text-slate-800 text-xs group-hover:text-primary font-semibold" x-text="item.name"></div>
+                                                    <div class="text-[10px] text-slate-400" x-text="item.jabatan || ('Inhouse • ' + grp.area)"></div>
+                                                </div>
+                                                <span x-show="selectedValue === item.name" class="text-primary text-xs">
+                                                    <i class="fa-solid fa-check"></i>
+                                                </span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1">Jabatan Pimpinan</label>
-                    <input type="text" id="edit_jabatan_pimpinan" name="jabatan_pimpinan" placeholder="Contoh: SPV, Area Manager, Koordinator..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary">
-                    <p class="text-[10px] text-slate-400 mt-0.5">Opsional (posisi / title pimpinan).</p>
+                    <label class="block text-xs font-bold text-slate-700 mb-1">
+                        Jabatan Pimpinan <span class="text-[10px] font-normal text-emerald-600">(Terisi Otomatis)</span>
+                    </label>
+                    <input type="text" id="edit_jabatan_pimpinan" name="jabatan_pimpinan" placeholder="Contoh: AS OPS, SPV, Area Manager..." class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-primary transition-all duration-300">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Otomatis terisi saat pimpinan dipilih, dapat diedit jika diperlukan.</p>
                 </div>
             </div>
             <div class="grid grid-cols-2 gap-4">
@@ -1106,25 +1292,121 @@
                 </div>
             </div>
 
-            <!-- Input Nama Pimpinan & Jabatan -->
+            <!-- Input Nama Pimpinan & Jabatan (Searchable Grouped by Area) -->
             <div class="space-y-3 pt-1">
-                <div>
+                <div x-data="searchablePimpinanSelect({
+                    name: 'pimpinan',
+                    inputId: 'bulk_pimpinan_input',
+                    jabatanInputId: 'bulk_jabatan_pimpinan_input',
+                    placeholder: 'Pilih Pimpinan Inhouse...',
+                    eventPrefix: 'bulk-pimpinan'
+                })" @set-bulk-pimpinan.window="setExternal($event.detail.pimpinan, $event.detail.jabatan)" class="relative">
                     <label class="block text-xs font-bold text-slate-700 mb-1">
-                        Nama Pimpinan <span class="text-rose-500">*</span>
+                        Nama Pimpinan <span class="text-rose-500">*</span> <span class="text-[10px] font-semibold text-indigo-600">(Inhouse per Area)</span>
                     </label>
-                    <input type="text" name="pimpinan" id="bulk_pimpinan_input" list="pimpinanDatalist" required
-                           placeholder="Ketik atau pilih nama pimpinan..."
-                           class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
-                    <p class="text-[10px] text-slate-400 mt-0.5">Ketik nama lengkap pimpinan / atasan langsung.</p>
+                    <input type="hidden" name="pimpinan" id="bulk_pimpinan_input" :value="selectedValue">
+
+                    <div class="relative" @click.outside="open = false">
+                        <button type="button" 
+                                @click="toggle()" 
+                                class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-slate-50 flex items-center justify-between text-left gap-1 transition-all cursor-pointer">
+                            <span class="truncate" :class="selectedValue ? 'font-bold text-slate-900' : 'text-slate-400'" x-text="displayLabel"></span>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <span x-show="selectedValue" @click="clear($event)" class="text-slate-400 hover:text-rose-500 p-0.5 rounded transition" title="Hapus pilihan">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </span>
+                                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                            </div>
+                        </button>
+
+                        <!-- Dropdown Menu -->
+                        <div x-show="open" 
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-2xl border border-slate-200 w-full min-w-[300px] max-h-72 flex flex-col overflow-hidden" 
+                             style="display: none;">
+                            
+                            <!-- Search Header -->
+                            <div class="p-2 border-b border-slate-100 bg-slate-50/80">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                                    </div>
+                                    <input type="text" 
+                                           x-ref="searchInput" 
+                                           x-model="searchQuery" 
+                                           @keydown.escape="open = false" 
+                                           placeholder="Cari nama, jabatan, atau area..." 
+                                           class="w-full pl-7 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/30">
+                                    <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600">
+                                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- List Grouped by Area -->
+                            <div class="overflow-y-auto flex-1 divide-y divide-slate-100 text-xs max-h-56">
+                                <template x-if="searchQuery.trim().length > 0">
+                                    <div @click="selectCustom(searchQuery.trim())" class="p-2 bg-indigo-50/60 hover:bg-indigo-100/70 text-indigo-700 cursor-pointer flex items-center justify-between border-b border-indigo-100">
+                                        <span class="flex items-center gap-1.5 font-bold text-[11px]">
+                                            <i class="fa-solid fa-pen text-[10px]"></i> Gunakan: "<span x-text="searchQuery.trim()"></span>"
+                                        </span>
+                                        <span class="text-[9px] bg-indigo-200/70 text-indigo-800 px-1.5 py-0.5 rounded font-semibold">Teks Bebas</span>
+                                    </div>
+                                </template>
+
+                                <template x-for="grp in filteredGroups" :key="grp.area">
+                                    <div>
+                                        <div class="px-3 py-1 bg-slate-100/90 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider sticky top-0 flex items-center justify-between border-y border-slate-200/50">
+                                            <span class="flex items-center gap-1">
+                                                <i class="fa-solid fa-location-dot text-indigo-600 text-[9px]"></i>
+                                                <span x-text="grp.area"></span>
+                                            </span>
+                                            <span class="text-[9px] bg-slate-200 text-slate-600 px-1.5 py-0.2 rounded-full font-bold" x-text="grp.items.length"></span>
+                                        </div>
+
+                                        <template x-for="item in grp.items" :key="item.id">
+                                            <div @click="select(item)" 
+                                                 class="px-3 py-2 hover:bg-indigo-50/80 cursor-pointer transition-colors flex items-center justify-between group"
+                                                 :class="selectedValue === item.name ? 'bg-indigo-50 font-bold' : ''">
+                                                <div>
+                                                    <div class="text-slate-800 text-xs group-hover:text-indigo-600 font-semibold" x-text="item.name"></div>
+                                                    <div class="text-[10px] text-slate-400" x-text="item.jabatan || ('Inhouse • ' + grp.area)"></div>
+                                                </div>
+                                                <span x-show="selectedValue === item.name" class="text-indigo-600 text-xs">
+                                                    <i class="fa-solid fa-check"></i>
+                                                </span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </template>
+                                <template x-if="filteredGroups.length === 0 && !searchQuery.trim()">
+                                    <div class="p-4 text-center text-slate-400 text-xs">
+                                        Tidak ada data pimpinan inhouse.
+                                    </div>
+                                </template>
+                                <template x-if="filteredGroups.length === 0 && searchQuery.trim()">
+                                    <div class="p-3 text-center text-slate-500 text-xs">
+                                        Tidak ada yang cocok. Klik "Gunakan: <span class='font-bold' x-text='searchQuery.trim()'></span>" di atas untuk teks bebas.
+                                    </div>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1">
-                        Jabatan Pimpinan (Opsional)
+                        Jabatan Pimpinan <span class="text-[10px] font-normal text-emerald-600">(Terisi Otomatis)</span>
                     </label>
                     <input type="text" name="jabatan_pimpinan" id="bulk_jabatan_pimpinan_input"
                            placeholder="Contoh: Supervisor (SPV), Area Manager, Koordinator, TL..."
-                           class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all">
+                           class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all duration-300">
+                    <p class="text-[10px] text-slate-400 mt-0.5">Otomatis terisi saat pimpinan dipilih, dapat diedit jika diperlukan.</p>
                 </div>
             </div>
 
@@ -1319,6 +1601,19 @@
         openModal('detailEmployeeModal');
     }
 
+    function openAddEmployeeModal() {
+        window.dispatchEvent(new CustomEvent('set-add-pimpinan', {
+            detail: {
+                pimpinan: '',
+                jabatan: ''
+            }
+        }));
+        if (document.getElementById('add_jabatan_pimpinan')) {
+            document.getElementById('add_jabatan_pimpinan').value = '';
+        }
+        openModal('addEmployeeModal');
+    }
+
     function editEmployee(emp) {
         const form = document.getElementById('editEmployeeForm');
         form.action = `/master/karyawan/${emp.id}`;
@@ -1345,6 +1640,15 @@
             document.getElementById('edit_akses_login').checked = Boolean(emp.akses_login);
         }
         document.getElementById('edit_tanggal_join').value = emp.tanggal_join;
+
+        // Dispatch to Alpine searchable dropdown
+        window.dispatchEvent(new CustomEvent('set-edit-pimpinan', {
+            detail: {
+                pimpinan: emp.pimpinan || '',
+                jabatan: emp.jabatan_pimpinan || ''
+            }
+        }));
+
         openModal('editEmployeeModal');
     }
 
@@ -1583,6 +1887,157 @@
     }
 
     // ==========================================
+    // INHOUSE LEADERS DATA & SEARCHABLE DROPDOWN
+    // ==========================================
+    window.inhouseLeadersData = {!! json_encode($inhouseLeadersGrouped ?? []) !!};
+
+    function searchablePimpinanSelect(config) {
+        return {
+            open: false,
+            name: config.name || 'pimpinan',
+            inputId: config.inputId || '',
+            jabatanInputId: config.jabatanInputId || '',
+            placeholder: config.placeholder || 'Pilih Pimpinan Inhouse...',
+            selectedValue: config.selected || '',
+            searchQuery: '',
+            groups: window.inhouseLeadersData || [],
+
+            get displayLabel() {
+                if (!this.selectedValue) return this.placeholder;
+                return this.selectedValue;
+            },
+
+            get filteredGroups() {
+                if (!this.searchQuery || !this.searchQuery.trim()) {
+                    return this.groups;
+                }
+                const q = this.searchQuery.toLowerCase().trim();
+                const result = [];
+                for (const grp of this.groups) {
+                    const areaName = (grp.area || '').toLowerCase();
+                    const areaMatches = areaName.includes(q);
+                    const matchingItems = (grp.items || []).filter(item => {
+                        const nameMatches = (item.name || '').toLowerCase().includes(q);
+                        const jabMatches = (item.jabatan || '').toLowerCase().includes(q);
+                        const entMatches = (item.entity || '').toLowerCase().includes(q);
+                        return nameMatches || jabMatches || entMatches || areaMatches;
+                    });
+
+                    if (matchingItems.length > 0) {
+                        result.push({
+                            area: grp.area,
+                            items: matchingItems
+                        });
+                    }
+                }
+                return result;
+            },
+
+            toggle() {
+                this.open = !this.open;
+                if (this.open) {
+                    this.searchQuery = '';
+                    this.$nextTick(() => {
+                        if (this.$refs.searchInput) {
+                            this.$refs.searchInput.focus();
+                        }
+                    });
+                }
+            },
+
+            select(item) {
+                this.selectedValue = item.name;
+                this.open = false;
+                this.searchQuery = '';
+
+                // Update hidden input
+                if (this.inputId) {
+                    const el = document.getElementById(this.inputId);
+                    if (el) {
+                        el.value = item.name;
+                        el.dispatchEvent(new Event('change'));
+                    }
+                }
+
+                // Auto-fill Jabatan Pimpinan with feedback highlight
+                if (this.jabatanInputId && item.jabatan) {
+                    const jabEl = document.getElementById(this.jabatanInputId);
+                    if (jabEl) {
+                        jabEl.value = item.jabatan;
+                        jabEl.dispatchEvent(new Event('input'));
+                        jabEl.dispatchEvent(new Event('change'));
+                        
+                        // Subtle emerald pulse highlight
+                        jabEl.classList.add('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+                        setTimeout(() => {
+                            jabEl.classList.remove('ring-2', 'ring-emerald-500', 'bg-emerald-50');
+                        }, 1200);
+                    }
+                }
+            },
+
+            selectCustom(text) {
+                const val = (text || '').trim();
+                if (!val) return;
+                this.selectedValue = val;
+                this.open = false;
+                this.searchQuery = '';
+
+                if (this.inputId) {
+                    const el = document.getElementById(this.inputId);
+                    if (el) {
+                        el.value = val;
+                        el.dispatchEvent(new Event('change'));
+                    }
+                }
+            },
+
+            clear(e) {
+                if (e) e.stopPropagation();
+                this.selectedValue = '';
+                this.searchQuery = '';
+                this.open = false;
+
+                if (this.inputId) {
+                    const el = document.getElementById(this.inputId);
+                    if (el) {
+                        el.value = '';
+                        el.dispatchEvent(new Event('change'));
+                    }
+                }
+
+                if (this.jabatanInputId) {
+                    const jabEl = document.getElementById(this.jabatanInputId);
+                    if (jabEl) {
+                        jabEl.value = '';
+                        jabEl.dispatchEvent(new Event('change'));
+                    }
+                }
+            },
+
+            setExternal(pimpinan, jabatan) {
+                this.selectedValue = pimpinan || '';
+                this.searchQuery = '';
+                this.open = false;
+
+                if (this.inputId) {
+                    const el = document.getElementById(this.inputId);
+                    if (el) {
+                        el.value = pimpinan || '';
+                    }
+                }
+
+                if (this.jabatanInputId && jabatan !== undefined && jabatan !== null) {
+                    const jabEl = document.getElementById(this.jabatanInputId);
+                    if (jabEl) {
+                        jabEl.value = jabatan || '';
+                    }
+                }
+            }
+        };
+    }
+
+    // ==========================================
     // BULK EDIT PIMPINAN JAVASCRIPT LOGIC
     // ==========================================
     function getSelectedEmployees() {
@@ -1674,6 +2129,16 @@
                 hint.textContent = 'Belum ada karyawan yang dicentang pada tabel. Anda dapat mencentang karyawan pada tabel atau menggunakan mode "Berdasarkan Filter Data" di bawah.';
             }
             switchBulkMode('filter');
+        }
+
+        window.dispatchEvent(new CustomEvent('set-bulk-pimpinan', {
+            detail: {
+                pimpinan: '',
+                jabatan: ''
+            }
+        }));
+        if (document.getElementById('bulk_jabatan_pimpinan_input')) {
+            document.getElementById('bulk_jabatan_pimpinan_input').value = '';
         }
 
         openModal('bulkPimpinanModal');

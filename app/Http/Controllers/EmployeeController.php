@@ -147,8 +147,38 @@ class EmployeeController extends Controller
             ->orderBy('nama_karyawan')
             ->get();
 
+        // Active Inhouse Employees grouped by Area for Pimpinan Searchable Dropdown
+        $inhouseEmployees = Employee::where('tipe_karyawan', 'Inhouse')
+            ->where('status', 'Aktiv')
+            ->select('id', 'nama_karyawan', 'jabatan', 'area', 'entity')
+            ->orderBy('area')
+            ->orderBy('nama_karyawan')
+            ->get();
+
+        $inhouseLeadersGrouped = $inhouseEmployees
+            ->groupBy(function ($emp) {
+                return $emp->area ? trim($emp->area) : 'Pusat / Lainnya';
+            })
+            ->sortKeys(SORT_NATURAL | SORT_FLAG_CASE)
+            ->map(function ($items, $area) {
+                return [
+                    'area' => $area,
+                    'items' => $items->map(function ($emp) {
+                        return [
+                            'id' => $emp->id,
+                            'name' => $emp->nama_karyawan,
+                            'jabatan' => $emp->jabatan ?? '',
+                            'area' => $emp->area ?? '',
+                            'entity' => $emp->entity ?? '',
+                        ];
+                    })->values()->all(),
+                ];
+            })
+            ->values()
+            ->all();
+
         $entitiesList = OdooEntity::orderBy('code')->get();
-        return view('master.karyawan.index', compact('employees', 'stats', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan', 'pimpinanSuggestions', 'entitiesList', 'status', 'tipe'));
+        return view('master.karyawan.index', compact('employees', 'stats', 'distinctPrinciples', 'distinctJabatan', 'distinctArea', 'distinctPimpinan', 'pimpinanSuggestions', 'inhouseLeadersGrouped', 'entitiesList', 'status', 'tipe'));
     }
 
     public function store(Request $request)

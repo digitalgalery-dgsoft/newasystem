@@ -495,10 +495,30 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 30. 👔 Pimpinan Searchable Dropdown Grouped by Area & Auto-Fill Jabatan Pimpinan (19 September 2026)
+- **Searchable Dropdown Ber-Group Area**:
+  - Field Pimpinan pada formulir Master Karyawan telah dirombak dari input teks biasa menjadi **Searchable Dropdown Interaktif** yang ditenagai oleh Alpine.js.
+  - Menampilkan seluruh data **Karyawan Inhouse Aktif** yang telah dikelompokkan (*grouping*) secara rapi berdasarkan **Area Penempatan** (41 area kerja).
+  - Setiap grup area dilengkapi header visual (*sticky*) dengan ikon lokasi dan counter jumlah karyawan inhouse di area tersebut.
+- **Pencarian Cepat & Fleksibel**:
+  - Pengguna dapat mengetikkan kata kunci pencarian pada kotak search dropdown untuk menyaring data berdasarkan **Nama Pimpinan**, **Jabatan**, maupun **Area**.
+  - **Dukungan Teks Bebas / Kustom**: Apabila nama atasan yang diinginkan belum terdaftar dalam sistem inhouse, disediakan opsi khusus di bagian teratas: *"Gunakan: '[teks]' (Teks Bebas)"*, sehingga fleksibilitas input tetap 100% terjaga.
+- **Auto-Fill Jabatan Pimpinan**:
+  - Saat pengguna memilih salah satu nama pimpinan dari dropdown, kolom input **Jabatan Pimpinan** akan **terisi otomatis** (*auto-filled*) sesuai dengan `jabatan` dari karyawan inhouse yang dipilih.
+  - Dilengkapi efek animasi visual *emerald pulse highlight* pada input jabatan pimpinan sebagai indikator interaktif bahwa nilai jabatan telah berhasil dimuat secara instan. Nilai ini tetap dapat diedit secara manual jika diperlukan penyesuaian.
+- **Penerapan Terintegrasi dan Seragam**:
+  - **Modal Edit Karyawan (`#editEmployeeModal`)**: Otomatis memuat dan menandai pimpinan yang sedang menjabat saat modal edit dibuka via event reactive.
+  - **Modal Tambah Karyawan Baru (`#addEmployeeModal`)**: Menggunakan komponen yang sama dengan inisialisasi form yang bersih.
+  - **Modal Bulk Edit Pimpinan (`#bulkPimpinanModal`)**: Memungkinkan penugasan pimpinan massal ber-group area dan auto-fill jabatan untuk banyak karyawan sekaligus.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| *(pending)* | feat: Pimpinan searchable dropdown grouped by area dan auto-fill jabatan pimpinan |
+| `31ceda7` | fix: Pencarian karyawan case-insensitive dan partial name matching serta pisahkan dari kolom prinsiple |
 | `2398d1f` | feat: Tambahkan field input pimpinan pada form edit karyawan dan fitur bulk edit pimpinan massal |
 | `e6d4a21` | fix: Batasi tipe Inhouse strictly hanya untuk 5 entitas resmi dan nonaktifkan akses login untuk prinsiple klien luar seperti PT Sanghiang Perkasa |
 | `84606a9` | feat: Searchable dropdown filter area dan urutan data karyawan paling atas berdasarkan join date terbaru |
