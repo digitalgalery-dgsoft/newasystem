@@ -165,36 +165,43 @@ class Employee extends Model
 
     /**
      * Resolve Entity Code from principle name.
-     * Matches 5 entities: AMK, AKP, ATK, ABO, ATB.
+     * Hanya 5 Entitas Resmi Inhouse:
+     * 1. PT ARINA MULTI KARYA (AMK)
+     * 2. PT ALVA KARYA PERKASA (AKP)
+     * 3. PT ANUGRAH TERPERCAYA KERJA (ATK)
+     * 4. PT ABADI BERKAT ODELIA (ABO)
+     * 5. PT ANUGRAH TALENTA BERKARYA (ATB)
      */
     public static function getEntityCodeFromPrinciple(?string $principleName): ?string
     {
         if (!$principleName) return null;
         $p = strtoupper(trim($principleName));
-        $normalized = trim(preg_replace('/\b(PT\.?|CV\.?|TBK)\b/i', '', $p));
-        $normalized = trim(preg_replace('/[^A-Z0-9\s]/', '', $normalized));
-        $words = preg_split('/\s+/', $normalized);
+        
+        // Buang teks dalam tanda kurung di akhir seperti (AMK), (AKP), (ATK), dll
+        $clean = preg_replace('/\s*\([^)]*\)\s*$/', '', $p);
+        // Buang prefiks legal PT / CV / TBK
+        $clean = trim(preg_replace('/\b(PT\.?|CV\.?|TBK)\b/i', '', $clean));
+        $clean = trim(preg_replace('/[^A-Z0-9\s]/', '', $clean));
+        $clean = preg_replace('/\s+/', ' ', $clean);
 
-        if (in_array($p, ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'], true)) {
-            return $p;
-        }
-        if (in_array($normalized, ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'], true)) {
-            return $normalized;
-        }
-
-        if (str_contains($p, 'ARINA MULTI') || str_contains($p, 'ARINA MULTIKARYA') || in_array('AMK', $words, true)) {
+        // 1. PT ARINA MULTI KARYA
+        if ($clean === 'ARINA MULTI KARYA' || $clean === 'ARINA MULTIKARYA' || $clean === 'AMK' || $p === 'PT ARINA MULTI KARYA') {
             return 'AMK';
         }
-        if (str_contains($p, 'ALVA KARYA') || in_array('AKP', $words, true)) {
+        // 2. PT ALVA KARYA PERKASA
+        if ($clean === 'ALVA KARYA PERKASA' || $clean === 'AKP' || $p === 'PT ALVA KARYA PERKASA') {
             return 'AKP';
         }
-        if (str_contains($p, 'ANUGRAH TERPERCAYA') || in_array('ATK', $words, true)) {
+        // 3. PT ANUGRAH TERPERCAYA KERJA
+        if ($clean === 'ANUGRAH TERPERCAYA KERJA' || $clean === 'ATK' || $p === 'PT ANUGRAH TERPERCAYA KERJA') {
             return 'ATK';
         }
-        if (str_contains($p, 'ABADI BERKAT') || str_contains($p, 'ABADI BERKAT ODELIA') || str_contains($p, 'ARINA BINTANG') || in_array('ABO', $words, true)) {
+        // 4. PT ABADI BERKAT ODELIA (atau PT ARINA BINTANG OETAMA / ABO)
+        if ($clean === 'ABADI BERKAT ODELIA' || $clean === 'ARINA BINTANG OETAMA' || $clean === 'ARINA BINTANG OPERASIONAL' || $clean === 'ABO' || $p === 'PT ABADI BERKAT ODELIA' || $p === 'PT ARINA BINTANG OETAMA') {
             return 'ABO';
         }
-        if (str_contains($p, 'ANUGRAH TALENTA') || str_contains($p, 'ANUGRAH TALENTA BERKARYA') || str_contains($p, 'ANUGRAH TRI BERKAH') || in_array('ATB', $words, true)) {
+        // 5. PT ANUGRAH TALENTA BERKARYA (atau PT ANUGRAH TRI BERKAH / ATB)
+        if ($clean === 'ANUGRAH TALENTA BERKARYA' || $clean === 'ANUGRAH TRI BERKAH' || $clean === 'ATB' || $p === 'PT ANUGRAH TALENTA BERKARYA' || $p === 'PT ANUGRAH TRI BERKAH') {
             return 'ATB';
         }
 
@@ -203,21 +210,21 @@ class Employee extends Model
 
     /**
      * Determine if an employee is Inhouse or RateCard based on principle name matching 5 entities.
-     * 5 Inhouse Entities:
-     * - PT ARINA MULTI KARYA (AMK)
-     * - PT ALVA KARYA PERKASA (AKP)
-     * - PT ANUGRAH TERPERCAYA KERJA (ATK)
-     * - PT ABADI BERKAT ODELIA (ABO)
-     * - PT ANUGRAH TALENTA BERKARYA (ATB)
+     * Inhouse hanya terdiri dari 5:
+     * - PT ARINA MULTI KARYA
+     * - PT ALVA KARYA PERKASA
+     * - PT ANUGRAH TERPERCAYA KERJA
+     * - PT ABADI BERKAT ODELIA
+     * - PT ANUGRAH TALENTA BERKARYA
      */
     public static function determineTipeKaryawan(?string $principleName): string
     {
-        return self::getEntityCodeFromPrinciple($principleName) !== null ? 'Inhouse' : 'RateCard';
+        return self::isInhousePrinciple($principleName) ? 'Inhouse' : 'RateCard';
     }
 
     public static function isInhousePrinciple(?string $principleName): bool
     {
-        return self::determineTipeKaryawan($principleName) === 'Inhouse';
+        return self::getEntityCodeFromPrinciple($principleName) !== null;
     }
 
     public function principle(): BelongsTo

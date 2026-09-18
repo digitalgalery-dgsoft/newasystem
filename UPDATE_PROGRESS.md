@@ -447,11 +447,29 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 27. 🏢 Pengetatan Aturan Tipe Karyawan Inhouse (Hanya 5 Entitas Resmi) & Proteksi Akses Login
+- **Akar Masalah**:
+  - Sebelumnya, nama prinsiple klien dari Odoo yang memiliki embel-embel kode entitas dalam tanda kurung (seperti `PT SANGHIANG PERKASA (AMK)`) keliru terdeteksi sebagai entitas AMK sehingga salah diklasifikasikan sebagai `Inhouse` dan otomatis diberikan akses login.
+- **Standarisasi 5 Entitas Inhouse**:
+  - Dipertegas pada [Employee.php](file:///d:/ASystem/newasystem/app/Models/Employee.php) (`getEntityCodeFromPrinciple` & `isInhousePrinciple`) bahwa status **Inhouse HANYA BERLAKU jika prinsiple adalah 5 entitas resmi perusahaan**:
+    1. `PT ARINA MULTI KARYA` (AMK)
+    2. `PT ALVA KARYA PERKASA` (AKP)
+    3. `PT ANUGRAH TERPERCAYA KERJA` (ATK)
+    4. `PT ABADI BERKAT ODELIA` (ABO)
+    5. `PT ANUGRAH TALENTA BERKARYA` (ATB)
+  - Seluruh prinsiple klien luar lainnya (termasuk *PT Sanghiang Perkasa, PT Sanghiang Perkasa (AMK), PT Kalbe Farma, dll.*) **100% diklasifikasikan sebagai RateCard**.
+  - Karyawan RateCard secara default **TIDAK MEMILIKI AKSES LOGIN** (`akses_login = 0` / terkunci) dan tidak muncul saat filter Inhouse aktif.
+- **Pembaruan Data Database**:
+  - Menyelaraskan seluruh data karyawan di database: karyawan dengan prinsiple klien luar (seperti Sanghiang Perkasa) otomatis diubah menjadi `RateCard` dan akses login dinonaktifkan.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
-| `8596e9d` | feat: Searchable dropdown filter area dan urutan data karyawan paling atas berdasarkan join date terbaru |
+| `3e5516c` | fix: Batasi tipe Inhouse strictly hanya untuk 5 entitas resmi dan nonaktifkan akses login untuk prinsiple klien luar seperti PT Sanghiang Perkasa |
+| `84606a9` | feat: Searchable dropdown filter area dan urutan data karyawan paling atas berdasarkan join date terbaru |
 | `2e4cdbc` | feat: Tambahkan searchable dropdown pada filter prinsiple & jabatan, eksklusi employee PT BUDGET, dan distinct list prinsiple |
 | `c51a294` | feat: Rekonfigurasi sync Odoo hanya ambil employee aktif, skip NIK lama tiap jam, dan buat cron tengah malam untuk update & resign |
 | `df8789e` | Kembalikan Master User Prinsiple untuk AS, isolasi data per user, dan cegah duplikat email/no hp |
