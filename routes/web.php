@@ -161,6 +161,21 @@ Route::get('/inputjob/{id}/toggle', [JobController::class, 'toggleStatus'])->nam
 Route::get('/kandidatportal', [KandidatPortalController::class, 'index'])->name('kandidatportal.index');
 Route::get('/kandidat-portal', fn() => redirect()->route('kandidatportal.index'));
 Route::get('/kandidatportal/export', [KandidatPortalController::class, 'exportExcel'])->name('kandidatportal.export');
+Route::any('/deploy-webhook', function(\Illuminate\Http\Request $request) {
+    $token = $request->query('token') ?? $request->input('token');
+    if ($token !== 'dgsoft_rahasia_123') {
+        return response('Unauthorized: Token tidak valid.', 403);
+    }
+    $baseDir = base_path();
+    $output = [];
+    $output[] = "=== ASYSTEM WEBHOOK DEPLOY ===";
+    $output[] = "Waktu: " . date('Y-m-d H:i:s');
+    $output[] = "Direktori: " . $baseDir;
+    exec("cd {$baseDir} && git config --global --add safe.directory {$baseDir} 2>&1", $output);
+    exec("cd {$baseDir} && git pull origin main 2>&1", $output);
+    exec("cd {$baseDir} && php artisan optimize:clear 2>&1", $output);
+    return response(implode("\n", $output), 200, ['Content-Type' => 'text/plain']);
+});
 Route::get('/kandidatportal/{id}', [KandidatPortalController::class, 'show'])->name('kandidatportal.show');
 Route::post('/kandidatportal/{id}/reset-password', [KandidatPortalController::class, 'resetPassword'])->name('kandidatportal.reset_password');
 Route::post('/kandidatportal/{id}/interview', [KandidatPortalController::class, 'updateInterview'])->name('kandidatportal.interview');
