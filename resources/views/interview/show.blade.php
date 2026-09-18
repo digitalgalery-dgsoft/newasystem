@@ -430,8 +430,9 @@
                             <!-- Canvas Drawing Pad -->
                             <div class="relative">
                                 <canvas id="signatureCanvas" 
-                                        width="340" 
-                                        height="210" 
+                                        width="400" 
+                                        height="240" 
+                                        style="touch-action: none;"
                                         class="w-full h-52 bg-slate-50/50 rounded-xl border border-dashed border-slate-300 cursor-crosshair touch-none shadow-inner"></canvas>
                                 
                                 <div class="absolute bottom-2 left-3 pointer-events-none text-[10px] text-slate-400">
@@ -1636,52 +1637,122 @@
     }
 
     // Signature Pad logic using HTML5 Canvas
-    let canvas, ctx, isDrawing = false;
+    let canvas, ctx, isDrawing = false, hasDrawn = false;
 
-    document.addEventListener('DOMContentLoaded', function() {
+    function initSignatureCanvas() {
         canvas = document.getElementById('signatureCanvas');
-        if (canvas) {
-            ctx = canvas.getContext('2d');
-            ctx.lineWidth = 2.5;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.strokeStyle = '#0f172a';
+        if (!canvas) return;
 
-            // Draw a pre-existing sample curve if no signature is recorded yet
-            drawSampleSignature();
+        ctx = canvas.getContext('2d');
+        if (!ctx) return;
 
-            function getPos(e) {
-                const rect = canvas.getBoundingClientRect();
-                const scaleX = canvas.width / rect.width;
-                const scaleY = canvas.height / rect.height;
-                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
-                return {
-                    x: (clientX - rect.left) * scaleX,
-                    y: (clientY - rect.top) * scaleY
-                };
+        // Ensure canvas width & height match client dimensions for 1:1 pixel accuracy
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width > 0 && rect.height > 0) {
+            canvas.width = Math.round(rect.width);
+            canvas.height = Math.round(rect.height);
+        } else {
+            canvas.width = 400;
+            canvas.height = 240;
+        }
+
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = '#0f172a';
+
+        @php
+            $existingSig = $assess?->interviewer_signature_path ?? $candidate->signature_path ?? null;
+            $existingSigUrl = null;
+            if (!empty($existingSig)) {
+                if (str_starts_with($existingSig, 'data:image')) {
+                    $existingSigUrl = $existingSig;
+                } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($existingSig)) {
+                    $existingSigUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($existingSig);
+                } elseif (file_exists(public_path($existingSig))) {
+                    $existingSigUrl = asset($existingSig);
+                } elseif (file_exists(public_path('uploads/ttd/' . $existingSig))) {
+                    $existingSigUrl = asset('uploads/ttd/' . $existingSig);
+                }
             }
+        @endphp
 
-            function startDraw(e) {
-                isDrawing = true;
-                const pos = getPos(e);
-                ctx.beginPath();
-                ctx.moveTo(pos.x, pos.y);
-                if (e.touches) e.preventDefault();
+        const existingSigUrl = @json($existingSigUrl);
+        if (existingSigUrl) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = function() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                hasDrawn = true;
+            };
+            img.src = existingSigUrl;
+        }
+
+        function getPos(e) {
+            const r = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / (r.width || 1);
+            const scaleY = canvas.height / (r.height || 1);
+            let clientX, clientY;
+            if (e.touches && e.touches.length > 0) {
+                clientX = e.touches[0].clientX;
+                clientY = e.touches[0].clientY;
+            } else if (e.changedTouches && e.changedTouches.length > 0) {
+                clientX = e.changedTouches[0].clientX;
+                clientY = e.changedTouches[0].clientY;
+            } else {
+                clientX = e.clientX;
+                clientY = e.clientY;
             }
+            return {
+                x: (clientX - r.left) * scaleX,
+                y: (clientY - r.top) * scaleY
+            };
+        }
 
-            function draw(e) {
-                if (!isDrawing) return;
-                const pos = getPos(e);
-                ctx.lineTo(pos.x, pos.y);
-                ctx.stroke();
-                if (e.touches) e.preventDefault();
-            }
+        function startDraw(e) {
+            isDrawing = true;
+            hasDrawn = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            if (e.cancelable && e.type && e.type.startsWith('touch')) e.preventDefault();
+        }
 
-            function stopDraw() {
+        function draw(e) {
+            if (!isDrawing) return;
+            const pos = getPos(e);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+            if (e.cancelable && e.type && e.type.startsWith('touch')) e.preventDefault();
+        }
+
+        function stopDraw(e) {
+            if (isDrawing) {
                 isDrawing = false;
+                ctx.closePath();
             }
+        }
 
+        // Pointer Events (supports stylus, finger touch, and mouse seamlessly)
+        if (window.PointerEvent) {
+            canvas.addEventListener('pointerdown', function(e) {
+                try { canvas.setPointerCapture(e.pointerId); } catch(_) {}
+                startDraw(e);
+            });
+            canvas.addEventListener('pointermove', draw);
+            canvas.addEventListener('pointerup', function(e) {
+                stopDraw(e);
+                try { canvas.releasePointerCapture(e.pointerId); } catch(_) {}
+            });
+            canvas.addEventListener('pointercancel', function(e) {
+                stopDraw(e);
+                try { canvas.releasePointerCapture(e.pointerId); } catch(_) {}
+            });
+        } else {
+            // Fallback for older browsers
             canvas.addEventListener('mousedown', startDraw);
             canvas.addEventListener('mousemove', draw);
             window.addEventListener('mouseup', stopDraw);
@@ -1689,29 +1760,47 @@
             canvas.addEventListener('touchstart', startDraw, { passive: false });
             canvas.addEventListener('touchmove', draw, { passive: false });
             window.addEventListener('touchend', stopDraw);
+            window.addEventListener('touchcancel', stopDraw);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initSignatureCanvas);
+    } else {
+        initSignatureCanvas();
+    }
+
+    // Re-check size on resize if user has not started drawing yet
+    window.addEventListener('resize', function() {
+        if (!hasDrawn && canvas) {
+            const r = canvas.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) {
+                canvas.width = Math.round(r.width);
+                canvas.height = Math.round(r.height);
+                ctx.lineWidth = 2.5;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.strokeStyle = '#0f172a';
+            }
         }
     });
 
-    function drawSampleSignature() {
-        if (!ctx) return;
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        // Draw the sample cursive signature loop from Image 1
-        ctx.beginPath();
-        ctx.moveTo(80, 160);
-        ctx.bezierCurveTo(90, 80, 140, 60, 150, 110);
-        ctx.bezierCurveTo(160, 150, 70, 140, 110, 170);
-        ctx.stroke();
-    }
-
     function clearSignatureCanvas() {
-        if (!ctx) return;
+        if (!ctx || !canvas) return;
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+        hasDrawn = false;
+        const input = document.getElementById('signatureDataInput');
+        if (input) input.value = '';
     }
 
     function submitInterviewForm() {
         const form = document.getElementById('interviewForm');
-        if (canvas) {
-            document.getElementById('signatureDataInput').value = canvas.toDataURL('image/png');
+        if (!form) return;
+        if (canvas && hasDrawn) {
+            const input = document.getElementById('signatureDataInput');
+            if (input) {
+                input.value = canvas.toDataURL('image/png');
+            }
         }
         form.submit();
     }

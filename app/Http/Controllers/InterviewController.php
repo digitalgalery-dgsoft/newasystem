@@ -404,7 +404,7 @@ class InterviewController extends Controller
             5 => 5, 4 => 4, 3 => 3, 2 => 2, 1 => 1
         ];
 
-        InterviewAssessment::updateOrCreate(
+        $assessment = InterviewAssessment::updateOrCreate(
             ["candidate_id" => $candidate->id],
             [
                 "interviewer_id" => $user->id,
@@ -422,7 +422,16 @@ class InterviewController extends Controller
 
         if ($request->has("signature_data") && !empty($request->input("signature_data"))) {
             $sigData = $request->input("signature_data");
-            $candidate->update(["signature_path" => $sigData]);
+            if (str_contains($sigData, 'base64')) {
+                $imageData = explode(',', $sigData)[1];
+                $fileName = 'signatures/interviewer_' . $candidate->id . '_' . time() . '.png';
+                \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, base64_decode($imageData));
+                $assessment->update(['interviewer_signature_path' => $fileName]);
+                $candidate->update(['signature_path' => $fileName]);
+            } else {
+                $assessment->update(['interviewer_signature_path' => $sigData]);
+                $candidate->update(['signature_path' => $sigData]);
+            }
         }
 
         return redirect()->route("interview.show", $candidate->id)

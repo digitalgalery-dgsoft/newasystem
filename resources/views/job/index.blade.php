@@ -85,7 +85,7 @@
                 placeholder: 'Semua Jabatan',
                 searchPlaceholder: 'Ketik cari jabatan...',
                 selected: '{{ addslashes($selectedJob ?? '') }}',
-                options: {{ json_encode(array_values($distinctJobs)) }}
+                options: {{ json_encode(collect($distinctJobs)->values()->all()) }}
             })">
                 <input type="hidden" :name="name" :value="selectedValue">
                 <div class="relative" @click.outside="open = false">
@@ -165,7 +165,7 @@
                 placeholder: 'Semua Area',
                 searchPlaceholder: 'Ketik cari area...',
                 selected: '{{ addslashes($selectedArea ?? '') }}',
-                options: {{ json_encode(array_values($distinctAreas)) }}
+                options: {{ json_encode(collect($distinctAreas)->values()->all()) }}
             })">
                 <input type="hidden" :name="name" :value="selectedValue">
                 <div class="relative" @click.outside="open = false">
@@ -245,7 +245,7 @@
                 placeholder: 'Semua Kota',
                 searchPlaceholder: 'Ketik cari kota...',
                 selected: '{{ addslashes($selectedCity ?? '') }}',
-                options: {{ json_encode(array_values($distinctCities)) }}
+                options: {{ json_encode(collect($distinctCities)->values()->all()) }}
             })">
                 <input type="hidden" :name="name" :value="selectedValue">
                 <div class="relative" @click.outside="open = false">
