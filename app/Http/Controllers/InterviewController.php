@@ -90,6 +90,84 @@ class InterviewController extends Controller
         return 'Admin Rekrutmen';
     }
 
+    public static function resolveCandidateAsDetails($candidate, $fallbackUser = null): array
+    {
+        $assess = $candidate->interviewAssessment ?? null;
+        if ($assess && $assess->interviewer) {
+            $u = $assess->interviewer;
+            return [
+                'name' => $u->name,
+                'title' => $u->job_title ?: 'Area Supervisor',
+                'area' => $u->area ?: ($candidate->area ?: 'Jakarta'),
+                'signature_path' => $assess->interviewer_signature_path ?: $u->signature_path,
+                'user' => $u,
+            ];
+        }
+
+        if ($candidate->recruiter) {
+            $u = $candidate->recruiter;
+            return [
+                'name' => $u->name,
+                'title' => $u->job_title ?: 'Area Supervisor',
+                'area' => $u->area ?: ($candidate->area ?: 'Jakarta'),
+                'signature_path' => $assess?->interviewer_signature_path ?: $u->signature_path,
+                'user' => $u,
+            ];
+        }
+
+        $useras = trim($candidate->useras ?? '');
+        if (!empty($useras)) {
+            $lowerEmail = strtolower($useras);
+            $u = User::whereRaw('LOWER(email) = ?', [$lowerEmail])->orWhere('name', $useras)->first();
+            if ($u) {
+                return [
+                    'name' => $u->name,
+                    'title' => $u->job_title ?: 'Area Supervisor',
+                    'area' => $u->area ?: ($candidate->area ?: 'Jakarta'),
+                    'signature_path' => $assess?->interviewer_signature_path ?: $u->signature_path,
+                    'user' => $u,
+                ];
+            }
+
+            $emp = Employee::whereRaw('LOWER(email) = ?', [$lowerEmail])->orWhere('nama_karyawan', $useras)->first();
+            if ($emp) {
+                return [
+                    'name' => $emp->nama_karyawan,
+                    'title' => $emp->jabatan ?: 'Area Supervisor',
+                    'area' => $emp->penempatan ?: ($candidate->area ?: 'Jakarta'),
+                    'signature_path' => $assess?->interviewer_signature_path,
+                    'user' => null,
+                ];
+            }
+
+            return [
+                'name' => $candidate->user_display_name ?: $useras,
+                'title' => 'Rekrutmen',
+                'area' => $candidate->area ?: 'Jakarta',
+                'signature_path' => $assess?->interviewer_signature_path,
+                'user' => null,
+            ];
+        }
+
+        if ($fallbackUser) {
+            return [
+                'name' => $fallbackUser->name,
+                'title' => $fallbackUser->job_title ?: 'Area Supervisor',
+                'area' => $fallbackUser->area ?: ($candidate->area ?: 'Jakarta'),
+                'signature_path' => $assess?->interviewer_signature_path ?: $fallbackUser->signature_path,
+                'user' => $fallbackUser,
+            ];
+        }
+
+        return [
+            'name' => 'Admin Rekrutmen',
+            'title' => 'Rekrutmen',
+            'area' => $candidate->area ?: 'Jakarta',
+            'signature_path' => $assess?->interviewer_signature_path,
+            'user' => null,
+        ];
+    }
+
     private function buildWaUrl($candidate, $user, $salam): string
     {
         $induk = $candidate->principle?->parent_company ?? $candidate->principle?->name ?? 'ESA Groups';
@@ -420,17 +498,39 @@ class InterviewController extends Controller
             ]
         );
 
-        if ($request->has("signature_data") && !empty($request->input("signature_data"))) {
-            $sigData = $request->input("signature_data");
+        $sigData = $request->input("signature_data");
+        if (!empty($sigData)) {
             if (str_contains($sigData, 'base64')) {
                 $imageData = explode(',', $sigData)[1];
+                $decoded = base64_decode($imageData);
+
+                // Save signature for candidate's assessment
                 $fileName = 'signatures/interviewer_' . $candidate->id . '_' . time() . '.png';
-                \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, base64_decode($imageData));
+                \Illuminate\Support\Facades\Storage::disk('public')->put($fileName, $decoded);
                 $assessment->update(['interviewer_signature_path' => $fileName]);
-                $candidate->update(['signature_path' => $fileName]);
+
+                // Save signature permanently for AS user so it auto-loads for all future candidates
+                $userSigFile = 'signatures/user_' . $user->id . '.png';
+                \Illuminate\Support\Facades\Storage::disk('public')->put($userSigFile, $decoded);
+                $user->update(['signature_path' => $userSigFile]);
             } else {
                 $assessment->update(['interviewer_signature_path' => $sigData]);
-                $candidate->update(['signature_path' => $sigData]);
+                if (empty($user->signature_path)) {
+                    $user->update(['signature_path' => $sigData]);
+                }
+            }
+        } else {
+            // If not drawn this time, check if AS user already has a saved signature and reuse automatically
+            $userSig = $user->signature_path ?? (
+                \Illuminate\Support\Facades\Storage::disk('public')->exists('signatures/user_' . $user->id . '.png')
+                    ? 'signatures/user_' . $user->id . '.png'
+                    : null
+            );
+            if ($userSig) {
+                $assessment->update(['interviewer_signature_path' => $userSig]);
+                if (empty($user->signature_path)) {
+                    $user->update(['signature_path' => $userSig]);
+                }
             }
         }
 
@@ -904,7 +1004,7 @@ class InterviewController extends Controller
             'principle',
             'recruiter',
             'workExperiences',
-            'interviewAssessment',
+            'interviewAssessment.interviewer',
             'testResults',
             'principleApprovals'
         ])->findOrFail($id);

@@ -335,9 +335,48 @@
         <!-- TAB 1: HASIL INTERVIEW (Matching Image 1) -->
         <!-- ============================================================= -->
         <div x-show="activeTab === 'interview'" class="space-y-6">
+            @php
+                $assess = $candidate->interviewAssessment;
+                $existingSigUrl = null;
+                $isSavedUserSig = false;
+
+                // Priority 1: Assessment interviewer signature for this candidate
+                $sigPath = $assess?->interviewer_signature_path;
+
+                // Priority 2: Logged-in AS User saved permanent signature
+                if (empty($sigPath) && !empty($user)) {
+                    $sigPath = $user->signature_path ?? (
+                        \Illuminate\Support\Facades\Storage::disk('public')->exists('signatures/user_' . $user->id . '.png')
+                            ? 'signatures/user_' . $user->id . '.png'
+                            : null
+                    );
+                    if (!empty($sigPath)) {
+                        $isSavedUserSig = true;
+                    }
+                }
+
+                // Priority 3: Fallback to candidate signature
+                if (empty($sigPath)) {
+                    $sigPath = $candidate->signature_path ?? null;
+                }
+
+                if (!empty($sigPath)) {
+                    if (str_starts_with($sigPath, 'data:image')) {
+                        $existingSigUrl = $sigPath;
+                    } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($sigPath)) {
+                        $existingSigUrl = 'data:image/png;base64,' . base64_encode(\Illuminate\Support\Facades\Storage::disk('public')->get($sigPath));
+                    } elseif (file_exists(public_path($sigPath))) {
+                        $existingSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(public_path($sigPath)));
+                    } elseif (file_exists(public_path('uploads/ttd/' . $sigPath))) {
+                        $existingSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('uploads/ttd/' . $sigPath)));
+                    } elseif (file_exists(storage_path('app/public/' . $sigPath))) {
+                        $existingSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(storage_path('app/public/' . $sigPath)));
+                    }
+                }
+            @endphp
             <form action="{{ route('interview.assess', $candidate->id) }}" method="POST" id="interviewForm" class="space-y-6">
                 @csrf
-                <input type="hidden" name="signature_data" id="signatureDataInput">
+                <input type="hidden" name="signature_data" id="signatureDataInput" value="{{ $existingSigUrl ?? '' }}">
 
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
@@ -424,7 +463,15 @@
 
                     <!-- Right: Tanda Tangan Canvas / Signature Pad -->
                     <div class="lg:col-span-4 space-y-3">
-                        <label class="block text-xs font-bold text-slate-700">Tanda Tangan</label>
+                        <div class="flex items-center justify-between">
+                            <label class="block text-xs font-bold text-slate-700">Tanda Tangan</label>
+                            @if(!empty($existingSigUrl))
+                                <span id="sigAutoBadge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-[10px] font-semibold text-emerald-700">
+                                    <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                                    <span>{{ $isSavedUserSig ? 'TTD AS Otomatis' : 'TTD Tersimpan' }}</span>
+                                </span>
+                            @endif
+                        </div>
                         
                         <div class="border border-slate-200 rounded-2xl bg-white p-4 shadow-sm text-center">
                             <!-- Canvas Drawing Pad -->
@@ -1661,32 +1708,19 @@
         ctx.lineJoin = 'round';
         ctx.strokeStyle = '#0f172a';
 
-        @php
-            $existingSig = $assess?->interviewer_signature_path ?? $candidate->signature_path ?? null;
-            $existingSigUrl = null;
-            if (!empty($existingSig)) {
-                if (str_starts_with($existingSig, 'data:image')) {
-                    $existingSigUrl = $existingSig;
-                } elseif (\Illuminate\Support\Facades\Storage::disk('public')->exists($existingSig)) {
-                    $existingSigUrl = \Illuminate\Support\Facades\Storage::disk('public')->url($existingSig);
-                } elseif (file_exists(public_path($existingSig))) {
-                    $existingSigUrl = asset($existingSig);
-                } elseif (file_exists(public_path('uploads/ttd/' . $existingSig))) {
-                    $existingSigUrl = asset('uploads/ttd/' . $existingSig);
-                }
-            }
-        @endphp
-
         const existingSigUrl = @json($existingSigUrl);
         if (existingSigUrl) {
             const img = new Image();
-            img.crossOrigin = 'anonymous';
             img.onload = function() {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                 hasDrawn = true;
             };
             img.src = existingSigUrl;
+            const input = document.getElementById('signatureDataInput');
+            if (input && !input.value) {
+                input.value = existingSigUrl;
+            }
         }
 
         function getPos(e) {
@@ -1791,19 +1825,36 @@
         hasDrawn = false;
         const input = document.getElementById('signatureDataInput');
         if (input) input.value = '';
+        const badge = document.getElementById('sigAutoBadge');
+        if (badge) badge.style.display = 'none';
+    }
+
+    function syncSignatureData() {
+        const input = document.getElementById('signatureDataInput');
+        if (canvas && hasDrawn && input) {
+            try {
+                input.value = canvas.toDataURL('image/png');
+            } catch (e) {
+                console.warn('Signature canvas export note:', e);
+            }
+        }
     }
 
     function submitInterviewForm() {
         const form = document.getElementById('interviewForm');
         if (!form) return;
-        if (canvas && hasDrawn) {
-            const input = document.getElementById('signatureDataInput');
-            if (input) {
-                input.value = canvas.toDataURL('image/png');
-            }
-        }
+        syncSignatureData();
         form.submit();
     }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.getElementById('interviewForm');
+        if (form) {
+            form.addEventListener('submit', function() {
+                syncSignatureData();
+            });
+        }
+    });
 </script>
 @endpush
 @endsection

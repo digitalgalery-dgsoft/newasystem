@@ -352,20 +352,81 @@ class InterviewPdfService
 
         // Hasil Interview
         $assess = $candidate->interviewAssessment;
+        $scoreToText = function($score) {
+            if (is_numeric($score)) {
+                return match((int)$score) {
+                    5 => 'Sangat Baik',
+                    4 => 'Baik',
+                    3 => 'Cukup',
+                    2 => 'Kurang',
+                    1 => 'Kurang',
+                    default => 'Baik'
+                };
+            }
+            return !empty($score) ? $score : 'Baik';
+        };
+
+        $kmVal = $scoreToText($assess?->work_motivation ?? $assess?->kemauan_kerja);
+        $penVal = $scoreToText($assess?->appearance ?? $assess?->penampilan);
+        $attVal = $scoreToText($assess?->attitude);
+        $dtVal = $scoreToText($assess?->comprehension ?? $assess?->daya_tangkap);
+        $notesVal = !empty($assess?->other_notes) ? $assess->other_notes : (!empty($assess?->notes) ? $assess->notes : 'Kandidat memiliki komunikasi yang sopan, integritas baik, dan siap ditempatkan segera.');
+
         $html1 .= '<table class="gayatabel">';
         $html1 .= '<tr><td colspan="4" class="bg-head">HASIL INTERVIEW</td></tr>';
-        $html1 .= '<tr><td width="20%"><b>KEMAUAN KERJA</b></td><td width="30%">' . ($assess?->kemauan_kerja ?? 'Baik') . '</td><td width="20%"><b>PENAMPILAN</b></td><td width="30%">' . ($assess?->penampilan ?? 'Baik') . '</td></tr>';
-        $html1 .= '<tr><td><b>ATTITUDE</b></td><td>' . ($assess?->attitude ?? 'Baik') . '</td><td><b>DAYA TANGKAP</b></td><td>' . ($assess?->daya_tangkap ?? 'Baik') . '</td></tr>';
-        $html1 .= '<tr><td><b>CATATAN LAIN-LAIN</b></td><td colspan="3">' . ($assess?->notes ?? 'Kandidat memiliki komunikasi yang sopan, integritas baik, dan siap ditempatkan segera.') . '</td></tr>';
+        $html1 .= '<tr><td width="20%"><b>KEMAUAN KERJA</b></td><td width="30%">' . $kmVal . '</td><td width="20%"><b>PENAMPILAN</b></td><td width="30%">' . $penVal . '</td></tr>';
+        $html1 .= '<tr><td><b>ATTITUDE</b></td><td>' . $attVal . '</td><td><b>DAYA TANGKAP</b></td><td>' . $dtVal . '</td></tr>';
+        $html1 .= '<tr><td><b>CATATAN LAIN-LAIN</b></td><td colspan="3">' . htmlspecialchars($notesVal) . '</td></tr>';
         $html1 .= '<tr><td><b>CATATAN PRINSIPLE</b></td><td colspan="3">Approval By WA - Email (Rekomendasi Lulus Seleksi)</td></tr>';
         $html1 .= '</table>';
+
+        // Dynamic AS and Signatures Resolution
+        $asDetails = \App\Http\Controllers\InterviewController::resolveCandidateAsDetails($candidate);
+        $asName = $asDetails['name'] ?? 'Admin Rekrutmen';
+        $asArea = $asDetails['area'] ?? ($candidate->area ?? 'Jakarta');
+        $asTitle = $asDetails['title'] ?? 'Rekrutmen';
+
+        $asTitleFormatted = ucwords(strtolower($asTitle));
+        $asAreaFormatted = ucwords(strtolower($asArea));
+        if (stripos($asTitleFormatted, 'area') !== false) {
+            $asSubtext = $asTitleFormatted . ' ' . $asAreaFormatted;
+        } else {
+            $asSubtext = $asTitleFormatted . ' Area ' . $asAreaFormatted;
+        }
+
+        // AS signature
+        $asSigPath = $asDetails['signature_path'] ?? null;
+        if (empty($asSigPath) && !empty($asDetails['user'])) {
+            $asSigPath = $asDetails['user']->signature_path;
+        }
+        $asSigBase64 = $this->resolveBase64Image($asSigPath);
+        $asSigHtml = !empty($asSigBase64)
+            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $asSigBase64 . '" style="height:45px; max-width:130px;"></div>'
+            : '<div style="height:48px; margin:2px 0;"></div>';
+
+        // Principle signature
+        $principleSig = $candidate->ttd_prinsiple ?? $candidate->principleApprovals->first()?->signature_path ?? null;
+        $principleSigBase64 = $this->resolveBase64Image($principleSig);
+        $principleSigHtml = !empty($principleSigBase64)
+            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $principleSigBase64 . '" style="height:45px; max-width:130px;"></div>'
+            : '<div style="height:48px; margin:2px 0;"></div>';
+
+        // Candidate signature
+        $candSig = $candidate->signature_path ?? null;
+        if ($candSig && $candSig === ($assess?->interviewer_signature_path ?? '')) {
+            $candSig = null;
+        }
+        $candSigBase64 = $this->resolveBase64Image($candSig);
+        $candSigHtml = !empty($candSigBase64)
+            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $candSigBase64 . '" style="height:45px; max-width:130px;"></div>'
+            : '<div style="height:48px; margin:2px 0;"></div>';
 
         // Pernyataan & Tanda Tangan
         $html1 .= '<p style="font-size:7.5px; margin:4px 0;"><i>Demikian data dan hasil evaluasi ini dibuat dengan sebenarnya sesuai dengan proses rekrutmen yang transparan dan profesional.</i></p>';
         $html1 .= '<table width="100%" style="text-align:center; margin-top:8px;"><tr>';
-        $html1 .= '<td width="33%">MENYETUJUI HRD / AS<br><br><br><br><b><u>Budi Santoso</u></b><br>Rekrutmen Area Jakarta</td>';
-        $html1 .= '<td width="33%">MENYETUJUI PRINSIPLE<br><br><br><br><b><u>Manager ' . $parentComp . '</u></b><br>User Principle</td>';
-        $html1 .= '<td width="33%">PELAMAR / KANDIDAT<br><br><br><br><b><u>' . $candidate->full_name . '</u></b><br>Kandidat Pelamar</td>';
+        $html1 .= '<td width="33%">MENYETUJUI HRD / AS<br>' . $asSigHtml . '<b><u>' . htmlspecialchars($asName) . '</u></b><br>' . htmlspecialchars($asSubtext) . '</td>';
+        $html1 .= '<td width="33%">MENYETUJUI PRINSIPLE<br>' . $principleSigHtml . '<b><u>Manager ' . htmlspecialchars($parentComp) . '</u></b><br>User Principle</td>';
+        $html1 .= '<td width="33%">PELAMAR / KANDIDAT<br>' . $candSigHtml . '<b><u>' . htmlspecialchars($candidate->full_name) . '</u></b><br>Kandidat Pelamar</td>';
         $html1 .= '</tr></table>';
         $html1 .= '</body></html>';
 
@@ -461,9 +522,9 @@ class InterviewPdfService
         $html2 .= '<tr><td><b>Kelemahan (Weakness)</b></td><td>:</td><td>' . ($firstExp?->weaknesses ?? 'Perlu sedikit bimbingan saat transisi sistem baru') . '</td></tr>';
         $html2 .= '</table>';
 
-        $html2 .= '<br><br><table width="100%"><tr>';
-        $html2 .= '<td width="60%"></td>';
-        $html2 .= '<td width="40%" align="center">Jakarta, ' . date('d M Y') . '<br>Petugas Rekrutmen / Cek Referensi<br><br><br><br><b><u>Budi Santoso</u></b><br>HRD & Rekrutmen</td>';
+        $html2 .= '<br><table width="100%"><tr>';
+        $html2 .= '<td width="55%"></td>';
+        $html2 .= '<td width="45%" align="center">' . htmlspecialchars($asArea) . ', ' . date('d M Y') . '<br>Petugas Rekrutmen / Cek Referensi<br>' . $asSigHtml . '<b><u>' . htmlspecialchars($asName) . '</u></b><br>' . htmlspecialchars($asSubtext) . '</td>';
         $html2 .= '</tr></table>';
         $html2 .= '</body></html>';
 
@@ -715,5 +776,38 @@ class InterviewPdfService
         $chartData = ob_get_clean();
         imagedestroy($image);
         return base64_encode($chartData);
+    }
+
+    private function resolveBase64Image(?string $path): ?string
+    {
+        if (empty($path)) {
+            return null;
+        }
+
+        if (str_starts_with($path, 'data:image')) {
+            return $path;
+        }
+
+        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
+            $content = \Illuminate\Support\Facades\Storage::disk('public')->get($path);
+            return 'data:image/png;base64,' . base64_encode($content);
+        }
+
+        if (file_exists(public_path($path))) {
+            $content = file_get_contents(public_path($path));
+            return 'data:image/png;base64,' . base64_encode($content);
+        }
+
+        if (file_exists(public_path('uploads/ttd/' . $path))) {
+            $content = file_get_contents(public_path('uploads/ttd/' . $path));
+            return 'data:image/png;base64,' . base64_encode($content);
+        }
+
+        if (file_exists(storage_path('app/public/' . $path))) {
+            $content = file_get_contents(storage_path('app/public/' . $path));
+            return 'data:image/png;base64,' . base64_encode($content);
+        }
+
+        return null;
     }
 }
