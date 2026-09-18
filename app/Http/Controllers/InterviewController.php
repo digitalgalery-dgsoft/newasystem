@@ -717,38 +717,99 @@ class InterviewController extends Controller
      * Halaman Done (Replikasi interviewdone.php)
      * Kriteria 1: Interview selesai jika kolom ttd_prinsiple sudah terisi
      */
+    /**
+     * Helper to summarize distinct recruiters for a given query
+     */
+    protected function buildRecruitersSummary($baseQuery): \Illuminate\Support\Collection
+    {
+        $allRecruiters = (clone $baseQuery)
+            ->select('useras', DB::raw('count(*) as total'))
+            ->whereNotNull('useras')
+            ->where('useras', '!=', '')
+            ->groupBy('useras')
+            ->orderByDesc('total')
+            ->take(50)
+            ->get();
+
+        $recruiterEmails = $allRecruiters->pluck('useras')->filter(fn($u) => str_contains($u, '@'))->map(fn($e) => strtolower(trim($e)))->unique()->values()->all();
+        $employeeLookup = [];
+        if (!empty($recruiterEmails)) {
+            $emps = Employee::whereIn(DB::raw('LOWER(email)'), $recruiterEmails)
+                ->where('status', 'Aktiv')
+                ->get(['email', 'nama_karyawan', 'area']);
+            foreach ($emps as $e) {
+                $employeeLookup[strtolower(trim($e->email))] = $e;
+            }
+        }
+        foreach ($allRecruiters as $r) {
+            $lower = strtolower(trim($r->useras));
+            if (isset($employeeLookup[$lower])) {
+                $r->display_name = $employeeLookup[$lower]->nama_karyawan;
+                $r->area = $employeeLookup[$lower]->area;
+            } elseif (str_contains($r->useras, '@')) {
+                $parts = explode('@', $r->useras)[0];
+                $name = preg_replace('/[0-9_.-]+/', ' ', $parts);
+                $r->display_name = ucwords(trim($name)) ?: $r->useras;
+                $r->area = '';
+            } else {
+                $r->display_name = ucwords(strtolower($r->useras));
+                $r->area = '';
+            }
+        }
+
+        return $allRecruiters;
+    }
+
+    /**
+     * Halaman Done (Replikasi table_done di dataint.php)
+     * Kriteria 1: Kandidat aktif yang telah diterima/disetujui oleh prinsiple
+     */
     public function done(Request $request)
     {
         $user = $this->getCurrentUser();
         $search = $request->query('search');
+        $filterUser = $request->query('filter_user');
+
+        $baseCondition = function ($q) {
+            $q->whereNotIn('status', ['Arsip', 'archived'])
+              ->where(function ($sq) {
+                  $sq->where(function ($q2) {
+                      $q2->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
+                  })->orWhere(function ($q2) {
+                      $q2->whereNotNull('note_principle')->where('note_principle', '!=', '');
+                  });
+              });
+        };
+
+        $allRecruiters = $this->buildRecruitersSummary(DB::table('candidates')->where($baseCondition));
 
         $query = Candidate::with(['principle', 'recruiter', 'testResults'])
-            ->whereNotIn('status', ['Arsip', 'archived'])
-            ->whereNotNull('ttd_prinsiple')
-            ->where('ttd_prinsiple', '!=', '');
+            ->where($baseCondition);
 
         $isAdmin = $user->isAdmin() || $user->role === 'admin';
         $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
-        $filterUser = $request->query('filter_user');
 
-        if (!($isAdmin && $filterUser === 'all')) {
-            if (!empty($filterUser) && $filterUser !== 'my') {
+        if ($isAdmin) {
+            if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
                 $query->where(function($q) use ($filterUser) {
                     $q->where('useras', $filterUser)
                       ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
                 });
-            } else {
-                $query->where(function($q) use ($user, $userIdentifiers) {
-                    if (!empty($userIdentifiers)) {
-                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
-                    } elseif ($user && !empty($user->id)) {
-                        $q->where('recruiter_id', $user->id);
-                    } else {
-                        $q->whereRaw('1 = 0');
-                    }
-                });
             }
+            // Default Admin: Tampilkan semua data kandidat selesai nasional
+        } else {
+            $query->where(function($q) use ($user, $userIdentifiers) {
+                if (!empty($userIdentifiers)) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    $q->orWhere('useras', '');
+                    $q->orWhereNull('useras');
+                    if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                } elseif ($user && !empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
         }
 
         if ($search) {
@@ -761,47 +822,56 @@ class InterviewController extends Controller
         $candidates = $query->orderBy('id', 'desc')->paginate(20);
         self::attachInhouseEmployeeNames($candidates);
 
-        return view('interview.done', compact('candidates', 'user', 'search'));
+        return view('interview.done', compact('candidates', 'user', 'search', 'allRecruiters', 'filterUser', 'isAdmin'));
     }
 
     /**
      * Halaman Arsip (Replikasi interviewarsip.php)
-     * Kriteria 2: Arsip adalah data kandidat dengan status = Arsip
+     * Kriteria 2: Arsip adalah data kandidat dengan status = Arsip / archived
      */
     public function arsip(Request $request)
     {
         $user = $this->getCurrentUser();
         $search = $request->query('search');
+        $filterUser = $request->query('filter_user');
+
+        $baseCondition = function ($q) {
+            $q->where(function ($sq) {
+                $sq->where('status', 'Arsip')
+                   ->orWhere('status', 'archived')
+                   ->orWhere('status_kandidat', 'Arsip');
+            });
+        };
+
+        $allRecruiters = $this->buildRecruitersSummary(DB::table('candidates')->where($baseCondition));
 
         $query = Candidate::with(['principle', 'recruiter', 'testResults'])
-            ->where(function ($q) {
-                $q->where('status', 'Arsip')
-                  ->orWhere('status', 'archived')
-                  ->orWhere('status_kandidat', 'Arsip');
-            });
+            ->where($baseCondition);
 
         $isAdmin = $user->isAdmin() || $user->role === 'admin';
         $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
-        $filterUser = $request->query('filter_user');
 
-        if (!($isAdmin && $filterUser === 'all')) {
-            if (!empty($filterUser) && $filterUser !== 'my') {
+        if ($isAdmin) {
+            if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
                 $query->where(function($q) use ($filterUser) {
                     $q->where('useras', $filterUser)
                       ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
                 });
-            } else {
-                $query->where(function($q) use ($user, $userIdentifiers) {
-                    if (!empty($userIdentifiers)) {
-                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
-                    } elseif ($user && !empty($user->id)) {
-                        $q->where('recruiter_id', $user->id);
-                    } else {
-                        $q->whereRaw('1 = 0');
-                    }
-                });
             }
+            // Default Admin: Tampilkan semua data kandidat arsip nasional
+        } else {
+            $query->where(function($q) use ($user, $userIdentifiers) {
+                if (!empty($userIdentifiers)) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    $q->orWhere('useras', '');
+                    $q->orWhereNull('useras');
+                    if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                } elseif ($user && !empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
         }
 
         if ($search) {
@@ -814,7 +884,7 @@ class InterviewController extends Controller
         $candidates = $query->orderBy('id', 'desc')->paginate(20);
         self::attachInhouseEmployeeNames($candidates);
 
-        return view('interview.arsip', compact('candidates', 'user', 'search'));
+        return view('interview.arsip', compact('candidates', 'user', 'search', 'allRecruiters', 'filterUser', 'isAdmin'));
     }
     /**
      * Download / Stream Document Lengkap dalam format PDF (Replikasi printall.php)

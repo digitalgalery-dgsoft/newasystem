@@ -398,9 +398,7 @@
                             Tarik data terbaru <code>hr.employee</code> dari Odoo untuk entitas <strong>{{ $currentEntity->code }}</strong>.
                         </p>
 
-                        <form action="{{ route('odoo.setting.sync', $currentEntity->code) }}" method="POST" onsubmit="return confirm('Mulai proses sinkronisasi data karyawan untuk entitas {{ $currentEntity->code }}?')">
-                            @csrf
-                            
+                        <form id="formSingleSync_{{ $currentEntity->code }}" onsubmit="event.preventDefault(); startTerminalSync('{{ $currentEntity->code }}');">
                             <!-- Category Filter Selection -->
                             <div class="mb-3.5 bg-white/10 p-2.5 rounded-xl border border-white/15 backdrop-blur-xs">
                                 <label class="block text-[10px] font-extrabold text-blue-100 uppercase tracking-wider mb-1.5">
@@ -408,33 +406,33 @@
                                 </label>
                                 <div class="grid grid-cols-3 gap-1.5 text-xs">
                                     <label class="cursor-pointer">
-                                        <input type="radio" name="category" value="inhouse" checked class="peer sr-only">
+                                        <input type="radio" name="single_category_{{ $currentEntity->code }}" value="inhouse" checked class="peer sr-only">
                                         <div class="py-1.5 px-2 text-center rounded-lg bg-white/15 border border-white/20 peer-checked:bg-white peer-checked:text-primary peer-checked:font-black transition-all text-[11px]">
                                             Inhouse
                                         </div>
                                     </label>
                                     <label class="cursor-pointer">
-                                        <input type="radio" name="category" value="ratecard" class="peer sr-only">
+                                        <input type="radio" name="single_category_{{ $currentEntity->code }}" value="ratecard" class="peer sr-only">
                                         <div class="py-1.5 px-2 text-center rounded-lg bg-white/15 border border-white/20 peer-checked:bg-white peer-checked:text-primary peer-checked:font-black transition-all text-[11px]">
                                             RateCard
                                         </div>
                                     </label>
                                     <label class="cursor-pointer">
-                                        <input type="radio" name="category" value="all" class="peer sr-only">
+                                        <input type="radio" name="single_category_{{ $currentEntity->code }}" value="all" class="peer sr-only">
                                         <div class="py-1.5 px-2 text-center rounded-lg bg-white/15 border border-white/20 peer-checked:bg-white peer-checked:text-primary peer-checked:font-black transition-all text-[11px]">
                                             Semua
                                         </div>
                                     </label>
                                 </div>
                                 <div class="flex items-center gap-1.5 mt-2 text-[10px] text-blue-100">
-                                    <i class="fa-solid fa-circle-check text-emerald-300"></i>
-                                    <span>Hanya employee berstatus <strong>aktif</strong> yang disinkronkan.</span>
+                                    <i class="fa-solid fa-terminal text-emerald-300"></i>
+                                    <span>Live Terminal Streaming: Tampil satu per satu, anti-timeout.</span>
                                 </div>
                             </div>
 
                             <button type="submit" class="w-full py-3 px-4 rounded-xl bg-white text-primary font-black text-xs hover:bg-blue-50 transition-all shadow-md flex items-center justify-center gap-2 group">
-                                <i class="fa-solid fa-arrows-rotate text-sm group-hover:rotate-180 transition-transform duration-500"></i>
-                                <span>SINKRONISASI KARYAWAN {{ $currentEntity->code }}</span>
+                                <i class="fa-solid fa-terminal text-sm group-hover:scale-110 transition-transform"></i>
+                                <span>SINKRONISASI KARYAWAN {{ $currentEntity->code }} (TERMINAL LIVE)</span>
                             </button>
                         </form>
 
@@ -580,8 +578,7 @@
                 </button>
             </div>
 
-            <form action="{{ route('odoo.setting.sync-all') }}" method="POST" class="p-5 space-y-4">
-                @csrf
+            <form id="formSyncAll" onsubmit="event.preventDefault(); startTerminalSyncAll();" class="p-5 space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-2">
                         Pilih Kategori Sinkronisasi:
@@ -589,7 +586,7 @@
                     <div class="space-y-2">
                         <!-- Option 1: Inhouse Saja -->
                         <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary/50 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-blue-50/40">
-                            <input type="radio" name="category" value="inhouse" checked class="mt-0.5 text-primary focus:ring-primary">
+                            <input type="radio" name="all_category" value="inhouse" checked class="mt-0.5 text-primary focus:ring-primary">
                             <div class="flex-1 text-xs">
                                 <div class="flex items-center justify-between">
                                     <span class="font-bold text-slate-800">Inhouse Saja (5 Entitas)</span>
@@ -601,7 +598,7 @@
 
                         <!-- Option 2: RateCard Saja -->
                         <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary/50 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-blue-50/40">
-                            <input type="radio" name="category" value="ratecard" class="mt-0.5 text-primary focus:ring-primary">
+                            <input type="radio" name="all_category" value="ratecard" class="mt-0.5 text-primary focus:ring-primary">
                             <div class="flex-1 text-xs">
                                 <span class="font-bold text-slate-800">RateCard Saja</span>
                                 <p class="text-[11px] text-slate-500 mt-0.5">Karyawan dengan Prinsiple selain 5 entitas inhouse.</p>
@@ -610,7 +607,7 @@
 
                         <!-- Option 3: Semua Kategori -->
                         <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary/50 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-blue-50/40">
-                            <input type="radio" name="category" value="all" class="mt-0.5 text-primary focus:ring-primary">
+                            <input type="radio" name="all_category" value="all" class="mt-0.5 text-primary focus:ring-primary">
                             <div class="flex-1 text-xs">
                                 <span class="font-bold text-slate-800">Semua Kategori (Inhouse + RateCard)</span>
                                 <p class="text-[11px] text-slate-500 mt-0.5">Tarik seluruh data karyawan aktif tanpa filter kategori.</p>
@@ -621,10 +618,10 @@
 
                 <!-- Filter Status Aktif Info -->
                 <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-[11px] text-emerald-800 flex items-start gap-2.5">
-                    <i class="fa-solid fa-circle-check text-emerald-600 text-sm mt-0.5 shrink-0"></i>
+                    <i class="fa-solid fa-terminal text-emerald-600 text-sm mt-0.5 shrink-0"></i>
                     <div>
-                        <span class="font-bold">Hanya Karyawan Aktif:</span>
-                        Sistem hanya akan memproses karyawan yang berstatus aktif (tanpa tanggal resign) di Odoo.
+                        <span class="font-bold">Live Terminal Streaming:</span>
+                        Seluruh data dari ke-5 entitas akan disinkronkan satu per satu di jendela terminal, mencegah timeout dan memproses seluruh data hingga tuntas.
                     </div>
                 </div>
 
@@ -632,12 +629,127 @@
                     <button type="button" onclick="document.getElementById('modalSyncAll').classList.add('hidden')" class="btn-att-secondary text-xs px-4 py-2">
                         Batal
                     </button>
-                    <button type="submit" class="btn-att-primary text-xs px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600">
-                        <i class="fa-solid fa-cloud-arrow-down"></i>
-                        <span>Mulai Sinkronisasi</span>
+                    <button type="submit" class="btn-att-primary text-xs px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 flex items-center gap-2">
+                        <i class="fa-solid fa-terminal"></i>
+                        <span>Mulai Terminal Sync Semua Entitas</span>
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- ============================================================== -->
+    <!-- TERMINAL CONSOLE MODAL (LIVE STREAMING ODOO SYNC ENGINE) -->
+    <!-- ============================================================== -->
+    <div id="terminalSyncModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md hidden transition-all duration-300">
+        <div class="w-full max-w-4xl bg-[#0d1117] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
+            
+            <!-- Terminal Titlebar (macOS Style) -->
+            <div class="bg-[#161b22] px-4 py-3 border-b border-slate-800 flex items-center justify-between select-none">
+                <!-- Traffic Light Controls -->
+                <div class="flex items-center gap-2">
+                    <button type="button" onclick="closeTerminalModal()" class="w-3.5 h-3.5 rounded-full bg-rose-500 hover:bg-rose-600 transition shadow-xs flex items-center justify-center text-[9px] text-rose-950 font-black group" title="Tutup / Hentikan">
+                        <span class="opacity-0 group-hover:opacity-100">&times;</span>
+                    </button>
+                    <button type="button" onclick="clearTerminalScreen()" class="w-3.5 h-3.5 rounded-full bg-amber-400 hover:bg-amber-500 transition shadow-xs flex items-center justify-center text-[9px] text-amber-950 font-black group" title="Bersihkan Layar">
+                        <span class="opacity-0 group-hover:opacity-100">-</span>
+                    </button>
+                    <button type="button" onclick="toggleTerminalFullscreen()" class="w-3.5 h-3.5 rounded-full bg-emerald-500 hover:bg-emerald-600 transition shadow-xs flex items-center justify-center text-[9px] text-emerald-950 font-black group" title="Layar Penuh">
+                        <span class="opacity-0 group-hover:opacity-100">+</span>
+                    </button>
+                    <span class="ml-3 font-mono text-xs text-slate-400 font-semibold flex items-center gap-2">
+                        <i class="fa-solid fa-terminal text-emerald-400"></i>
+                        <span id="termHeaderTitle">asystem@cloud-sync:~/odoo-engine</span>
+                    </span>
+                </div>
+
+                <!-- Right Action Badges -->
+                <div class="flex items-center gap-2.5">
+                    <span id="termLiveBadge" class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+                        <span id="termLiveText">LIVE STREAM</span>
+                    </span>
+                    <button type="button" id="btnAutoScroll" onclick="toggleAutoScroll()" class="text-[11px] font-mono px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition" title="Toggle Auto Scroll">
+                        <i class="fa-solid fa-angles-down text-emerald-400"></i>
+                        <span class="hidden sm:inline">Auto-Scroll</span>
+                    </button>
+                    <button type="button" onclick="copyTerminalLog()" class="text-[11px] font-mono px-2 py-1 rounded bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition" title="Salin Seluruh Log">
+                        <i class="fa-solid fa-copy"></i>
+                        <span class="hidden sm:inline">Copy</span>
+                    </button>
+                    <button type="button" onclick="closeTerminalModal()" class="text-slate-400 hover:text-white transition p-1">
+                        <i class="fa-solid fa-xmark text-sm"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Terminal Live Metrics Bar -->
+            <div class="bg-[#11161d] px-4 py-2 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-2 text-xs font-mono">
+                <div class="flex items-center gap-3">
+                    <span class="text-slate-400">Target: <strong id="termTargetBadge" class="text-indigo-400 font-black">AMK</strong></span>
+                    <span class="text-slate-600">|</span>
+                    <span class="text-slate-400">Total Diproses: <strong id="termProcessedCount" class="text-white">0</strong></span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-emerald-400">Baru: <strong id="termCreatedCount">+0</strong></span>
+                    <span class="text-cyan-400">Diperbarui: <strong id="termUpdatedCount">~0</strong></span>
+                    <span class="text-slate-400">Dilewati: <strong id="termSkippedCount">0</strong></span>
+                    <span class="text-rose-400">Error: <strong id="termErrorCount">!0</strong></span>
+                </div>
+            </div>
+
+            <!-- Animated Progress Line -->
+            <div class="w-full bg-slate-900 h-1 relative overflow-hidden">
+                <div id="termProgressBar" class="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 transition-all duration-300 w-0"></div>
+            </div>
+
+            <!-- Terminal Console Logs Body -->
+            <div id="terminalConsoleBody" class="flex-1 min-h-[360px] max-h-[480px] overflow-y-auto p-4 font-mono text-[11px] sm:text-xs text-slate-200 bg-[#0a0e14] leading-relaxed select-text space-y-1">
+                <!-- Welcome Banner -->
+                <div class="text-slate-500 text-[10px] leading-tight pb-2 border-b border-slate-800/60 font-mono select-none">
+                    <pre class="text-emerald-500/80">
+   ___  ____   ___   ___    ______   ___   _  ______
+  / _ \|  _ \ / _ \ / _ \  / ___\ \ / / \ | |/ / ___|
+ | | | | | | | | | | | | | \___ \\ V /|  \| ' / |
+ | |_| | |_| | |_| | |_| |  ___) || | | |\  | |___
+  \___/|____/ \___/ \___/  |____/ |_| |_| \_|\____|
+                    </pre>
+                    <p class="text-slate-400 mt-1 font-semibold">ASystem Odoo XML-RPC Real-Time Streaming Console v2.0</p>
+                    <p class="text-slate-500">Chunked HTTP / Server-Sent Events (SSE) socket initialized. Output will stream per record.</p>
+                </div>
+
+                <!-- Dynamic Log Entries Container -->
+                <div id="terminalLogList" class="space-y-0.5 pt-2"></div>
+
+                <!-- Blinking Terminal Prompt -->
+                <div id="termPromptRow" class="flex items-center gap-2 text-emerald-400 font-mono text-xs pt-2">
+                    <span class="text-slate-500">asystem@server:~$</span>
+                    <span id="termActiveStatusText" class="text-slate-400 italic text-[11px]">menunggu perintah...</span>
+                    <span class="animate-pulse bg-emerald-400 w-2 h-3.5 inline-block"></span>
+                </div>
+            </div>
+
+            <!-- Terminal Footer Controls -->
+            <div class="bg-[#161b22] px-4 py-3 border-t border-slate-800 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-2 text-slate-400">
+                    <i id="termFooterSpinner" class="fa-solid fa-circle-notch fa-spin text-emerald-400"></i>
+                    <span id="termFooterStatus">Sedang melakukan sinkronisasi dengan server Odoo...</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button type="button" id="btnAbortSync" onclick="abortTerminalSync()" class="px-3 py-1.5 rounded-lg font-bold text-xs bg-rose-500/20 text-rose-300 border border-rose-500/30 hover:bg-rose-500/30 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-hand"></i>
+                        <span>Hentikan (Abort)</span>
+                    </button>
+                    <a href="{{ route('master.karyawan.index') }}" target="_blank" class="px-3 py-1.5 rounded-lg font-bold text-xs bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 transition flex items-center gap-1.5">
+                        <i class="fa-solid fa-users"></i>
+                        <span>Lihat Data Karyawan</span>
+                    </a>
+                    <button type="button" onclick="closeTerminalModal()" class="btn-att-primary text-xs px-4 py-1.5">
+                        <span>Tutup Konsol</span>
+                    </button>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -975,6 +1087,357 @@ function handleSyncByNik(event) {
             </div>
         `;
     });
+}
+
+// ==============================================================
+// TERMINAL STREAM ENGINE (ANTI-TIMEOUT CHUNKED SSE)
+// ==============================================================
+let termAbortController = null;
+let termAutoScroll = true;
+let termCountProcessed = 0;
+let termCountCreated = 0;
+let termCountUpdated = 0;
+let termCountSkipped = 0;
+let termCountErrors = 0;
+let termIsRunning = false;
+
+function openTerminalModal(targetLabel) {
+    const modal = document.getElementById('terminalSyncModal');
+    modal.classList.remove('hidden');
+    document.getElementById('termTargetBadge').textContent = targetLabel;
+    document.getElementById('termHeaderTitle').textContent = `asystem@cloud-sync:~/odoo [${targetLabel}]`;
+    
+    // Reset counters
+    termCountProcessed = 0;
+    termCountCreated = 0;
+    termCountUpdated = 0;
+    termCountSkipped = 0;
+    termCountErrors = 0;
+    updateTerminalStatsUI();
+
+    document.getElementById('termProgressBar').style.width = '5%';
+    document.getElementById('termProgressBar').classList.add('animate-pulse');
+    document.getElementById('termLiveBadge').classList.remove('opacity-40');
+    document.getElementById('termLiveText').textContent = 'LIVE STREAM';
+    document.getElementById('termFooterSpinner').classList.remove('hidden');
+    document.getElementById('termFooterStatus').textContent = 'Menghubungkan ke soket streaming Odoo...';
+    document.getElementById('btnAbortSync').classList.remove('hidden');
+    document.getElementById('termActiveStatusText').textContent = 'streaming aktif...';
+}
+
+function closeTerminalModal() {
+    if (termIsRunning) {
+        if (!confirm('Proses sinkronisasi masih berjalan di background. Yakin ingin menutup jendela terminal?')) {
+            return;
+        }
+        abortTerminalSync();
+    }
+    document.getElementById('terminalSyncModal').classList.add('hidden');
+}
+
+function clearTerminalScreen() {
+    document.getElementById('terminalLogList').innerHTML = '';
+}
+
+function toggleAutoScroll() {
+    termAutoScroll = !termAutoScroll;
+    const btn = document.getElementById('btnAutoScroll');
+    if (termAutoScroll) {
+        btn.classList.add('text-white', 'border-emerald-500');
+        btn.classList.remove('text-slate-400');
+    } else {
+        btn.classList.remove('text-white', 'border-emerald-500');
+        btn.classList.add('text-slate-400');
+    }
+}
+
+function toggleTerminalFullscreen() {
+    const modalWin = document.querySelector('#terminalSyncModal > div');
+    if (modalWin.classList.contains('max-w-4xl')) {
+        modalWin.classList.remove('max-w-4xl');
+        modalWin.classList.add('max-w-[98vw]', 'h-[96vh]');
+        document.getElementById('terminalConsoleBody').classList.remove('max-h-[480px]');
+        document.getElementById('terminalConsoleBody').classList.add('max-h-[calc(96vh-180px)]');
+    } else {
+        modalWin.classList.add('max-w-4xl');
+        modalWin.classList.remove('max-w-[98vw]', 'h-[96vh]');
+        document.getElementById('terminalConsoleBody').classList.add('max-h-[480px]');
+        document.getElementById('terminalConsoleBody').classList.remove('max-h-[calc(96vh-180px)]');
+    }
+}
+
+function copyTerminalLog() {
+    const logContainer = document.getElementById('terminalLogList');
+    const text = logContainer.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        alert('Log terminal berhasil disalin ke clipboard!');
+    }).catch(err => {
+        alert('Gagal menyalin log: ' + err);
+    });
+}
+
+function abortTerminalSync() {
+    if (termAbortController) {
+        termAbortController.abort();
+        termAbortController = null;
+    }
+    appendTerminalLine({
+        time: new Date().toTimeString().split(' ')[0],
+        type: 'warn',
+        message: '⚠️ Proses sinkronisasi dihentikan oleh pengguna (User Aborted).'
+    });
+    setTerminalCompleteState('Proses dibatalkan.');
+}
+
+function updateTerminalStatsUI() {
+    document.getElementById('termProcessedCount').textContent = termCountProcessed.toLocaleString();
+    document.getElementById('termCreatedCount').textContent = '+' + termCountCreated.toLocaleString();
+    document.getElementById('termUpdatedCount').textContent = '~' + termCountUpdated.toLocaleString();
+    document.getElementById('termSkippedCount').textContent = termCountSkipped.toLocaleString();
+    document.getElementById('termErrorCount').textContent = '!' + termCountErrors.toLocaleString();
+}
+
+function appendTerminalLine(item) {
+    const list = document.getElementById('terminalLogList');
+    const row = document.createElement('div');
+    row.className = 'flex items-start gap-2 py-0.5 px-1 rounded hover:bg-white/5 transition-colors font-mono leading-relaxed';
+
+    let badgeClass = 'text-slate-400 font-bold';
+    let textClass = 'text-slate-300';
+    let badgeText = (item.type || 'INFO').toUpperCase();
+
+    switch (item.type) {
+        case 'item_create':
+            badgeClass = 'text-emerald-400 font-bold';
+            textClass = 'text-emerald-300 font-semibold';
+            badgeText = 'CREATED';
+            break;
+        case 'item_update':
+            badgeClass = 'text-cyan-400 font-bold';
+            textClass = 'text-cyan-200';
+            badgeText = 'UPDATED';
+            break;
+        case 'item_skip':
+            badgeClass = 'text-slate-500 font-medium';
+            textClass = 'text-slate-400 text-[10px]';
+            badgeText = 'SKIP';
+            break;
+        case 'item_error':
+        case 'error':
+            badgeClass = 'text-rose-400 font-black';
+            textClass = 'text-rose-300 font-bold';
+            badgeText = 'ERROR';
+            break;
+        case 'batch':
+        case 'batch_received':
+            badgeClass = 'text-indigo-400 font-bold';
+            textClass = 'text-indigo-200';
+            badgeText = 'BATCH';
+            break;
+        case 'entity_start':
+            badgeClass = 'text-amber-400 font-black';
+            textClass = 'text-amber-300 font-bold';
+            badgeText = 'ENTITAS';
+            break;
+        case 'entity_end':
+            badgeClass = 'text-emerald-400 font-black';
+            textClass = 'text-emerald-300 font-bold';
+            badgeText = 'DONE';
+            break;
+        case 'success':
+            badgeClass = 'text-emerald-400 font-bold';
+            textClass = 'text-emerald-200';
+            badgeText = 'SUCCESS';
+            break;
+        case 'complete':
+            badgeClass = 'text-emerald-300 font-black';
+            textClass = 'text-white font-bold';
+            badgeText = 'FINISH';
+            break;
+        default:
+            badgeClass = 'text-slate-400 font-bold';
+            textClass = 'text-slate-300';
+            break;
+    }
+
+    row.innerHTML = `
+        <span class="text-slate-500 text-[10px] shrink-0 select-none">[${item.time || ''}]</span>
+        <span class="text-[10px] uppercase shrink-0 ${badgeClass}">[${badgeText}]</span>
+        <span class="flex-1 break-words ${textClass}">${item.message || ''}</span>
+    `;
+
+    list.appendChild(row);
+
+    if (termAutoScroll) {
+        const body = document.getElementById('terminalConsoleBody');
+        body.scrollTop = body.scrollHeight;
+    }
+}
+
+function setTerminalCompleteState(statusMsg) {
+    termIsRunning = false;
+    document.getElementById('termProgressBar').style.width = '100%';
+    document.getElementById('termProgressBar').classList.remove('animate-pulse');
+    document.getElementById('termLiveBadge').classList.add('opacity-40');
+    document.getElementById('termLiveText').textContent = 'FINISHED';
+    document.getElementById('termFooterSpinner').classList.add('hidden');
+    document.getElementById('termFooterStatus').textContent = statusMsg || 'Sinkronisasi selesai.';
+    document.getElementById('btnAbortSync').classList.add('hidden');
+    document.getElementById('termActiveStatusText').textContent = 'selesai.';
+
+    // Show summary block
+    const list = document.getElementById('terminalLogList');
+    const summaryBlock = document.createElement('div');
+    summaryBlock.className = 'mt-3 p-3 rounded-xl bg-slate-900 border border-slate-700/80 text-xs font-mono text-slate-200 space-y-1';
+    summaryBlock.innerHTML = `
+        <div class="text-emerald-400 font-black flex items-center gap-2">
+            <i class="fa-solid fa-circle-check"></i>
+            <span>RINGKASAN SINKRONISASI TERMINAL:</span>
+        </div>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-[11px]">
+            <div>Total Diproses: <strong class="text-white">${termCountProcessed.toLocaleString()}</strong></div>
+            <div>Baru Dibuat: <strong class="text-emerald-400">+${termCountCreated.toLocaleString()}</strong></div>
+            <div>Diperbarui: <strong class="text-cyan-400">~${termCountUpdated.toLocaleString()}</strong></div>
+            <div>Error: <strong class="${termCountErrors > 0 ? 'text-rose-400 font-bold' : 'text-slate-400'}">${termCountErrors}</strong></div>
+        </div>
+    `;
+    list.appendChild(summaryBlock);
+
+    if (termAutoScroll) {
+        const body = document.getElementById('terminalConsoleBody');
+        body.scrollTop = body.scrollHeight;
+    }
+}
+
+// Start Single Entity Stream Sync
+async function startTerminalSync(entityCode) {
+    const form = document.getElementById(`formSingleSync_${entityCode}`);
+    const selectedRadio = form ? form.querySelector(`input[name="single_category_${entityCode}"]:checked`) : null;
+    const category = selectedRadio ? selectedRadio.value : 'all';
+
+    openTerminalModal(entityCode);
+    clearTerminalScreen();
+
+    const streamUrl = `{{ url('odoo-setting') }}/${entityCode}/stream-sync?category=${encodeURIComponent(category)}`;
+    await runStreamingFetch(streamUrl);
+}
+
+// Start All Entities Stream Sync
+async function startTerminalSyncAll() {
+    const modalSyncAll = document.getElementById('modalSyncAll');
+    if (modalSyncAll) modalSyncAll.classList.add('hidden');
+
+    const selectedRadio = document.querySelector('input[name="all_category"]:checked');
+    const category = selectedRadio ? selectedRadio.value : 'inhouse';
+
+    openTerminalModal('SEMUA (AMK, AKP, ATK, ABO, ATB)');
+    clearTerminalScreen();
+
+    const streamUrl = `{{ route('odoo.setting.stream-sync-all') }}?category=${encodeURIComponent(category)}`;
+    await runStreamingFetch(streamUrl);
+}
+
+// Core Streaming Reader (Fetch with ReadableStream)
+async function runStreamingFetch(streamUrl) {
+    termAbortController = new AbortController();
+    termIsRunning = true;
+
+    try {
+        const response = await fetch(streamUrl, {
+            method: 'GET',
+            headers: {
+                'Accept': 'text/event-stream'
+            },
+            signal: termAbortController.signal
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status} (${response.statusText})`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const parts = buffer.split('\n\n');
+            buffer = parts.pop(); // remainder
+
+            for (const part of parts) {
+                const trimmed = part.trim();
+                if (!trimmed) continue;
+
+                // Parse SSE data
+                const lines = trimmed.split('\n');
+                for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                        try {
+                            const jsonStr = line.substring(6).trim();
+                            const item = JSON.parse(jsonStr);
+                            handleStreamItem(item);
+                        } catch (e) {
+                            console.error('Error parsing SSE json:', e, line);
+                        }
+                    }
+                }
+            }
+        }
+
+        setTerminalCompleteState('Sinkronisasi selesai.');
+
+    } catch (err) {
+        if (err.name === 'AbortError') {
+            console.log('Stream aborted by user.');
+        } else {
+            appendTerminalLine({
+                time: new Date().toTimeString().split(' ')[0],
+                type: 'error',
+                message: '❌ Error Koneksi Streaming: ' + err.message
+            });
+            termCountErrors++;
+            updateTerminalStatsUI();
+            setTerminalCompleteState('Terhenti dengan error: ' + err.message);
+        }
+    } finally {
+        termIsRunning = false;
+        termAbortController = null;
+    }
+}
+
+function handleStreamItem(item) {
+    // Increment stats
+    if (item.meta) {
+        if (item.meta.processed !== undefined) termCountProcessed = item.meta.processed;
+        if (item.meta.created !== undefined) termCountCreated = item.meta.created;
+        if (item.meta.updated !== undefined) termCountUpdated = item.meta.updated;
+        if (item.meta.skipped !== undefined) termCountSkipped = item.meta.skipped;
+        if (item.meta.errors !== undefined) termCountErrors = item.meta.errors;
+
+        if (item.meta.grand_created !== undefined) termCountCreated = item.meta.grand_created;
+        if (item.meta.grand_updated !== undefined) termCountUpdated = item.meta.grand_updated;
+    }
+
+    if (item.type === 'item_create') {
+        if (!item.meta || item.meta.created === undefined) termCountCreated++;
+    } else if (item.type === 'item_update') {
+        if (!item.meta || item.meta.updated === undefined) termCountUpdated++;
+    } else if (item.type === 'item_skip') {
+        if (!item.meta || item.meta.skipped === undefined) termCountSkipped++;
+    } else if (item.type === 'item_error' || item.type === 'error') {
+        if (!item.meta || item.meta.errors === undefined) termCountErrors++;
+    }
+
+    updateTerminalStatsUI();
+    appendTerminalLine(item);
+
+    // Update footer status message
+    if (item.message) {
+        document.getElementById('termFooterStatus').textContent = item.message.substring(0, 80);
+    }
 }
 </script>
 @endsection

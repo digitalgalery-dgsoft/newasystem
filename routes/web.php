@@ -256,6 +256,9 @@ Route::middleware(['admin'])->prefix('odoo-setting')->name('odoo.setting.')->gro
     Route::get('/', [App\Http\Controllers\OdooSettingController::class, 'index'])->name('index');
     Route::put('/{code}', [App\Http\Controllers\OdooSettingController::class, 'update'])->name('update');
     Route::post('/{code}/test', [App\Http\Controllers\OdooSettingController::class, 'testConnection'])->name('test');
+    Route::get('/stream-sync-all', [App\Http\Controllers\OdooSettingController::class, 'streamSyncAll'])->name('stream-sync-all');
+    Route::get('/stream-sync-nik', [App\Http\Controllers\OdooSettingController::class, 'streamSyncNik'])->name('stream-sync-nik');
+    Route::get('/{code}/stream-sync', [App\Http\Controllers\OdooSettingController::class, 'streamSync'])->name('stream-sync');
     Route::post('/{code}/sync', [App\Http\Controllers\OdooSettingController::class, 'sync'])->name('sync');
     Route::post('/sync-all', [App\Http\Controllers\OdooSettingController::class, 'syncAll'])->name('sync-all');
     Route::post('/sync-by-nik', [App\Http\Controllers\OdooSettingController::class, 'syncByNik'])->name('sync-by-nik');

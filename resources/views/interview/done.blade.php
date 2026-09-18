@@ -13,18 +13,43 @@
         </a>
     </div>
 
-    <!-- Search Box -->
+    <!-- Search & Filter Box -->
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <form action="{{ route('interview.done') }}" method="GET" class="flex items-center gap-3">
+        <form action="{{ route('interview.done') }}" method="GET" class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <div class="relative flex-1">
                 <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Cari berdasarkan nama atau NIK..." class="w-full pl-9 pr-4 py-2 text-xs rounded-lg border-slate-300 bg-white">
                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
                     <i class="ri-search-line"></i>
                 </div>
             </div>
-            <button type="submit" class="px-4 py-2 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition">
-                Cari
-            </button>
+
+            @if(isset($allRecruiters) && count($allRecruiters) > 0)
+            <div class="w-full sm:w-72">
+                <select name="filter_user" onchange="this.form.submit()" class="w-full text-xs rounded-lg border-slate-300 bg-white py-2 px-3 font-medium">
+                    <option value="all" {{ ($filterUser === 'all' || empty($filterUser)) ? 'selected' : '' }}>-- Semua Rekruter (Nasional) --</option>
+                    @foreach($allRecruiters as $rec)
+                        <option value="{{ $rec->useras }}" {{ ($filterUser ?? '') === $rec->useras ? 'selected' : '' }}>
+                            {{ $rec->display_name }} ({{ number_format($rec->total) }})
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+
+            <div class="flex items-center gap-2">
+                <button type="submit" class="px-4 py-2 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition">
+                    Cari
+                </button>
+                @if(!empty($search) || (!empty($filterUser) && $filterUser !== 'all'))
+                    <a href="{{ route('interview.done') }}" class="px-3 py-2 rounded-lg text-xs font-medium bg-slate-100 hover:bg-slate-200 text-slate-700 transition" title="Reset filter">
+                        <i class="ri-refresh-line"></i>
+                    </a>
+                @endif
+                <span class="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                    <i class="ri-checkbox-circle-line"></i>
+                    <span>{{ number_format($candidates->total()) }} Kandidat Selesai</span>
+                </span>
+            </div>
         </form>
     </div>
 
@@ -85,7 +110,7 @@
             </table>
         </div>
         <div class="p-4 border-t border-slate-100 bg-slate-50/50">
-            {{ $candidates->appends(['search' => $search])->links() }}
+            {{ $candidates->appends(['search' => $search, 'filter_user' => $filterUser])->links() }}
         </div>
     </div>
 </div>

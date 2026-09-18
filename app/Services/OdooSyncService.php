@@ -132,16 +132,25 @@ class OdooSyncService
         $created   = 0;
         $updated   = 0;
         $resigned  = 0;
+        $skipped   = 0;
+        $processed = 0;
         $errors    = [];
         $offset    = 0;
         $limit     = 250;
         $batchNum  = 0;
 
-        $log('info', "Memulai sinkronisasi karyawan AKTIF untuk entitas [{$entity->code}] {$entity->name} (Filter: {$categoryLabel})...");
+        $log('info', "Memulai sinkronisasi karyawan AKTIF untuk entitas [{$entity->code}] {$entity->name} (Filter: {$categoryLabel})...", [
+            'entity'   => $entity->code,
+            'category' => $category,
+        ]);
 
         do {
             $batchNum++;
-            $log('batch', "Mengambil batch #{$batchNum} (Offset: {$offset}, Limit: {$limit})...");
+            $log('batch', "Mengambil batch #{$batchNum} dari Odoo (Offset: {$offset}, Limit: {$limit})...", [
+                'batch'  => $batchNum,
+                'offset' => $offset,
+                'limit'  => $limit,
+            ]);
 
             try {
                 // Hanya ambil employee aktif dari Odoo
@@ -163,24 +172,46 @@ class OdooSyncService
                     ],
                 ]);
             } catch (\Throwable $e) {
-                $errors[] = "Gagal mengambil batch #{$batchNum}: " . $e->getMessage();
-                $log('error', "Gagal pada batch #{$batchNum}: " . $e->getMessage());
+                $errMsg = "Gagal mengambil batch #{$batchNum}: " . $e->getMessage();
+                $errors[] = $errMsg;
+                $log('error', "Gagal pada batch #{$batchNum}: " . $e->getMessage(), ['error' => $errMsg]);
                 break;
             }
 
             $recCount = is_array($records) ? count($records) : 0;
             if ($recCount === 0) {
+                $log('info', "Tidak ada data tambahan lagi dari Odoo.");
                 break;
             }
 
-            $log('info', "Diterima {$recCount} data karyawan dari Odoo. Memfilter aktif & kategori...");
+            $log('batch_received', "Diterima {$recCount} data karyawan dari Odoo pada batch #{$batchNum}. Memproses record...", [
+                'count' => $recCount,
+                'batch' => $batchNum,
+            ]);
 
             foreach ($records as $rec) {
+                $processed++;
+                $odooId = $rec['id'] ?? null;
+                $nama = trim((string)($rec['name'] ?? 'Tanpa Nama'));
+                $rawNik = trim((string)($rec['identification_id'] ?: $rec['registration_number'] ?: ''));
+                $nik = $rawNik ?: ('OD-' . $odooId);
+
                 try {
                     // Filter 1: Hanya Employee Aktif Saja
                     $isActive = (bool)($rec['active'] ?? true);
                     if (!$isActive || !empty($rec['departure_date'])) {
-                        continue; // Lewati karyawan resign/non-aktif
+                        $skipped++;
+                        $log('item_skip', "⏭️ [{$entity->code}] Lewati ID {$odooId} - {$nama}: Resign/Non-Aktif", [
+                            'action'    => 'skipped',
+                            'reason'    => 'non_active',
+                            'odoo_id'   => $odooId,
+                            'name'      => $nama,
+                            'processed' => $processed,
+                            'created'   => $created,
+                            'updated'   => $updated,
+                            'skipped'   => $skipped,
+                        ]);
+                        continue;
                     }
 
                     // Principle
@@ -194,17 +225,35 @@ class OdooSyncService
                     // Filter 2: Inhouse vs RateCard
                     $tipeKaryawan = Employee::determineTipeKaryawan($principleName);
                     if ($category === 'inhouse' && $tipeKaryawan !== 'Inhouse') {
-                        continue; // Lewati karena bukan inhouse
+                        $skipped++;
+                        $log('item_skip', "⏭️ [{$entity->code}] Lewati {$nik} - {$nama}: RateCard (Filter: Inhouse)", [
+                            'action'    => 'skipped',
+                            'reason'    => 'category_mismatch',
+                            'nik'       => $nik,
+                            'name'      => $nama,
+                            'processed' => $processed,
+                            'created'   => $created,
+                            'updated'   => $updated,
+                            'skipped'   => $skipped,
+                        ]);
+                        continue;
                     }
                     if ($category === 'ratecard' && $tipeKaryawan !== 'RateCard') {
-                        continue; // Lewati karena inhouse
+                        $skipped++;
+                        $log('item_skip', "⏭️ [{$entity->code}] Lewati {$nik} - {$nama}: Inhouse (Filter: RateCard)", [
+                            'action'    => 'skipped',
+                            'reason'    => 'category_mismatch',
+                            'nik'       => $nik,
+                            'name'      => $nama,
+                            'processed' => $processed,
+                            'created'   => $created,
+                            'updated'   => $updated,
+                            'skipped'   => $skipped,
+                        ]);
+                        continue;
                     }
 
-                    $odooId = $rec['id'];
-                    $rawNik = trim((string)($rec['identification_id'] ?: $rec['registration_number'] ?: ''));
-                    $nik = $rawNik ?: ('OD-' . $odooId);
                     $nip = trim((string)($rec['registration_number'] ?: '')) ?: null;
-                    $nama = trim((string)($rec['name'] ?? 'Tanpa Nama'));
                     $email = $rec['work_email'] ?: ($rec['private_email'] ?: null);
                     $telepon = $rec['mobile_phone'] ?: null;
                     $tanggalJoin = !empty($rec['first_contract_date']) ? $rec['first_contract_date'] : null;
@@ -250,13 +299,46 @@ class OdooSyncService
                     if ($employee) {
                         $employee->update($dataToSave);
                         $updated++;
+                        $log('item_update', "🔄 [{$entity->code}] #{$processed} {$nik} - {$nama} ({$jabatan} | {$tipeKaryawan}) -> DIPERBARUI", [
+                            'action'    => 'updated',
+                            'entity'    => $entity->code,
+                            'nik'       => $nik,
+                            'name'      => $nama,
+                            'job'       => $jabatan,
+                            'type'      => $tipeKaryawan,
+                            'processed' => $processed,
+                            'created'   => $created,
+                            'updated'   => $updated,
+                            'skipped'   => $skipped,
+                        ]);
                     } else {
                         Employee::create($dataToSave);
                         $created++;
+                        $log('item_create', "👤 [{$entity->code}] #{$processed} {$nik} - {$nama} ({$jabatan} | {$tipeKaryawan}) -> DIBUAT (BARU)", [
+                            'action'    => 'created',
+                            'entity'    => $entity->code,
+                            'nik'       => $nik,
+                            'name'      => $nama,
+                            'job'       => $jabatan,
+                            'type'      => $tipeKaryawan,
+                            'processed' => $processed,
+                            'created'   => $created,
+                            'updated'   => $updated,
+                            'skipped'   => $skipped,
+                        ]);
                     }
 
                 } catch (\Throwable $e) {
-                    $errors[] = 'Error [ID Odoo: ' . ($rec['id'] ?? '?') . ']: ' . $e->getMessage();
+                    $errText = 'Error [ID Odoo: ' . ($rec['id'] ?? '?') . ']: ' . $e->getMessage();
+                    $errors[] = $errText;
+                    $log('item_error', "❌ [{$entity->code}] Error ID {$odooId} ({$nama}): " . $e->getMessage(), [
+                        'action'    => 'error',
+                        'error'     => $e->getMessage(),
+                        'processed' => $processed,
+                        'created'   => $created,
+                        'updated'   => $updated,
+                        'errors'    => count($errors),
+                    ]);
                 }
             }
 

@@ -271,6 +271,37 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 16. 📂 Pemulihan Visibilitas Data Interview Selesai & Arsip Interview
+- **Akar Masalah**:
+  - Pada metode `done()` dan `arsip()` di `InterviewController.php`, terdapat kondisi filter pembatas yang secara keliru mengecek hak akses Admin dan membatasi query hanya pada email personal akun Admin (`admin@asystem.co.id`), sehingga seluruh data historis (puluhan ribu kandidat) tidak muncul di halaman web.
+- **Solusi & Perbaikan**:
+  - **Kandidat Done (`/interview/done`)**:
+    - Membuka query agar secara default menampilkan seluruh kandidat aktif nasional (**27.044 kandidat**) yang memiliki catatan/persetujuan prinsiple (`note_principle != ''` atau `ttd_prinsiple != ''`).
+    - Menambahkan rekapitulasi daftar rekruter (`$allRecruiters`) dan dropdown filter rekruter interaktif pada halaman `interview/done.blade.php`.
+    - Menampilkan badge total kandidat selesai (`27.044 Kandidat Selesai`) serta mempertahankan parameter pencarian & filter pada tautan paginasi.
+  - **Arsip Kandidat (`/interview/arsip`)**:
+    - Membuka query agar secara default menampilkan seluruh kandidat berstatus arsip nasional (**17.505 kandidat**).
+    - Menambahkan dropdown filter rekruter dan badge total terarsip pada `interview/arsip.blade.php`.
+    - Mempertahankan parameter filter pada tautan paginasi.
+
+---
+
+### 17. 💻 Modernisasi Sinkronisasi Odoo dengan Live Streaming Terminal Console
+- **Latar Belakang & Masalah Lama**:
+  - Sinkronisasi sebelumnya menggunakan request HTTP POST sinkron biasa. Ketika jumlah data karyawan di Odoo mencapai ribuan, koneksi HTTP mengalami *gateway timeout* (504 / 524) atau *page freeze*, dan pengguna tidak memiliki visibilitas mengenai progres data yang sedang diproses.
+- **Solusi Streaming Terminal UI**:
+  - **Antarmuka Konsol Terminal macOS/Linux Modern**:
+    - Menambahkan modal konsol terminal bergaya *dark mode* monospace (`#0d1117`) lengkap dengan traffic lights window control (🔴 🟡 🟢), judul CLI interaktif, dan badge berdenyut `[LIVE STREAM]`.
+    - Bar metrik real-time: Target Entitas, Total Diproses, Baru Dibuat (`+X` hijau), Diperbarui (`~Y` cyan), Dilewati (`Z` abu-abu), dan Error (`!E` merah).
+    - Progress bar gradient animasi dan terminal output line-by-line berwarna dengan timestamp dan tag aksi.
+    - Kontrol interaktif: Tombol toggle *Auto-Scroll*, *Salin Seluruh Log*, *Bersihkan Layar*, *Hentikan (Abort)*, dan *Buka Data Karyawan*.
+  - **Protokol Server-Sent Events (SSE) & Anti-Timeout**:
+    - Menonaktifkan kompresi gzip dan output buffer PHP (`ob_end_flush`, `implicit_flush(1)`), serta menyetel batas waktu eksekusi tanpa batas (`set_time_limit(0)`).
+    - Mengalirkan setiap record karyawan yang diproses secara real-time via `text/event-stream` ke browser tanpa putus, menjaga koneksi socket tetap hidup terus-menerus dan anti-timeout.
+    - Mendukung streaming per entitas tunggal (`/odoo-setting/{code}/stream-sync`), streaming massal seluruh 5 entitas aktif (`/odoo-setting/stream-sync-all`), dan streaming pencarian NIK (`/odoo-setting/stream-sync-nik`).
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |

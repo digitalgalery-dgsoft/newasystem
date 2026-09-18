@@ -380,6 +380,309 @@ class OdooSettingController extends Controller
     }
 
     /**
+     * Stream real-time terminal synchronization logs for a single entity.
+     * Uses Server-Sent Events (SSE) to prevent HTTP timeouts.
+     */
+    public function streamSync(Request $request, string $code)
+    {
+        $category = $request->query('category', 'all');
+
+        return response()->stream(function () use ($code, $category) {
+            if (function_exists('apache_setenv')) {
+                @apache_setenv('no-gzip', '1');
+            }
+            @ini_set('zlib.output_compression', '0');
+            @ini_set('implicit_flush', '1');
+            while (ob_get_level() > 0) {
+                @ob_end_flush();
+            }
+            @ob_implicit_flush(1);
+            set_time_limit(0);
+
+            $sendEvent = function(string $type, string $message, ?array $meta = null) {
+                $payload = [
+                    'time'    => date('H:i:s'),
+                    'type'    => $type,
+                    'message' => $message,
+                    'meta'    => $meta,
+                ];
+                echo "data: " . json_encode($payload) . "\n\n";
+                if (ob_get_level() > 0) {
+                    @ob_flush();
+                }
+                @flush();
+            };
+
+            $sendEvent('init', "Memulai konsol terminal sinkronisasi Odoo untuk entitas [{$code}]...");
+
+            $entity = OdooEntity::where('code', $code)->first();
+            if (!$entity) {
+                $sendEvent('error', "Entitas [{$code}] tidak ditemukan dalam database.");
+                $sendEvent('complete', "Proses dihentikan: Entitas tidak ditemukan.", ['success' => false]);
+                return;
+            }
+
+            if (!$entity->isConfigured()) {
+                $sendEvent('error', "Kredensial Odoo untuk {$entity->name} ({$code}) belum lengkap. Harap isi URL, DB, Username, dan API Key.");
+                $sendEvent('complete', "Proses dihentikan: Konfigurasi belum lengkap.", ['success' => false]);
+                return;
+            }
+
+            try {
+                $sendEvent('info', "Menghubungkan ke server Odoo XML-RPC di {$entity->odoo_url} (Database: {$entity->odoo_db})...");
+                $service = OdooSyncService::fromEntity($entity);
+                $test = $service->testConnection();
+                $sendEvent('success', "Autentikasi Odoo Berhasil! Terhubung sebagai UID {$test['uid']} (Odoo v{$test['server_version']}).");
+
+                $result = $service->syncEmployees($entity, function(string $type, string $message, ?array $meta = null) use ($sendEvent) {
+                    $sendEvent($type, $message, $meta);
+                }, $category);
+
+                $sendEvent('complete', $result['message'], [
+                    'success'  => $result['success'],
+                    'created'  => $result['created'] ?? 0,
+                    'updated'  => $result['updated'] ?? 0,
+                    'errors'   => count($result['errors'] ?? []),
+                    'entity'   => $code,
+                ]);
+
+            } catch (\Throwable $e) {
+                $sendEvent('error', "Terjadi kesalahan: " . $e->getMessage());
+                $sendEvent('complete', "Gagal sinkronisasi: " . $e->getMessage(), ['success' => false]);
+            }
+
+        }, 200, [
+            'Content-Type'      => 'text/event-stream',
+            'Cache-Control'     => 'no-cache, no-transform',
+            'Connection'        => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    /**
+     * Stream real-time terminal synchronization logs across all active entities.
+     */
+    public function streamSyncAll(Request $request)
+    {
+        $category = $request->query('category', 'all');
+
+        return response()->stream(function () use ($category) {
+            if (function_exists('apache_setenv')) {
+                @apache_setenv('no-gzip', '1');
+            }
+            @ini_set('zlib.output_compression', '0');
+            @ini_set('implicit_flush', '1');
+            while (ob_get_level() > 0) {
+                @ob_end_flush();
+            }
+            @ob_implicit_flush(1);
+            set_time_limit(0);
+
+            $sendEvent = function(string $type, string $message, ?array $meta = null) {
+                $payload = [
+                    'time'    => date('H:i:s'),
+                    'type'    => $type,
+                    'message' => $message,
+                    'meta'    => $meta,
+                ];
+                echo "data: " . json_encode($payload) . "\n\n";
+                if (ob_get_level() > 0) {
+                    @ob_flush();
+                }
+                @flush();
+            };
+
+            $categoryLabel = match($category) {
+                'inhouse'  => 'Inhouse Saja',
+                'ratecard' => 'RateCard Saja',
+                default    => 'Semua Kategori (Inhouse + RateCard)',
+            };
+
+            $sendEvent('init', "Memulai konsol terminal sinkronisasi seluruh entitas Odoo ({$categoryLabel})...");
+
+            $activeEntities = OdooEntity::where('is_active', true)->orderBy('id')->get()->filter->isConfigured()->values();
+
+            if ($activeEntities->isEmpty()) {
+                $sendEvent('error', "Tidak ada entitas aktif dengan konfigurasi Odoo yang lengkap.");
+                $sendEvent('complete', "Proses dihentikan: Tidak ada entitas aktif.", ['success' => false]);
+                return;
+            }
+
+            $totalEntities = $activeEntities->count();
+            $sendEvent('info', "Ditemukan {$totalEntities} entitas aktif terkonfigurasi: [" . $activeEntities->pluck('code')->implode(', ') . "].");
+
+            $grandCreated = 0;
+            $grandUpdated = 0;
+            $allErrors = [];
+
+            foreach ($activeEntities as $idx => $entity) {
+                $num = $idx + 1;
+                $sendEvent('entity_start', "==================================================", ['entity' => $entity->code]);
+                $sendEvent('entity_start', ">>> [{$num}/{$totalEntities}] MEMPROSES ENTITAS {$entity->code} ({$entity->name}) <<<", ['entity' => $entity->code]);
+                $sendEvent('entity_start', "==================================================", ['entity' => $entity->code]);
+
+                try {
+                    $service = OdooSyncService::fromEntity($entity);
+                    $test = $service->testConnection();
+                    $sendEvent('success', "[{$entity->code}] Terhubung ke Odoo v{$test['server_version']} sebagai UID {$test['uid']}.");
+
+                    $res = $service->syncEmployees($entity, function(string $type, string $message, ?array $meta = null) use ($sendEvent) {
+                        $sendEvent($type, $message, $meta);
+                    }, $category);
+
+                    $created = $res['created'] ?? 0;
+                    $updated = $res['updated'] ?? 0;
+                    $grandCreated += $created;
+                    $grandUpdated += $updated;
+
+                    if (!empty($res['errors'])) {
+                        $allErrors = array_merge($allErrors, $res['errors']);
+                    }
+
+                    $sendEvent('entity_end', "✅ [{$entity->code}] Selesai. Baru: {$created} | Diperbarui: {$updated}", [
+                        'entity'        => $entity->code,
+                        'grand_created' => $grandCreated,
+                        'grand_updated' => $grandUpdated,
+                    ]);
+
+                } catch (\Throwable $e) {
+                    $errMsg = "[{$entity->code}] Gagal: " . $e->getMessage();
+                    $allErrors[] = $errMsg;
+                    $sendEvent('error', "❌ {$errMsg}", ['entity' => $entity->code]);
+                }
+            }
+
+            $summary = "Sinkronisasi seluruh entitas selesai! Total Karyawan Baru: {$grandCreated} | Diperbarui: {$grandUpdated}" . (count($allErrors) > 0 ? " | Error: " . count($allErrors) : "");
+            $sendEvent('complete', $summary, [
+                'success'       => empty($allErrors),
+                'grand_created' => $grandCreated,
+                'grand_updated' => $grandUpdated,
+                'total_errors'  => count($allErrors),
+            ]);
+
+        }, 200, [
+            'Content-Type'      => 'text/event-stream',
+            'Cache-Control'     => 'no-cache, no-transform',
+            'Connection'        => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    /**
+     * Stream real-time synchronization by NIK.
+     */
+    public function streamSyncNik(Request $request)
+    {
+        $rawNik = (string)$request->input('nik', '');
+        $entityCode = (string)$request->input('entity_code', 'ALL');
+
+        return response()->stream(function () use ($rawNik, $entityCode) {
+            if (function_exists('apache_setenv')) {
+                @apache_setenv('no-gzip', '1');
+            }
+            @ini_set('zlib.output_compression', '0');
+            @ini_set('implicit_flush', '1');
+            while (ob_get_level() > 0) {
+                @ob_end_flush();
+            }
+            @ob_implicit_flush(1);
+            set_time_limit(0);
+
+            $sendEvent = function(string $type, string $message, ?array $meta = null) {
+                $payload = [
+                    'time'    => date('H:i:s'),
+                    'type'    => $type,
+                    'message' => $message,
+                    'meta'    => $meta,
+                ];
+                echo "data: " . json_encode($payload) . "\n\n";
+                if (ob_get_level() > 0) {
+                    @ob_flush();
+                }
+                @flush();
+            };
+
+            $niks = array_values(array_unique(array_filter(
+                preg_split('/[\r\n,;]+/', trim($rawNik)),
+                fn($val) => trim($val) !== ''
+            )));
+
+            if (empty($niks)) {
+                $sendEvent('error', "Masukkan minimal satu NIK atau NIP yang valid.");
+                $sendEvent('complete', "Proses dibatalkan: NIK kosong.", ['success' => false]);
+                return;
+            }
+
+            $sendEvent('init', "Memulai pencarian & sinkronisasi untuk " . count($niks) . " NIK...");
+
+            $entities = ($entityCode === 'ALL')
+                ? OdooEntity::where('is_active', true)->get()->filter->isConfigured()->values()
+                : OdooEntity::where('code', $entityCode)->get()->filter->isConfigured()->values();
+
+            if ($entities->isEmpty()) {
+                $sendEvent('error', "Tidak ada entitas aktif dengan kredensial Odoo yang lengkap.");
+                $sendEvent('complete', "Gagal: Entitas tidak tersedia.", ['success' => false]);
+                return;
+            }
+
+            $successCount = 0;
+            $failCount = 0;
+
+            foreach ($niks as $i => $singleNik) {
+                $num = $i + 1;
+                $found = false;
+                $sendEvent('info', "[{$num}/" . count($niks) . "] Mencari NIK {$singleNik} di server Odoo...");
+
+                foreach ($entities as $entity) {
+                    try {
+                        $service = OdooSyncService::fromEntity($entity);
+                        $res = $service->syncSingleEmployee($entity, $singleNik);
+                        if ($res['success']) {
+                            $found = true;
+                            $successCount++;
+                            $actionLabel = $res['action'] === 'created' ? 'DIBUAT (BARU)' : 'DIPERBARUI';
+                            $empName = $res['employee']->nama_karyawan ?? $singleNik;
+                            $empJob = $res['employee']->jabatan ?? 'Staff';
+                            $empType = $res['employee']->tipe_karyawan ?? 'Inhouse';
+                            $sendEvent('item_create', "✅ [{$entity->code}] NIK {$singleNik} - {$empName} ({$empJob} | {$empType}) -> {$actionLabel}", [
+                                'action'   => $res['action'],
+                                'entity'   => $entity->code,
+                                'nik'      => $singleNik,
+                                'name'     => $empName,
+                                'success'  => true,
+                            ]);
+                            break;
+                        }
+                    } catch (\Throwable $e) {
+                        // continue to next entity
+                    }
+                }
+
+                if (!$found) {
+                    $failCount++;
+                    $sendEvent('item_error', "⚠️ NIK {$singleNik} tidak ditemukan pada entitas aktif di Odoo.", [
+                        'nik'     => $singleNik,
+                        'success' => false,
+                    ]);
+                }
+            }
+
+            $summary = "Pencarian NIK Selesai. Ditemukan & Tersinkron: {$successCount} | Tidak Ditemukan: {$failCount}";
+            $sendEvent('complete', $summary, [
+                'success' => $successCount > 0,
+                'created' => $successCount,
+                'errors'  => $failCount,
+            ]);
+
+        }, 200, [
+            'Content-Type'      => 'text/event-stream',
+            'Cache-Control'     => 'no-cache, no-transform',
+            'Connection'        => 'keep-alive',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
+    /**
      * Clean up duplicate employees in database based on NIK.
      */
     public function cleanupDuplicates(Request $request)
