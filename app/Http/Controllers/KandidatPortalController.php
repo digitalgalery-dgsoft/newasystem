@@ -158,20 +158,22 @@ class KandidatPortalController extends Controller
         $displayUserName = $user ? $user->name : 'User';
         $scopeTitle = 'Kandidat Milik Anda (' . $displayUserName . ')';
 
-        if ($isAdmin && $filterRecruiter === 'all') {
-            // Admin memilih melihat seluruh kandidat nasional
-            $displayUserName = 'Semua Rekruter (Nasional)';
-            $scopeTitle = 'Seluruh Lowongan (Nasional)';
-        } elseif ($isAdmin && !empty($filterRecruiter) && $filterRecruiter !== 'my') {
-            // Admin memfilter rekruter terpilih
-            $baseQuery->where(function ($q) use ($filterRecruiter) {
-                $q->where('useras', $filterRecruiter)
-                  ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterRecruiter))]);
-            });
-            $displayUserName = $filterRecruiter;
-            $scopeTitle = 'Rekruter: ' . $filterRecruiter;
+        if ($isAdmin) {
+            if (!empty($filterRecruiter) && $filterRecruiter !== 'all' && $filterRecruiter !== 'my') {
+                // Admin memfilter rekruter terpilih
+                $baseQuery->where(function ($q) use ($filterRecruiter) {
+                    $q->where('useras', $filterRecruiter)
+                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterRecruiter))]);
+                });
+                $displayUserName = $filterRecruiter;
+                $scopeTitle = 'Rekruter: ' . $filterRecruiter;
+            } else {
+                // Default Admin: Seluruh Lowongan (Nasional)
+                $displayUserName = 'Semua Rekruter (Nasional)';
+                $scopeTitle = 'Seluruh Lowongan (Nasional)';
+            }
         } else {
-            // DEFAULT: TAMPILKAN HANYA DATA MILIK USER YANG LOGIN!
+            // DEFAULT UNTUK USER BIASA / REKRUTER: TAMPILKAN HANYA DATA MILIK USER YANG LOGIN!
             $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
                 if (!empty($userIdentifiers)) {
                     $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);

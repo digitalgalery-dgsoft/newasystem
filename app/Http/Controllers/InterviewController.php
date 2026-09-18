@@ -169,28 +169,25 @@ class InterviewController extends Controller
         $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
         $displayRecruiterArea = $user->area ?? 'JAKARTA';
 
-        if ($isAdmin && $filterUser === 'all') {
-            // Admin memilih melihat seluruh kandidat nasional
-            $displayRecruiterName = 'Semua Rekruter (Nasional)';
-            $displayRecruiterTitle = 'SUPER ADMIN - All';
-            $displayRecruiterArea = 'NASIONAL';
-        } elseif (!empty($filterUser) && $filterUser !== 'my') {
-            // Filter rekruter terpilih dari selector
-            $myCandidatesQuery->where(function ($q) use ($filterUser) {
-                $q->where('useras', $filterUser)
-                  ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
-            });
-            $foundRec = $allRecruiters->firstWhere('useras', $filterUser);
-            if ($foundRec) {
-                $displayRecruiterName = $foundRec->display_name;
-                $displayRecruiterArea = $foundRec->area ?: 'INDONESIA';
+        if ($isAdmin) {
+            if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
+                // Filter rekruter terpilih dari selector
+                $myCandidatesQuery->where(function ($q) use ($filterUser) {
+                    $q->where('useras', $filterUser)
+                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
+                });
+                $foundRec = $allRecruiters->firstWhere('useras', $filterUser);
+                $displayRecruiterName = $foundRec ? $foundRec->display_name : $filterUser;
+                $displayRecruiterArea = $foundRec ? ($foundRec->area ?: 'INDONESIA') : 'INDONESIA';
+                $displayRecruiterTitle = 'REKRUTER TERPILIH';
             } else {
-                $displayRecruiterName = $filterUser;
+                // Default Admin: Tampilkan semua data kandidat nasional
+                $displayRecruiterName = 'Semua Rekruter (Nasional)';
+                $displayRecruiterTitle = 'SUPER ADMIN - All';
+                $displayRecruiterArea = 'NASIONAL';
             }
-            $displayRecruiterTitle = 'REKRUTER TERPILIH';
         } else {
-            // DEFAULT UNTUK SEMUA USER (Termasuk Admin jika tidak memilih 'all'):
-            // TAMPILKAN HANYA DATA MILIK USER YANG LOGIN!
+            // USER BIASA / REKRUTER: Tampilkan HANYA data milik user yang sedang login!
             $myCandidatesQuery->where(function ($q) use ($user, $userIdentifiers) {
                 if (!empty($userIdentifiers)) {
                     $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
@@ -252,20 +249,13 @@ class InterviewController extends Controller
                     $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
                 })
                 ->where('area', $displayRecruiterArea ?? $user->area ?? 'JAKARTA')
-                ->where(function ($q) use ($user) {
-                    $q->where('recruiter_id', '!=', $user->id)
-                      ->orWhereNull('recruiter_id');
-                })
-                ->where(function ($q) use ($effectiveUserEmail, $effectiveUserName) {
-                    $q->whereNull('useras')
-                      ->orWhere(function ($sub) use ($effectiveUserEmail, $effectiveUserName) {
-                          if (!empty($effectiveUserEmail)) {
-                              $sub->whereRaw('LOWER(TRIM(useras)) != ?', [$effectiveUserEmail]);
-                          }
-                          if (!empty($effectiveUserName)) {
-                              $sub->whereRaw('LOWER(TRIM(useras)) != ?', [$effectiveUserName]);
-                          }
-                      });
+                ->where(function ($q) use ($user, $userIdentifiers) {
+                    if ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', '!=', $user->id)->orWhereNull('recruiter_id');
+                    }
+                    if (!empty($userIdentifiers)) {
+                        $q->whereNotIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers)->orWhereNull('useras');
+                    }
                 });
 
             if ($searchArea) {
