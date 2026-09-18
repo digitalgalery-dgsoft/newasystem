@@ -17,8 +17,13 @@ class PrincipleController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                   ->orWhere('code', 'like', "%{$search}%")
                   ->orWhere('parent_company', 'like', "%{$search}%")
+                  ->orWhere('entity', 'like', "%{$search}%")
                   ->orWhere('pic_name', 'like', "%{$search}%");
             });
+        }
+
+        if ($entity = $request->input('entity')) {
+            $query->where('entity', $entity);
         }
 
         if ($induk = $request->input('induk')) {
@@ -29,7 +34,7 @@ class PrincipleController extends Controller
             $query->where('is_active', $request->boolean('status'));
         }
 
-        $principles = $query->orderBy('name', 'asc')->paginate(10)->withQueryString();
+        $principles = $query->orderBy('entity', 'asc')->orderBy('code', 'asc')->paginate(15)->withQueryString();
 
         $stats = [
             'total' => Principle::count(),
@@ -37,18 +42,27 @@ class PrincipleController extends Controller
             'inactive' => Principle::where('is_active', false)->count(),
             'parents' => Principle::select('parent_company')->distinct()->whereNotNull('parent_company')->count(),
             'total_employees' => Employee::count(),
+            'by_entity' => [
+                'AMK' => Principle::where('entity', 'AMK')->count(),
+                'AKP' => Principle::where('entity', 'AKP')->count(),
+                'ATK' => Principle::where('entity', 'ATK')->count(),
+                'ABO' => Principle::where('entity', 'ABO')->count(),
+                'ATB' => Principle::where('entity', 'ATB')->count(),
+            ]
         ];
 
         $distinctParents = Principle::select('parent_company')->distinct()->whereNotNull('parent_company')->pluck('parent_company');
+        $availableEntities = ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'];
 
-        return view('master.prinsiple.index', compact('principles', 'stats', 'distinctParents'));
+        return view('master.prinsiple.index', compact('principles', 'stats', 'distinctParents', 'availableEntities'));
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'code' => 'required|string|unique:principles,code',
-            'name' => 'required|string|unique:principles,name',
+            'name' => 'required|string',
+            'entity' => 'required|string|in:AMK,AKP,ATK,ABO,ATB',
             'parent_company' => 'required|string',
             'pic_name' => 'nullable|string',
             'pic_email' => 'nullable|email',
@@ -67,7 +81,8 @@ class PrincipleController extends Controller
 
         $validated = $request->validate([
             'code' => 'required|string|unique:principles,code,' . $id,
-            'name' => 'required|string|unique:principles,name,' . $id,
+            'name' => 'required|string',
+            'entity' => 'required|string|in:AMK,AKP,ATK,ABO,ATB',
             'parent_company' => 'required|string',
             'pic_name' => 'nullable|string',
             'pic_email' => 'nullable|email',

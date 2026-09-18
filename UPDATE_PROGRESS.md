@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 17 September 2026*
+*Terakhir diperbarui: 18 September 2026*
 
 ---
 
@@ -242,6 +242,32 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
     - Efek entrance fade-in halus (`0.28s cubic-bezier`) pada kontainer halaman utama di semua layout (`layouts.app`, `layouts.public`, `layouts.cbt`), menghilangkan kedipan kasar saat berpindah halaman.
   - **Partial Terpusat (`resources/views/partials/page-loader.blade.php`)**:
     - Terintegrasi penuh ke semua layout dengan fallback BFCache (`pageshow`) agar tampilan tetap responsif dan bersih saat menggunakan tombol Back/Forward browser.
+
+---
+
+### 14. 🏢 Pembersihan Master Data Prinsiple & Logo Entitas Dokumen Interview (18 September 2026)
+- **Pembersihan Data Dummy / Sampah**:
+  - Menghapus seluruh data dummy (seperti karakter `-`, nomor NPWP `01.865...`, dll) dari tabel `principles`.
+- **Import 157 Data Master Prinsiple Resmi 5 Entitas Inhouse**:
+  - Mengimpor data resmi dari `Master Prinsiple.rar` yang terbagi ke dalam 5 entitas inhouse:
+    - **AMK** (`PT ARINA MULTI KARYA`): 59 Prinsiple (`PRN-AMK-001` s/d `PRN-AMK-059`)
+    - **AKP** (`PT ALVA KARYA PERKASA`): 50 Prinsiple (`PRN-AKP-001` s/d `PRN-AKP-050`)
+    - **ATK** (`PT ANUGRAH TERPERCAYA KERJA`): 33 Prinsiple (`PRN-ATK-001` s/d `PRN-ATK-033`)
+    - **ABO** (`PT ABADI BERKAT ODELIA`): 10 Prinsiple (`PRN-ABO-001` s/d `PRN-ABO-010`)
+    - **ATB** (`PT ANUGRAH TALENTA BERKARYA`): 5 Prinsiple (`PRN-ATB-001` s/d `PRN-ATB-005`)
+  - Menautkan ulang lebih dari 54.800 kandidat ke master prinsiple resmi berdasarkan nama prinsiple dan entitas afiliasinya.
+- **Tampilan Master Data Prinsiple Modern**:
+  - Filter interaktif berdasarkan entitas inhouse (Semua, AMK, AKP, ATK, ABO, ATB) serta quick-filter badge dengan jumlah masing-masing.
+  - Penambahan kolom `ENTITAS & INHOUSE` dengan badge warna tematik per entitas (`blue`, `amber`, `emerald`, `purple`, `rose`).
+  - Modal Tambah & Edit Prinsiple lengkap dengan seleksi 5 entitas inhouse dan auto-sync.
+- **Kop Logo Dokumen Hasil Interview (`InterviewPdfService`)**:
+  - Kop logo di bagian atas dokumen interview disesuaikan otomatis dengan entitas prinsiple kandidat:
+    - AMK &rarr; `kopamknew.png`
+    - AKP &rarr; `kopakp.png`
+    - ATK &rarr; `kopatk.png`
+    - ABO &rarr; `kopabo.png`
+    - ATB &rarr; `kopatb.png`
+  - Gambar logo di-encode menjadi format Base64 Data URI untuk menjamin ketajaman dan stabilitas tampilan baik pada rendering native mPDF maupun mode cetak HTML.
 
 ---
 

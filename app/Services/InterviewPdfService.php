@@ -30,32 +30,56 @@ class InterviewPdfService
             }
         }
 
-        // Determine Kop Logo
-        $principleName = strtoupper($candidate->principle?->name ?? 'PT ARINA MULTI KARYA');
-        $parentComp = strtoupper($candidate->principle?->parent_company ?? $principleName);
+        // Determine Principle & Entity Kop Logo
+        $principleModel = $candidate->principle;
+        $entityCode = strtoupper(trim($principleModel?->entity ?? ''));
+        $parentComp = strtoupper(trim($principleModel?->parent_company ?? ''));
+        $principleName = strtoupper(trim($principleModel?->name ?? ($candidate->attributes['principle'] ?? 'PT ARINA MULTI KARYA')));
 
-        $kopFile = 'kopamknew.png';
-        if (str_contains($parentComp, 'ALVA')) {
-            $kopFile = 'kopakp.png';
-        } elseif (str_contains($parentComp, 'ANUGRAH') || str_contains($parentComp, 'ATK')) {
-            $kopFile = 'kopatk.png';
-        } elseif (str_contains($parentComp, 'ABADI') || str_contains($parentComp, 'ABO')) {
-            $kopFile = 'kopabo.png';
+        if (empty($parentComp)) {
+            $parentComp = $principleName;
         }
 
-        $kopPath = public_path('kop/logo/' . $kopFile);
-        if (!file_exists($kopPath)) {
-            $possibleKop = [
-                'd:/ASystem/v3/kop/logo/' . $kopFile,
-                base_path('../v3/kop/logo/' . $kopFile),
-                'C:/xampp/htdocs/v3/kop/logo/' . $kopFile,
-            ];
-            foreach ($possibleKop as $pk) {
-                if (file_exists($pk)) {
-                    $kopPath = $pk;
-                    break;
-                }
+        $kopFile = 'kopamknew.png';
+        if ($entityCode === 'AKP' || str_contains($parentComp, 'ALVA') || str_contains($principleName, '(AKP)')) {
+            $kopFile = 'kopakp.png';
+            if (empty($parentComp) || $parentComp === $principleName) $parentComp = 'PT ALVA KARYA PERKASA';
+        } elseif ($entityCode === 'ATB' || str_contains($parentComp, 'TALENTA') || str_contains($principleName, '(ATB)')) {
+            $kopFile = 'kopatb.png';
+            if (empty($parentComp) || $parentComp === $principleName) $parentComp = 'PT ANUGRAH TALENTA BERKARYA';
+        } elseif ($entityCode === 'ATK' || str_contains($parentComp, 'TERPERCAYA') || str_contains($parentComp, 'ATK') || str_contains($principleName, '(ATK)')) {
+            $kopFile = 'kopatk.png';
+            if (empty($parentComp) || $parentComp === $principleName) $parentComp = 'PT ANUGRAH TERPERCAYA KERJA';
+        } elseif ($entityCode === 'ABO' || str_contains($parentComp, 'ABADI') || str_contains($parentComp, 'ODELIA') || str_contains($parentComp, 'ABO') || str_contains($principleName, '(ABO)')) {
+            $kopFile = 'kopabo.png';
+            if (empty($parentComp) || $parentComp === $principleName) $parentComp = 'PT ABADI BERKAT ODELIA';
+        } else {
+            $kopFile = 'kopamknew.png';
+            if (empty($parentComp) || $parentComp === $principleName) $parentComp = 'PT ARINA MULTI KARYA';
+        }
+
+        $possibleKop = [
+            public_path('kop/logo/' . $kopFile),
+            public_path('kop/' . $kopFile),
+            base_path('public/kop/logo/' . $kopFile),
+            base_path('public/kop/' . $kopFile),
+            storage_path('app/master_prinsiple_extract/kop_extracted/' . $kopFile),
+            'd:/ASystem/v3/kop/logo/' . $kopFile,
+            base_path('../v3/kop/logo/' . $kopFile),
+            'C:/xampp/htdocs/v3/kop/logo/' . $kopFile,
+        ];
+
+        $kopPath = '';
+        foreach ($possibleKop as $pk) {
+            if (file_exists($pk)) {
+                $kopPath = $pk;
+                break;
             }
+        }
+
+        $logoBase64 = '';
+        if (!empty($kopPath) && file_exists($kopPath)) {
+            $logoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($kopPath));
         }
 
 
@@ -247,10 +271,12 @@ class InterviewPdfService
         // ==========================================
         $html1 = '<!DOCTYPE html><html><head><style>' . $css . '</style></head><body>';
         $html1 .= '<table width="100%"><tr>';
-        if (file_exists($kopPath)) {
-            $html1 .= '<td align="left" width="50%"><img src="' . $kopPath . '" style="height: 44px;"></td>';
+        if (!empty($logoBase64)) {
+            $html1 .= '<td align="left" width="50%"><img src="' . $logoBase64 . '" style="height: 48px; max-width: 260px; object-fit: contain;"></td>';
+        } elseif (!empty($kopPath) && file_exists($kopPath)) {
+            $html1 .= '<td align="left" width="50%"><img src="' . $kopPath . '" style="height: 48px; max-width: 260px; object-fit: contain;"></td>';
         } else {
-            $html1 .= '<td align="left" width="50%"><h2 style="margin:0;color:#1e40af;">' . $parentComp . '</h2></td>';
+            $html1 .= '<td align="left" width="50%"><h2 style="margin:0;color:#1e40af;font-size:15px;">' . htmlspecialchars($parentComp) . '</h2></td>';
         }
         $html1 .= '<td align="right" width="50%"><div style="border:1px solid #999; padding:4px 6px; display:inline-block; font-size:8px; font-family:monospace;">ID: #' . $candidate->id . ' - ' . $candidate->nik . '<br><small>' . date('d M Y H:i') . '</small></div></td>';
         $html1 .= '</tr></table>';
