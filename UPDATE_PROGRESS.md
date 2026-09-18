@@ -326,10 +326,30 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 19. ✍️ Digital Signature AS, Auto-Preload Tanda Tangan, & Dynamic PDF Export
+- **Tanda Tangan Digital Otomatis AS (Cukup Buat Sekali)**:
+  - Menambahkan kolom `signature_path` pada tabel `users` ([database/migrations/2026_09_18_170000_add_signature_path_to_users_table.php](file:///d:/ASystem/newasystem/database/migrations/2026_09_18_170000_add_signature_path_to_users_table.php)).
+  - Menyimpan tanda tangan permanen AS ke `signatures/user_{id}.png` dan `users.signature_path` saat submit form interview.
+  - Pada pembukaan form detail kandidat berikutnya, tanda tangan AS yang telah tersimpan otomatis dimuat ke canvas tanpa perlu digambar ulang, dilengkapi badge indikator *TTD AS Otomatis (Tersimpan)* dan tombol *Hapus / Ulangi*.
+- **Cetak Dokumen Hasil Interview Dinamis (`InterviewPdfService`)**:
+  - Kolom `MENYETUJUI HRD / AS` diubah menjadi dinamis sesuai AS penilai ([InterviewController::resolveCandidateAsDetails()](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php)), menggantikan teks statis "Budi Santoso".
+  - Gambar tanda tangan AS di-render secara proporsional menggunakan Base64 ke dalam dokumen PDF.
+  - Penyesuaian nama petugas dan area pada Form Cek Referensi (Halaman 2).
+  - Normalisasi nilai skor 1–5 menjadi label teks baku (*Sangat Baik, Baik, Cukup, Kurang*) dan penampilan catatan khusus wawancara dari penilai.
+- **Skrip Deployment Otomatis Satu Perintah ([deploy.sh](file:///d:/ASystem/newasystem/deploy.sh))**:
+  - Dibuat skrip `deploy.sh` dan diperbarui `public/deploy.php` yang secara otomatis membersihkan berkas migrasi sisa lama (`2026_07_*`), menarik branch `main` terbaru, mengeksekusi migrasi skema database, menata hak akses `www:www`, serta membersihkan seluruh cache.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `ba06d43` | feat(deploy): add automated deploy.sh script for one-click server deployment |
+| `b1b9cf9` | fix: dynamic AS name and signature in PDF, auto-preload saved AS signature |
+| `949994a` | fix: auto-cleanup legacy filament provider in fix_cache |
+| `f22c164` | fix: resolve collection array_values in job filter, add @stack('scripts') to layouts, and fix interview signature canvas |
+| `9e6e533` | feat: tambahkan import kandidat interview live terminal & searchable dropdown filter job |
 | `5648c72` | feat(candidates): differentiate candidate categories and add gender column across tables and apply form |
 | `63800fe` | feat(migration): implement legacy sql dump importer, evaluation data service, and dynamic views with pdf export |
 | `ba18e39` | feat(cbt): implement online test portal, candidate login, 6-tab profile completion, and tests |
