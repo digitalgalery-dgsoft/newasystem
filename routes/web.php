@@ -352,14 +352,17 @@ Route::get('/refcekfile/{filename}', function ($filename) {
     return redirect()->away('https://asystem.co.id/v3/refcekfile/' . rawurlencode($baseName));
 })->where('filename', '.*')->name('refcekfile.show');
 
-// 3. Lampiran Approval Prinsiple (Fallback: https://asystem.co.id/v3/)
+// 3. Lampiran Approval Prinsiple (Fallback: https://asystem.co.id/v3/approval/)
 Route::get('/approval/{filename}', function ($filename) {
     $baseName = basename($filename);
     $resolved = \App\Services\LegacyAttachmentService::resolveApproval($baseName);
     if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
         return response()->file($resolved);
     }
-    return redirect()->away('https://asystem.co.id/v3/' . rawurlencode($baseName));
+    if (str_starts_with($baseName, 'ttd_')) {
+        return redirect()->away('https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName));
+    }
+    return redirect()->away('https://asystem.co.id/v3/approval/' . rawurlencode($baseName));
 })->where('filename', '.*')->name('approval.show');
 
 // 4. TTD Digital Prinsiple (Fallback: https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/)

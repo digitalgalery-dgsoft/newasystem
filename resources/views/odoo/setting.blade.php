@@ -398,7 +398,7 @@
                             Tarik data terbaru <code>hr.employee</code> dari Odoo untuk entitas <strong>{{ $currentEntity->code }}</strong>.
                         </p>
 
-                        <form id="formSingleSync_{{ $currentEntity->code }}" onsubmit="event.preventDefault(); startTerminalSync('{{ $currentEntity->code }}');">
+                        <form id="formSingleSync_{{ $currentEntity->code }}" data-no-loader="true" onsubmit="event.preventDefault(); startTerminalSync('{{ $currentEntity->code }}');">
                             <!-- Category Filter Selection -->
                             <div class="mb-3.5 bg-white/10 p-2.5 rounded-xl border border-white/15 backdrop-blur-xs">
                                 <label class="block text-[10px] font-extrabold text-blue-100 uppercase tracking-wider mb-1.5">
@@ -505,7 +505,7 @@
             </div>
         </div>
 
-        <form id="formSyncByNik" onsubmit="handleSyncByNik(event)" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+        <form id="formSyncByNik" data-no-loader="true" onsubmit="handleSyncByNik(event)" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
             @csrf
             <!-- Input NIK -->
             <div class="md:col-span-5 space-y-1">
@@ -561,7 +561,7 @@
     </div>
 
     <!-- MODAL SYNC SEMUA ENTITAS DENGAN PILIHAN KATEGORI -->
-    <div id="modalSyncAll" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs hidden p-4">
+    <div id="modalSyncAll" class="fixed inset-0 z-[999991] flex items-center justify-center bg-slate-900/60 backdrop-blur-xs hidden p-4">
         <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
             <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div class="flex items-center gap-2.5">
@@ -578,7 +578,7 @@
                 </button>
             </div>
 
-            <form id="formSyncAll" onsubmit="event.preventDefault(); startTerminalSyncAll();" class="p-5 space-y-4">
+            <form id="formSyncAll" data-no-loader="true" onsubmit="event.preventDefault(); startTerminalSyncAll();" class="p-5 space-y-4">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-2">
                         Pilih Kategori Sinkronisasi:
@@ -641,7 +641,7 @@
     <!-- ============================================================== -->
     <!-- TERMINAL CONSOLE MODAL (LIVE STREAMING ODOO SYNC ENGINE) -->
     <!-- ============================================================== -->
-    <div id="terminalSyncModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-slate-950/80 backdrop-blur-md hidden transition-all duration-300">
+    <div id="terminalSyncModal" class="fixed inset-0 z-[999995] flex items-center justify-center p-3 sm:p-5 bg-slate-950/85 backdrop-blur-md hidden transition-all duration-300">
         <div class="w-full max-w-4xl bg-[#0d1117] border border-slate-700/80 rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] animate-in fade-in zoom-in-95 duration-200">
             
             <!-- Terminal Titlebar (macOS Style) -->
@@ -1102,6 +1102,17 @@ let termCountErrors = 0;
 let termIsRunning = false;
 
 function openTerminalModal(targetLabel) {
+    // Pastikan animasi loading global tidak menutupi terminal modal
+    if (typeof window.hideLoader === 'function') {
+        window.hideLoader();
+    }
+    const overlay = document.getElementById('asystem-loading-overlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+        overlay.classList.add('opacity-0', 'pointer-events-none');
+        overlay.classList.remove('opacity-100');
+    }
+
     const modal = document.getElementById('terminalSyncModal');
     modal.classList.remove('hidden');
     document.getElementById('termTargetBadge').textContent = targetLabel;

@@ -379,19 +379,29 @@ class InterviewPdfService
         // =========================================================================
         $approval = $candidate->principleApprovals->first();
         $approvalFilename = $candidate->ttd_prinsiple ?? $approval?->signature_path ?? null;
-        $approvalImgPath = null;
-        $approvalBase64 = null;
+        $htmlApproval = '';
 
-        if ($approvalFilename) {
+        if (!empty($approvalFilename)) {
+            $baseName = basename(trim($approvalFilename));
+            $isTtd = str_starts_with($baseName, 'ttd_');
+            $legacyUrl = $isTtd 
+                ? 'https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName)
+                : 'https://asystem.co.id/v3/approval/' . rawurlencode($baseName);
+
             $approvalImgPath = \App\Services\LegacyAttachmentService::resolveApproval($approvalFilename);
-        }
+            $approvalBase64 = ($approvalImgPath && file_exists($approvalImgPath)) 
+                ? \App\Services\LegacyAttachmentService::getImageBase64($approvalImgPath) 
+                : null;
 
-        if ($approvalImgPath && file_exists($approvalImgPath)) {
-            $approvalBase64 = \App\Services\LegacyAttachmentService::getImageBase64($approvalImgPath);
-        }
+            if ($approvalBase64) {
+                $approvalSrc = $approvalBase64;
+            } elseif ($approvalImgPath && file_exists($approvalImgPath)) {
+                $approvalSrc = $mpdf ? $approvalImgPath : asset($isTtd ? 'prinsiple/ttdfileprinsiple/' . $baseName : 'approval/' . $baseName);
+            } else {
+                $approvalSrc = $legacyUrl;
+            }
 
-        if ($approvalBase64) {
-            $titleApproval = str_starts_with(basename($approvalFilename), 'ttd_') 
+            $titleApproval = $isTtd 
                 ? 'Tanda Tangan Digital Approval User Principle' 
                 : 'ScreenShot Approval Prinsiple By WA / Email';
 
@@ -400,9 +410,10 @@ class InterviewPdfService
             $htmlApproval .= '<h2 style="font-size:15px; text-transform:uppercase; color:#1e3a8a; margin-bottom:6px;">' . $titleApproval . '</h2>';
             $htmlApproval .= '<p style="font-size:9.5px; color:#475569; margin-bottom:14px;">Kandidat: <b>' . $candidate->full_name . '</b> (NIK: ' . $candidate->nik . ') &mdash; Prinsiple: <b>' . $parentComp . '</b></p>';
             $htmlApproval .= '<div style="border:1px solid #cbd5e1; padding:10px; display:inline-block; background:#fff; border-radius:8px;">';
-            $htmlApproval .= '<img src="' . $approvalBase64 . '" style="max-width:85%; max-height:750px;">';
+            $htmlApproval .= '<img src="' . $approvalSrc . '" onerror="this.onerror=null; this.src=\'' . $legacyUrl . '\';" style="max-width:85%; max-height:750px;">';
             $htmlApproval .= '</div>';
             $htmlApproval .= '</div></body></html>';
+
             if ($mpdf) {
                 $mpdf->AddPage();
                 $mpdf->WriteHTML($htmlApproval);
@@ -462,27 +473,44 @@ class InterviewPdfService
         // LAMPIRAN SCREENSHOT CHAT REFERENSI CEK
         // Meniru logika asli v3/printall.php (lines 720-745)
         // =========================================================================
-        $refCekProof = $firstExp?->proof_attachment_path ?? null;
-        $refCekImgPath = null;
-        $refCekBase64 = null;
+        $expsWithProof = $candidate->workExperiences->filter(function($e) {
+            return !empty(trim($e->proof_attachment_path ?? ''));
+        });
 
-        if ($refCekProof) {
-            $refCekImgPath = \App\Services\LegacyAttachmentService::resolveRefcek($refCekProof);
+        if ($expsWithProof->isEmpty() && !empty(trim($firstExp?->proof_attachment_path ?? ''))) {
+            $expsWithProof = collect([$firstExp]);
         }
 
-        if ($refCekImgPath && file_exists($refCekImgPath)) {
-            $refCekBase64 = \App\Services\LegacyAttachmentService::getImageBase64($refCekImgPath);
-        }
+        $htmlRefCekList = [];
+        foreach ($expsWithProof as $expItem) {
+            $refProofFile = trim($expItem->proof_attachment_path);
+            $baseName = basename($refProofFile);
+            $legacyUrl = 'https://asystem.co.id/v3/refcekfile/' . rawurlencode($baseName);
 
-        if ($refCekBase64) {
+            $refCekImgPath = \App\Services\LegacyAttachmentService::resolveRefcek($refProofFile);
+            $refCekBase64 = ($refCekImgPath && file_exists($refCekImgPath)) 
+                ? \App\Services\LegacyAttachmentService::getImageBase64($refCekImgPath) 
+                : null;
+
+            if ($refCekBase64) {
+                $refCekSrc = $refCekBase64;
+            } elseif ($refCekImgPath && file_exists($refCekImgPath)) {
+                $refCekSrc = $mpdf ? $refCekImgPath : asset('refcekfile/' . $baseName);
+            } else {
+                $refCekSrc = $legacyUrl;
+            }
+
             $htmlRefCek = '<!DOCTYPE html><html><head><style>' . $css . '</style></head><body>';
             $htmlRefCek .= '<div style="text-align:center; padding-top:15px;">';
             $htmlRefCek .= '<h3 style="font-size:14px; text-transform:uppercase; color:#1e3a8a; margin-bottom:6px;">BUKTI SCREENSHOT CHAT REFERENSI CEK</h3>';
-            $htmlRefCek .= '<p style="font-size:9.5px; color:#475569; margin-bottom:14px;">Verifikasi Riwayat Kerja: <b>' . ($firstExp?->company_name ?? 'Perusahaan Sebelumnya') . '</b> &mdash; Calon: <b>' . $candidate->full_name . '</b> (' . $candidate->nik . ')</p>';
+            $htmlRefCek .= '<p style="font-size:9.5px; color:#475569; margin-bottom:14px;">Verifikasi Riwayat Kerja: <b>' . ($expItem->company_name ?? 'Perusahaan Sebelumnya') . '</b> &mdash; Calon: <b>' . $candidate->full_name . '</b> (' . $candidate->nik . ')</p>';
             $htmlRefCek .= '<div style="border:1px solid #cbd5e1; padding:10px; display:inline-block; background:#fff; border-radius:8px;">';
-            $htmlRefCek .= '<img src="' . $refCekBase64 . '" style="max-width:85%; max-height:750px;">';
+            $htmlRefCek .= '<img src="' . $refCekSrc . '" onerror="this.onerror=null; this.src=\'' . $legacyUrl . '\';" style="max-width:85%; max-height:750px;">';
             $htmlRefCek .= '</div>';
             $htmlRefCek .= '</div></body></html>';
+
+            $htmlRefCekList[] = $htmlRefCek;
+
             if ($mpdf) {
                 $mpdf->AddPage();
                 $mpdf->WriteHTML($htmlRefCek);
@@ -585,8 +613,12 @@ class InterviewPdfService
             $pages[] = $htmlApproval;
         }
         $pages[] = $html2;
-        if (!empty($htmlRefCek)) {
-            $pages[] = $htmlRefCek;
+        if (!empty($htmlRefCekList)) {
+            foreach ($htmlRefCekList as $hrc) {
+                if (!empty($hrc)) {
+                    $pages[] = $hrc;
+                }
+            }
         }
         $pages[] = $html3;
         $pages[] = $html4;

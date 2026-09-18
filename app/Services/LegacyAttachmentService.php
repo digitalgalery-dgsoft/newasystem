@@ -104,12 +104,12 @@ class LegacyAttachmentService
         $remoteUrls = [];
         if ($isTtd) {
             $remoteUrls[] = 'https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName);
-            $remoteUrls[] = 'https://asystem.co.id/v3/' . rawurlencode($baseName);
             $remoteUrls[] = 'https://asystem.co.id/v3/approval/' . rawurlencode($baseName);
+            $remoteUrls[] = 'https://asystem.co.id/v3/' . rawurlencode($baseName);
         } else {
             $remoteUrls[] = 'https://asystem.co.id/v3/approval/' . rawurlencode($baseName);
-            $remoteUrls[] = 'https://asystem.co.id/v3/' . rawurlencode($baseName);
             $remoteUrls[] = 'https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName);
+            $remoteUrls[] = 'https://asystem.co.id/v3/' . rawurlencode($baseName);
         }
 
         foreach ($remoteUrls as $url) {

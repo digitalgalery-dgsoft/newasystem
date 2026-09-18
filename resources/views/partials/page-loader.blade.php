@@ -142,6 +142,13 @@
          */
         function showOverlay(title = 'Memproses Data...', subtitle = 'Mohon tunggu sebentar, sistem sedang memuat') {
             if (!overlay) return;
+
+            // Jika terminal sync modal sedang aktif/terbuka, jangan tutupi layar dengan overlay
+            const termModal = document.getElementById('terminalSyncModal');
+            if (termModal && !termModal.classList.contains('hidden')) {
+                return;
+            }
+
             if (titleEl) titleEl.innerText = title;
             if (subEl) subEl.innerText = subtitle;
             overlay.style.display = 'flex';
@@ -240,7 +247,16 @@
         // Intercept semua Form Submit untuk Loading State & Button Spinner
         document.addEventListener('submit', (e) => {
             const form = e.target;
-            if (!form || form.hasAttribute('data-no-loader')) return;
+            if (!form || 
+                form.hasAttribute('data-no-loader') || 
+                form.closest('#terminalSyncModal') || 
+                form.closest('#modalSyncAll') || 
+                form.id === 'formSyncAll' || 
+                form.id.startsWith('formSingleSync_') || 
+                form.id === 'formSyncByNik' ||
+                form.id === 'formKaryawanSyncNik') {
+                return;
+            }
 
             const submitBtn = form.querySelector('button[type="submit"], input[type="submit"]');
             

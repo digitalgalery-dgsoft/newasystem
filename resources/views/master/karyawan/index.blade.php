@@ -738,7 +738,7 @@
 <!-- ========================================== -->
 <!-- MODAL: SYNC KARYAWAN BY NIK (ODOO ERP)     -->
 <!-- ========================================== -->
-<div id="syncNikModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+<div id="syncNikModal" class="fixed inset-0 z-[999995] hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
     <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
         <div class="p-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white flex items-center justify-between">
             <div class="flex items-center gap-3">
@@ -755,7 +755,7 @@
             </button>
         </div>
 
-        <form id="formKaryawanSyncNik" onsubmit="handleKaryawanSyncNik(event)" class="p-6 space-y-4">
+        <form id="formKaryawanSyncNik" data-no-loader="true" onsubmit="handleKaryawanSyncNik(event)" class="p-6 space-y-4">
             @csrf
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1.5">
