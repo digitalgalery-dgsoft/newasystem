@@ -28,6 +28,13 @@
         </div>
 
         <div class="flex items-center gap-2.5">
+            <form action="{{ route('master.prinsiple.reimport') }}" method="POST" class="inline" onsubmit="return confirm('Yakin ingin membersihkan data dummy dan mengimpor ulang 157 master prinsiple resmi sesuai 5 entitas?');">
+                @csrf
+                <button type="submit" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <span>Import Master Resmi</span>
+                </button>
+            </form>
             <button onclick="openModal('addPrincipleModal')" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/20">
                 <i class="fa-solid fa-plus"></i>
                 <span>Add Prinsiple</span>

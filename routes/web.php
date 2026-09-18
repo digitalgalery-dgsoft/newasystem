@@ -51,6 +51,7 @@ Route::middleware(['admin'])->prefix('master')->name('master.')->group(function 
     // Master Prinsiple
     Route::get('/prinsiple', [PrincipleController::class, 'index'])->name('prinsiple.index');
     Route::post('/prinsiple', [PrincipleController::class, 'store'])->name('prinsiple.store');
+    Route::post('/prinsiple/import-official', [PrincipleController::class, 'reimportOfficial'])->name('prinsiple.reimport');
     Route::put('/prinsiple/{id}', [PrincipleController::class, 'update'])->name('prinsiple.update');
     Route::get('/prinsiple/{id}/toggle', [PrincipleController::class, 'toggleStatus'])->name('prinsiple.toggle');
     Route::delete('/prinsiple/{id}', [PrincipleController::class, 'destroy'])->name('prinsiple.destroy');

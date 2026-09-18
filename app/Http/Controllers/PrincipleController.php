@@ -111,4 +111,10 @@ class PrincipleController extends Controller
 
         return redirect()->route('master.prinsiple.index')->with('success', 'Data Prinsiple berhasil dihapus.');
     }
+
+    public function reimportOfficial()
+    {
+        \Illuminate\Support\Facades\Artisan::call('asystem:import-principles');
+        return redirect()->route('master.prinsiple.index')->with('success', 'Data dummy berhasil dibersihkan dan 157 data master prinsiple resmi 5 entitas telah diimpor!');
+    }
 }
