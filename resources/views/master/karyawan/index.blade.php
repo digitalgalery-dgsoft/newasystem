@@ -1258,7 +1258,7 @@
             </button>
         </div>
 
-        <form id="bulkPimpinanForm" onsubmit="handleBulkPimpinanSubmit(event)" class="p-6 space-y-4">
+        <form id="bulkPimpinanForm" data-no-loader="true" onsubmit="handleBulkPimpinanSubmit(event)" class="p-6 space-y-4">
             @csrf
             
             <!-- Selection Mode Tabs -->
@@ -2316,6 +2316,8 @@
 
     async function handleBulkPimpinanSubmit(event) {
         event.preventDefault();
+        if (window.hideLoader) window.hideLoader();
+
         const targetType = document.getElementById('bulk_target_type').value;
         const pimpinan = document.getElementById('bulk_pimpinan_input').value.trim();
         const jabatan = document.getElementById('bulk_jabatan_pimpinan_input').value.trim();
@@ -2367,6 +2369,10 @@
         btn.disabled = true;
         btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-white"></i> <span>Menyimpan...</span>`;
 
+        if (window.showLoader) {
+            window.showLoader('Menyimpan Pimpinan...', 'Sedang menetapkan data pimpinan karyawan...');
+        }
+
         const payload = {
             target_type: targetType,
             pimpinan: pimpinan,
@@ -2396,6 +2402,8 @@
 
             const data = await res.json();
 
+            if (window.hideLoader) window.hideLoader();
+
             if (res.ok && data.success) {
                 await Swal.fire({
                     icon: 'success',
@@ -2408,6 +2416,7 @@
                 throw new Error(data.message || 'Terjadi kesalahan saat memproses data.');
             }
         } catch (err) {
+            if (window.hideLoader) window.hideLoader();
             Swal.fire({
                 icon: 'error',
                 title: 'Gagal Memperbarui',

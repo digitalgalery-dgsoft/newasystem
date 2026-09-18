@@ -82,6 +82,11 @@
         0% { background-position: 200% 0; }
         100% { background-position: -200% 0; }
     }
+
+    /* Pastikan SweetAlert selalu berada di atas modal / loader */
+    .swal2-container {
+        z-index: 9999999 !important;
+    }
 </style>
 
 <!-- 4. Global Controller Script -->
@@ -248,13 +253,16 @@
         document.addEventListener('submit', (e) => {
             const form = e.target;
             if (!form || 
+                e.defaultPrevented ||
                 form.hasAttribute('data-no-loader') || 
                 form.closest('#terminalSyncModal') || 
                 form.closest('#modalSyncAll') || 
+                form.closest('#bulkPimpinanModal') ||
                 form.id === 'formSyncAll' || 
                 form.id.startsWith('formSingleSync_') || 
                 form.id === 'formSyncByNik' ||
-                form.id === 'formKaryawanSyncNik') {
+                form.id === 'formKaryawanSyncNik' ||
+                form.id === 'bulkPimpinanForm') {
                 return;
             }
 

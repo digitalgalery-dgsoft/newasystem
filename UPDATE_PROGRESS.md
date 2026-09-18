@@ -530,10 +530,24 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 32. 🛠️ Perbaikan Loading Overlay yang Menutupi Modal Konfirmasi SweetAlert (19 September 2026)
+- **Akar Masalah**:
+  - Event listener `document.addEventListener('submit', ...)` pada global page loader (`page-loader.blade.php`) mencegat form submit tanpa memeriksa apakah submit event telah di-cancel (`e.defaultPrevented`).
+  - Akibatnya, saat form `#bulkPimpinanForm` di-submit dan memicu dialog konfirmasi SweetAlert2 (*"Konfirmasi Bulk Edit Pimpinan"*), loading overlay ber-z-index tinggi (`z-[999990]`) langsung muncul menutupi SweetAlert (`z-index: 1060`), memblokir seluruh klik mouse sehingga tombol *"Ya, Terapkan Pimpinan"* / *"Batal"* tidak dapat diklik dan proses macet / menggantung tanpa henti.
+- **Solusi & Perbaikan Terpadu**:
+  1. Menambahkan pemeriksaan `if (e.defaultPrevented) return;` serta pengecualian form `bulkPimpinanForm` / `closest('#bulkPimpinanModal')` dan atribut `data-no-loader="true"` pada interceptor submit di `page-loader.blade.php`.
+  2. Menetapkan aturan CSS `.swal2-container { z-index: 9999999 !important; }` sehingga jendela dialog SweetAlert2 selalu berada di lapisan terdepan aplikasi dan 100% dapat diinteraksi.
+  3. Memastikan pemanggilan `window.hideLoader()` sebelum dialog konfirmasi terbuka, dan loader proses baru diaktifkan setelah pengguna menekan tombol persetujuan *"Ya, Terapkan Pimpinan"*.
+  4. Menutup loader seketika (`window.hideLoader()`) setelah respon API diterima sebelum pesan notifikasi sukses ditampilkan.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| *(pending)* | fix: Perbaiki loading overlay agar tidak menutupi modal konfirmasi SweetAlert bulk pimpinan |
+| `3928e7b` | docs: update git commit hash for multi-search |
 | `eefdbf7` | feat: Fitur pencarian multiple nama karyawan (multi-tag input) dan query OR multi-term |
 | `1724d25` | docs: update git commit hash for pimpinan dropdown |
 | `313e899` | feat: Pimpinan searchable dropdown grouped by area dan auto-fill jabatan pimpinan |
