@@ -621,7 +621,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
-| `[PENDING]` | fix: Perbaiki filter export kandidat portal untuk admin, parsing tanggal rentang, dan default semua status |
+| `c920766` | fix: Perbaiki filter export kandidat portal untuk admin, parsing tanggal rentang, dan default semua status |
 | `f2e1425` | feat: Fitur export data kandidat job portal ke file XLSX profesional dengan filter area, jenis kelamin, ringkasan pengalaman, dan link PDF AI |
 | `599a696` | feat: Tambahkan line chart statistik progress pertumbuhan employee 12 jam terakhir dan 4 kartu metrik sesuai referensi desain |
 | `ca03ce3` | fix: Perbaiki loading overlay agar tidak menutupi modal konfirmasi SweetAlert bulk pimpinan |
