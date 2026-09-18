@@ -5,9 +5,21 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
-// Auto-clean orphan config files that cause fatal errors when package is not installed
-if (file_exists($orphanOctane = __DIR__.'/../config/octane.php') && !class_exists('Laravel\Octane\Octane')) {
-    @unlink($orphanOctane);
+// Auto-clean orphan / leftover config files that cause fatal errors when optional packages are not installed
+$knownProblematicConfigs = [
+    'octane.php' => 'Laravel\Octane\Octane',
+    'sanctum.php' => 'Laravel\Sanctum\Sanctum',
+    'telescope.php' => 'Laravel\Telescope\Telescope',
+    'horizon.php' => 'Laravel\Horizon\Horizon',
+    'pennant.php' => 'Laravel\Pennant\Feature',
+    'reverb.php' => 'Laravel\Reverb\Application',
+];
+
+foreach ($knownProblematicConfigs as $cfgFile => $className) {
+    $targetPath = __DIR__ . '/../config/' . $cfgFile;
+    if (file_exists($targetPath) && !class_exists($className)) {
+        @unlink($targetPath);
+    }
 }
 
 // Determine if the application is in maintenance mode...
