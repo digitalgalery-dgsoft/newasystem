@@ -17,25 +17,47 @@ class EmployeeController extends Controller
     {
         $query = Employee::query();
 
-        // Search by Nama Karyawan (case-insensitive & partial/multi-word), NIK, or NIP
-        if ($search = trim($request->input('search', ''))) {
-            $searchLower = strtolower($search);
-            $query->where(function ($q) use ($search, $searchLower) {
-                // Match full query against nama_karyawan (case-insensitive)
-                $q->whereRaw('LOWER(nama_karyawan) LIKE ?', ["%{$searchLower}%"])
-                  ->orWhere('nik', 'like', "%{$search}%")
-                  ->orWhere('nip', 'like', "%{$search}%");
-
-                // Multi-word matching (e.g. "arya maulana" matches "Arya gifari maulana")
-                $words = array_filter(explode(' ', $searchLower));
-                if (count($words) > 1) {
-                    $q->orWhere(function ($subQ) use ($words) {
-                        foreach ($words as $w) {
-                            $subQ->whereRaw('LOWER(nama_karyawan) LIKE ?', ["%{$w}%"]);
-                        }
-                    });
+        // Search by Nama Karyawan (multiple terms, case-insensitive, partial/multi-word), NIK, or NIP
+        if ($searchRaw = $request->input('search')) {
+            $rawTerms = is_array($searchRaw) ? $searchRaw : preg_split('/[,;\n\r|]+/', (string)$searchRaw);
+            $searchTerms = [];
+            foreach ($rawTerms as $t) {
+                $clean = trim((string)$t);
+                if ($clean !== '') {
+                    $searchTerms[] = $clean;
                 }
-            });
+            }
+            $searchTerms = array_unique($searchTerms);
+
+            if (!empty($searchTerms)) {
+                $query->where(function ($outerQ) use ($searchTerms) {
+                    foreach ($searchTerms as $idx => $term) {
+                        $termLower = strtolower($term);
+                        $clause = function ($subQ) use ($term, $termLower) {
+                            // Match against nama_karyawan (case-insensitive), NIK, or NIP
+                            $subQ->whereRaw('LOWER(nama_karyawan) LIKE ?', ["%{$termLower}%"])
+                                 ->orWhere('nik', 'like', "%{$term}%")
+                                 ->orWhere('nip', 'like', "%{$term}%");
+
+                            // Multi-word matching within a term (e.g. "ubaid maulana" matches "Ubaid Maulana Aliyuddin")
+                            $words = array_filter(explode(' ', $termLower));
+                            if (count($words) > 1) {
+                                $subQ->orWhere(function ($wordQ) use ($words) {
+                                    foreach ($words as $w) {
+                                        $wordQ->whereRaw('LOWER(nama_karyawan) LIKE ?', ["%{$w}%"]);
+                                    }
+                                });
+                            }
+                        };
+
+                        if ($idx === 0) {
+                            $outerQ->where($clause);
+                        } else {
+                            $outerQ->orWhere($clause);
+                        }
+                    }
+                });
+            }
         }
 
         // Status filter: Default to 'Aktiv' only unless explicitly set otherwise

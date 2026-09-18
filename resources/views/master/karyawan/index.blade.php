@@ -114,15 +114,47 @@
     <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4">
         <form method="GET" action="{{ route('master.karyawan.index') }}" class="space-y-3">
             <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                <!-- Search Input -->
-                <div class="lg:col-span-2">
-                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cari Karyawan</label>
-                    <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-                        <input type="text" name="search" value="{{ request('search') }}" 
-                               placeholder="Cari nama karyawan, NIK, NIP..." 
-                               class="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
+                <!-- Search Input (Multiple Search by Nama, NIK, NIP) -->
+                <div class="lg:col-span-2" x-data="multiSearchInput({{ json_encode(request('search', '')) }})">
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                            Cari Karyawan <span class="text-[10px] font-normal text-primary lowercase">(bisa multiple)</span>
+                        </label>
+                        <template x-if="tags.length > 0">
+                            <button type="button" @click="clearAll()" class="text-[10px] text-rose-500 hover:text-rose-700 font-semibold flex items-center gap-1 transition" title="Hapus semua kata kunci pencarian">
+                                <i class="fa-solid fa-xmark text-[9px]"></i> Reset (<span x-text="tags.length"></span>)
+                            </button>
+                        </template>
                     </div>
+
+                    <div class="min-h-[38px] w-full px-2.5 py-1 text-xs rounded-xl border border-slate-200 bg-slate-50/50 focus-within:bg-white focus-within:ring-2 focus-within:ring-primary focus-within:border-primary flex flex-wrap items-center gap-1.5 transition-all cursor-text"
+                         @click="$refs.tagInput.focus()">
+                        <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs shrink-0 ml-1"></i>
+
+                        <!-- Rendered Tag Pills -->
+                        <template x-for="(tag, idx) in tags" :key="idx">
+                            <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-lg bg-primary/10 text-primary-900 border border-primary/20 text-xs font-semibold animate-in fade-in zoom-in-95 duration-100">
+                                <span x-text="tag"></span>
+                                <button type="button" @click.stop="removeTag(idx)" class="text-primary-600 hover:text-rose-600 p-0.5 rounded transition" title="Hapus nama ini">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </button>
+                            </span>
+                        </template>
+
+                        <!-- Live Input for Typing or Pasting -->
+                        <input type="text" 
+                               x-ref="tagInput"
+                               x-model="currentInput" 
+                               @keydown="handleKeyDown($event)" 
+                               @paste="handlePaste($event)" 
+                               @blur="addCurrent()"
+                               :placeholder="tags.length === 0 ? 'Cari nama, NIK, NIP... (koma atau Enter)' : '+ nama/NIK lain...'" 
+                               class="flex-1 min-w-[130px] bg-transparent border-0 outline-none text-xs text-slate-800 placeholder:text-slate-400 py-1">
+                    </div>
+
+                    <!-- Hidden input to pass value to GET request -->
+                    <input type="hidden" name="search" :value="combinedValue">
+                    <p class="text-[10px] text-slate-400 mt-1">Ketik nama lalu tekan <strong>Enter</strong> atau <strong>Koma (,)</strong>. Bisa input lebih dari 1 nama sekaligus.</p>
                 </div>
 
                 <!-- Prinsiple Filter (Searchable Dropdown) -->
@@ -431,7 +463,7 @@
     <div class="table-card">
         <div class="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
             <div>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap">
                     <h2 class="text-sm font-bold text-slate-900">Daftar Karyawan Inhouse & RateCard</h2>
                     @if($status === 'Aktiv')
                         <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
@@ -445,6 +477,27 @@
                         <span class="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-300">
                             Semua Status
                         </span>
+                    @endif
+
+                    @if(request('search'))
+                        @php
+                            $activeSearchTerms = is_array(request('search')) 
+                                ? request('search') 
+                                : array_filter(array_map('trim', preg_split('/[,;\n\r|]+/', request('search'))));
+                        @endphp
+                        @if(!empty($activeSearchTerms))
+                            <div class="flex items-center gap-1.5 flex-wrap ml-1 pl-2 border-l border-slate-200">
+                                <span class="text-[10px] text-slate-400 font-semibold">Cari:</span>
+                                @foreach($activeSearchTerms as $st)
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                        <i class="fa-solid fa-magnifying-glass text-[8px]"></i> {{ $st }}
+                                    </span>
+                                @endforeach
+                                <a href="{{ route('master.karyawan.index', request()->except(['search', 'page'])) }}" class="text-[10px] text-rose-500 hover:text-rose-700 font-bold ml-0.5" title="Hapus Filter Pencarian">
+                                    <i class="fa-solid fa-xmark"></i> Reset
+                                </a>
+                            </div>
+                        @endif
                     @endif
                 </div>
                 <p class="text-[11px] text-slate-500 mt-0.5">Menampilkan {{ $employees->firstItem() ?? 0 }} - {{ $employees->lastItem() ?? 0 }} dari {{ $employees->total() }} data karyawan</p>
@@ -1834,6 +1887,93 @@
                 </div>
             `;
         });
+    }
+
+    // ==========================================
+    // MULTIPLE SEARCH TAGS INPUT LOGIC
+    // ==========================================
+    function multiSearchInput(initialValue) {
+        return {
+            tags: [],
+            currentInput: '',
+
+            init() {
+                if (initialValue) {
+                    if (Array.isArray(initialValue)) {
+                        this.tags = initialValue.map(v => (v + '').trim()).filter(v => v.length > 0);
+                    } else if (typeof initialValue === 'string') {
+                        const parts = initialValue.split(/[,;\n\r|]+/);
+                        this.tags = parts.map(p => p.trim()).filter(p => p.length > 0);
+                    }
+                }
+            },
+
+            get combinedValue() {
+                const list = [...this.tags];
+                const cur = (this.currentInput || '').trim();
+                if (cur && !list.includes(cur)) {
+                    list.push(cur);
+                }
+                return list.join(', ');
+            },
+
+            addCurrent() {
+                const val = (this.currentInput || '').trim();
+                if (!val) return;
+                const parts = val.split(/[,;\n\r|]+/);
+                for (const p of parts) {
+                    const trimmed = p.trim();
+                    if (trimmed && !this.tags.includes(trimmed)) {
+                        this.tags.push(trimmed);
+                    }
+                }
+                this.currentInput = '';
+            },
+
+            handleKeyDown(e) {
+                if (e.key === 'Enter') {
+                    if (this.currentInput && this.currentInput.trim()) {
+                        e.preventDefault();
+                        this.addCurrent();
+                    }
+                } else if (e.key === ',' || e.key === ';') {
+                    e.preventDefault();
+                    this.addCurrent();
+                } else if (e.key === 'Backspace' && !this.currentInput && this.tags.length > 0) {
+                    this.tags.pop();
+                }
+            },
+
+            handlePaste(e) {
+                const pasteData = (e.clipboardData || window.clipboardData).getData('text');
+                if (pasteData && (pasteData.includes(',') || pasteData.includes('\n') || pasteData.includes(';') || pasteData.includes('\t'))) {
+                    e.preventDefault();
+                    const parts = pasteData.split(/[,;\t\n\r|]+/);
+                    for (const p of parts) {
+                        const trimmed = p.trim();
+                        if (trimmed && !this.tags.includes(trimmed)) {
+                            this.tags.push(trimmed);
+                        }
+                    }
+                    this.currentInput = '';
+                }
+            },
+
+            removeTag(idx) {
+                this.tags.splice(idx, 1);
+                this.$nextTick(() => {
+                    if (this.$refs.tagInput) this.$refs.tagInput.focus();
+                });
+            },
+
+            clearAll() {
+                this.tags = [];
+                this.currentInput = '';
+                this.$nextTick(() => {
+                    if (this.$refs.tagInput) this.$refs.tagInput.focus();
+                });
+            }
+        };
     }
 
     function searchableSelect(config) {

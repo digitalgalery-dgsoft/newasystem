@@ -513,10 +513,29 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 31. 🔎 Multi-Search Karyawan (Pencarian Multiple Nama / NIK Sekaligus) (19 September 2026)
+- **Komponen Input Tag/Pills Interaktif (Alpine.js)**:
+  - Input `Cari Karyawan` dirombak menjadi antarmuka pencarian jamak (*multi-search tags input*).
+  - Setiap nama/keyword yang diketik otomatis dikonversi menjadi tag pill interaktif (chip) dengan tombol hapus individual (`×`).
+  - Mendukung penambahan tag melalui penekanan tombol **Enter**, tombol **Koma (,)**, atau **Titik Koma (;)**.
+  - **Dukungan Paste Massal**: Pengguna dapat menyalin (*copy-paste*) daftar banyak nama atau NIK sekaligus (misal dari dokumen Excel, spreadsheet, atau teks WhatsApp) dan sistem secara otomatis memecah data tersebut menjadi tag-tag terpisah.
+  - Tombol cepat **Reset (N)** untuk mengosongkan seluruh tag pencarian sekaligus.
+- **Backend Query Multi-Term ([EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php))**:
+  - Parameter `search` diproses secara jamak (*array/multi-terms*).
+  - Menggabungkan kriteria pencarian dengan klausul `OR` logis: karyawan yang cocok dengan **salah satu** dari nama-nama yang dicari akan langsung ditampilkan secara bersamaan di tabel.
+  - Setiap term tetap mendukung pencarian case-insensitive, potongan nama (*partial name*), pencarian multi-kata (seperti *"Ubaid Maulana"*), serta pencarian nomor KTP (NIK) atau NIP.
+- **Indikator Visual pada Header Tabel**:
+  - Saat pencarian aktif, baris judul tabel menampilkan daftar badge nama yang sedang dicari beserta link reset cepat.
+  - Sangat mempermudah seleksi dan penugasan pimpinan massal (*Bulk Edit Pimpinan*) untuk daftar karyawan terpilih.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| *(pending)* | feat: Fitur pencarian multiple nama karyawan (multi-tag input) dan query OR multi-term |
+| `1724d25` | docs: update git commit hash for pimpinan dropdown |
 | `313e899` | feat: Pimpinan searchable dropdown grouped by area dan auto-fill jabatan pimpinan |
 | `31ceda7` | fix: Pencarian karyawan case-insensitive dan partial name matching serta pisahkan dari kolom prinsiple |
 | `2398d1f` | feat: Tambahkan field input pimpinan pada form edit karyawan dan fitur bulk edit pimpinan massal |
