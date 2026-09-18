@@ -72,13 +72,39 @@ try {
     if ($isViewBound) {
         $viewFactory = $app->make('view');
         echo "  Class View Factory: " . get_class($viewFactory) . "\n";
-        echo "\n\033[1;32m🎉 SEMUA CACHE BERHASIL DIBERSIHKAN DAN 'VIEW' SUDAH AKTIF NORMAL!\033[0m\n";
+        echo "\n🎉 SEMUA CACHE BERHASIL DIBERSIHKAN DAN 'VIEW' SUDAH AKTIF NORMAL!\n";
+        
+        // Cek Diagnostik Database & User
+        echo "\n[5] Diagnostik Database Server:\n";
+        try {
+            $userList = \App\Models\User::all(['id', 'name', 'email', 'role']);
+            echo "  Total Users: " . $userList->count() . "\n";
+            foreach ($userList as $u) {
+                echo "    - [{$u->id}] {$u->name} ({$u->email}) | Role: {$u->role}\n";
+            }
+            $totCand = \App\Models\Candidate::count();
+            $totPortal = \App\Models\Candidate::where('jenis', 'Job Portal')->count();
+            echo "  Total Kandidat di DB: {$totCand} (Job Portal: {$totPortal})\n";
+        } catch (\Throwable $dbe) {
+            echo "  ✗ Gagal cek DB: " . $dbe->getMessage() . "\n";
+        }
     }
 } catch (\Throwable $e) {
-    echo "\n\033[1;31m[ERROR PADA BOOTSTRAP]\033[0m: " . $e->getMessage() . "\n";
+    echo "\n[ERROR PADA BOOTSTRAP]: " . $e->getMessage() . "\n";
     echo "File: " . $e->getFile() . " (Line " . $e->getLine() . ")\n";
 }
 
+if (isset($_GET['pull'])) {
+    echo "\n[6] Menjalankan Git Pull & Deploy di Server...\n";
+    $gitOut = [];
+    exec("cd {$baseDir} && git config --global --add safe.directory {$baseDir} 2>&1", $gitOut);
+    exec("cd {$baseDir} && git clean -fd config/ 2>&1", $gitOut);
+    exec("cd {$baseDir} && git fetch origin main 2>&1", $gitOut);
+    exec("cd {$baseDir} && git reset --hard origin/main 2>&1", $gitOut);
+    exec("cd {$baseDir} && php artisan optimize:clear 2>&1", $gitOut);
+    echo implode("\n", $gitOut) . "\n";
+}
+
 echo "\n============================================\n";
-echo "Silakan refresh halaman web utama: <a href='/kandidatportal' style='color: #38bdf8;'>/kandidatportal</a>\n";
+echo "Halaman Utama: <a href='/kandidatportal' style='color: #38bdf8;'>/kandidatportal</a> | <a href='/interview' style='color: #38bdf8;'>/interview</a>\n";
 echo "</pre>";
