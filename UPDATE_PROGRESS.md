@@ -546,7 +546,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
-| *(pending)* | fix: Perbaiki loading overlay agar tidak menutupi modal konfirmasi SweetAlert bulk pimpinan |
+| `ca03ce3` | fix: Perbaiki loading overlay agar tidak menutupi modal konfirmasi SweetAlert bulk pimpinan |
 | `3928e7b` | docs: update git commit hash for multi-search |
 | `eefdbf7` | feat: Fitur pencarian multiple nama karyawan (multi-tag input) dan query OR multi-term |
 | `1724d25` | docs: update git commit hash for pimpinan dropdown |
