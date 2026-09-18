@@ -5,19 +5,19 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 
 // Auto-clean orphan / leftover config files that cause fatal errors when optional packages are not installed
-$knownProblematicConfigs = [
-    'octane.php' => 'Laravel\Octane\Octane',
-    'sanctum.php' => 'Laravel\Sanctum\Sanctum',
-    'telescope.php' => 'Laravel\Telescope\Telescope',
-    'horizon.php' => 'Laravel\Horizon\Horizon',
-    'pennant.php' => 'Laravel\Pennant\Feature',
-    'reverb.php' => 'Laravel\Reverb\Application',
-];
-
-foreach ($knownProblematicConfigs as $cfgFile => $className) {
+$orphanFiles = ['octane.php', 'sanctum.php', 'telescope.php', 'horizon.php', 'pennant.php', 'reverb.php'];
+foreach ($orphanFiles as $cfgFile) {
     $targetPath = dirname(__DIR__) . '/config/' . $cfgFile;
-    if (file_exists($targetPath) && !class_exists($className)) {
-        @unlink($targetPath);
+    if (file_exists($targetPath)) {
+        $content = @file_get_contents($targetPath);
+        if ($content && (
+            (str_contains($content, 'Octane::') && !class_exists('Laravel\Octane\Octane')) ||
+            (str_contains($content, 'Sanctum::') && !class_exists('Laravel\Sanctum\Sanctum')) ||
+            (str_contains($content, 'Telescope::') && !class_exists('Laravel\Telescope\Telescope')) ||
+            (str_contains($content, 'Horizon::') && !class_exists('Laravel\Horizon\Horizon'))
+        )) {
+            @unlink($targetPath);
+        }
     }
 }
 
