@@ -195,15 +195,40 @@ class InterviewPdfService
             @mkdir($tempDir, 0777, true);
         }
 
-        // Setup mPDF
-        $mpdf = new \Mpdf\Mpdf([
-            'format' => 'Legal',
-            'margin_left' => 6,
-            'margin_right' => 6,
-            'margin_top' => 6,
-            'margin_bottom' => 6,
-            'tempDir' => $tempDir,
-        ]);
+        // Setup mPDF jika class tersedia
+        if (!class_exists('\Mpdf\Mpdf')) {
+            $possibleAutoloads = [
+                base_path('vendor/autoload.php'),
+                dirname(base_path()) . '/v3.asystem.co.id/vendor/autoload.php',
+                dirname(base_path()) . '/v3/vendor/autoload.php',
+                dirname(base_path()) . '/backend.asystem.co.id/vendor/autoload.php',
+                'd:/ASystem/v3/vendor/autoload.php',
+            ];
+            foreach ($possibleAutoloads as $al) {
+                if (file_exists($al)) {
+                    @require_once $al;
+                    if (class_exists('\Mpdf\Mpdf')) {
+                        break;
+                    }
+                }
+            }
+        }
+
+        $mpdf = null;
+        if (class_exists('\Mpdf\Mpdf')) {
+            try {
+                $mpdf = new \Mpdf\Mpdf([
+                    'format' => 'Legal',
+                    'margin_left' => 6,
+                    'margin_right' => 6,
+                    'margin_top' => 6,
+                    'margin_bottom' => 6,
+                    'tempDir' => $tempDir,
+                ]);
+            } catch (\Throwable $e) {
+                $mpdf = null;
+            }
+        }
 
 
         $css = '
@@ -318,7 +343,9 @@ class InterviewPdfService
         $html1 .= '</tr></table>';
         $html1 .= '</body></html>';
 
-        $mpdf->WriteHTML($html1);
+        if ($mpdf) {
+            $mpdf->WriteHTML($html1);
+        }
 
         // =========================================================================
         // LAMPIRAN APPROVAL PRINSIPLE (Jika status Approval By WA / Ada Screenshot)
@@ -327,6 +354,7 @@ class InterviewPdfService
         $approval = $candidate->principleApprovals->first();
         $approvalFile = $approval?->signature_path ?? $candidate->approval_screenshot ?? null;
         $approvalImgPath = null;
+        $htmlApproval = '';
 
         if ($approvalFile) {
             $fullPath = storage_path('app/public/' . $approvalFile);
@@ -343,7 +371,6 @@ class InterviewPdfService
         }
 
         if ($approvalImgPath && file_exists($approvalImgPath)) {
-            $mpdf->AddPage();
             $htmlApproval = '<!DOCTYPE html><html><head><style>' . $css . '</style></head><body>';
             $htmlApproval .= '<div style="text-align:center; padding-top:15px;">';
             $htmlApproval .= '<h2 style="font-size:15px; text-transform:uppercase; color:#1e3a8a; margin-bottom:6px;">ScreenShot Approval Prinsiple By WA / Email</h2>';
@@ -352,14 +379,19 @@ class InterviewPdfService
             $htmlApproval .= '<img src="' . $approvalImgPath . '" style="max-width:80%; max-height:800px;">';
             $htmlApproval .= '</div>';
             $htmlApproval .= '</div></body></html>';
-            $mpdf->WriteHTML($htmlApproval);
+            if ($mpdf) {
+                $mpdf->AddPage();
+                $mpdf->WriteHTML($htmlApproval);
+            }
         }
 
         // ==========================================
         // PAGE: SURAT CEK REFERENSI KERJA
         // Meniru logika asli v3/printall.php (lines 580-730)
         // ==========================================
-        $mpdf->AddPage();
+        if ($mpdf) {
+            $mpdf->AddPage();
+        }
         $html2 = '<!DOCTYPE html><html><head><style>' . $css . ' body { font-size:10px; } table td { font-size:10px; padding:4px; }</style></head><body>';
         $html2 .= '<h4>SURAT CEK REFERENSI KERJA</h4>';
         $html2 .= '<p align="justify">Pada tanggal ' . date('d M Y') . ' telah dilakukan proses verifikasi dan cek referensi kerja oleh Tim Rekrutmen terhadap calon karyawan dengan data sebagai berikut:</p>';
@@ -420,8 +452,8 @@ class InterviewPdfService
             }
         }
 
+        $htmlRefCek = '';
         if ($refCekImgPath && file_exists($refCekImgPath)) {
-            $mpdf->AddPage();
             $htmlRefCek = '<!DOCTYPE html><html><head><style>' . $css . '</style></head><body>';
             $htmlRefCek .= '<div style="text-align:center; padding-top:15px;">';
             $htmlRefCek .= '<h3 style="font-size:14px; text-transform:uppercase; color:#1e3a8a; margin-bottom:6px;">BUKTI SCREENSHOT CHAT REFERENSI CEK</h3>';
@@ -430,13 +462,18 @@ class InterviewPdfService
             $htmlRefCek .= '<img src="' . $refCekImgPath . '" style="max-width:80%; max-height:800px;">';
             $htmlRefCek .= '</div>';
             $htmlRefCek .= '</div></body></html>';
-            $mpdf->WriteHTML($htmlRefCek);
+            if ($mpdf) {
+                $mpdf->AddPage();
+                $mpdf->WriteHTML($htmlRefCek);
+            }
         }
 
         // ==========================================
         // PAGE: HASIL TES KEPRIBADIAN (DISC)
         // ==========================================
-        $mpdf->AddPage();
+        if ($mpdf) {
+            $mpdf->AddPage();
+        }
         $html3 = '<!DOCTYPE html><html><head><style>' . $css . ' body { font-size:9px; } </style></head><body>';
         $html3 .= '<h3>HASIL TES KEPRIBADIAN (DISC ASSESSMENT)</h3>';
         $html3 .= '<table width="100%" style="margin-bottom:6px;">';
@@ -512,10 +549,79 @@ class InterviewPdfService
         $html4 .= '<p><b>Waktu Pengerjaan:</b> ' . ($candidate->tes_komputer ?? '00:03:02') . ' &mdash; <b>Status:</b> Penilaian Tersimpan</p>';
         $html4 .= '</body></html>';
 
-        $mpdf->WriteHTML($html4);
+        if ($mpdf) {
+            $mpdf->WriteHTML($html4);
+            return $mpdf->Output('', 'S');
+        }
 
+        // =========================================================================
+        // FALLBACK: DOKUMEN HTML PRINTABLE MULTI-PAGE RESMI
+        // Jika mPDF belum terpasang di environment server, halaman tetap dapat dibuka
+        // dan dicetak / disimpan sebagai PDF via print dialog browser (Legal Paper).
+        // =========================================================================
+        $pages = [$html1];
+        if (!empty($htmlApproval)) {
+            $pages[] = $htmlApproval;
+        }
+        $pages[] = $html2;
+        if (!empty($htmlRefCek)) {
+            $pages[] = $htmlRefCek;
+        }
+        $pages[] = $html3;
+        $pages[] = $html4;
 
-        return $mpdf->Output('', 'S');
+        $cleanBodies = [];
+        foreach ($pages as $p) {
+            if (preg_match('/<body[^>]*>(.*?)<\/body>/is', $p, $m)) {
+                $cleanBodies[] = $m[1];
+            } else {
+                $cleanBodies[] = $p;
+            }
+        }
+
+        $fullHtml = '<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dokument Test Online ' . htmlspecialchars($candidate->full_name) . '</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        ' . $css . '
+        @media print {
+            @page { size: legal portrait; margin: 8mm 6mm; }
+            .no-print { display: none !important; }
+            .sheet { box-shadow: none !important; margin: 0 !important; padding: 0 !important; width: 100% !important; border: none !important; }
+            .page-break { page-break-before: always; }
+        }
+        body { background: #f1f5f9; margin: 0; padding: 20px 0; color: #1e293b; font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; }
+        .sheet { background: white; max-width: 850px; margin: 0 auto 30px auto; padding: 30px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); border: 1px solid #cbd5e1; border-radius: 8px; }
+        .page-break { page-break-before: always; }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="position: sticky; top: 15px; max-width: 850px; margin: 0 auto 20px auto; background: #0f172a; color: white; padding: 12px 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); z-index: 9999;">
+        <div>
+            <div style="font-weight: bold; font-size: 14px; color: #fff;"><i class="fa-solid fa-file-pdf text-rose-500 mr-2"></i>Dokumen Lengkap Hasil Interview &amp; Tes Online</div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">' . htmlspecialchars($candidate->full_name) . ' &bull; NIK: ' . htmlspecialchars($candidate->nik) . ' &bull; Prinsiple: ' . htmlspecialchars($parentComp) . '</div>
+        </div>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="window.print()" style="background: #2563eb; color: white; border: none; padding: 8px 18px; border-radius: 8px; font-weight: bold; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
+                <i class="fa-solid fa-print"></i> Cetak / Simpan PDF
+            </button>
+            <button onclick="window.close()" style="background: #334155; color: white; border: none; padding: 8px 14px; border-radius: 8px; font-size: 12px; cursor: pointer;">
+                Tutup
+            </button>
+        </div>
+    </div>';
+
+        foreach ($cleanBodies as $idx => $b) {
+            $class = ($idx > 0) ? 'sheet page-break' : 'sheet';
+            $fullHtml .= '<div class="' . $class . '">' . $b . '</div>';
+        }
+
+        $fullHtml .= '</body></html>';
+        return $fullHtml;
     }
 
     private function generatePieChart(array $data, array $labels): string

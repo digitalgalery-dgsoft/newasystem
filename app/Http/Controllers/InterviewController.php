@@ -841,15 +841,20 @@ class InterviewController extends Controller
         ])->findOrFail($id);
 
         $pdfService = new \App\Services\InterviewPdfService();
-        $pdfBinary = $pdfService->generate($candidate);
+        $output = $pdfService->generate($candidate);
 
-        $filename = 'Dokument Test Online ' . $candidate->full_name . '.pdf';
+        if (str_starts_with($output, '%PDF-')) {
+            $filename = 'Dokument Test Online ' . $candidate->full_name . '.pdf';
+            return response($output, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"',
+                'Cache-Control' => 'private, max-age=0, must-revalidate',
+                'Pragma' => 'public',
+            ]);
+        }
 
-        return response($pdfBinary, 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . $filename . '"',
-            'Cache-Control' => 'private, max-age=0, must-revalidate',
-            'Pragma' => 'public',
+        return response($output, 200, [
+            'Content-Type' => 'text/html; charset=utf-8',
         ]);
     }
 

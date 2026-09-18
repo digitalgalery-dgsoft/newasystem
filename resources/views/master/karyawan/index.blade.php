@@ -28,6 +28,10 @@
         </div>
 
         <div class="flex items-center gap-2.5 flex-wrap">
+            <button type="button" onclick="openModal('syncNikModal')" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20">
+                <i class="fa-solid fa-id-card-clip"></i>
+                <span>Sync by NIK (Odoo)</span>
+            </button>
             <a href="{{ route('odoo.setting.index') }}" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold hover:bg-blue-100 transition-all shadow-sm">
                 <i class="fa-solid fa-arrows-rotate text-blue-600"></i>
                 <span>Sync Odoo (5 Entitas)</span>
@@ -731,6 +735,91 @@
     </div>
 </div>
 
+<!-- ========================================== -->
+<!-- MODAL: SYNC KARYAWAN BY NIK (ODOO ERP)     -->
+<!-- ========================================== -->
+<div id="syncNikModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white rounded-3xl shadow-2xl max-w-2xl w-full border border-slate-200 overflow-hidden my-8 animate-in fade-in zoom-in-95 duration-200">
+        <div class="p-5 bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-700 text-white flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-lg shadow-sm">
+                    <i class="fa-solid fa-id-card-clip"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold tracking-tight">Sync Data Karyawan by NIK (Odoo ERP)</h3>
+                    <p class="text-[11px] text-emerald-100">Input data karyawan spesifik dari server Odoo berdasarkan NIK / NIP tanpa perlu Sync All</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeModal('syncNikModal')" class="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+
+        <form id="formKaryawanSyncNik" onsubmit="handleKaryawanSyncNik(event)" class="p-6 space-y-4">
+            @csrf
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                    Nomor Induk Karyawan (NIK / NIP) <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                    <textarea id="modalNikInput" name="nik" rows="2" required
+                              placeholder="Contoh: 202400123. Bisa input lebih dari 1 NIK sekaligus (pisahkan koma / baris)..."
+                              class="w-full px-3.5 py-2.5 text-xs font-mono rounded-xl border border-slate-200 focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none transition-all resize-none"></textarea>
+                </div>
+                <div class="flex items-center justify-between mt-1 text-[11px] text-slate-400">
+                    <span>Mendukung pencarian 1 NIK atau batch NIK (dipisahkan koma atau enter).</span>
+                    <span class="text-emerald-600 font-semibold"><i class="fa-solid fa-circle-check text-[10px]"></i> XML-RPC Live</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                        Entitas Odoo
+                    </label>
+                    <div class="relative">
+                        <select id="modalEntitySelect" name="entity_code"
+                                class="w-full pl-3.5 pr-8 py-2.5 text-xs rounded-xl border border-slate-200 bg-white font-medium focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600 outline-none transition-all appearance-none">
+                            <option value="ALL" selected>🔍 Cari Otomatis di Semua Entitas</option>
+                            <option value="AMK">AMK &bull; PT Arina Multi Karya</option>
+                            <option value="AKP">AKP &bull; PT Alva Karya Perkasa</option>
+                            <option value="ATK">ATK &bull; PT Anugrah Terpercaya Kerja</option>
+                            <option value="ABO">ABO &bull; PT Arina Bintang Operasional</option>
+                            <option value="ATB">ATB &bull; PT Anugrah Tri Berkah</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5">
+                        Kategori &amp; Status
+                    </label>
+                    <div class="p-2.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-[11px] text-emerald-800 flex items-center gap-2">
+                        <i class="fa-solid fa-user-shield text-emerald-600 text-sm shrink-0"></i>
+                        <span>Otomatis memetakan Inhouse vs RateCard &amp; status aktif.</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Result Box -->
+            <div id="modalSyncResult" class="hidden"></div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2.5">
+                <button type="button" onclick="closeModal('syncNikModal')" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 transition-all">
+                    Tutup
+                </button>
+                <button type="submit" id="btnModalSyncNik" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                    <span>Tarik Data dari Odoo</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 @endsection
 
 @section('scripts')
@@ -833,6 +922,190 @@
         }
         document.getElementById('edit_tanggal_join').value = emp.tanggal_join;
         openModal('editEmployeeModal');
+    }
+
+    function handleKaryawanSyncNik(event) {
+        event.preventDefault();
+        const nikInput = document.getElementById('modalNikInput');
+        const nik = nikInput.value.trim();
+        const entityCode = document.getElementById('modalEntitySelect').value;
+        const btn = document.getElementById('btnModalSyncNik');
+        const resultContainer = document.getElementById('modalSyncResult');
+
+        if (!nik) {
+            alert('Mohon masukkan NIK / NIP terlebih dahulu.');
+            nikInput.focus();
+            return;
+        }
+
+        const originalHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-white"></i><span>Menghubungi Odoo...</span>`;
+
+        resultContainer.classList.remove('hidden');
+        resultContainer.innerHTML = `
+            <div class="p-4 text-center text-slate-500 bg-slate-50 rounded-2xl border border-slate-200 animate-pulse">
+                <i class="fa-solid fa-arrows-rotate fa-spin text-xl text-emerald-600 mb-1.5"></i>
+                <p class="text-xs font-bold text-slate-700">Mencari di Server Odoo (${entityCode})...</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">Memverifikasi NIK '${nik}' &amp; memuat data...</p>
+            </div>
+        `;
+
+        fetch(`{{ route('odoo.setting.sync-by-nik') }}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                nik: nik,
+                entity_code: entityCode
+            })
+        })
+        .then(response => response.json().then(data => ({ status: response.status, body: data })))
+        .then(({ status, body }) => {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+
+            if (body.results && Array.isArray(body.results)) {
+                let rows = body.results.map(r => {
+                    if (r.success && (r.employee || r.data)) {
+                        const emp = r.employee || r.data;
+                        return `
+                            <tr class="border-b border-slate-100 hover:bg-slate-50/70">
+                                <td class="p-2 font-mono font-bold text-slate-800">${r.nik}</td>
+                                <td class="p-2 font-bold text-slate-900">${emp.nama_karyawan || '-'}</td>
+                                <td class="p-2"><span class="px-1.5 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">${r.entity}</span></td>
+                                <td class="p-2 text-slate-600">${emp.jabatan || '-'}</td>
+                                <td class="p-2 text-slate-600">${emp.prinsiple || '-'}</td>
+                                <td class="p-2 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Berhasil</span></td>
+                                <td class="p-2 text-center">
+                                    <a href="{{ route('master.karyawan.index') }}?search=${encodeURIComponent(r.nik)}" class="text-emerald-700 hover:underline text-xs font-bold">
+                                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        `;
+                    } else {
+                        return `
+                            <tr class="border-b border-slate-100 bg-rose-50/40">
+                                <td class="p-2 font-mono font-bold text-rose-800">${r.nik}</td>
+                                <td class="p-2 text-rose-700 italic" colspan="4">${r.message}</td>
+                                <td class="p-2 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">Gagal</span></td>
+                                <td class="p-2 text-center">-</td>
+                            </tr>
+                        `;
+                    }
+                }).join('');
+
+                resultContainer.innerHTML = `
+                    <div class="p-4 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                        <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+                            <div>
+                                <h4 class="text-xs font-black uppercase text-slate-800">Hasil Sinkronisasi (${body.results.length} NIK)</h4>
+                                <p class="text-[11px] text-slate-500">${body.message}</p>
+                            </div>
+                            <div class="flex gap-1.5 text-xs font-bold">
+                                <span class="px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-[11px]">${body.summary?.found || 0} Ditemukan</span>
+                                <span class="px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200 text-[11px]">${body.summary?.not_found || 0} Gagal</span>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto max-h-56">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-slate-50 text-slate-500 font-bold text-[10px] uppercase border-b border-slate-200 sticky top-0">
+                                    <tr>
+                                        <th class="p-2">NIK</th>
+                                        <th class="p-2">Nama</th>
+                                        <th class="p-2">Entitas</th>
+                                        <th class="p-2">Jabatan</th>
+                                        <th class="p-2">Prinsiple</th>
+                                        <th class="p-2 text-center">Status</th>
+                                        <th class="p-2 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody>${rows}</tbody>
+                            </table>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            if (body.success && (body.employee || body.data)) {
+                const emp = body.employee || body.data;
+                const isInhouse = (emp.tipe_karyawan === 'Inhouse');
+                const actionText = (body.action === 'created') ? 'Data Baru Dibuat' : 'Data Berhasil Diperbarui';
+
+                resultContainer.innerHTML = `
+                    <div class="p-4 bg-emerald-50/80 rounded-2xl border border-emerald-200 shadow-xs space-y-3">
+                        <div class="flex items-start justify-between gap-2 pb-2 border-b border-emerald-200/60">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-base shrink-0">
+                                    <i class="fa-solid fa-user-check"></i>
+                                </div>
+                                <div>
+                                    <div class="flex items-center gap-1.5">
+                                        <span class="text-xs font-black uppercase text-emerald-900">${emp.nama_karyawan}</span>
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-200 text-emerald-900">${actionText}</span>
+                                    </div>
+                                    <p class="text-[11px] text-slate-600">NIK: <strong class="font-mono">${emp.nik}</strong> &bull; Entitas: <strong>${emp.entity || emp.entitas || entityCode}</strong></p>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[10px] font-black ${isInhouse ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-blue-100 text-blue-800 border border-blue-300'}">
+                                ${isInhouse ? 'INHOUSE' : 'RATECARD'}
+                            </span>
+                        </div>
+                        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                            <div class="bg-white p-2 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-400 font-bold block uppercase">Jabatan</span>
+                                <span class="font-bold text-slate-800 truncate block">${emp.jabatan || '-'}</span>
+                            </div>
+                            <div class="bg-white p-2 rounded-xl border border-slate-200">
+                                <span class="text-[10px] text-slate-400 font-bold block uppercase">Divisi</span>
+                                <span class="font-bold text-slate-800 truncate block">${emp.divisi || emp.departemen || '-'}</span>
+                            </div>
+                            <div class="bg-white p-2 rounded-xl border border-slate-200 col-span-2 sm:col-span-1">
+                                <span class="text-[10px] text-slate-400 font-bold block uppercase">Prinsiple</span>
+                                <span class="font-bold text-slate-800 truncate block">${emp.prinsiple || '-'}</span>
+                            </div>
+                        </div>
+                        <div class="pt-2 flex items-center justify-between border-t border-emerald-200/60">
+                            <span class="text-[11px] text-emerald-800 font-semibold"><i class="fa-solid fa-circle-check text-emerald-600 mr-1"></i> Tersimpan di Database</span>
+                            <a href="{{ route('master.karyawan.index') }}?search=${encodeURIComponent(emp.nik)}" class="px-3 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs flex items-center gap-1.5">
+                                <span>Lihat di Tabel</span>
+                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </a>
+                        </div>
+                    </div>
+                `;
+            } else {
+                resultContainer.innerHTML = `
+                    <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-1">
+                        <div class="flex items-start gap-2">
+                            <i class="fa-solid fa-circle-exclamation text-rose-600 text-base mt-0.5 shrink-0"></i>
+                            <div>
+                                <p class="font-bold text-rose-900">Karyawan Tidak Ditemukan di Odoo</p>
+                                <p class="text-[11px] text-rose-700 mt-0.5">${body.message || 'Data tidak ditemukan di server Odoo.'}</p>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.innerHTML = originalHtml;
+            resultContainer.innerHTML = `
+                <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-start gap-2">
+                    <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base mt-0.5 shrink-0"></i>
+                    <div>
+                        <p class="font-bold text-rose-900">Gagal Menghubungi Server</p>
+                        <p class="text-[11px] text-rose-700 mt-0.5">${error.message}</p>
+                    </div>
+                </div>
+            `;
+        });
     }
 </script>
 @endsection

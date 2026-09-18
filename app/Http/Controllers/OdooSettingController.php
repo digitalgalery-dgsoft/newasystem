@@ -235,54 +235,148 @@ class OdooSettingController extends Controller
     }
 
     /**
-     * Search and sync a single employee by NIK from Odoo.
+     * Search and sync employee(s) by NIK from Odoo.
+     * Supports single NIK or multiple NIKs (comma / newline separated),
+     * and entity_code = 'ALL' (search across all active entities).
      */
     public function syncByNik(Request $request)
     {
-        $validated = $request->validate([
-            'nik'         => 'required|string',
-            'entity_code' => 'required|string',
-        ]);
+        $rawNik = (string)$request->input('nik', '');
+        // Split by commas, newlines, semicolons, or whitespace
+        $niks = array_values(array_unique(array_filter(
+            preg_split('/[\r\n,;]+/', trim($rawNik)),
+            fn($val) => trim($val) !== ''
+        )));
 
-        $entity = OdooEntity::where('code', strtoupper($validated['entity_code']))->first();
-        if (!$entity) {
-            $msg = "Entitas {$validated['entity_code']} tidak ditemukan.";
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $msg], 404);
-            }
-            return redirect()->back()->with('error', $msg);
+        if (empty($niks)) {
+            $niks = array_values(array_unique(array_filter(
+                preg_split('/\s+/', trim($rawNik)),
+                fn($val) => trim($val) !== ''
+            )));
         }
 
-        if (!$entity->isConfigured()) {
-            $msg = "Kredensial Odoo untuk entitas {$entity->name} ({$entity->code}) belum lengkap. Silakan lengkapi pengaturan koneksi terlebih dahulu.";
+        $niks = array_map('trim', $niks);
+
+        if (empty($niks)) {
+            $msg = 'Mohon masukkan setidaknya satu Nomor Induk Karyawan (NIK / NIP).';
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $msg], 422);
             }
             return redirect()->back()->with('error', $msg);
         }
 
-        try {
-            $service = OdooSyncService::fromEntity($entity);
-            $result = $service->syncSingleEmployee($entity, $validated['nik']);
+        $entityCode = strtoupper(trim((string)$request->input('entity_code', 'ALL')));
 
-            if ($request->wantsJson()) {
-                return response()->json($result, $result['success'] ? 200 : 404);
+        if ($entityCode === 'ALL' || empty($entityCode)) {
+            $entities = OdooEntity::where('is_active', true)->get()->filter->isConfigured();
+            if ($entities->isEmpty()) {
+                $msg = 'Tidak ada entitas Odoo aktif dengan kredensial lengkap yang siap disinkronkan. Mohon periksa konfigurasi Odoo ERP.';
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return redirect()->back()->with('error', $msg);
             }
-
-            return redirect()
-                ->route('odoo.setting.index', ['tab' => $entity->code])
-                ->with($result['success'] ? 'success' : 'error', $result['message']);
-
-        } catch (\Throwable $e) {
-            $errMsg = 'Gagal sync NIK: ' . $e->getMessage();
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $errMsg], 500);
+        } else {
+            $entity = OdooEntity::where('code', $entityCode)->first();
+            if (!$entity) {
+                $msg = "Entitas {$entityCode} tidak ditemukan.";
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 404);
+                }
+                return redirect()->back()->with('error', $msg);
             }
-
-            return redirect()
-                ->route('odoo.setting.index', ['tab' => $entity->code])
-                ->with('error', $errMsg);
+            if (!$entity->isConfigured()) {
+                $msg = "Kredensial Odoo untuk entitas {$entity->name} ({$entity->code}) belum lengkap. Silakan lengkapi pengaturan koneksi terlebih dahulu.";
+                if ($request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $msg], 422);
+                }
+                return redirect()->back()->with('error', $msg);
+            }
+            $entities = collect([$entity]);
         }
+
+        $results = [];
+        $foundCount = 0;
+        $notFoundCount = 0;
+
+        foreach ($niks as $nik) {
+            $nikFound = false;
+            $lastMessage = '';
+
+            foreach ($entities as $targetEntity) {
+                try {
+                    $service = OdooSyncService::fromEntity($targetEntity);
+                    if (!$service) {
+                        continue;
+                    }
+
+                    $res = $service->syncSingleEmployee($targetEntity, $nik);
+
+                    if (!empty($res['success']) && !empty($res['data'])) {
+                        $empData = $res['data'];
+                        $employeePayload = array_merge($empData, [
+                            'departemen' => $empData['divisi'] ?? '-',
+                            'entitas'    => $empData['entity'] ?? $targetEntity->code,
+                        ]);
+                        $results[] = [
+                            'nik'      => $nik,
+                            'success'  => true,
+                            'message'  => $res['message'],
+                            'entity'   => $targetEntity->code,
+                            'data'     => $empData,
+                            'employee' => $employeePayload,
+                            'action'   => ($empData['is_new'] ?? false) ? 'created' : 'updated',
+                        ];
+                        $nikFound = true;
+                        $foundCount++;
+                        break;
+                    } else {
+                        $lastMessage = $res['message'] ?? "NIK '{$nik}' tidak ditemukan di entitas {$targetEntity->code}.";
+                    }
+                } catch (\Throwable $e) {
+                    $lastMessage = "[{$targetEntity->code}] " . $e->getMessage();
+                }
+            }
+
+            if (!$nikFound) {
+                $results[] = [
+                    'nik'     => $nik,
+                    'success' => false,
+                    'message' => $lastMessage ?: "NIK '{$nik}' tidak ditemukan di " . ($entityCode === 'ALL' ? "semua entitas Odoo yang aktif." : "entitas {$entityCode}."),
+                    'data'    => null,
+                ];
+                $notFoundCount++;
+            }
+        }
+
+        // Single NIK: return exact schema expected by UI
+        if (count($niks) === 1) {
+            $single = $results[0];
+            if ($request->wantsJson()) {
+                return response()->json($single, $single['success'] ? 200 : 404);
+            }
+
+            return redirect()->back()->with($single['success'] ? 'success' : 'error', $single['message']);
+        }
+
+        // Multiple NIKs: return summary and items list
+        $overallSuccess = ($foundCount > 0);
+        $summaryMsg = "Sinkronisasi NIK selesai: {$foundCount} berhasil disinkronkan, {$notFoundCount} tidak ditemukan.";
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'success' => $overallSuccess,
+                'message' => $summaryMsg,
+                'summary' => [
+                    'total'     => count($niks),
+                    'found'     => $foundCount,
+                    'not_found' => $notFoundCount,
+                ],
+                'results' => $results,
+            ], $overallSuccess ? 200 : 404);
+        }
+
+        return redirect()->back()->with($overallSuccess ? 'success' : 'warning', $summaryMsg);
     }
 
     /**

@@ -534,8 +534,9 @@
                     </div>
                     <select id="entityCodeInput" name="entity_code" required
                             class="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none bg-white">
+                        <option value="ALL" selected>🔍 Cari Otomatis di Semua Entitas (AMK, AKP, ATK, ABO, ATB)</option>
                         @foreach($entities as $ent)
-                            <option value="{{ $ent->code }}" {{ $currentEntity->code === $ent->code ? 'selected' : '' }}>
+                            <option value="{{ $ent->code }}">
                                 {{ $ent->code }} &bull; {{ $ent->name }}
                             </option>
                         @endforeach
@@ -812,6 +813,70 @@ function handleSyncByNik(event) {
     .then(({ status, body }) => {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
+
+        if (body.results && Array.isArray(body.results)) {
+            let rows = body.results.map(r => {
+                if (r.success && r.employee) {
+                    const emp = r.employee;
+                    return `
+                        <tr class="border-b border-slate-100 hover:bg-slate-50/70">
+                            <td class="p-2.5 font-mono font-bold text-slate-800">${r.nik}</td>
+                            <td class="p-2.5 font-bold text-slate-900">${emp.nama_karyawan || '-'}</td>
+                            <td class="p-2.5"><span class="px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">${r.entity}</span></td>
+                            <td class="p-2.5 text-slate-600">${emp.jabatan || '-'}</td>
+                            <td class="p-2.5 text-slate-600">${emp.prinsiple || '-'}</td>
+                            <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">Berhasil</span></td>
+                            <td class="p-2.5 text-center">
+                                <a href="{{ route('master.karyawan.index') }}?search=${encodeURIComponent(r.nik)}" target="_blank" class="text-primary hover:underline text-xs font-semibold">
+                                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    return `
+                        <tr class="border-b border-slate-100 bg-rose-50/40">
+                            <td class="p-2.5 font-mono font-bold text-rose-800">${r.nik}</td>
+                            <td class="p-2.5 text-rose-700 italic" colspan="4">${r.message}</td>
+                            <td class="p-2.5 text-center"><span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800">Tidak Ditemukan</span></td>
+                            <td class="p-2.5 text-center">-</td>
+                        </tr>
+                    `;
+                }
+            }).join('');
+
+            resultContainer.innerHTML = `
+                <div class="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm space-y-4 animate-in fade-in duration-200">
+                    <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                        <div>
+                            <h4 class="text-xs font-black uppercase text-slate-800 tracking-wider">Hasil Sinkronisasi (${body.results.length} NIK)</h4>
+                            <p class="text-xs text-slate-500 mt-0.5">${body.message}</p>
+                        </div>
+                        <div class="flex gap-2 text-xs font-bold">
+                            <span class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">${body.summary?.found || 0} Ditemukan</span>
+                            <span class="px-2.5 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">${body.summary?.not_found || 0} Gagal</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left">
+                            <thead class="bg-slate-50 text-slate-500 font-bold text-[10px] uppercase border-b border-slate-200">
+                                <tr>
+                                    <th class="p-2.5">NIK</th>
+                                    <th class="p-2.5">Nama Karyawan</th>
+                                    <th class="p-2.5">Entitas</th>
+                                    <th class="p-2.5">Jabatan</th>
+                                    <th class="p-2.5">Prinsiple</th>
+                                    <th class="p-2.5 text-center">Status</th>
+                                    <th class="p-2.5 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody>${rows}</tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+            return;
+        }
 
         if (body.success && body.employee) {
             const emp = body.employee;

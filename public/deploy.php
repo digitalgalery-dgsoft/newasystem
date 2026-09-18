@@ -22,6 +22,7 @@ $commands = [
     "cd {$baseDir} && git reset --hard origin/main 2>&1",
     "cd {$baseDir} && rm -f bootstrap/cache/*.php 2>&1",
     "cd {$baseDir} && rm -f config/octane.php config/sanctum.php 2>&1",
+    "cd {$baseDir} && (composer install --no-dev --optimize-autoloader --no-interaction 2>&1 || /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction 2>&1 || true)",
     "cd {$baseDir} && php artisan optimize:clear 2>&1",
 ];
 
