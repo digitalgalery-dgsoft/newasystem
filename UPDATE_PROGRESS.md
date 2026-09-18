@@ -437,11 +437,22 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 26. 📍 Searchable Dropdown Filter Area & Default Pengurutan Join Date Terbaru (19 September 2026)
+- **Searchable Dropdown Filter Area**:
+  - Mengubah dropdown filter **Area** di [master/karyawan/index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/karyawan/index.blade.php) menjadi komponen interaktif **Searchable Dropdown (Alpine.js)**, melengkapi dropdown Prinsiple dan Jabatan yang telah diupgrade sebelumnya.
+  - Pengguna dapat mengetikkan nama area/kota penempatan (seperti *Jakarta, Makassar, Pasuruan, Surabaya, Bandung, dll.*) secara langsung di dalam kotak input pencarian popup untuk menemukan area secara instan.
+- **Default Pengurutan Data Karyawan Berdasarkan Join Date Terbaru**:
+  - Mengubah parameter pengurutan bawaan (*default sort*) pada [EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php) dari yang sebelumnya berdasarkan ID menjadi berdasarkan tanggal bergabung terbaru (**`tanggal_join DESC`**).
+  - Menggunakan query SQL teroptimasi: `CASE WHEN tanggal_join IS NOT NULL AND tanggal_join != '' THEN 0 ELSE 1 END, tanggal_join DESC, id DESC` sehingga karyawan yang baru bergabung atau masa kontrak paling baru diposisikan di urutan paling atas baris tabel.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
-| `b13ab35` | feat: Tambahkan searchable dropdown pada filter prinsiple & jabatan, eksklusi employee PT BUDGET, dan distinct list prinsiple |
+| `8596e9d` | feat: Searchable dropdown filter area dan urutan data karyawan paling atas berdasarkan join date terbaru |
+| `2e4cdbc` | feat: Tambahkan searchable dropdown pada filter prinsiple & jabatan, eksklusi employee PT BUDGET, dan distinct list prinsiple |
 | `c51a294` | feat: Rekonfigurasi sync Odoo hanya ambil employee aktif, skip NIK lama tiap jam, dan buat cron tengah malam untuk update & resign |
 | `df8789e` | Kembalikan Master User Prinsiple untuk AS, isolasi data per user, dan cegah duplikat email/no hp |
 | `a9cc8c4` | fix: Fix JS variable name mySavedSigUrl in interview.show |

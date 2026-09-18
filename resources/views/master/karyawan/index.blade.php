@@ -285,17 +285,86 @@
                     </div>
                 </div>
 
-                <!-- Area Filter -->
-                <div>
+                <!-- Area Filter (Searchable Dropdown) -->
+                <div x-data="searchableSelect({
+                    name: 'area',
+                    placeholder: 'Semua Area',
+                    searchPlaceholder: 'Ketik cari area...',
+                    selected: '{{ addslashes(request('area', '')) }}',
+                    options: {{ json_encode(collect($distinctArea)->values()->all()) }}
+                })">
                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Area</label>
-                    <select name="area" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
-                        <option value="">Semua Area</option>
-                        @foreach($distinctArea as $ar)
-                            <option value="{{ $ar }}" {{ request('area') == $ar ? 'selected' : '' }}>
-                                {{ $ar }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <input type="hidden" :name="name" :value="selectedValue">
+                    <div class="relative" @click.outside="open = false">
+                        <button type="button" 
+                                @click="toggle()" 
+                                class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50 flex items-center justify-between text-left gap-1 transition-all cursor-pointer">
+                            <span class="truncate" :class="selectedValue ? 'font-bold text-slate-900' : 'text-slate-500'" x-text="displayLabel"></span>
+                            <div class="flex items-center gap-1 shrink-0">
+                                <span x-show="selectedValue" @click="clear($event)" class="text-slate-400 hover:text-rose-500 p-0.5 rounded transition" title="Hapus pilihan">
+                                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                                </span>
+                                <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                            </div>
+                        </button>
+
+                        <!-- Dropdown Search Menu -->
+                        <div x-show="open" 
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 top-full mt-1.5 z-50 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden min-w-[240px] w-full max-w-sm" 
+                             style="display: none;">
+                            
+                            <!-- Search Input -->
+                            <div class="p-2 border-b border-slate-100 bg-slate-50/70">
+                                <div class="relative">
+                                    <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-magnifying-glass text-[11px]"></i>
+                                    </div>
+                                    <input type="text" 
+                                           x-ref="searchInput" 
+                                           x-model="searchQuery" 
+                                           @keydown.escape="open = false" 
+                                           @keydown.enter.prevent="if(filteredOptions.length > 0) { select(filteredOptions[0]); }"
+                                           :placeholder="searchPlaceholder" 
+                                           class="w-full pl-7 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/30">
+                                    <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-slate-600">
+                                        <i class="fa-solid fa-xmark text-[10px]"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Options List -->
+                            <div class="max-h-60 overflow-y-auto p-1 text-xs space-y-0.5">
+                                <button type="button" 
+                                        @click="select('')" 
+                                        class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between font-medium cursor-pointer"
+                                        :class="!selectedValue ? 'bg-primary-50 text-primary font-bold' : 'text-slate-600 hover:bg-slate-50'">
+                                    <span>Semua Area</span>
+                                    <i x-show="!selectedValue" class="fa-solid fa-check text-[10px] text-primary"></i>
+                                </button>
+
+                                <template x-for="item in filteredOptions" :key="item">
+                                    <button type="button" 
+                                            @click="select(item)" 
+                                            class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between font-medium cursor-pointer"
+                                            :class="selectedValue === item ? 'bg-primary-50 text-primary font-bold' : 'text-slate-700 hover:bg-slate-50'">
+                                        <span class="truncate" x-text="item"></span>
+                                        <i x-show="selectedValue === item" class="fa-solid fa-check text-[10px] text-primary ml-2 shrink-0"></i>
+                                    </button>
+                                </template>
+
+                                <div x-show="filteredOptions.length === 0" class="py-4 text-center text-slate-400 text-xs">
+                                    <i class="fa-solid fa-ban mb-1 block"></i>
+                                    Tidak ada area yang cocok
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Entitas Odoo Filter (5 Entitas) -->

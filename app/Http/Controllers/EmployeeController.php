@@ -57,10 +57,15 @@ class EmployeeController extends Controller
             $query->where('entity', $entity);
         }
 
-        // Sort order
-        $sortBy = $request->input('sort_by', 'id');
-        $sortDir = $request->input('sort_dir', 'desc');
-        $query->orderBy($sortBy, $sortDir);
+        // Sort order: default diurutkan berdasarkan join date (tanggal_join) terbaru
+        $sortBy = $request->input('sort_by', 'tanggal_join');
+        $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
+
+        if ($sortBy === 'tanggal_join') {
+            $query->orderByRaw('CASE WHEN tanggal_join IS NOT NULL AND tanggal_join != "" THEN 0 ELSE 1 END, tanggal_join ' . $sortDir . ', id desc');
+        } else {
+            $query->orderBy($sortBy, $sortDir);
+        }
 
         $employees = $query->paginate(10)->withQueryString();
 
