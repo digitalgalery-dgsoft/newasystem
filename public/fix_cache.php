@@ -29,9 +29,16 @@ if (is_dir($cacheDir)) {
     }
 }
 
-if (file_exists($baseDir . '/config/octane.php')) {
-    if (@unlink($baseDir . '/config/octane.php')) {
-        echo "  ✓ Berhasil menghapus file konflik: config/octane.php\n";
+// Bersihkan file config asing/untracked yang sering menyebabkan class not found
+$allowedConfigs = ['app.php', 'auth.php', 'cache.php', 'database.php', 'filesystems.php', 'logging.php', 'mail.php', 'queue.php', 'services.php', 'session.php'];
+$configDir = $baseDir . '/config';
+if (is_dir($configDir)) {
+    foreach (glob($configDir . '/*.php') as $cfile) {
+        $cname = basename($cfile);
+        if (!in_array($cname, $allowedConfigs)) {
+            @unlink($cfile);
+            echo "  ✓ Berhasil menghapus file konflik: config/{$cname}\n";
+        }
     }
 }
 
