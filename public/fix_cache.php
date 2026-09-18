@@ -27,8 +27,12 @@ if (is_dir($cacheDir)) {
             echo "  ✗ Gagal menghapus: {$name}\n";
         }
     }
-} else {
-    echo "  Directory {$cacheDir} tidak ditemukan!\n";
+}
+
+if (file_exists($baseDir . '/config/octane.php')) {
+    if (@unlink($baseDir . '/config/octane.php')) {
+        echo "  ✓ Berhasil menghapus file konflik: config/octane.php\n";
+    }
 }
 
 echo "\n[2] Membersihkan view cache di storage/framework/views...\n";
