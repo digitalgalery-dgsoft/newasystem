@@ -17,16 +17,24 @@ class EmployeeController extends Controller
     {
         $query = Employee::query();
 
-        // Search
-        if ($search = $request->input('search')) {
-            $query->where(function($q) use ($search) {
-                $q->where('nama_karyawan', 'like', "%{$search}%")
+        // Search by Nama Karyawan (case-insensitive & partial/multi-word), NIK, or NIP
+        if ($search = trim($request->input('search', ''))) {
+            $searchLower = strtolower($search);
+            $query->where(function ($q) use ($search, $searchLower) {
+                // Match full query against nama_karyawan (case-insensitive)
+                $q->whereRaw('LOWER(nama_karyawan) LIKE ?', ["%{$searchLower}%"])
                   ->orWhere('nik', 'like', "%{$search}%")
-                  ->orWhere('nip', 'like', "%{$search}%")
-                  ->orWhere('area', 'like', "%{$search}%")
-                  ->orWhere('prinsiple', 'like', "%{$search}%")
-                  ->orWhere('jabatan', 'like', "%{$search}%")
-                  ->orWhere('pimpinan', 'like', "%{$search}%");
+                  ->orWhere('nip', 'like', "%{$search}%");
+
+                // Multi-word matching (e.g. "arya maulana" matches "Arya gifari maulana")
+                $words = array_filter(explode(' ', $searchLower));
+                if (count($words) > 1) {
+                    $q->orWhere(function ($subQ) use ($words) {
+                        foreach ($words as $w) {
+                            $subQ->whereRaw('LOWER(nama_karyawan) LIKE ?', ["%{$w}%"]);
+                        }
+                    });
+                }
             });
         }
 

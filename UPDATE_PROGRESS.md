@@ -483,10 +483,23 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 29. 🔍 Penyempurnaan Fitur Pencarian Karyawan (Case-Insensitive & Partial Name Matching) (19 September 2026)
+- **Akar Masalah Pencarian Sebelumnya**:
+  - Input pencarian umum sebelumnya juga mencari ke kolom `prinsiple`, `jabatan`, dan `area` secara bersamaan (`orWhere('prinsiple', 'like', "%{$search}%")`).
+  - Akibatnya, ketika pengguna mengetik kata nama seperti *"arya"*, seluruh karyawan dengan prinsiple `PT ARINA MULTI KARYA` dan `PT ALVA KARYA PERKASA` ikut tampil (karena nama perusahaan mengandung suku kata *"KARYA"*), sehingga ratusan karyawan yang namanya sama sekali tidak mengandung *"arya"* keliru muncul di hasil pencarian.
+- **Penyempurnaan Logika Pencarian ([EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php))**:
+  - Mengkhususkan kotak pencarian utama untuk menyaring entitas identitas karyawan: **Nama Karyawan**, **NIK (KTP)**, dan **NIP**. (Untuk filter Prinsiple, Jabatan, dan Area tetap menggunakan dropdown filter khusus masing-masing).
+  - **100% Case-Insensitive**: Menggunakan perbandingan `LOWER(nama_karyawan) LIKE ?` dengan `strtolower($search)` sehingga pencarian tidak terpengaruh huruf besar/kecil (*contoh: "arya", "Arya", "ARYA" menghasilkan data yang identik*).
+  - **Partial Name Matching (Tidak Perlu Nama Lengkap)**: Pengguna cukup mengetik potongan nama depan, nama tengah, atau nama belakang (seperti *"arya"*, *"dimas"*, *"putri"*).
+  - **Dukungan Multi-Kata / Multi-Keywords**: Jika pengguna mengetik lebih dari 1 kata (misalnya *"arya maulana"* atau *"dimas saputra"*), sistem secara cerdas mencocokkan record yang memuat seluruh kata tersebut meskipun posisi katanya terpisah oleh nama tengah.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `2398d1f` | feat: Tambahkan field input pimpinan pada form edit karyawan dan fitur bulk edit pimpinan massal |
 | `e6d4a21` | fix: Batasi tipe Inhouse strictly hanya untuk 5 entitas resmi dan nonaktifkan akses login untuk prinsiple klien luar seperti PT Sanghiang Perkasa |
 | `84606a9` | feat: Searchable dropdown filter area dan urutan data karyawan paling atas berdasarkan join date terbaru |
 | `2e4cdbc` | feat: Tambahkan searchable dropdown pada filter prinsiple & jabatan, eksklusi employee PT BUDGET, dan distinct list prinsiple |

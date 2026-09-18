@@ -120,7 +120,7 @@
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
                         <input type="text" name="search" value="{{ request('search') }}" 
-                               placeholder="Nama, NIK, NIP, Pimpinan..." 
+                               placeholder="Cari nama karyawan, NIK, NIP..." 
                                class="w-full pl-8 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50/50">
                     </div>
                 </div>
