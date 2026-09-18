@@ -877,6 +877,11 @@ class KandidatPortalController extends Controller
             $recruiterLabel = $user ? $user->name : 'User';
         }
 
+        $baseUrl = request()->getSchemeAndHttpHost();
+        if (empty($baseUrl) || str_contains($baseUrl, 'localhost') || str_contains($baseUrl, '127.0.0.1')) {
+            $baseUrl = 'https://new.asystem.co.id';
+        }
+
         $meta = [
             'start' => $startDate ? $startDate->format('Y-m-d') : null,
             'end' => $endDate ? $endDate->format('Y-m-d') : null,
@@ -884,6 +889,7 @@ class KandidatPortalController extends Controller
             'status_kandidat' => $status_kandidat,
             'area' => $area,
             'recruiter_name' => $recruiterLabel,
+            'base_url' => $baseUrl,
         ];
 
         $filePath = \App\Services\CandidateXlsxExportService::generateXlsx($candidates, $meta);

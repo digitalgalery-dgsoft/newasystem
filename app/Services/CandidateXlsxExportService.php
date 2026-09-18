@@ -171,7 +171,7 @@ class CandidateXlsxExportService
      */
     protected static function buildSheetXml($candidates, array $meta = []): string
     {
-        $nowStr = Carbon::now('Asia/Jakarta')->translatedFormat('d F Y, H:i') . ' WIB';
+        $nowStr = Carbon::now('Asia/Jakarta')->format('d-m-Y H:i:s') . ' WIB';
         $totalCount = count($candidates);
 
         // Filter details text
@@ -180,14 +180,14 @@ class CandidateXlsxExportService
             if (empty($d)) return '';
             $clean = str_replace('/', '-', trim($d));
             try {
-                return Carbon::parse($clean)->format('d/m/Y');
+                return Carbon::parse($clean)->format('Y-m-d');
             } catch (\Throwable $e) {
                 return $d;
             }
         };
 
         if (!empty($meta['start']) && !empty($meta['end'])) {
-            $filterParts[] = 'Periode Daftar: ' . $safeDateFmt($meta['start']) . ' s/d ' . $safeDateFmt($meta['end']);
+            $filterParts[] = 'Periode: ' . $safeDateFmt($meta['start']) . ' s/d ' . $safeDateFmt($meta['end']);
         } elseif (!empty($meta['start'])) {
             $filterParts[] = 'Mulai: ' . $safeDateFmt($meta['start']);
         } elseif (!empty($meta['end'])) {
@@ -206,31 +206,40 @@ class CandidateXlsxExportService
             $filterParts[] = 'Area: ' . $meta['area'];
         }
         if (!empty($meta['recruiter_name'])) {
-            $filterParts[] = 'Rekruter: ' . $meta['recruiter_name'];
+            $filterParts[] = 'Diexport Oleh: ' . $meta['recruiter_name'];
         }
 
-        $metaText = 'Diexport pada: ' . $nowStr . ' | ' . implode(' | ', $filterParts) . ' | Total Data: ' . number_format($totalCount) . ' Kandidat';
+        $metaText = implode(' | ', $filterParts) . ' | Waktu Export: ' . $nowStr . ' | Total Data: ' . number_format($totalCount) . ' Kandidat';
 
-        // Column widths definition
+        // Column widths definition (27 columns)
         $cols = [
-            1  => 6,   // NO
-            2  => 18,  // TGL DAFTAR
-            3  => 22,  // NIK (KTP)
-            4  => 28,  // NAMA LENGKAP
-            5  => 16,  // JENIS KELAMIN
-            6  => 15,  // TGL LAHIR
-            7  => 10,  // USIA
-            8  => 18,  // PENDIDIKAN
-            9  => 20,  // NO WHATSAPP / HP
-            10 => 26,  // EMAIL
-            11 => 30,  // POSISI DILAMAR
-            12 => 20,  // AREA PENEMPATAN
-            13 => 45,  // RINGKASAN PENGALAMAN KERJA
-            14 => 15,  // KATEGORI AI
-            15 => 12,  // AI SCORE
-            16 => 16,  // STATUS KANDIDAT
-            17 => 24,  // HASIL ANALISIS AI (PDF)
-            18 => 24,  // REKRUTER / AS
+            1  => 6,   // No
+            2  => 20,  // Tanggal
+            3  => 22,  // No. KTP
+            4  => 28,  // Nama Kandidat
+            5  => 16,  // Jenis Kelamin
+            6  => 30,  // Alamat KTP
+            7  => 35,  // Alamat Domisili
+            8  => 14,  // Tgl. Lahir
+            9  => 12,  // Height (cm)
+            10 => 12,  // Weight (kg)
+            11 => 12,  // Religion
+            12 => 20,  // Pendidikan Terakhir
+            13 => 20,  // Phone / WA
+            14 => 18,  // Area
+            15 => 14,  // Region
+            16 => 22,  // Secondary City
+            17 => 24,  // Nama AS
+            18 => 35,  // Principle
+            19 => 28,  // Applied Job
+            20 => 45,  // Ringkasan Pengalaman Kerja
+            21 => 18,  // Info Lowongan
+            22 => 25,  // Foto Profil
+            23 => 25,  // File CV
+            24 => 20,  // CV Analisa AI
+            25 => 16,  // Status Kandidat
+            26 => 18,  // Kategori Kandidat
+            27 => 12,  // AI Score
         ];
 
         $colsXml = '<cols>';
@@ -239,26 +248,35 @@ class CandidateXlsxExportService
         }
         $colsXml .= '</cols>';
 
-        // Header column titles
+        // Header column titles (27 columns matching legacy export + 3 additions)
         $headers = [
-            'A' => 'NO',
-            'B' => 'TANGGAL DAFTAR',
-            'C' => 'NIK (KTP)',
-            'D' => 'NAMA LENGKAP',
-            'E' => 'JENIS KELAMIN',
-            'F' => 'TANGGAL LAHIR',
-            'G' => 'USIA',
-            'H' => 'PENDIDIKAN',
-            'I' => 'NO WHATSAPP / HP',
-            'J' => 'EMAIL',
-            'K' => 'POSISI DILAMAR',
-            'L' => 'AREA PENEMPATAN',
-            'M' => 'RINGKASAN PENGALAMAN KERJA',
-            'N' => 'KATEGORI AI',
-            'O' => 'AI SCORE',
-            'P' => 'STATUS KANDIDAT',
-            'Q' => 'HASIL ANALISIS AI (PDF)',
-            'R' => 'REKRUTER / AS',
+            'A'  => 'No',
+            'B'  => 'Tanggal',
+            'C'  => 'No. KTP',
+            'D'  => 'Nama Kandidat',
+            'E'  => 'Jenis Kelamin',
+            'F'  => 'Alamat KTP',
+            'G'  => 'Alamat Domisili',
+            'H'  => 'Tgl. Lahir',
+            'I'  => 'Height (cm)',
+            'J'  => 'Weight (kg)',
+            'K'  => 'Religion',
+            'L'  => 'Pendidikan Terakhir',
+            'M'  => 'Phone / WA',
+            'N'  => 'Area',
+            'O'  => 'Region',
+            'P'  => 'Secondary City',
+            'Q'  => 'Nama AS',
+            'R'  => 'Principle',
+            'S'  => 'Applied Job',
+            'T'  => 'Ringkasan Pengalaman Kerja',
+            'U'  => 'Info Lowongan',
+            'V'  => 'Foto Profil',
+            'W'  => 'File CV',
+            'X'  => 'CV Analisa AI',
+            'Y'  => 'Status Kandidat',
+            'Z'  => 'Kategori Kandidat',
+            'AA' => 'AI Score',
         ];
 
         // Start XML
@@ -273,7 +291,7 @@ class CandidateXlsxExportService
     <sheetData>
         <!-- ROW 1: TITLE BANNER -->
         <row r="1" ht="26">
-            <c r="A1" t="inlineStr" s="1"><is><t>' . self::xmlEscape('ASYSTEM - REKAPITULASI DATA PELAMAR JOB PORTAL') . '</t></is></c>
+            <c r="A1" t="inlineStr" s="1"><is><t>' . self::xmlEscape('DATA KANDIDAT JOB PORTAL') . '</t></is></c>
         </row>
         <!-- ROW 2: SUBTITLE METADATA -->
         <row r="2" ht="18">
@@ -290,14 +308,49 @@ class CandidateXlsxExportService
 
         $xml .= '</row>';
 
+        // Area to Region mapping
+        $regionMap = [
+            'jakarta' => 'Region 1',
+            'bandung' => 'Region 2',
+            'tasikmalaya' => 'Region 2',
+            'semarang' => 'Region 3',
+            'purwokerto' => 'Region 3',
+            'yogyakarta' => 'Region 3',
+            'solo' => 'Region 3',
+            'tegal' => 'Region 3',
+            'surabaya' => 'Region 4',
+            'malang' => 'Region 4',
+            'madiun' => 'Region 4',
+            'kediri' => 'Region 4',
+            'bojonegoro' => 'Region 4',
+            'denpasar' => 'Region 4',
+            'mataram' => 'Region 4',
+            'jember' => 'Region 4',
+            'makassar' => 'Region 5',
+            'gorontalo' => 'Region 5',
+            'manado' => 'Region 5',
+            'palu' => 'Region 5',
+            'medan' => 'Region 6',
+            'batam' => 'Region 6',
+            'samarinda' => 'Region 6',
+            'balikpapan' => 'Region 6',
+            'banjarmasin' => 'Region 6',
+            'palembang' => 'Region 7',
+            'lampung' => 'Region 7',
+            'jambi' => 'Region 7',
+            'pekanbaru' => 'Region 7',
+        ];
+
+        // Production Server Base URL: always prioritize https://new.asystem.co.id
+        $baseUrl = !empty($meta['base_url']) ? $meta['base_url'] : null;
+        if (empty($baseUrl) || str_contains($baseUrl, 'localhost') || str_contains($baseUrl, '127.0.0.1')) {
+            $baseUrl = 'https://new.asystem.co.id';
+        }
+        $baseUrl = rtrim($baseUrl, '/');
+
         // Data Rows
         $rowNum = 5;
         $no = 1;
-
-        $baseUrl = config('app.url', 'https://new.asystem.co.id');
-        if (str_ends_with($baseUrl, '/')) {
-            $baseUrl = rtrim($baseUrl, '/');
-        }
 
         foreach ($candidates as $c) {
             $isZebra = ($no % 2 === 0);
@@ -307,9 +360,9 @@ class CandidateXlsxExportService
             $sLink = $isZebra ? 9 : 8;
 
             // Formatted values
-            $tglDaftar = $c->created_at ? $c->created_at->format('d/m/Y H:i') : '-';
+            $tglDaftar = $c->created_at ? $c->created_at->format('Y-m-d H:i:s') : '-';
             
-            // Format NIK: text string with clean numbers
+            // Format NIK: text string
             $nik = trim((string)$c->nik);
             if (empty($nik)) {
                 $nik = '-';
@@ -317,16 +370,40 @@ class CandidateXlsxExportService
 
             $nama = trim((string)$c->full_name);
             $gender = !empty($c->gender) ? trim($c->gender) : '-';
-            $tglLahir = $c->birth_date ? $c->birth_date->format('d/m/Y') : '-';
-            $usia = !empty($c->age) ? $c->age . ' Thn' : '-';
+            $alamatKtp = !empty($c->address_ktp) ? trim($c->address_ktp) : '-';
+            $alamatDom = !empty($c->address_domicile) ? trim($c->address_domicile) : '-';
+            $tglLahir = $c->birth_date ? $c->birth_date->format('Y-m-d') : '-';
+            $height = !empty($c->height) ? $c->height : '-';
+            $weight = !empty($c->weight) ? $c->weight : '-';
+            $religion = !empty($c->religion) ? trim($c->religion) : '';
             $pendidikan = !empty($c->education) ? trim($c->education) : '-';
 
             // Phone
             $phone = !empty($c->phone) ? trim($c->phone) : (!empty($c->whatsapp) ? trim($c->whatsapp) : '-');
-            $email = !empty($c->email) ? trim($c->email) : '-';
+            $area = !empty($c->area) ? trim($c->area) : '-';
+            
+            // Region & Secondary City
+            $areaLower = strtolower(trim((string)$area));
+            $region = $regionMap[$areaLower] ?? (!empty($c->region) ? $c->region : 'Region 1');
+            $secCity = !empty($c->city_domicile) ? trim($c->city_domicile) : (!empty($c->penempatan) ? trim($c->penempatan) : $area);
+
+            // AS / Rekruter
+            $namaAs = !empty($c->useras) ? trim($c->useras) : ($c->recruiter ? $c->recruiter->name : '-');
+
+            // Principle
+            $prinName = '-';
+            if (!empty($c->principle)) {
+                if (is_string($c->principle) && str_starts_with(trim($c->principle), '{')) {
+                    $decoded = json_decode($c->principle, true);
+                    $prinName = $decoded['name'] ?? $c->principle;
+                } else {
+                    $prinName = is_string($c->principle) ? $c->principle : ($c->principle->name ?? '-');
+                }
+            } elseif ($c->principleRelation) {
+                $prinName = $c->principleRelation->name;
+            }
 
             $posisi = !empty($c->applied_job) ? trim($c->applied_job) : '-';
-            $area = !empty($c->area) ? trim($c->area) : '-';
 
             // Ringkasan Pengalaman Kerja
             $expSummary = trim($c->experience_summary ?? '');
@@ -349,6 +426,35 @@ class CandidateXlsxExportService
                 $expSummary = '-';
             }
 
+            // Info Lowongan
+            $infoLoker = !empty($c->info_lowongan) ? trim($c->info_lowongan) : (!empty($c->source_type) ? trim($c->source_type) : '-');
+            if (strtolower($infoLoker) === 'job_portal') {
+                $infoLoker = 'Job Portal';
+            }
+
+            // Foto Profil
+            $photoFile = trim((string)$c->photo_path);
+            $photoUrl = null;
+            $photoName = '-';
+            if (!empty($photoFile) && $photoFile !== '-') {
+                $photoName = basename($photoFile);
+                $photoUrl = 'https://asystem.co.id/interview/lampiran/' . $photoName;
+            }
+
+            // File CV
+            $cvFile = trim((string)$c->cv_path);
+            $cvUrl = null;
+            $cvName = '-';
+            if (!empty($cvFile) && $cvFile !== '-') {
+                $cvName = basename($cvFile);
+                $cvUrl = 'https://asystem.co.id/interview/lampiran/' . $cvName;
+            }
+
+            // Link PDF Hasil Analisis AI (Production Server URL)
+            $pdfUrl = $baseUrl . '/kandidatportal/' . $c->id . '/cetak-ai';
+
+            $statusKandidat = !empty($c->status_kandidat) ? trim($c->status_kandidat) : 'Baru';
+
             // Kategori AI & Style
             $kategori = !empty($c->kategori_kandidat) ? trim($c->kategori_kandidat) : 'Pending';
             $sKategori = $sCenter;
@@ -361,37 +467,78 @@ class CandidateXlsxExportService
             }
 
             $aiScore = ($c->ai_score !== null && $c->ai_score > 0) ? $c->ai_score . '%' : 'Pending';
-            $statusKandidat = !empty($c->status_kandidat) ? trim($c->status_kandidat) : 'Baru';
 
-            // Link PDF Hasil Analisis AI
-            $pdfUrl = $baseUrl . '/kandidatportal/' . $c->id . '/cetak-ai';
-            $rekruter = !empty($c->useras) ? trim($c->useras) : '-';
-
-            // Determine row height: taller if experience summary is long
-            $rowHeight = (mb_strlen($expSummary) > 60) ? 38 : 24;
+            // Determine row height
+            $rowHeight = (mb_strlen($expSummary) > 60 || mb_strlen($alamatDom) > 50) ? 38 : 24;
 
             $xml .= '<row r="' . $rowNum . '" ht="' . $rowHeight . '">';
+            // A: No
             $xml .= '<c r="A' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . $no . '</t></is></c>';
+            // B: Tanggal
             $xml .= '<c r="B' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($tglDaftar) . '</t></is></c>';
+            // C: No. KTP
             $xml .= '<c r="C' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($nik) . '</t></is></c>';
+            // D: Nama Kandidat
             $xml .= '<c r="D' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($nama) . '</t></is></c>';
+            // E: Jenis Kelamin
             $xml .= '<c r="E' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($gender) . '</t></is></c>';
-            $xml .= '<c r="F' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($tglLahir) . '</t></is></c>';
-            $xml .= '<c r="G' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($usia) . '</t></is></c>';
-            $xml .= '<c r="H' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($pendidikan) . '</t></is></c>';
-            $xml .= '<c r="I' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($phone) . '</t></is></c>';
-            $xml .= '<c r="J' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($email) . '</t></is></c>';
-            $xml .= '<c r="K' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($posisi) . '</t></is></c>';
-            $xml .= '<c r="L' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($area) . '</t></is></c>';
-            $xml .= '<c r="M' . $rowNum . '" t="inlineStr" s="' . $sWrap . '"><is><t>' . self::xmlEscape($expSummary) . '</t></is></c>';
-            $xml .= '<c r="N' . $rowNum . '" t="inlineStr" s="' . $sKategori . '"><is><t>' . self::xmlEscape($kategori) . '</t></is></c>';
-            $xml .= '<c r="O' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($aiScore) . '</t></is></c>';
-            $xml .= '<c r="P' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($statusKandidat) . '</t></is></c>';
+            // F: Alamat KTP
+            $xml .= '<c r="F' . $rowNum . '" t="inlineStr" s="' . $sWrap . '"><is><t>' . self::xmlEscape($alamatKtp) . '</t></is></c>';
+            // G: Alamat Domisili
+            $xml .= '<c r="G' . $rowNum . '" t="inlineStr" s="' . $sWrap . '"><is><t>' . self::xmlEscape($alamatDom) . '</t></is></c>';
+            // H: Tgl. Lahir
+            $xml .= '<c r="H' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($tglLahir) . '</t></is></c>';
+            // I: Height (cm)
+            $xml .= '<c r="I' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($height) . '</t></is></c>';
+            // J: Weight (kg)
+            $xml .= '<c r="J' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($weight) . '</t></is></c>';
+            // K: Religion
+            $xml .= '<c r="K' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($religion) . '</t></is></c>';
+            // L: Pendidikan Terakhir
+            $xml .= '<c r="L' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($pendidikan) . '</t></is></c>';
+            // M: Phone / WA
+            $xml .= '<c r="M' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($phone) . '</t></is></c>';
+            // N: Area
+            $xml .= '<c r="N' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($area) . '</t></is></c>';
+            // O: Region
+            $xml .= '<c r="O' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($region) . '</t></is></c>';
+            // P: Secondary City
+            $xml .= '<c r="P' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($secCity) . '</t></is></c>';
+            // Q: Nama AS
+            $xml .= '<c r="Q' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($namaAs) . '</t></is></c>';
+            // R: Principle
+            $xml .= '<c r="R' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($prinName) . '</t></is></c>';
+            // S: Applied Job
+            $xml .= '<c r="S' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($posisi) . '</t></is></c>';
+            // T: Ringkasan Pengalaman Kerja
+            $xml .= '<c r="T' . $rowNum . '" t="inlineStr" s="' . $sWrap . '"><is><t>' . self::xmlEscape($expSummary) . '</t></is></c>';
+            // U: Info Lowongan
+            $xml .= '<c r="U' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($infoLoker) . '</t></is></c>';
             
-            // Hyperlink cell to AI Analysis PDF
-            $xml .= '<c r="Q' . $rowNum . '" s="' . $sLink . '"><f>' . self::xmlEscape('HYPERLINK("' . $pdfUrl . '", "Lihat PDF AI")') . '</f><v>Lihat PDF AI</v></c>';
-            
-            $xml .= '<c r="R' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($rekruter) . '</t></is></c>';
+            // V: Foto Profil
+            if ($photoUrl) {
+                $xml .= '<c r="V' . $rowNum . '" s="' . $sLink . '"><f>' . self::xmlEscape('HYPERLINK("' . $photoUrl . '", "' . $photoName . '")') . '</f><v>' . self::xmlEscape($photoName) . '</v></c>';
+            } else {
+                $xml .= '<c r="V' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>-</t></is></c>';
+            }
+
+            // W: File CV
+            if ($cvUrl) {
+                $xml .= '<c r="W' . $rowNum . '" s="' . $sLink . '"><f>' . self::xmlEscape('HYPERLINK("' . $cvUrl . '", "' . $cvName . '")') . '</f><v>' . self::xmlEscape($cvName) . '</v></c>';
+            } else {
+                $xml .= '<c r="W' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>-</t></is></c>';
+            }
+
+            // X: CV Analisa AI (Hyperlink ke Server Production PDF)
+            $xml .= '<c r="X' . $rowNum . '" s="' . $sLink . '"><f>' . self::xmlEscape('HYPERLINK("' . $pdfUrl . '", "CV Analisa AI")') . '</f><v>CV Analisa AI</v></c>';
+
+            // Y: Status Kandidat
+            $xml .= '<c r="Y' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($statusKandidat) . '</t></is></c>';
+            // Z: Kategori Kandidat
+            $xml .= '<c r="Z' . $rowNum . '" t="inlineStr" s="' . $sKategori . '"><is><t>' . self::xmlEscape($kategori) . '</t></is></c>';
+            // AA: AI Score
+            $xml .= '<c r="AA' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($aiScore) . '</t></is></c>';
+
             $xml .= '</row>';
 
             $rowNum++;

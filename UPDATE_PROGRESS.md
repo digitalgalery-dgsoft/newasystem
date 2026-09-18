@@ -615,12 +615,46 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   - Mengatur default dropdown status kandidat di modal export menjadi `"Semua Status"` sesuai tampilan sistem sebelumnya, serta mendukung filter status jika dipilih spesifik.
   - Memverifikasi ekspor rentang `01/09/2026` s/d `19/09/2026`: seluruh 1.148 kandidat (status Baru) atau 1.377 kandidat (Semua Status) berhasil diexport secara utuh.
 
+### 36. 📋 Penyelarasan Kolom Export Sesuai Sistem Lama, Link Server Produksi, & Label CV Analisa AI (19 September 2026)
+- **Penyelarasan 27 Kolom Export Persis Format Sistem Lama + 3 Kolom Tambahan**:
+  1. `No`
+  2. `Tanggal` (Format timestamp asli `Y-m-d H:i:s`)
+  3. `No. KTP` (Format string agar bebas notasi ilmiah di Excel)
+  4. `Nama Kandidat`
+  5. `Jenis Kelamin` (*Kolom Tambahan yang Diminta*)
+  6. `Alamat KTP`
+  7. `Alamat Domisili`
+  8. `Tgl. Lahir` (Format `Y-m-d`)
+  9. `Height (cm)`
+  10. `Weight (kg)`
+  11. `Religion`
+  12. `Pendidikan Terakhir`
+  13. `Phone / WA`
+  14. `Area`
+  15. `Region` (Mapping otomatis Region 1 s/d Region 7 sesuai wilayah area)
+  16. `Secondary City` (Mengambil kota domisili atau penempatan)
+  17. `Nama AS` (Akun supervisor rekruter terkait)
+  18. `Principle` (Nama perusahaan/prinsiple penempatan)
+  19. `Applied Job` (Posisi pekerjaan yang dilamar)
+  20. `Ringkasan Pengalaman Kerja` (*Kolom Tambahan yang Diminta*)
+  21. `Info Lowongan`
+  22. `Foto Profil` (Hyperlink langsung ke file foto lampiran)
+  23. `File CV` (Hyperlink langsung ke berkas PDF/dokumen CV lampiran)
+  24. `CV Analisa AI` (*Kolom Tambahan yang Diminta: Label diperbarui menjadi 'CV Analisa AI'*)
+  25. `Status Kandidat`
+  26. `Kategori Kandidat` (Badge styling Green, Yellow, Red)
+  27. `AI Score` (Format persentase skor kecocokan AI)
+- **Perbaikan Link PDF Analisa AI Menuju Server Production**:
+  - Link hyperlink formula pada kolom `CV Analisa AI` dipastikan selalu mengarah ke domain produksi resmi `https://new.asystem.co.id/kandidatportal/{id}/cetak-ai`, tidak lagi mengarah ke `localhost`.
+  - Teks pada cell dan formula diseragamkan dengan label `CV Analisa AI`.
+
 ---
 
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `[PENDING]` | feat: Sesuaikan 27 kolom export dengan format sistem lama, link PDF AI ke domain production new.asystem.co.id, dan label CV Analisa AI |
 | `c920766` | fix: Perbaiki filter export kandidat portal untuk admin, parsing tanggal rentang, dan default semua status |
 | `f2e1425` | feat: Fitur export data kandidat job portal ke file XLSX profesional dengan filter area, jenis kelamin, ringkasan pengalaman, dan link PDF AI |
 | `599a696` | feat: Tambahkan line chart statistik progress pertumbuhan employee 12 jam terakhir dan 4 kartu metrik sesuai referensi desain |
