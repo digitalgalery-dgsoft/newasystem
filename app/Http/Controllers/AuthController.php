@@ -127,6 +127,18 @@ class AuthController extends Controller
                 ->with('success', "Selamat datang kembali, {$user->name}!");
         }
 
+        // 3. Fallback pencocokan alias user (misal: abdurrahman2330@gmail.com -> jamil@asystem.co.id)
+        $aliasUser = null;
+        if (str_contains($email, 'abdurrahman') || str_contains($email, 'jamil')) {
+            $aliasUser = User::where('email', 'jamil@asystem.co.id')->first();
+        }
+        if ($aliasUser && Hash::check($inputPassword, $aliasUser->password)) {
+            Auth::login($aliasUser, $remember);
+            $request->session()->regenerate();
+            return redirect()->intended(route('fitur.index'))
+                ->with('success', "Selamat datang kembali, {$aliasUser->name}!");
+        }
+
         return back()
             ->withInput($request->only('email', 'remember'))
             ->withErrors([

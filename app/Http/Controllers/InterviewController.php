@@ -19,17 +19,25 @@ class InterviewController extends Controller
 {
     private function getCurrentUser()
     {
-        return auth()->user() ?? User::firstOrCreate(
-            ['email' => 'jamil@asystem.co.id'],
-            [
-                'name' => 'Jamil',
-                'password' => bcrypt('password'),
-                'role' => 'recruiter',
-                'job_title' => 'REKRUTMEN',
-                'area' => 'JAKARTA',
-                'phone' => '081234567890',
-            ]
-        );
+        if (auth()->check()) {
+            return auth()->user();
+        }
+
+        return User::where('email', 'jamil@asystem.co.id')->first()
+            ?? User::where('name', 'like', '%abdur%')->first()
+            ?? User::where('email', 'like', '%abdur%')->first()
+            ?? User::where('role', '!=', 'admin')->first()
+            ?? User::firstOrCreate(
+                ['email' => 'jamil@asystem.co.id'],
+                [
+                    'name' => 'Abdurrahman Jamil',
+                    'password' => bcrypt('password'),
+                    'role' => 'karyawan_inhouse',
+                    'job_title' => 'REKRUTMEN',
+                    'area' => 'JAKARTA',
+                    'phone' => '081234567890',
+                ]
+            );
     }
 
     private function getSalam(): string
@@ -156,19 +164,18 @@ class InterviewController extends Controller
             });
 
         $isAdmin = $user->isAdmin() || $user->role === 'admin';
-        $effectiveUserEmail = strtolower(trim($user->email ?? ''));
-        $effectiveUserName = strtolower(trim($user->name ?? ''));
+        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
         $displayRecruiterName = $user->name;
         $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
         $displayRecruiterArea = $user->area ?? 'JAKARTA';
 
-        if ($isAdmin && (empty($filterUser) || $filterUser === 'all')) {
-            // Admin melihat seluruh kandidat nasional secara default
-            $displayRecruiterName = 'Administrator';
+        if ($isAdmin && $filterUser === 'all') {
+            // Admin memilih melihat seluruh kandidat nasional
+            $displayRecruiterName = 'Semua Rekruter (Nasional)';
             $displayRecruiterTitle = 'SUPER ADMIN - All';
             $displayRecruiterArea = 'NASIONAL';
-        } elseif (!empty($filterUser) && $filterUser !== 'all') {
-            // Filter rekruter terpilih
+        } elseif (!empty($filterUser) && $filterUser !== 'my') {
+            // Filter rekruter terpilih dari selector
             $myCandidatesQuery->where(function ($q) use ($filterUser) {
                 $q->where('useras', $filterUser)
                   ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
@@ -182,11 +189,19 @@ class InterviewController extends Controller
             }
             $displayRecruiterTitle = 'REKRUTER TERPILIH';
         } else {
-            // Sesuai dengan user / karyawan yang login
-            $myCandidatesQuery->where(function ($q) use ($user, $effectiveUserEmail, $effectiveUserName) {
-                $q->where('recruiter_id', $user->id)
-                  ->orWhereRaw('LOWER(TRIM(useras)) = ?', [$effectiveUserEmail])
-                  ->orWhereRaw('LOWER(TRIM(useras)) = ?', [$effectiveUserName]);
+            // DEFAULT UNTUK SEMUA USER (Termasuk Admin jika tidak memilih 'all'):
+            // TAMPILKAN HANYA DATA MILIK USER YANG LOGIN!
+            $myCandidatesQuery->where(function ($q) use ($user, $userIdentifiers) {
+                if (!empty($userIdentifiers)) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    if ($user && !empty($user->id)) {
+                        $q->orWhere('recruiter_id', $user->id);
+                    }
+                } elseif ($user && !empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
             });
         }
 
@@ -722,14 +737,28 @@ class InterviewController extends Controller
             ->whereNotNull('ttd_prinsiple')
             ->where('ttd_prinsiple', '!=', '');
 
-        $userEmail = strtolower(trim($user->email ?? ''));
-        $userName = strtolower(trim($user->name ?? ''));
-        if (!$user->isAdmin() && $user->role !== 'admin') {
-            $query->where(function($q) use ($user, $userEmail, $userName) {
-                $q->where('recruiter_id', $user->id)
-                  ->orWhereRaw('LOWER(TRIM(useras)) = ?', [$userEmail])
-                  ->orWhereRaw('LOWER(TRIM(useras)) = ?', [$userName]);
-            });
+        $isAdmin = $user->isAdmin() || $user->role === 'admin';
+        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
+        $filterUser = $request->query('filter_user');
+
+        if (!($isAdmin && $filterUser === 'all')) {
+            if (!empty($filterUser) && $filterUser !== 'my') {
+                $query->where(function($q) use ($filterUser) {
+                    $q->where('useras', $filterUser)
+                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
+                });
+            } else {
+                $query->where(function($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    } else {
+                        $q->whereRaw('1 = 0');
+                    }
+                });
+            }
         }
 
         if ($search) {
@@ -761,14 +790,28 @@ class InterviewController extends Controller
                   ->orWhere('status_kandidat', 'Arsip');
             });
 
-        $userEmail = strtolower(trim($user->email ?? ''));
-        $userName = strtolower(trim($user->name ?? ''));
-        if (!$user->isAdmin() && $user->role !== 'admin') {
-            $query->where(function($q) use ($user, $userEmail, $userName) {
-                $q->where('recruiter_id', $user->id)
-                  ->orWhereRaw('LOWER(TRIM(useras)) = ?', [$userEmail])
-                  ->orWhereRaw('LOWER(TRIM(useras)) = ?', [$userName]);
-            });
+        $isAdmin = $user->isAdmin() || $user->role === 'admin';
+        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
+        $filterUser = $request->query('filter_user');
+
+        if (!($isAdmin && $filterUser === 'all')) {
+            if (!empty($filterUser) && $filterUser !== 'my') {
+                $query->where(function($q) use ($filterUser) {
+                    $q->where('useras', $filterUser)
+                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
+                });
+            } else {
+                $query->where(function($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    } else {
+                        $q->whereRaw('1 = 0');
+                    }
+                });
+            }
         }
 
         if ($search) {

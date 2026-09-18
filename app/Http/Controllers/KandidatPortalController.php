@@ -19,7 +19,14 @@ class KandidatPortalController extends Controller
      */
     protected function getCurrentUser()
     {
-        return auth()->user() ?? User::where('email', 'jamil@asystem.co.id')->first() ?? User::first();
+        if (auth()->check()) {
+            return auth()->user();
+        }
+        return User::where('email', 'jamil@asystem.co.id')->first()
+            ?? User::where('name', 'like', '%abdur%')->first()
+            ?? User::where('email', 'like', '%abdur%')->first()
+            ?? User::where('role', '!=', 'admin')->first()
+            ?? User::first();
     }
 
     /**
@@ -164,13 +171,17 @@ class KandidatPortalController extends Controller
             $displayUserName = $filterRecruiter;
             $scopeTitle = 'Rekruter: ' . $filterRecruiter;
         } else {
-            // Non-admin ATAU admin dengan filter 'my' / default: TAMPILKAN HANYA DATA USER LOGIN
+            // DEFAULT: TAMPILKAN HANYA DATA MILIK USER YANG LOGIN!
             $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
-                if ($user) {
-                    $q->where('recruiter_id', $user->id);
-                }
                 if (!empty($userIdentifiers)) {
-                    $q->orWhereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    if ($user && !empty($user->id)) {
+                        $q->orWhere('recruiter_id', $user->id);
+                    }
+                } elseif ($user && !empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                } else {
+                    $q->whereRaw('1 = 0');
                 }
             });
             $scopeTitle = 'Kandidat Milik Anda (' . $displayUserName . ')';
@@ -703,11 +714,15 @@ class KandidatPortalController extends Controller
             });
         } else {
             $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
-                if ($user) {
-                    $q->where('recruiter_id', $user->id);
-                }
                 if (!empty($userIdentifiers)) {
-                    $q->orWhereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    if ($user && !empty($user->id)) {
+                        $q->orWhere('recruiter_id', $user->id);
+                    }
+                } elseif ($user && !empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                } else {
+                    $q->whereRaw('1 = 0');
                 }
             });
         }

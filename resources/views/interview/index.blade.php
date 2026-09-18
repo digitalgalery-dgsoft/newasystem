@@ -61,7 +61,7 @@
         <div class="stat-box">
             <div class="flex items-center justify-between">
                 <div>
-                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ $isAdmin ? 'Total Kandidat Nasional' : 'Kandidat Milik Anda' }}</div>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ ($filterUser === 'all') ? 'Total Kandidat Nasional' : 'Kandidat Milik Anda' }}</div>
                     <div class="text-2xl font-black text-slate-900 mt-1">{{ number_format($statTotal ?? $myCandidates->total()) }}</div>
                     <div class="text-[11px] text-primary font-semibold mt-0.5 flex items-center gap-1">
                         <i class="fa-solid fa-user-check"></i>
@@ -98,29 +98,29 @@
                     <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Selesai Tes Online</div>
                     <div class="text-2xl font-black text-amber-600 mt-1">{{ number_format($statTestDone ?? 0) }}</div>
                     <div class="text-[11px] text-amber-600 font-semibold mt-0.5 flex items-center gap-1">
-                        <i class="fa-solid fa-circle-dot"></i>
-                        <span>DISC & Matematika</span>
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                        <span>Psikotes / Math</span>
                     </div>
                 </div>
                 <div class="stat-box-icon bg-amber-50 text-amber-600">
-                    <i class="fa-solid fa-file-signature"></i>
+                    <i class="fa-solid fa-square-poll-vertical"></i>
                 </div>
             </div>
         </div>
 
-        <!-- Stat 4: Kandidat Area -->
+        <!-- Stat 4: Area Rekruter -->
         <div class="stat-box">
             <div class="flex items-center justify-between">
                 <div>
-                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Kandidat Area {{ strtoupper($displayRecruiterArea ?? ($user->area ?? 'JAKARTA')) }}</div>
-                    <div class="text-2xl font-black text-purple-600 mt-1">{{ ($isAdmin && (empty($filterUser) || $filterUser === 'all')) ? number_format($statTotal ?? $myCandidates->total()) : number_format($areaCandidates->total()) }}</div>
-                    <div class="text-[11px] text-purple-600 font-semibold mt-0.5 flex items-center gap-1">
-                        <i class="fa-solid fa-map-pin"></i>
-                        <span>{{ ($isAdmin && (empty($filterUser) || $filterUser === 'all')) ? 'Seluruh Indonesia (All)' : 'Rekan Se-Wilayah' }}</span>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Wilayah Operasional</div>
+                    <div class="text-2xl font-black text-slate-900 mt-1">{{ strtoupper($displayRecruiterArea ?? ($user->area ?? 'JAKARTA')) }}</div>
+                    <div class="text-[11px] text-slate-500 font-semibold mt-0.5 flex items-center gap-1">
+                        <i class="fa-solid fa-map-pin text-rose-500"></i>
+                        <span>Penempatan Kerja</span>
                     </div>
                 </div>
-                <div class="stat-box-icon bg-purple-50 text-purple-600">
-                    <i class="fa-solid fa-location-dot"></i>
+                <div class="stat-box-icon bg-slate-100 text-slate-700">
+                    <i class="fa-solid fa-earth-asia"></i>
                 </div>
             </div>
         </div>
@@ -133,14 +133,14 @@
             <div class="flex items-center gap-2.5 flex-wrap">
                 <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
                 <h2 class="text-sm font-bold text-slate-900">
-                    @if($isAdmin && (empty($filterUser) || $filterUser === 'all'))
-                        Data Kandidat &bull; Administrator ( SUPER ADMIN - All )
+                    @if($filterUser === 'all')
+                        Data Kandidat &bull; Semua Rekruter (Nasional)
                     @else
                         Data Kandidat &bull; {{ $displayRecruiterName ?? $user->name }} ({{ strtoupper($displayRecruiterTitle ?? ($user->job_title ?? 'REKRUTMEN')) }} - {{ strtoupper($displayRecruiterArea ?? ($user->area ?? 'JAKARTA')) }})
                     @endif
                 </h2>
                 <span class="badge-pill bg-blue-50 text-primary border-blue-200">
-                    {{ number_format($myCandidates->total()) }} Kandidat
+                    <i class="fa-solid fa-user-check text-[10px] mr-1"></i> {{ number_format($myCandidates->total()) }} Kandidat
                 </span>
             </div>
 
@@ -154,12 +154,15 @@
                     <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
                         <i class="fa-solid fa-user-gear text-primary text-xs"></i>
                         <select name="filter_user" onchange="this.form.submit()" class="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer">
-                            <option value="all" {{ (empty($filterUser) || $filterUser === 'all') ? 'selected' : '' }}>-- Semua Rekruter (SUPER ADMIN - All) --</option>
-                            @foreach($allRecruiters as $rec)
-                                <option value="{{ $rec->useras }}" {{ $filterUser === $rec->useras ? 'selected' : '' }}>
-                                    {{ $rec->display_name }} ({{ number_format($rec->total) }})
-                                </option>
-                            @endforeach
+                            <option value="my" {{ (empty($filterUser) || $filterUser === 'my') ? 'selected' : '' }}>👤 Data Saya ({{ $user->name }})</option>
+                            <option value="all" {{ $filterUser === 'all' ? 'selected' : '' }}>🌐 Semua Rekruter (Nasional)</option>
+                            <optgroup label="Pilih Rekruter Tertentu:">
+                                @foreach($allRecruiters as $rec)
+                                    <option value="{{ $rec->useras }}" {{ $filterUser === $rec->useras ? 'selected' : '' }}>
+                                        {{ $rec->display_name }} ({{ number_format($rec->total) }})
+                                    </option>
+                                @endforeach
+                            </optgroup>
                         </select>
                     </div>
                 </form>
