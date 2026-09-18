@@ -47,9 +47,8 @@ class InterviewInhouseController extends Controller
     private function buildWaUrl($candidate, $user, $salam): string
     {
         $induk = $candidate->principle?->parent_company ?? $candidate->principle?->name ?? 'Inhouse ESA Groups';
-        $jobTitle = strtoupper($user->job_title ?? 'REKRUTMEN');
-        $area = strtoupper($user->area ?? 'JAKARTA');
-        $pesan = "{$salam} sdr/sdr(i) {$candidate->full_name}\n\n*Tes Online Inhouse {$induk}*\n\nBerikut Kode Akses Tes Online Kamu\n\nUsername : {$candidate->nik}\nPassword : _Gunakan Tanggal lahir dengan Format ddmmyyyy_\n\nAkses Melalui Link Berikut https://asystem.co.id/interview\n\nTutorial Cara Login & Isi Data Profile : https://youtu.be/l3KW9-13z7c\n\n_Terima Kasih_\n\n_Regards_\n" . ucwords(strtolower($user->name)) . " - {$jobTitle} {$area}";
+        $asName = InterviewController::resolveCandidateAsName($candidate, $user);
+        $pesan = "{$salam} sdr/sdr(i) {$candidate->full_name}\n\n*Tes Online Inhouse {$induk}*\n\nBerikut Kode Akses Tes Online Kamu\n\nUsername : {$candidate->nik}\nPassword : _Gunakan Tanggal lahir dengan Format ddmmyyyy_\n\nAkses Melalui Link Berikut https://new.asystem.co.id/cbt/login\n\nTutorial Cara Login & Isi Data Profile : https://youtu.be/l3KW9-13z7c\n\n_Terima Kasih_\n\n_Regards_\n{$asName}";
 
         $phone = $candidate->clean_whatsapp;
         return "https://web.whatsapp.com/send?phone={$phone}&text=" . urlencode($pesan);
@@ -190,8 +189,17 @@ class InterviewInhouseController extends Controller
             default => ['text' => 'Proses Review', 'class' => 'bg-amber-50 text-amber-700 border-amber-200']
         };
 
-        return view('interviewinhouse.show', compact('candidate', 'user', 'principles', 'areas', 'statusBadge'));
+        $evalData = \App\Services\CandidateEvaluationDataService::getEvaluationData($candidate);
+
+        return view('interviewinhouse.show', array_merge([
+            'candidate' => $candidate,
+            'user' => $user,
+            'principles' => $principles,
+            'areas' => $areas,
+            'statusBadge' => $statusBadge,
+        ], $evalData));
     }
+
 
     /**
      * Simpan Approval & Tanda Tangan Digital Inhouse (Replikasi savettdhrd.php & savettdhead.php)

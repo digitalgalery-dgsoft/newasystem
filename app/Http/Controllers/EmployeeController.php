@@ -9,6 +9,7 @@ use App\Models\OdooEntity;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Auth;
 
 class EmployeeController extends Controller
 {
@@ -67,7 +68,6 @@ class EmployeeController extends Controller
         $stats = [
             'total' => Employee::count(),
             'aktif' => Employee::where('status', 'Aktiv')->count(),
-            'review' => Employee::where('status', 'Review')->count(),
             'resign' => Employee::where('status', 'Resign')->count(),
             'inhouse' => Employee::where('tipe_karyawan', 'Inhouse')->count(),
             'ratecard' => Employee::where('tipe_karyawan', 'RateCard')->count(),
@@ -243,6 +243,28 @@ class EmployeeController extends Controller
     public function switchUser($nik)
     {
         $employee = Employee::where('nik', $nik)->firstOrFail();
-        return redirect()->back()->with('success', "Simulasi Switch Akun aktif sebagai {$employee->nama_karyawan} ({$employee->jabatan}).");
+        $userRole = ($employee->tipe_karyawan === 'Inhouse') ? 'karyawan_inhouse' : 'karyawan_ratecard';
+        $user = User::firstOrCreate(
+            ['email' => $employee->email],
+            [
+                'name' => $employee->nama_karyawan,
+                'password' => Hash::make('password'),
+                'role' => $userRole,
+                'area' => $employee->area,
+                'job_title' => $employee->jabatan,
+                'phone' => $employee->telepon,
+                'is_active' => true,
+            ]
+        );
+        $user->update([
+            'name' => $employee->nama_karyawan,
+            'role' => $userRole,
+            'area' => $employee->area,
+            'job_title' => $employee->jabatan,
+            'is_active' => true,
+        ]);
+
+        Auth::login($user);
+        return redirect()->route('interview.index')->with('success', "Berhasil beralih akun dan login sebagai <strong>{$employee->nama_karyawan}</strong> ({$employee->jabatan} &bull; Area {$employee->area}). Data kandidat kini tampil sesuai akun ini.");
     }
 }

@@ -97,6 +97,18 @@
                         <span class="font-bold text-slate-900">{{ $candidate->full_name }}</span>
                     </div>
 
+                    <!-- Jenis Kelamin -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Jenis Kelamin:</span>
+                        <span class="font-bold text-slate-800">
+                            @if(strtolower($candidate->gender ?? '') === 'perempuan')
+                                <span class="inline-flex items-center gap-1 text-pink-600 font-bold"><i class="fa-solid fa-venus"></i> Perempuan</span>
+                            @else
+                                <span class="inline-flex items-center gap-1 text-blue-600 font-bold"><i class="fa-solid fa-mars"></i> Laki-laki</span>
+                            @endif
+                        </span>
+                    </div>
+
                     <!-- 3. Alamat KTP -->
                     <div class="flex items-start gap-2 md:col-span-2">
                         <span class="w-32 text-slate-400 font-medium flex-shrink-0">Alamat KTP:</span>
@@ -148,10 +160,30 @@
                     <!-- 10. Nama User / AS -->
                     <div class="flex items-start gap-2">
                         <span class="w-32 text-slate-400 font-medium flex-shrink-0">User AS / Rekruter:</span>
-                        <span class="text-slate-700 font-medium">{{ $candidate->useras ?? 'admin.pusat@arina.co.id' }}</span>
+                        <span class="text-slate-700 font-medium">{{ $candidate->user_display_name }}</span>
                     </div>
 
-                    <!-- 11. Catatan Khusus -->
+                    <!-- 11. Lampiran CV -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Lampiran CV:</span>
+                        @if($candidate->cv_path)
+                            @php
+                                $cvExt = strtolower(pathinfo($candidate->cv_path, PATHINFO_EXTENSION));
+                                $isCvImage = in_array($cvExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+                            @endphp
+                            <a href="{{ $candidate->cv_url }}" target="_blank" 
+                               onclick="openCandidateMedia('{{ $isCvImage ? 'image' : 'pdf' }}', '{{ $candidate->cv_url }}', 'Lampiran CV: {{ addslashes($candidate->full_name) }}'); return false;"
+                               class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs border border-emerald-200 transition-colors shadow-sm cursor-pointer" title="Lihat Berkas CV">
+                                <i class="fa-solid fa-file-pdf text-emerald-600"></i>
+                                <span>Lihat File CV</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                            </a>
+                        @else
+                            <span class="text-slate-400 text-xs italic">Belum ada lampiran CV</span>
+                        @endif
+                    </div>
+
+                    <!-- 12. Catatan Khusus -->
                     <div class="flex items-start gap-2 md:col-span-2">
                         <span class="w-32 text-slate-400 font-medium flex-shrink-0">Catatan Khusus:</span>
                         <span class="text-slate-600 italic">{{ $candidate->notes ?? 'Tidak ada catatan tambahan.' }}</span>
@@ -159,72 +191,140 @@
                 </div>
             </div>
 
-            <!-- Right: Foto Profil 3x4 Dropzone (Identik dengan Detail Kandidat Portal) -->
-            <div class="w-full lg:w-48 flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center">
-                <div class="relative group cursor-pointer w-32 h-40 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 hover:border-primary-400 bg-white flex flex-col items-center justify-center transition-all shadow-sm">
-                    @if($candidate->photo_path)
-                        <img id="photoPreview" src="https://ui-avatars.com/api/?name={{ urlencode($candidate->full_name) }}&background=0F52BA&color=fff&size=256" alt="Foto Kandidat" class="w-full h-full object-cover">
-                    @else
-                        <div id="photoPlaceholder" class="flex flex-col items-center text-slate-400 p-2">
-                            <i class="fa-solid fa-camera text-2xl mb-1 text-slate-300 group-hover:text-primary transition-colors"></i>
-                            <span class="text-[11px] font-bold">Pasfoto 3x4</span>
-                            <span class="text-[9px] text-slate-400 mt-0.5">JPG / PNG</span>
+            <!-- Right: Foto Profil 3x4 & Lampiran CV (Side-by-Side dengan Preview Modal) -->
+            @php
+                $cvUrl = $candidate->cv_url;
+                $cvExt = $candidate->cv_path ? strtolower(pathinfo($candidate->cv_path, PATHINFO_EXTENSION)) : '';
+                $isCvImage = in_array($cvExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+            @endphp
+            <div class="w-full lg:w-auto flex flex-row flex-wrap sm:flex-nowrap items-stretch justify-center gap-3.5 p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200 shadow-2xs">
+                
+                <!-- 1. FOTO RESMI PELAMAR (3x4) -->
+                <div class="w-36 p-2 rounded-xl bg-white border border-slate-200/90 shadow-2xs hover:border-primary-400 hover:shadow-md transition-all flex flex-col items-center justify-between group cursor-pointer"
+                     onclick="openCandidateMedia('image', '{{ $candidate->photo_url }}', 'Foto Resmi: {{ addslashes($candidate->full_name) }}')"
+                     title="Klik untuk melihat preview foto">
+                    <div class="relative w-32 h-40 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex flex-col items-center justify-center shadow-inner">
+                        @if($candidate->photo_path)
+                            <img id="photoPreview" src="{{ $candidate->photo_url }}" alt="Foto {{ $candidate->full_name }}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($candidate->full_name) }}&background=0F52BA&color=fff&size=256';">
+                        @else
+                            <div id="photoPlaceholder" class="flex flex-col items-center text-slate-400 p-2">
+                                <i class="fa-solid fa-camera text-2xl mb-1 text-slate-300 group-hover:text-primary transition-colors"></i>
+                                <span class="text-[11px] font-bold">Pasfoto 3x4</span>
+                                <span class="text-[9px] text-slate-400 mt-0.5">JPG / PNG</span>
+                            </div>
+                        @endif
+                        <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-semibold transition-opacity gap-1 backdrop-blur-[1px]">
+                            <i class="fa-solid fa-magnifying-glass-plus text-base"></i>
+                            <span class="text-[10px] font-bold tracking-wider uppercase">Preview</span>
                         </div>
-                    @endif
-                    <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-semibold transition-opacity">
-                        <i class="fa-solid fa-upload mr-1"></i> Ganti
                     </div>
-                    <input type="file" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onchange="previewImage(this)">
+                    <div class="mt-2 text-center">
+                        <span class="text-[11px] font-bold text-slate-700 block leading-tight">Foto Resmi Pelamar</span>
+                        <span class="text-[9px] text-slate-400 block mt-0.5">Ukuran 3x4 • Klik Preview</span>
+                    </div>
                 </div>
-                <span class="text-[11px] font-bold text-slate-700 mt-2.5">Foto Resmi Pelamar</span>
-                <span class="text-[10px] text-slate-400">Ukuran Rekomendasi 3x4</span>
+
+                <!-- 2. LAMPIRAN BERKAS CV -->
+                @if($candidate->cv_path)
+                    <div class="w-36 p-2 rounded-xl bg-white border border-slate-200/90 shadow-2xs hover:border-emerald-500 hover:shadow-md transition-all flex flex-col items-center justify-between group cursor-pointer"
+                         onclick="openCandidateMedia('{{ $isCvImage ? 'image' : 'pdf' }}', '{{ $cvUrl }}', 'Lampiran CV: {{ addslashes($candidate->full_name) }}')"
+                         title="Klik untuk membuka preview CV">
+                        <div class="relative w-32 h-40 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-2 text-center group-hover:bg-emerald-50/30 transition-colors shadow-inner">
+                            @if($isCvImage)
+                                <img src="{{ $cvUrl }}" alt="CV {{ $candidate->full_name }}" class="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105">
+                            @else
+                                <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center text-2xl mb-1.5 shadow-2xs group-hover:scale-110 transition-transform">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-800 line-clamp-2 px-1 break-all leading-snug">{{ basename($candidate->cv_path) }}</span>
+                                <span class="inline-flex items-center gap-1 text-[8.5px] font-extrabold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-full mt-1.5">
+                                    <i class="fa-solid fa-circle-check text-[7.5px]"></i> Berkas CV
+                                </span>
+                            @endif
+                            <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-semibold transition-opacity gap-1 backdrop-blur-[1px]">
+                                <i class="fa-solid fa-eye text-base"></i>
+                                <span class="text-[10px] font-bold tracking-wider uppercase">Preview CV</span>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <span class="text-[11px] font-bold text-slate-700 block leading-tight">Lampiran Berkas CV</span>
+                            <span class="text-[9px] text-emerald-600 font-bold flex items-center justify-center gap-1 mt-0.5">
+                                <i class="fa-solid fa-file-lines text-[8px]"></i> Klik Buka CV
+                            </span>
+                        </div>
+                    </div>
+                @else
+                    <div class="w-36 p-2 rounded-xl bg-white/70 border border-dashed border-slate-300 opacity-80 flex flex-col items-center justify-between text-center cursor-not-allowed"
+                         onclick="alert('Kandidat ini belum mengunggah berkas lampiran CV.')"
+                         title="Belum ada lampiran CV">
+                        <div class="w-32 h-40 rounded-lg bg-slate-50 border border-slate-100 flex flex-col items-center justify-center p-2 text-slate-400">
+                            <i class="fa-regular fa-file-pdf text-2xl mb-1.5 text-slate-300"></i>
+                            <span class="text-[11px] font-bold text-slate-500">Belum Ada CV</span>
+                            <span class="text-[9px] text-slate-400 mt-0.5">Tidak terlampir</span>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <span class="text-[11px] font-bold text-slate-400 block leading-tight">Lampiran Berkas CV</span>
+                            <span class="text-[9px] text-slate-400 block mt-0.5">Belum Diunggah</span>
+                        </div>
+                    </div>
+                @endif
+
             </div>
 
         </div>
     </div>
 
-    <!-- 6 Tabs Navigation Bar (Modern Attendance Tabs) -->
+    <!-- 7 Tabs Navigation Bar (Modern Attendance Tabs) -->
     <div class="bg-slate-100/80 border border-slate-200 rounded-2xl p-1.5 shadow-inner flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
         <button @click="activeTab = 'interview'" 
                 :class="activeTab === 'interview' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-clipboard-check text-xs"></i>
-            <span>Hasil Interview</span>
+            <span>1. Hasil Interview</span>
         </button>
 
         <button @click="activeTab = 'refcek'" 
                 :class="activeTab === 'refcek' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-phone-volume text-xs"></i>
-            <span>Referensi Cek</span>
+            <span>2. Referensi Cek</span>
         </button>
 
         <button @click="activeTab = 'kompt'" 
                 :class="activeTab === 'kompt' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-laptop-code text-xs"></i>
-            <span>Tes Komputer</span>
+            <span>3. Tes Komputer</span>
         </button>
 
         <button @click="activeTab = 'kepribadian'" 
                 :class="activeTab === 'kepribadian' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-brain text-xs"></i>
-            <span>Tes Kepribadian</span>
+            <span>4. Tes Kepribadian</span>
         </button>
 
         <button @click="activeTab = 'matematika'" 
                 :class="activeTab === 'matematika' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-calculator text-xs"></i>
-            <span>Tes Matematika</span>
+            <span>5. Tes Matematika</span>
         </button>
 
+        <!-- 6. Analisa AI (CV Analyzer) (Tab No. 6 Sesuai Permintaan User!) -->
+        <button @click="activeTab = 'ai'" 
+                :class="activeTab === 'ai' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
+                class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
+            <i class="fa-solid fa-wand-magic-sparkles text-amber-500 text-xs"></i>
+            <span>6. Analisa AI (CV Analyzer)</span>
+        </button>
+
+        <!-- 7. User Principle -->
         <button @click="activeTab = 'userprinsiple'" 
                 :class="activeTab === 'userprinsiple' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-building-circle-check text-xs"></i>
-            <span>User Principle</span>
+            <span>7. User Principle</span>
         </button>
     </div>
 
@@ -375,68 +475,78 @@
 
             <form action="{{ route('interview.refcek', $candidate->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
-                <input type="hidden" name="work_experience_id" value="{{ $firstExp?->id ?? 1 }}">
 
                 <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
                     <!-- Left Column (Perusahaan, Tanggal, SPV, Performa, Disiplin, Tanggung Jawab, Problem, Keunggulan, Kelemahan) -->
                     <div class="lg:col-span-7 space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Perusahaan</label>
-                            <select name="company_name" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Perusahaan Sebelumnya <span class="text-rose-500">*</span></label>
+                            <select name="company_id" id="companySelect" onchange="handleCompanySelect(this.value)" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-semibold focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none shadow-xs">
                                 @if($candidate->workExperiences->count() > 0)
                                     @foreach($candidate->workExperiences as $w)
-                                        <option value="{{ $w->company_name }}">{{ $w->company_name }}</option>
+                                        <option value="{{ $w->id }}" {{ $loop->first ? 'selected' : '' }}>
+                                            {{ $w->company_name }} @if(!empty($w->position)) ({{ $w->position }}) @endif
+                                        </option>
                                     @endforeach
+                                    <option value="new">+ Tambah Riwayat Perusahaan Baru</option>
                                 @else
-                                    <option value="bravo supermarket">bravo supermarket</option>
+                                    <option value="new" selected>+ Input Nama Perusahaan Pengalaman Kerja</option>
                                 @endif
                             </select>
+                            <p class="text-[10px] text-slate-400 mt-1">Pilih dari data riwayat pekerjaan yang diinputkan dibagian Pengalaman Kerja kandidat</p>
+                        </div>
+
+                        <!-- Manual Company Name input if 'new' is selected or no experiences exist -->
+                        <div id="customCompanyWrapper" style="{{ $candidate->workExperiences->count() > 0 ? 'display: none;' : '' }}">
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama Perusahaan Baru</label>
+                            <input type="text" name="company_name" id="customCompanyName" placeholder="Masukkan nama perusahaan..." value="{{ $firstExp?->company_name ?? '' }}" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none font-semibold">
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Tanggal Cek Referensi</label>
-                            <input type="date" name="checked_date" value="{{ date('Y-m-d') }}" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">
+                            <input type="date" name="checked_date" id="refcek_date" value="{{ date('Y-m-d') }}" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama SPV</label>
-                            <input type="text" name="supervisor_name" value="{{ $firstExp?->supervisor_name ?? 'Bpk. Bambang' }}" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none" placeholder="Bpk. Bambang">
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama SPV <span class="text-rose-500">*</span></label>
+                            <input type="text" name="supervisor_name" id="refcek_spv" value="{{ $firstExp?->supervisor_name ?? '-' }}" required class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none font-medium" placeholder="Bpk. Bambang">
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Performa</label>
-                            <textarea name="performance" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->performance_notes ?? 'Target tercapai dengan sangat baik' }}</textarea>
+                            <textarea name="performance_review" id="refcek_performance" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->performance_notes ?? 'Baik' }}</textarea>
                         </div>
 
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">disiplin</label>
-                            <textarea name="discipline" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->discipline_notes ?? 'Tepat waktu dan patuh SOP' }}</textarea>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Disiplin</label>
+                            <textarea name="discipline_review" id="refcek_discipline" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->discipline_notes ?? 'Tepat Waktu' }}</textarea>
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Tanggung Jawab</label>
-                            <textarea name="responsibility" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->responsibility_notes ?? 'Bertanggung jawab penuh atas kasir' }}</textarea>
+                            <textarea name="responsibility_review" id="refcek_responsibility" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->responsibility_notes ?? 'Bertanggung Jawab' }}</textarea>
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Problem / Masalah</label>
-                            <textarea name="problems" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">-</textarea>
+                            <textarea name="problem_notes" id="refcek_problem" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">-</textarea>
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Keunggulan</label>
-                            <textarea name="strengths" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->strengths ?? 'Cepat menghitung dan ramah pada konsumen' }}</textarea>
+                            <textarea name="strengths_identified" id="refcek_strengths" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->strengths ?? 'Problem solving cepat dan komunikatif.' }}</textarea>
                         </div>
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Kelemahan</label>
-                            <textarea name="weaknesses" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->weaknesses ?? 'Kadang kurang sabar saat antrean sangat panjang' }}</textarea>
+                            <textarea name="weaknesses_identified" id="refcek_weaknesses" rows="2" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">{{ $firstExp?->weaknesses ?? 'Terkadang terlalu detail.' }}</textarea>
                         </div>
 
                         <div class="pt-2">
-                            <button type="submit" class="px-6 py-2.5 rounded-xl text-xs font-bold bg-slate-800 hover:bg-slate-900 text-white shadow-sm transition-all">
-                                Submit
+                            <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-md shadow-primary-500/20 flex items-center gap-2">
+                                <i class="fa-solid fa-floppy-disk"></i>
+                                <span>Simpan Referensi Cek</span>
                             </button>
                         </div>
                     </div>
@@ -445,7 +555,7 @@
                     <div class="lg:col-span-5 space-y-4">
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Telp Perusahaan</label>
-                            <input type="text" name="company_phone" value="{{ $firstExp?->company_phone ?? '081234567890' }}" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">
+                            <input type="text" name="company_phone" id="refcek_phone" value="{{ $firstExp?->company_phone ?? '081234567890' }}" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none">
                         </div>
 
                         <div>
@@ -496,8 +606,37 @@
                             </div>
                         </div>
 
+                        <!-- Current Uploaded Proof Preview (Refcek) -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Lampiran Bukti Referensi Cek Tersimpan :</label>
+                            <div id="refcek_current_proof" class="p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                                <div id="refcek_has_proof" style="{{ ($firstExp && $firstExp->proof_url) ? '' : 'display:none;' }}" class="flex items-center justify-between gap-3">
+                                    <div class="flex items-center gap-2.5 min-w-0">
+                                        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 cursor-pointer shadow-xs group" onclick="previewCurrentRefcek()" title="Klik untuk preview lampiran">
+                                            <i class="fa-solid fa-file-shield text-base group-hover:scale-110 transition-transform"></i>
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="text-xs font-bold text-slate-800 truncate" id="refcek_proof_filename">{{ $firstExp ? basename($firstExp->proof_attachment_path) : '' }}</div>
+                                            <span class="text-[10px] text-emerald-600 font-semibold block">Bukti Verifikasi Terlampir (Server / Fallback V3)</span>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                                        <button type="button" onclick="previewCurrentRefcek()" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1">
+                                            <i class="fa-solid fa-eye text-xs"></i> Preview
+                                        </button>
+                                        <a href="{{ $firstExp?->proof_url ?? '#' }}" id="refcek_proof_link" target="_blank" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-primary hover:bg-slate-100 transition-colors inline-flex items-center gap-1 shadow-2xs">
+                                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Buka
+                                        </a>
+                                    </div>
+                                </div>
+                                <div id="refcek_no_proof" style="{{ ($firstExp && $firstExp->proof_url) ? 'display:none;' : '' }}" class="text-xs text-slate-400 italic text-center py-2">
+                                    <i class="fa-regular fa-image text-slate-300 mr-1"></i> Belum ada lampiran screenshot verifikasi untuk perusahaan ini
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Plus Button at bottom right -->
-                        <div class="flex justify-end pt-8">
+                        <div class="flex justify-end pt-4">
                             <button type="submit" class="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/25 transition-all" title="Tambah / Simpan Pengalaman">
                                 <i class="fa-solid fa-plus text-base font-black"></i>
                             </button>
@@ -509,36 +648,29 @@
         </div>
 
         <!-- ============================================================= -->
+        <!-- ============================================================= -->
         <!-- TAB 3: TES KOMPUTER (Matching Image 3) -->
         <!-- ============================================================= -->
         <div x-show="activeTab === 'kompt'" class="space-y-4">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                 <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
                     <i class="fa-solid fa-stopwatch text-slate-500"></i>
-                    <span>Waktu Pengerjaan : <strong>00:03:02</strong></span>
+                    <span>Waktu Pengerjaan : <strong>{{ $komptDuration ?? '00:03:02' }}</strong></span>
                 </div>
                 <span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
-                    Skor: Cukup (75%)
+                    Skor: {{ $komptSummaryLabel ?? 'Cukup (75%)' }}
                 </span>
             </div>
 
+            @if(!$hasKompt)
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-center gap-3 text-xs text-amber-800">
+                <i class="fa-solid fa-circle-info text-amber-500 text-base flex-shrink-0"></i>
+                <span>Data penilaian awal tes komputer belum tersimpan. Anda dapat menilai langsung indikator di bawah dan menekan tombol <strong>Submit</strong>.</span>
+            </div>
+            @endif
+
             <form action="{{ route('interview.kompt', $candidate->id) }}" method="POST" class="space-y-5">
                 @csrf
-
-                @php
-                    $compSkills = [
-                        'vlookup' => 'VLOOKUP',
-                        'hlookup' => 'HLOOKUP',
-                        'pivot' => 'PIVOT TABLE',
-                        'fungsiif' => 'FUNGSI IF',
-                        'average' => 'AVERAGE',
-                        'hitung' => 'PERKALIAN & PEMBAGIAN',
-                        'teliti' => 'KETELITIAN',
-                        'cepat' => 'KECEPATAN',
-                        'hasilkerja' => 'HASIL KERJA',
-                    ];
-                    $savedComp = json_decode($candidate->testResults->firstWhere('test_type', 'computer')?->test_details ?? '{}', true) ?: [];
-                @endphp
 
                 <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                     <table class="w-full text-xs text-left border-collapse">
@@ -551,19 +683,19 @@
                                 <td class="py-3 px-4 font-bold text-slate-800 w-72 uppercase tracking-wider text-xs">{{ $label }}</td>
                                 <td class="py-3 px-3">
                                     <label class="inline-flex items-center gap-2 cursor-pointer group">
-                                        <input type="radio" name="{{ $k }}" value="Baik" {{ $val === 'Baik' ? 'checked' : '' }} class="w-4 h-4 text-primary-600 focus:ring-primary-500 border-slate-300">
+                                        <input type="radio" name="{{ $k }}" value="Baik" {{ strtolower($val) === 'baik' ? 'checked' : '' }} class="w-4 h-4 text-primary-600 focus:ring-primary-500 border-slate-300">
                                         <span class="text-slate-700 group-hover:text-primary-600">Baik</span>
                                     </label>
                                 </td>
                                 <td class="py-3 px-3">
                                     <label class="inline-flex items-center gap-2 cursor-pointer group">
-                                        <input type="radio" name="{{ $k }}" value="Cukup" {{ ($val === 'Cukup' || empty($val)) ? 'checked' : '' }} class="w-4 h-4 text-primary-600 focus:ring-primary-500 border-slate-300">
+                                        <input type="radio" name="{{ $k }}" value="Cukup" {{ (strtolower($val) === 'cukup' || empty($val)) ? 'checked' : '' }} class="w-4 h-4 text-primary-600 focus:ring-primary-500 border-slate-300">
                                         <span class="text-slate-900 font-bold group-hover:text-primary-600">Cukup</span>
                                     </label>
                                 </td>
                                 <td class="py-3 px-3">
                                     <label class="inline-flex items-center gap-2 cursor-pointer group">
-                                        <input type="radio" name="{{ $k }}" value="Kurang" {{ $val === 'Kurang' ? 'checked' : '' }} class="w-4 h-4 text-primary-600 focus:ring-primary-500 border-slate-300">
+                                        <input type="radio" name="{{ $k }}" value="Kurang" {{ strtolower($val) === 'kurang' ? 'checked' : '' }} class="w-4 h-4 text-primary-600 focus:ring-primary-500 border-slate-300">
                                         <span class="text-slate-700 group-hover:text-primary-600">Kurang</span>
                                     </label>
                                 </td>
@@ -585,22 +717,23 @@
         <!-- TAB 4: TES KEPRIBADIAN (Matching Image 4) -->
         <!-- ============================================================= -->
         <div x-show="activeTab === 'kepribadian'" class="space-y-5">
+            @if($hasPsikotes)
             <!-- Header Bar with Timer & 4 Answer Badges -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
                 <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
                     <i class="fa-solid fa-clock text-slate-500"></i>
-                    <span>Waktu Pengerjaan : <strong>00:04:20</strong></span>
+                    <span>Waktu Pengerjaan : <strong>{{ $psikotesDuration }}</strong></span>
                 </div>
 
                 <div class="flex items-center flex-wrap gap-2 text-xs font-bold">
-                    <span class="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">Jawaban A : 17</span>
-                    <span class="px-3 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">Jawaban B : 7</span>
-                    <span class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">Jawaban C : 9</span>
-                    <span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">Jawaban D : 7</span>
+                    <span class="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">Jawaban A : {{ $psikotesCounts['A'] ?? 0 }}</span>
+                    <span class="px-3 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">Jawaban B : {{ $psikotesCounts['B'] ?? 0 }}</span>
+                    <span class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">Jawaban C : {{ $psikotesCounts['C'] ?? 0 }}</span>
+                    <span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">Jawaban D : {{ $psikotesCounts['D'] ?? 0 }}</span>
                 </div>
             </div>
 
-            <!-- Kesimpulan Box (Exact text from screenshot) -->
+            <!-- Kesimpulan Box -->
             <div class="bg-gradient-to-r from-amber-50/80 to-amber-100/50 border border-amber-200/80 rounded-2xl p-5 text-xs text-slate-800 leading-relaxed shadow-xs flex items-start gap-3.5">
                 <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 text-sm shadow-sm">
                     <i class="fa-solid fa-lightbulb"></i>
@@ -608,57 +741,12 @@
                 <div>
                     <h4 class="font-bold text-amber-900 text-sm mb-1">Kesimpulan Karakter:</h4>
                     <p class="text-slate-700">
-                        Memiliki kepribadian <strong class="text-slate-900 font-bold">Melankolis</strong>. Tipe ini paling baik dalam hal pekerjaan yang memerlukan keputusan cepat; persoalan yang memerlukan tindakan dan pencapaian seketika; bidang-bidang yang menuntut kontrol dan wewenang yang kuat. Kelemahan tipe ini adalah tidak tahu bagaimana cara menangani orang lain; sulit mengakui kesalahan; sulit bersikap sabar; terlalu pekerja keras.
+                        {{ $dominantDisc['summary'] }}
                     </p>
                 </div>
             </div>
 
-            <!-- 4-Column Table of 40 Questions (Exact screenshot layout) -->
-            @php
-                $qData = [
-                    1 => ['ans' => 'B', 'text' => 'Antusias'],
-                    2 => ['ans' => 'C', 'text' => 'Menyukai Logika dan Fakta'],
-                    3 => ['ans' => 'C', 'text' => 'Teguh Pendirian'],
-                    4 => ['ans' => 'A', 'text' => 'Toleran'],
-                    5 => ['ans' => 'A', 'text' => 'Menghargai'],
-                    6 => ['ans' => 'C', 'text' => 'Mandiri'],
-                    7 => ['ans' => 'A', 'text' => 'Perencana'],
-                    8 => ['ans' => 'A', 'text' => 'Terjadwal'],
-                    9 => ['ans' => 'B', 'text' => 'Optimis'],
-                    10 => ['ans' => 'B', 'text' => 'Humoris'],
-                    11 => ['ans' => 'B', 'text' => 'Penuh Strategi, Perasa dan Sabar'],
-                    12 => ['ans' => 'B', 'text' => 'Bersemangat'],
-                    13 => ['ans' => 'D', 'text' => 'Berkorban Tidak Menyakiti Hati Orang Lain'],
-                    14 => ['ans' => 'A', 'text' => 'Suka Mengintropeksi'],
-                    15 => ['ans' => 'D', 'text' => 'Mudah Membaur'],
-                    16 => ['ans' => 'C', 'text' => 'Berpendirian Teguh'],
-                    17 => ['ans' => 'B', 'text' => 'Penuh Semangat'],
-                    18 => ['ans' => 'A', 'text' => 'Suka Membuat Grafik dan Daftar Tugas'],
-                    19 => ['ans' => 'C', 'text' => 'Produktif'],
-                    20 => ['ans' => 'A', 'text' => 'Memiliki Batasan Dalam Berperilaku'],
-                    21 => ['ans' => 'A', 'text' => 'Pemalu'],
-                    22 => ['ans' => 'C', 'text' => 'Tidak Teratur'],
-                    23 => ['ans' => 'D', 'text' => 'Tidak Suka Terlibat Dalam Masalah Polik'],
-                    24 => ['ans' => 'B', 'text' => 'Mudah Lupa'],
-                    25 => ['ans' => 'A', 'text' => 'Sulit Percaya'],
-                    26 => ['ans' => 'A', 'text' => 'Tidak Populer'],
-                    27 => ['ans' => 'C', 'text' => 'Keras Kepala'],
-                    28 => ['ans' => 'D', 'text' => 'Dingin'],
-                    29 => ['ans' => 'A', 'text' => 'Mudah Merasa Terasing'],
-                    30 => ['ans' => 'C', 'text' => 'Nekat'],
-                    31 => ['ans' => 'A', 'text' => 'Menarik Diri Dari Pergaulan'],
-                    32 => ['ans' => 'D', 'text' => 'Tidak Suka Konflik'],
-                    33 => ['ans' => 'D', 'text' => 'Kurang Yakin'],
-                    34 => ['ans' => 'A', 'text' => 'Tertutup'],
-                    35 => ['ans' => 'A', 'text' => 'Moody'],
-                    36 => ['ans' => 'A', 'text' => 'Tidak Mudah Percaya'],
-                    37 => ['ans' => 'A', 'text' => 'Penyendiri'],
-                    38 => ['ans' => 'A', 'text' => 'Mudah Curiga'],
-                    39 => ['ans' => 'D', 'text' => 'Menolak Dilibatkan'],
-                    40 => ['ans' => 'C', 'text' => 'Cerdik dan Licik'],
-                ];
-            @endphp
-
+            <!-- 4-Column Table of Questions (Exact screenshot layout) -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 @for($col = 0; $col < 4; $col++)
                 <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs bg-white">
@@ -672,10 +760,13 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @for($i = ($col * 10) + 1; $i <= ($col * 10) + 10; $i++)
+                            @php
+                                $item = $psikotesItems[$i] ?? ['ans' => '-', 'text' => '-'];
+                            @endphp
                             <tr class="hover:bg-slate-50/70 transition-colors">
                                 <td class="py-2 px-2.5 text-center font-bold text-slate-400">{{ $i }}</td>
-                                <td class="py-2 px-2 text-center font-mono font-bold text-primary-700 bg-slate-50/50">{{ $qData[$i]['ans'] }}</td>
-                                <td class="py-2 px-2.5 text-slate-700 leading-tight">{{ $qData[$i]['text'] }}</td>
+                                <td class="py-2 px-2 text-center font-mono font-bold text-primary-700 bg-slate-50/50">{{ $item['ans'] }}</td>
+                                <td class="py-2 px-2.5 text-slate-700 leading-tight">{{ $item['text'] }}</td>
                             </tr>
                             @endfor
                         </tbody>
@@ -683,6 +774,17 @@
                 </div>
                 @endfor
             </div>
+            @else
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <h4 class="text-sm font-bold text-slate-800">Kandidat Belum Mengikuti Tes Kepribadian</h4>
+                <p class="text-xs text-slate-500 max-w-md mx-auto">
+                    Kandidat belum menyelesaikan Tes Kepribadian (DISC). Hasil tes dan rincian 40 butir jawaban akan otomatis tersinkronisasi di sini setelah kandidat menyelesaikan tes online.
+                </p>
+            </div>
+            @endif
         </div>
 
         <!-- ============================================================= -->
@@ -693,10 +795,10 @@
                 <div class="flex items-center gap-3">
                     <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
                         <i class="fa-solid fa-stopwatch text-slate-500"></i>
-                        <span>Waktu Pengerjaan : <strong>00:02:00</strong></span>
+                        <span>Waktu Pengerjaan : <strong>{{ $mathDuration }}</strong></span>
                     </div>
                     <span class="text-xs font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-                        Tes Ke - 1
+                        Tes Ke - {{ $mathTesKe }}
                     </span>
                 </div>
 
@@ -711,52 +813,8 @@
                 </form>
             </div>
 
-            <!-- Table of 10 Math Questions (Exact from screenshot) -->
-            @php
-                $mathItems = [
-                    1 => [
-                        'q' => 'Ani membeli Lampu Philips 50 Watt Seharga Rp. 200.000,- di C4 Buaran, dan di C4 Sedang ada Promo Diskon 15% Untuk Pembelian Lampu Philips. Berapa Rupiah Yang Harus Dibayar Ani?',
-                        'cand' => '170000', 'key' => '170000', 'correct' => true
-                    ],
-                    2 => [
-                        'q' => 'Yani Membeli 2 Buah Bedak Loreal Seharga Rp. 350.000,- di Matahari Departemen Store Pejaten dan Sedang Ada Promo Untuk Pembelian Kedua Diskon 35%. Berapa Rupiah Yang Harus Dibayar Yani?',
-                        'cand' => '390000', 'key' => '405000', 'correct' => false
-                    ],
-                    3 => [
-                        'q' => 'SPG Dancow di C4 Cempaka Mas Mempunyai Target Sebanyak Rp. 7.000.000,- dan Baru Mencapai Target Sebanyak Rp. 5.000.000,-. Sudah Berapa Persen Pencapaian SPG Tersebut?',
-                        'cand' => '71,42%', 'key' => '71,42%', 'correct' => true
-                    ],
-                    4 => [
-                        'q' => 'Bagas Membeli Wafer TimTam 200gr Seharga Rp. 5.250,- sebanyak 15 Bungkus di Lotte Kelapa Gading dan Sedang Ada Promo Diskon 15%. Berapa Rupiah Yang Harus Dibayar Bagas?',
-                        'cand' => 'A', 'key' => 'A', 'correct' => true
-                    ],
-                    5 => [
-                        'q' => 'Putri Membeli Boneka Rp. 50.000,- Kemudian Boneka itu Dijual kembali dengan Harga Rp. 60.000. Berapa persen Keuntungan Putri?',
-                        'cand' => 'D', 'key' => 'D', 'correct' => true
-                    ],
-                    6 => [
-                        'q' => 'Lanjutan perhitungan berikut 24, 20, 16, 12, ......',
-                        'cand' => '8', 'key' => '8,4', 'correct' => false
-                    ],
-                    7 => [
-                        'q' => 'Ibu mempunyai uang sebesar Rp. 30.000,- Uang itu dibelikan lauk pauk Rp. 12.000,- Sayuran Rp. 4.000,- dan Minyak Goreng Rp. 4.000,- Berapa Sisa uang ibu?',
-                        'cand' => 'B', 'key' => 'B', 'correct' => true
-                    ],
-                    8 => [
-                        'q' => 'Angga mempunyai uang sebesar Rp. 4.500.000,- dan ia berniat membeli sebuah handicam seharga Rp. 2.500.000,- sebelum diskon. harga handycam tersebut adalah 20% setelah itu Angga juga membelanjakan uangnya untuk keperluan lain sebesar Rp. 1.500.000,-. Berapa sisa uang Angga Saat ini?',
-                        'cand' => 'A', 'key' => 'A', 'correct' => true
-                    ],
-                    9 => [
-                        'q' => 'Sinta membeli 2 pcs pelembab Loreal seharga Rp. 80.000,- untuk satu pelembab dan di MDS Pejaten sedang ada promosi untuk pembelian kedua diskon 75%. Berapa Rupiah yang harus dibayar santi?',
-                        'cand' => '100000', 'key' => '100000', 'correct' => true
-                    ],
-                    10 => [
-                        'q' => 'SPG Arnotts di C4 KLL mempunyai target sebanyak Rp. 12.000.000,- dan baru mencapai target sebanyak Rp. 5.000.000,-. Sudah berapa persen pencapaian SPG tersebut?',
-                        'cand' => '41,67%', 'key' => '41,67%', 'correct' => true
-                    ],
-                ];
-            @endphp
-
+            @if($hasMath && count($mathItems) > 0)
+            <!-- Table of Math Questions -->
             <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                 <table class="w-full text-xs text-left">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px]">
@@ -792,21 +850,323 @@
             <div class="grid grid-cols-3 gap-4 pt-2">
                 <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
                     <span class="text-[11px] font-semibold text-emerald-700 block">Jawaban Benar</span>
-                    <span class="text-xl font-black text-emerald-900">8</span>
+                    <span class="text-xl font-black text-emerald-900">{{ $mathCorrectCount }}</span>
                 </div>
                 <div class="bg-rose-50 border border-rose-200 rounded-xl p-3 text-center">
                     <span class="text-[11px] font-semibold text-rose-700 block">Jawaban Salah</span>
-                    <span class="text-xl font-black text-rose-900">2</span>
+                    <span class="text-xl font-black text-rose-900">{{ $mathWrongCount }}</span>
                 </div>
                 <div class="bg-primary-50 border border-primary-200 rounded-xl p-3 text-center">
                     <span class="text-[11px] font-semibold text-primary-700 block">Nilai Akhir</span>
-                    <span class="text-xl font-black text-primary-900">B</span>
+                    <span class="text-xl font-black text-primary-900">{{ $mathGrade }} ({{ $mathScorePercent }}%)</span>
                 </div>
             </div>
+            @else
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-calculator"></i>
+                </div>
+                <h4 class="text-sm font-bold text-slate-800">Kandidat Belum Mengikuti Tes Matematika</h4>
+                <p class="text-xs text-slate-500 max-w-md mx-auto">
+                    Kandidat belum menyelesaikan Tes Matematika. Data nilai, rincian benar/salah, dan pembahasan butir soal akan otomatis terisi setelah kandidat menyelesaikan ujian.
+                </p>
+            </div>
+            @endif
         </div>
 
         <!-- ============================================================= -->
-        <!-- TAB 6: USER PRINCIPLE (Matching Legacy App) -->
+        <!-- TAB 6: ANALISA AI (CV ANALYZER RESULT) - Sesuai Skrip Asli & Tab 6 -->
+        <!-- ============================================================= -->
+        <div x-show="activeTab === 'ai'" class="space-y-6">
+            @php
+                $matchScore = intval($aiData['evaluation_match_score'] ?? ($candidate->ai_score ?? 0));
+                $scoreColorHex = '#059669'; // emerald-600
+                $scoreBadgeBg = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                if ($matchScore < 60) {
+                    $scoreColorHex = '#e11d48'; // rose-600
+                    $scoreBadgeBg = 'bg-rose-50 text-rose-700 border-rose-200';
+                } elseif ($matchScore < 85) {
+                    $scoreColorHex = '#d97706'; // amber-600
+                    $scoreBadgeBg = 'bg-amber-50 text-amber-700 border-amber-200';
+                }
+            @endphp
+
+            <!-- Top Header Banner with Download PDF & Re-Analyze Buttons -->
+            <div class="p-4 bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 rounded-2xl border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-11 h-11 rounded-2xl bg-gradient-to-tr from-primary-600 to-indigo-600 text-white flex items-center justify-center text-xl shadow-md shadow-primary-500/20 flex-shrink-0">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-extrabold text-slate-900">AI CV Analyzer Recommendation</h3>
+                        <p class="text-[11px] text-slate-500">Hasil evaluasi komprehensif profil kandidat & kesesuaian requirement lowongan</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 flex-wrap">
+                    <!-- Download PDF Button (Sesuai Skrip Aslinya!) -->
+                    <a href="{{ route('interview.cetak-ai', $candidate->id) }}" target="_blank" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-sm shadow-rose-600/20 flex items-center gap-2">
+                        <i class="fa-solid fa-file-pdf text-sm"></i>
+                        <span>Download PDF</span>
+                    </a>
+
+                    <button type="button" @click="alert('Memulai evaluasi ulang berkas CV kandidat...')" class="px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrows-rotate text-primary-600"></i>
+                        <span>Analisis Ulang CV</span>
+                    </button>
+                </div>
+            </div>
+
+            @if(!empty($aiData))
+            <!-- Section 1: Radial Gauge Match & Candidate Biodata -->
+            <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
+                <!-- Match Gauge Box -->
+                <div class="md:col-span-4 bg-slate-50 rounded-2xl border border-slate-200 p-6 flex flex-col items-center justify-center text-center">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Evaluation Match Score</div>
+                    
+                    <!-- Circular Gauge -->
+                    <div class="relative w-36 h-36 rounded-full flex items-center justify-center shadow-sm"
+                         style="background: conic-gradient({{ $scoreColorHex }} {{ $matchScore }}%, #e2e8f0 0);">
+                            <div class="w-28 h-28 bg-white rounded-full flex flex-col items-center justify-center shadow-inner">
+                                <span class="text-3xl font-black text-slate-900 leading-none">{{ $matchScore }}%</span>
+                                <span class="text-[10px] font-extrabold uppercase mt-1" style="color: {{ $scoreColorHex }}">
+                                    {{ $aiData['specification_fit'] ?? 'Specification Fit' }}
+                                </span>
+                            </div>
+                    </div>
+
+                    <p class="text-[11px] text-slate-500 mt-4 leading-relaxed max-w-xs">
+                        Kandidat memiliki tingkat kecocokan <b>{{ $matchScore }}%</b> terhadap kualifikasi posisi <b>{{ $candidate->applied_job }}</b>.
+                    </p>
+                </div>
+
+                <!-- Candidate Biodata Card -->
+                <div class="md:col-span-8 bg-white rounded-2xl border border-slate-200 p-6 flex flex-col justify-between">
+                    <div>
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Candidate Biodata</div>
+                        <h4 class="text-base font-extrabold text-primary-600 mb-3">
+                            {{ $aiData['candidate_biodata']['name'] ?? $candidate->full_name }}
+                        </h4>
+                        <table class="w-full text-xs">
+                            <tr class="border-b border-slate-100">
+                                <td class="py-2 text-slate-400 font-medium w-28">Contact</td>
+                                <td class="py-2 text-slate-800 font-bold">: {{ $aiData['candidate_biodata']['contact'] ?? ($candidate->whatsapp ?: $candidate->phone ?: '-') }}</td>
+                            </tr>
+                            <tr class="border-b border-slate-100">
+                                <td class="py-2 text-slate-400 font-medium">Education</td>
+                                <td class="py-2 text-slate-800 font-bold">: {{ $aiData['candidate_biodata']['education'] ?? ($candidate->education ?: '-') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="py-2 text-slate-400 font-medium">Position Applied</td>
+                                <td class="py-2 text-slate-800 font-bold">: {{ $candidate->applied_job }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="pt-3 border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400">
+                        <span>Status Seleksi: <strong class="text-slate-700">{{ $candidate->status_kandidat ?? 'Aktif' }}</strong></span>
+                        <span>Area: <strong class="text-slate-700">{{ $candidate->area ?? 'JAKARTA' }}</strong></span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 2: Core Strengths & Weaknesses / Missing Gaps -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Core Strengths -->
+                <div class="bg-white rounded-2xl border border-emerald-200 overflow-hidden shadow-xs">
+                    <div class="px-5 py-3 bg-emerald-50/70 border-b border-emerald-100 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                        <h5 class="text-xs font-bold text-emerald-900 uppercase tracking-wider">Core Strengths</h5>
+                    </div>
+                    <div class="p-5">
+                        <ul class="space-y-2 text-xs text-slate-700">
+                            @forelse((array)($aiData['core_strengths'] ?? []) as $str)
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-check text-emerald-600 text-xs mt-0.5 flex-shrink-0"></i>
+                                <span class="leading-relaxed">{{ $str }}</span>
+                            </li>
+                            @empty
+                            <li class="text-slate-400 italic">Tidak ada catatan keunggulan khusus.</li>
+                            @endforelse
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Weaknesses / Missing Gaps -->
+                <div class="bg-white rounded-2xl border border-rose-200 overflow-hidden shadow-xs">
+                    <div class="px-5 py-3 bg-rose-50/70 border-b border-rose-100 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-xmark text-rose-600"></i>
+                        <h5 class="text-xs font-bold text-rose-900 uppercase tracking-wider">Weaknesses / Missing Gaps</h5>
+                    </div>
+                    <div class="p-5">
+                        <ul class="space-y-2 text-xs text-slate-700">
+                            @forelse((array)($aiData['weaknesses'] ?? []) as $weak)
+                            <li class="flex items-start gap-2">
+                                <i class="fa-solid fa-xmark text-rose-500 text-xs mt-0.5 flex-shrink-0"></i>
+                                <span class="leading-relaxed">{{ $weak }}</span>
+                            </li>
+                            @empty
+                            <li class="text-slate-400 italic">Tidak ada catatan kelemahan signifikan.</li>
+                            @endforelse
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Psychological Traits & Core Skills & Other Candidates -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Psychological Traits & Culture Fit -->
+                <div class="bg-white rounded-2xl border border-indigo-200 overflow-hidden shadow-xs space-y-4 p-5">
+                    <div class="flex items-center gap-2 pb-2 border-b border-slate-100">
+                        <i class="fa-solid fa-brain text-indigo-600"></i>
+                        <h5 class="text-xs font-bold text-indigo-900 uppercase tracking-wider">Psychological Traits & Culture Fit</h5>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">Personality Traits</span>
+                        <div class="flex flex-wrap gap-1.5">
+                            @forelse((array)($aiData['psychological_traits']['personality'] ?? []) as $trait)
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                {{ $trait }}
+                            </span>
+                            @empty
+                            <span class="text-xs text-slate-400 italic">-</span>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Work Style</span>
+                        <p class="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200 leading-relaxed">
+                            {{ $aiData['psychological_traits']['work_style'] ?? '-' }}
+                        </p>
+                    </div>
+
+                    <div>
+                        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Cultural Fit</span>
+                        <p class="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200 leading-relaxed">
+                            {{ $aiData['psychological_traits']['cultural_fit'] ?? '-' }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Core Skills Evaluation & Other Candidates Comparison -->
+                <div class="space-y-6">
+                    <!-- Core Skills -->
+                    <div class="bg-white rounded-2xl border border-sky-200 overflow-hidden shadow-xs p-5">
+                        <div class="flex items-center gap-2 pb-2 border-b border-slate-100 mb-3">
+                            <i class="fa-solid fa-screwdriver-wrench text-sky-600"></i>
+                            <h5 class="text-xs font-bold text-sky-900 uppercase tracking-wider">Core Skills Evaluation</h5>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                            @forelse((array)($aiData['core_skills'] ?? []) as $skill)
+                            <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200">
+                                {{ $skill }}
+                            </span>
+                            @empty
+                            <span class="text-xs text-slate-400 italic">Tidak ada daftar core skills khusus.</span>
+                            @endforelse
+                        </div>
+                    </div>
+
+                    <!-- Other Candidates Comparison -->
+                    <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                        <div class="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+                            <i class="fa-solid fa-users text-slate-500"></i>
+                            <h5 class="text-xs font-bold text-slate-800 uppercase tracking-wider">Other Candidates Comparison</h5>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            @forelse($otherCandidates as $oc)
+                            @php
+                                $ocScore = intval($oc->ai_score ?? 0);
+                                $ocBadgeClass = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                                if ($ocScore < 60) {
+                                    $ocBadgeClass = 'bg-rose-50 text-rose-700 border-rose-200';
+                                } elseif ($ocScore < 85) {
+                                    $ocBadgeClass = 'bg-amber-50 text-amber-700 border-amber-200';
+                                }
+                            @endphp
+                            <div class="px-4 py-2.5 flex items-center justify-between text-xs hover:bg-slate-50 transition-colors">
+                                <div class="font-bold text-slate-800">{{ $oc->full_name }}</div>
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-extrabold border {{ $ocBadgeClass }}">
+                                    {{ $ocScore }}% Fit
+                                </span>
+                            </div>
+                            @empty
+                            <div class="p-4 text-center text-xs text-slate-400 italic">
+                                Belum ada kandidat lain yang dianalisa pada posisi {{ $candidate->applied_job }}.
+                            </div>
+                            @endforelse
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Work History & Experience -->
+            <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
+                <div class="px-5 py-3 bg-slate-50 border-b border-slate-200 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-slate-600"></i>
+                    <h5 class="text-xs font-bold text-slate-900 uppercase tracking-wider">Work History & Experience</h5>
+                </div>
+                <div class="p-5">
+                    <ul class="space-y-2.5 text-xs text-slate-700">
+                        @forelse((array)($aiData['work_history'] ?? []) as $wh)
+                        <li class="flex items-start gap-2.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-primary-600 mt-1.5 flex-shrink-0"></span>
+                            <span class="leading-relaxed">{{ $wh }}</span>
+                        </li>
+                        @empty
+                        <li class="text-slate-400 italic">Belum ada riwayat pengalaman kerja tercatat di berkas CV.</li>
+                        @endforelse
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Section 5: Data Verification (CV vs Form Input) if exists -->
+            @if(!empty($aiData['data_discrepancy']))
+            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-xs">
+                <div class="flex items-center gap-2 mb-2 text-amber-900 font-bold text-xs uppercase tracking-wider">
+                    <i class="fa-solid fa-triangle-exclamation text-amber-600"></i>
+                    <span>Data Verification (CV vs Form Input)</span>
+                </div>
+                <p class="text-xs text-amber-950 leading-relaxed font-medium">
+                    {!! nl2br(e($aiData['data_discrepancy'])) !!}
+                </p>
+            </div>
+            @endif
+
+            <!-- Section 6: Final Recruiter Recommendation -->
+            <div class="bg-gradient-to-r from-emerald-50/90 to-teal-50/70 border border-emerald-200 rounded-2xl p-5 shadow-xs">
+                <div class="flex items-center gap-2 mb-2 text-emerald-900 font-bold text-xs uppercase tracking-wider">
+                    <i class="fa-solid fa-medal text-emerald-600"></i>
+                    <span>Final Recruiter Recommendation</span>
+                </div>
+                <p class="text-xs text-slate-800 leading-relaxed font-medium">
+                    {!! nl2br(e($aiData['recommendation'] ?? ($aiData['ai_verdict'] ?? 'Kandidat memiliki rekam jejak kerja yang relevan dan kualifikasi yang sesuai untuk tahapan rekrutmen.'))) !!}
+                </p>
+            </div>
+
+            @else
+            <!-- Empty State -->
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-10 text-center space-y-4">
+                <div class="w-16 h-16 rounded-3xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto text-2xl shadow-inner">
+                    <i class="fa-solid fa-robot"></i>
+                </div>
+                <div>
+                    <h4 class="text-base font-bold text-slate-800">Belum Ada Analisa AI</h4>
+                    <p class="text-xs text-slate-500 max-w-md mx-auto mt-1">
+                        Berkas CV kandidat belum dianalisis secara otomatis oleh AI CV Analyzer. Klik tombol di bawah untuk memulai analisa kecocokan kualifikasi.
+                    </p>
+                </div>
+                <button type="button" @click="alert('Memulai analisa AI CV...')" class="px-5 py-2.5 rounded-xl bg-primary-600 hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-md shadow-primary-500/20 inline-flex items-center gap-2">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    <span>Analisa CV Sekarang</span>
+                </button>
+            </div>
+            @endif
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 7: USER PRINCIPLE (Matching Legacy App) -->
         <!-- ============================================================= -->
         <div x-show="activeTab === 'userprinsiple'" class="space-y-6">
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -821,21 +1181,73 @@
                     <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-2 text-xs text-slate-700">
                         <div class="flex items-center justify-between">
                             <span class="text-slate-500 font-medium">Nama Approver:</span>
-                            <strong class="text-slate-900">{{ $candidate->principle->name ?? 'PT ARINA MULTI KARYA' }} (Manager)</strong>
+                            <strong class="text-slate-900">
+                                @if($candidate->approverPrinsiple)
+                                    {{ $candidate->approverPrinsiple->nama_lengkap }} ({{ $candidate->approverPrinsiple->jabatan ?? 'Manager' }})
+                                @elseif($candidate->principle)
+                                    {{ $candidate->principle->name }} (Manager)
+                                @else
+                                    PT ARINA MULTI KARYA (Manager)
+                                @endif
+                            </strong>
                         </div>
                         <div class="flex items-center justify-between border-t border-slate-200/60 pt-2">
                             <span class="text-slate-500 font-medium">Status Approval:</span>
-                            <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                Menunggu Approval
-                            </span>
+                            @if(in_array(strtolower($candidate->status_approval ?? ''), ['approve', 'approved']))
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                    Approved
+                                </span>
+                            @elseif(in_array(strtolower($candidate->status_approval ?? ''), ['tolak', 'rejected']))
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                    Rejected
+                                </span>
+                            @else
+                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                    Menunggu Approval
+                                </span>
+                            @endif
                         </div>
                     </div>
 
                     <div class="pt-2">
                         <label class="block text-xs font-bold text-slate-700 mb-1.5">Note Prinsiple :</label>
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-500 italic leading-relaxed">
-                            Belum ada catatan persetujuan dari User Prinsiple.
+                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs {{ !empty($candidate->note_principle) ? 'text-slate-700 font-medium' : 'text-slate-500 italic' }} leading-relaxed">
+                            {{ $candidate->note_principle ?: 'Belum ada catatan persetujuan dari User Prinsiple.' }}
                         </div>
+                    </div>
+
+                    <!-- Lampiran Bukti Approval Prinsiple (Screenshot WA / TTD Digital) -->
+                    <div class="pt-2">
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Lampiran Bukti Approval Prinsiple :</label>
+                        @if($candidate->approval_proof_url)
+                            <div class="p-3.5 bg-white border border-slate-200 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                                <div class="flex items-center gap-3 min-w-0">
+                                    <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 cursor-pointer group relative" onclick="openCandidateMedia('image', '{{ $candidate->approval_proof_url }}', 'Bukti Approval Prinsiple: {{ addslashes($candidate->full_name) }}')">
+                                        <img src="{{ $candidate->approval_proof_url }}" alt="Approval Proof" class="w-full h-full object-cover transition-transform group-hover:scale-105" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-slate-400 bg-slate-50\'><i class=\'fa-solid fa-file-image text-lg\'></i></div>';">
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="text-xs font-bold text-slate-900 truncate">{{ basename($candidate->ttd_prinsiple) }}</div>
+                                        <div class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
+                                            <i class="fa-solid fa-circle-check text-[9px]"></i> Berkas Tersimpan / Fallback Live V3
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-shrink-0">
+                                    <button type="button" onclick="openCandidateMedia('image', '{{ $candidate->approval_proof_url }}', 'Bukti Approval Prinsiple: {{ addslashes($candidate->full_name) }}')" class="px-3 py-1.5 rounded-xl bg-primary-50 text-primary-700 hover:bg-primary-100 text-xs font-bold transition-colors inline-flex items-center gap-1.5">
+                                        <i class="fa-solid fa-eye text-xs"></i>
+                                        <span>Preview</span>
+                                    </button>
+                                    <a href="{{ $candidate->approval_proof_url }}" target="_blank" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition-colors inline-flex items-center gap-1.5">
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                                        <span>Buka</span>
+                                    </a>
+                                </div>
+                            </div>
+                        @else
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-400 italic">
+                                Belum ada berkas lampiran bukti approval dari User Prinsiple.
+                            </div>
+                        @endif
                     </div>
                 </div>
 
@@ -851,9 +1263,14 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama Approver Prinsiple</label>
                             <select name="userprinsiple" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none" required>
-                                @foreach($principles as $p)
-                                    <option value="{{ $p->id }}">{{ $p->name }} - Manager Area</option>
-                                @endforeach
+                                <option value="" disabled {{ empty($candidate->idprinsiple) ? 'selected' : '' }}>-- Pilih User Prinsiple ({{ $candidate->area ?? 'Area' }}) --</option>
+                                @forelse($userPrinsiples ?? $candidate->user_prinsiple_options as $up)
+                                    <option value="{{ $up->id }}" {{ (old('userprinsiple', $candidate->idprinsiple) == $up->id) ? 'selected' : '' }}>
+                                        {{ $up->nama_lengkap }} - {{ $up->jabatan }} ({{ $up->prinsiple }} - {{ $up->area }})
+                                    </option>
+                                @empty
+                                    <option value="" disabled>Tidak ada User Prinsiple yang cocok di area ini</option>
+                                @endforelse
                             </select>
                         </div>
 
@@ -861,8 +1278,8 @@
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Yes / No</label>
                             <select name="statusapprove" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none" required>
                                 <option value="" selected disabled>Pilih Hasil Approval</option>
-                                <option value="Yes">Yes</option>
-                                <option value="No">No</option>
+                                <option value="Yes" {{ in_array(strtolower($candidate->status_approval ?? ''), ['approve', 'approved']) ? 'selected' : '' }}>Yes</option>
+                                <option value="No" {{ in_array(strtolower($candidate->status_approval ?? ''), ['tolak', 'rejected']) ? 'selected' : '' }}>No</option>
                             </select>
                         </div>
 
@@ -895,7 +1312,7 @@
                         </div>
 
                         <div class="pt-2">
-                            <button type="button" class="w-full py-3 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2">
+                            <button type="submit" class="w-full py-3 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-paper-plane text-xs"></i>
                                 <span>Set & Send To User Prinsiple</span>
                             </button>
@@ -1080,6 +1497,9 @@
             </form>
         </div>
     </div>
+
+    <!-- CANDIDATE MEDIA PREVIEW MODAL -->
+    @include('partials.candidate-media-modal')
 </div>
 
 @push('scripts')
@@ -1100,6 +1520,77 @@
                 }
             };
             reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // --- REFERENSI CEK DROPDOWN & PROOF HANDLER ---
+    const candidateWorkExps = @json($candidate->workExperiences);
+
+    function handleCompanySelect(val) {
+        const customWrapper = document.getElementById('customCompanyWrapper');
+        const customInput = document.getElementById('customCompanyName');
+
+        if (val === 'new') {
+            if (customWrapper) customWrapper.style.display = 'block';
+            if (customInput) {
+                customInput.value = '';
+                customInput.focus();
+            }
+            if (document.getElementById('refcek_spv')) document.getElementById('refcek_spv').value = '';
+            if (document.getElementById('refcek_phone')) document.getElementById('refcek_phone').value = '';
+            if (document.getElementById('refcek_performance')) document.getElementById('refcek_performance').value = 'Baik';
+            if (document.getElementById('refcek_discipline')) document.getElementById('refcek_discipline').value = 'Tepat Waktu';
+            if (document.getElementById('refcek_responsibility')) document.getElementById('refcek_responsibility').value = 'Bertanggung Jawab';
+            if (document.getElementById('refcek_strengths')) document.getElementById('refcek_strengths').value = '';
+            if (document.getElementById('refcek_weaknesses')) document.getElementById('refcek_weaknesses').value = '';
+            return;
+        }
+
+        if (customWrapper) customWrapper.style.display = 'none';
+
+        const exp = candidateWorkExps.find(e => e.id == val);
+        if (exp) {
+            if (document.getElementById('refcek_spv')) document.getElementById('refcek_spv').value = exp.supervisor_name || '';
+            if (document.getElementById('refcek_phone')) document.getElementById('refcek_phone').value = exp.company_phone || '';
+            if (document.getElementById('refcek_performance')) document.getElementById('refcek_performance').value = exp.performance_notes || exp.performa || 'Baik';
+            if (document.getElementById('refcek_discipline')) document.getElementById('refcek_discipline').value = exp.discipline_notes || exp.disiplin || 'Tepat Waktu';
+            if (document.getElementById('refcek_responsibility')) document.getElementById('refcek_responsibility').value = exp.responsibility_notes || exp.tanggungjawab || 'Bertanggung Jawab';
+            if (document.getElementById('refcek_strengths')) document.getElementById('refcek_strengths').value = exp.strengths || exp.streng || '';
+            if (document.getElementById('refcek_weaknesses')) document.getElementById('refcek_weaknesses').value = exp.weaknesses || exp.week || '';
+            updateRefcekProofUI(exp);
+        } else {
+            updateRefcekProofUI(null);
+        }
+    }
+
+    let currentExpProofUrl = '{{ $firstExp?->proof_url ?? "" }}';
+    let currentExpCompanyName = '{{ addslashes($firstExp?->company_name ?? "") }}';
+
+    function updateRefcekProofUI(exp) {
+        const hasProofBox = document.getElementById('refcek_has_proof');
+        const noProofBox = document.getElementById('refcek_no_proof');
+        const filenameEl = document.getElementById('refcek_proof_filename');
+        const linkEl = document.getElementById('refcek_proof_link');
+
+        if (exp && exp.proof_url) {
+            currentExpProofUrl = exp.proof_url;
+            currentExpCompanyName = exp.company_name || '';
+            const fname = (exp.proof_attachment_path || '').split('/').pop().split('\\').pop();
+            if (filenameEl) filenameEl.textContent = fname;
+            if (linkEl) linkEl.href = exp.proof_url;
+            if (hasProofBox) hasProofBox.style.display = 'flex';
+            if (noProofBox) noProofBox.style.display = 'none';
+        } else {
+            currentExpProofUrl = '';
+            currentExpCompanyName = '';
+            if (hasProofBox) hasProofBox.style.display = 'none';
+            if (noProofBox) noProofBox.style.display = 'block';
+        }
+    }
+
+    function previewCurrentRefcek() {
+        if (currentExpProofUrl) {
+            openCandidateMedia('image', currentExpProofUrl, 'Bukti Referensi Cek: ' + currentExpCompanyName);
         }
     }
 

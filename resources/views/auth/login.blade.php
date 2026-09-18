@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="id" class="h-full bg-slate-900">
+<html lang="id" class="min-h-full bg-slate-900">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -41,13 +41,13 @@
         }
     </script>
 </head>
-<body class="h-full font-sans antialiased text-slate-800 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex items-center justify-center p-4 relative overflow-x-hidden">
+<body class="min-h-screen font-sans antialiased text-slate-800 bg-gradient-to-br from-slate-950 via-blue-950 to-slate-900 flex flex-col justify-center items-center py-10 sm:py-16 px-4 relative overflow-x-hidden">
 
     <!-- Ambient Glowing Orbs -->
     <div class="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
     <div class="absolute -bottom-32 -right-32 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl pointer-events-none"></div>
 
-    <div class="w-full max-w-md relative z-10 space-y-6">
+    <div class="w-full max-w-md relative z-10 my-auto space-y-6">
         <!-- Top Brand Header -->
         <div class="text-center space-y-2">
             <a href="{{ route('home.index') }}" class="inline-flex items-center gap-3 group">
@@ -152,19 +152,14 @@
                     </button>
                 </div>
             </form>
+        </div>
 
-            <!-- Quick Demo Credentials Helper -->
-            <div class="pt-4 border-t border-slate-100 space-y-2">
-                <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block text-center">Akun Demo Cepat:</span>
-                <div class="grid grid-cols-2 gap-2">
-                    <button type="button" onclick="fillCredential('admin@asystem.co.id', 'password')" class="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-primary text-[11px] font-bold transition-colors">
-                        Admin HR
-                    </button>
-                    <button type="button" onclick="fillCredential('recruiter@asystem.co.id', 'password')" class="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold transition-colors">
-                        Recruiter
-                    </button>
-                </div>
-            </div>
+        <!-- Link ke Portal CBT Peserta Ujian -->
+        <div class="text-center">
+            <a href="{{ route('cbt.login') }}" class="inline-flex items-center gap-2 text-xs font-bold text-blue-200 hover:text-white bg-white/10 hover:bg-white/20 px-4 py-2.5 rounded-xl border border-white/20 transition-all shadow-sm">
+                <i class="fa-solid fa-laptop-code text-blue-300"></i>
+                <span>Peserta Ujian? Masuk ke Portal CBT Online &rarr;</span>
+            </a>
         </div>
 
         <!-- Back to Home Link -->
@@ -189,11 +184,6 @@
             icon.classList.remove('fa-eye-slash');
             icon.classList.add('fa-eye');
         }
-    }
-
-    function fillCredential(email, pass) {
-        document.getElementById('email').value = email;
-        document.getElementById('password').value = pass;
     }
     </script>
 </body>

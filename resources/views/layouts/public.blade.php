@@ -93,6 +93,7 @@
     </style>
 </head>
 <body class="flex flex-col min-h-screen antialiased text-slate-800" x-data="{ mobileMenuOpen: false }">
+    @include('partials.page-loader')
 
     <!-- PUBLIC TOP BAR -->
     <header class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/80 transition-all">
@@ -150,9 +151,13 @@
                             <i class="fa-solid fa-briefcase"></i>
                             <span>Cari Lowongan</span>
                         </a>
+                        <a href="https://asystem.co.id/v3/login" target="_blank" class="btn-att-secondary text-xs border border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-indigo-500"></i>
+                            <span>ASystem V3</span>
+                        </a>
                         <a href="{{ route('login') }}" class="btn-att-secondary text-xs">
                             <i class="fa-solid fa-arrow-right-to-bracket text-slate-400"></i>
-                            <span>Login Karyawan</span>
+                            <span>Talent Pool Login</span>
                         </a>
                     @endauth
                 </div>
@@ -180,9 +185,17 @@
                 @auth
                     <a href="{{ route('fitur.index') }}" class="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold text-center">Ke Dashboard</a>
                 @else
-                    <a href="{{ route('login') }}" class="w-full py-2.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold text-center flex items-center justify-center gap-2">
-                        <i class="fa-solid fa-arrow-right-to-bracket text-slate-500"></i>
-                        <span>Login Karyawan / User</span>
+                    <a href="{{ route('login') }}" class="w-full py-2.5 rounded-xl bg-primary text-white text-xs font-bold text-center flex items-center justify-center gap-2 shadow-sm">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        <span>Talent Pool / Rekrutmen - Login Disini</span>
+                    </a>
+                    <a href="https://asystem.co.id/v3/login" target="_blank" class="w-full py-2.5 rounded-xl bg-indigo-50 text-indigo-700 text-xs font-bold text-center flex items-center justify-center gap-2 border border-indigo-200">
+                        <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                        <span>Fitur Lain - Akses ASystem V3</span>
+                    </a>
+                    <a href="{{ route('cbt.login') }}" class="w-full py-2.5 rounded-xl bg-slate-100 text-slate-800 text-xs font-bold text-center flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-laptop-code text-slate-500"></i>
+                        <span>Ujian Online CBT</span>
                     </a>
                 @endauth
             </div>
@@ -190,7 +203,7 @@
     </header>
 
     <!-- MAIN PAGE CONTENT -->
-    <main class="flex-1">
+    <main class="flex-1 asystem-page-enter">
         @yield('content')
     </main>
 
@@ -237,14 +250,15 @@
                     </ul>
                 </div>
 
-                <!-- Col 3: Portal Karyawan -->
+                <!-- Col 3: Portal Karyawan & Sistem -->
                 <div class="lg:col-span-3 space-y-3">
-                    <h4 class="text-xs font-bold text-white uppercase tracking-wider">Akses Karyawan</h4>
+                    <h4 class="text-xs font-bold text-white uppercase tracking-wider">Akses Sistem</h4>
                     <ul class="space-y-2 text-xs text-slate-400">
-                        <li><a href="{{ route('login') }}" class="hover:text-white transition-colors">Login Portal Karyawan</a></li>
+                        <li><a href="{{ route('login') }}" class="hover:text-white transition-colors text-blue-300 font-semibold flex items-center gap-1.5"><i class="fa-solid fa-users-viewfinder text-[11px]"></i> Talent Pool / Rekrutmen - Login</a></li>
+                        <li><a href="https://asystem.co.id/v3/login" target="_blank" class="hover:text-white transition-colors text-indigo-300 font-semibold flex items-center gap-1.5"><i class="fa-solid fa-arrow-up-right-from-square text-[11px]"></i> Fitur Lain - Akses ASystem V3</a></li>
+                        <li><a href="{{ route('cbt.login') }}" class="hover:text-white transition-colors flex items-center gap-1.5"><i class="fa-solid fa-laptop-code text-[11px]"></i> Ujian CBT Online</a></li>
                         <li><a href="{{ route('kandidatportal.index') }}" class="hover:text-white transition-colors">Portal Verifikasi Pelamar</a></li>
                         <li><a href="{{ route('interview.index') }}" class="hover:text-white transition-colors">Interview Online</a></li>
-                        <li><a href="{{ route('airanking.index') }}" class="hover:text-white transition-colors">AI Ranking & Leaderboard</a></li>
                     </ul>
                 </div>
 

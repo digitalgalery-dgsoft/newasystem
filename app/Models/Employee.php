@@ -191,10 +191,10 @@ class Employee extends Model
         if (str_contains($p, 'ANUGRAH TERPERCAYA') || in_array('ATK', $words, true)) {
             return 'ATK';
         }
-        if (str_contains($p, 'ARINA BINTANG') || str_contains($p, 'ABADI BERKAT') || in_array('ABO', $words, true)) {
+        if (str_contains($p, 'ABADI BERKAT') || str_contains($p, 'ABADI BERKAT ODELIA') || str_contains($p, 'ARINA BINTANG') || in_array('ABO', $words, true)) {
             return 'ABO';
         }
-        if (str_contains($p, 'ANUGRAH TRI BERKAH') || in_array('ATB', $words, true)) {
+        if (str_contains($p, 'ANUGRAH TALENTA') || str_contains($p, 'ANUGRAH TALENTA BERKARYA') || str_contains($p, 'ANUGRAH TRI BERKAH') || in_array('ATB', $words, true)) {
             return 'ATB';
         }
 
@@ -203,10 +203,21 @@ class Employee extends Model
 
     /**
      * Determine if an employee is Inhouse or RateCard based on principle name matching 5 entities.
+     * 5 Inhouse Entities:
+     * - PT ARINA MULTI KARYA (AMK)
+     * - PT ALVA KARYA PERKASA (AKP)
+     * - PT ANUGRAH TERPERCAYA KERJA (ATK)
+     * - PT ABADI BERKAT ODELIA (ABO)
+     * - PT ANUGRAH TALENTA BERKARYA (ATB)
      */
     public static function determineTipeKaryawan(?string $principleName): string
     {
         return self::getEntityCodeFromPrinciple($principleName) !== null ? 'Inhouse' : 'RateCard';
+    }
+
+    public static function isInhousePrinciple(?string $principleName): bool
+    {
+        return self::determineTipeKaryawan($principleName) === 'Inhouse';
     }
 
     public function principle(): BelongsTo

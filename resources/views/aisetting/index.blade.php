@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('title', 'Pengaturan AI & WhatsApp - ASystem Support System')
 
@@ -109,9 +109,8 @@
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">Model Gemini Aktif</label>
                             <select name="gemini_model" id="geminiModelSelect" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-primary-100 focus:border-primary outline-none">
-                                <option value="gemini-2.5-flash" {{ $setting->gemini_model === 'gemini-2.5-flash' ? 'selected' : '' }}>Google Gemini 2.5 Flash (Sangat Cepat & Direkomendasikan)</option>
-                                <option value="gemini-1.5-flash" {{ $setting->gemini_model === 'gemini-1.5-flash' ? 'selected' : '' }}>Google Gemini 1.5 Flash (Cepat & Ringan)</option>
-                                <option value="gemini-1.5-pro" {{ $setting->gemini_model === 'gemini-1.5-pro' ? 'selected' : '' }}>Google Gemini 1.5 Pro (Analisis Mendalam & Kompleks)</option>
+                                <option value="gemini-2.5-flash" {{ ($setting->gemini_model === 'gemini-2.5-flash' || empty($setting->gemini_model)) ? 'selected' : '' }}>Google Gemini 2.5 Flash (Sangat Cepat & Direkomendasikan)</option>
+                                <option value="gemini-3.5-flash" {{ (str_contains($setting->gemini_model, '3.5') || str_contains($setting->gemini_model, '3.6')) ? 'selected' : '' }}>Google Gemini 3.5 Flash (Generasi Terbaru & Handal)</option>
                             </select>
                         </div>
 
@@ -230,16 +229,139 @@
 
                 <!-- SAVE BUTTON BAR -->
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex items-center justify-between">
-                    <span class="text-xs text-slate-500">Perubahan akan langsung diterapkan ke seluruh pemrosesan CV daring.</span>
+                    <div class="flex items-center gap-2 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
+                        <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                        <span>API Key AI & WhatsApp Gateway Aktif Menggunakan Settingan Global Admin (Pusat)</span>
+                    </div>
                     <button type="submit" class="btn-att-primary text-xs font-bold px-6 py-2.5 flex items-center gap-2 shadow-md shadow-primary/20">
                         <i class="fa-solid fa-floppy-disk"></i>
-                        <span>Simpan Konfigurasi</span>
+                        <span>Simpan Konfigurasi Global</span>
                     </button>
                 </div>
             </div>
 
         </div>
     </form>
+
+    <!-- TABEL 1: SETTING TEMPLATE WA PER AREA (tb_wa_area_setting) -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">
+                    <i class="fa-solid fa-map-location-dot"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800">Template Pesan WhatsApp per Area (tb_wa_area_setting)</h3>
+                    <p class="text-xs text-slate-500">Daftar template pesan WA spesifik per cabang/area yang tersimpan di sistem asal (21 Area)</p>
+                </div>
+            </div>
+            <span class="text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 px-3 py-1 rounded-xl">
+                {{ $areaSettings->count() }} Area Terkonfigurasi
+            </span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-xs text-left">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
+                    <tr>
+                        <th class="py-3 px-4 w-12 text-center">No.</th>
+                        <th class="py-3 px-4 w-44">Area</th>
+                        <th class="py-3 px-4">Template Pesan WhatsApp</th>
+                        <th class="py-3 px-4 w-56">Pengunci Template (Rekruter)</th>
+                        <th class="py-3 px-4 w-36 text-center">Terakhir Update</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($areaSettings as $idx => $area)
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <td class="py-2.5 px-4 text-center font-mono text-slate-400">{{ $idx + 1 }}</td>
+                        <td class="py-2.5 px-4 font-bold text-slate-800">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 text-slate-700 border border-slate-200">
+                                <i class="fa-solid fa-location-dot text-indigo-500 text-[10px]"></i>
+                                <span>{{ $area->area }}</span>
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-4 text-slate-600 font-mono text-[11px] max-w-md truncate" title="{{ $area->wa_template }}">
+                            {{ !empty($area->wa_template) ? Str::limit($area->wa_template, 120) : '<Belum diisi template khusus>' }}
+                        </td>
+                        <td class="py-2.5 px-4">
+                            <div class="text-slate-800 font-semibold text-xs">{{ $area->locked_by_nama ?: '-' }}</div>
+                            <div class="text-[10px] text-slate-400 font-mono">{{ $area->locked_by_email }}</div>
+                        </td>
+                        <td class="py-2.5 px-4 text-center text-[11px] text-slate-500">
+                            {{ $area->updated_at ? $area->updated_at->format('d/m/Y H:i') : '-' }}
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="py-6 text-center text-slate-400 italic">Belum ada data template per area di tb_wa_area_setting.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- TABEL 2: SETTING PERANGKAT WA REKRUTER (tb_ai_setting_user) -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-sm">
+                    <i class="fa-solid fa-mobile-screen"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-bold text-slate-800">Daftar Pengaturan WhatsApp Rekruter (tb_ai_setting_user)</h3>
+                    <p class="text-xs text-slate-500">Mapping 58 rekruter inhouse dengan konfigurasi area & status device gateway</p>
+                </div>
+            </div>
+            <span class="text-xs font-bold text-purple-700 bg-purple-50 border border-purple-200 px-3 py-1 rounded-xl">
+                {{ $userSettings->count() }} Rekruter Terdaftar
+            </span>
+        </div>
+
+        <div class="overflow-x-auto rounded-xl border border-slate-200">
+            <table class="w-full text-xs text-left">
+                <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold">
+                    <tr>
+                        <th class="py-3 px-4 w-12 text-center">No.</th>
+                        <th class="py-3 px-4 w-60">Email Rekruter</th>
+                        <th class="py-3 px-4 w-40">Area</th>
+                        <th class="py-3 px-4 w-48">Device WhatsApp Lokal</th>
+                        <th class="py-3 px-4 w-36 text-center">Moda Pengiriman</th>
+                        <th class="py-3 px-4">Template Khusus</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($userSettings as $idx => $usr)
+                    <tr class="hover:bg-slate-50/70 transition-colors">
+                        <td class="py-2.5 px-4 text-center font-mono text-slate-400">{{ $idx + 1 }}</td>
+                        <td class="py-2.5 px-4 font-semibold text-slate-800 font-mono text-[11px]">{{ $usr->email }}</td>
+                        <td class="py-2.5 px-4">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                {{ $usr->area ?: '-' }}
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-4 font-mono text-[11px] text-slate-600">
+                            {{ $usr->wa_device ?: '<Device Pusat>' }}
+                        </td>
+                        <td class="py-2.5 px-4 text-center">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <i class="fa-solid fa-globe text-[9px]"></i> Global Pusat
+                            </span>
+                        </td>
+                        <td class="py-2.5 px-4 text-slate-500 font-mono text-[10px] truncate max-w-xs" title="{{ $usr->wa_template }}">
+                            {{ !empty($usr->wa_template) ? Str::limit($usr->wa_template, 80) : '-' }}
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="py-6 text-center text-slate-400 italic">Belum ada data rekruter di tb_ai_setting_user.</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+    </div>
 </div>
 
 <script>

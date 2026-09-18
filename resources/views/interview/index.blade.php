@@ -18,7 +18,7 @@
                         <i class="fa-solid fa-building-shield text-[10px]"></i> ESA Groups
                     </span>
                     <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">
-                        <i class="fa-solid fa-location-dot text-[10px]"></i> Area: {{ strtoupper($user->area ?? 'JAKARTA') }}
+                        <i class="fa-solid fa-location-dot text-[10px]"></i> Area: {{ strtoupper($displayRecruiterArea ?? ($user->area ?? 'JAKARTA')) }}
                     </span>
                 </div>
                 <p class="text-xs text-slate-500 mt-1">
@@ -57,15 +57,15 @@
 
     <!-- 2. STATS METRIC ROW (Clean Responsive 4-Column Grid) -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <!-- Stat 1: Kandidat Milik Anda -->
+        <!-- Stat 1: Total Kandidat -->
         <div class="stat-box">
             <div class="flex items-center justify-between">
                 <div>
-                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Kandidat Milik Anda</div>
-                    <div class="text-2xl font-black text-slate-900 mt-1">{{ $myCandidates->total() }}</div>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{{ $isAdmin ? 'Total Kandidat Nasional' : 'Kandidat Milik Anda' }}</div>
+                    <div class="text-2xl font-black text-slate-900 mt-1">{{ number_format($statTotal ?? $myCandidates->total()) }}</div>
                     <div class="text-[11px] text-primary font-semibold mt-0.5 flex items-center gap-1">
                         <i class="fa-solid fa-user-check"></i>
-                        <span>Rekrutor: {{ $user->name }}</span>
+                        <span>Rekrutor: {{ $displayRecruiterName ?? $user->name }}</span>
                     </div>
                 </div>
                 <div class="stat-box-icon bg-blue-50 text-primary">
@@ -79,7 +79,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Profil Lengkap</div>
-                    <div class="text-2xl font-black text-emerald-600 mt-1">{{ $myCandidates->where('is_profile_complete', true)->count() }}</div>
+                    <div class="text-2xl font-black text-emerald-600 mt-1">{{ number_format($statProfileComplete ?? 0) }}</div>
                     <div class="text-[11px] text-emerald-600 font-semibold mt-0.5 flex items-center gap-1">
                         <i class="fa-solid fa-circle-check"></i>
                         <span>Data & Berkas Terisi</span>
@@ -96,7 +96,7 @@
             <div class="flex items-center justify-between">
                 <div>
                     <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Selesai Tes Online</div>
-                    <div class="text-2xl font-black text-amber-600 mt-1">{{ $myCandidates->filter(function($c) { return ($c->psikotes_score?->score ?? 0) > 0 || ($c->math_score?->score ?? 0) > 0; })->count() }}</div>
+                    <div class="text-2xl font-black text-amber-600 mt-1">{{ number_format($statTestDone ?? 0) }}</div>
                     <div class="text-[11px] text-amber-600 font-semibold mt-0.5 flex items-center gap-1">
                         <i class="fa-solid fa-circle-dot"></i>
                         <span>DISC & Matematika</span>
@@ -108,15 +108,15 @@
             </div>
         </div>
 
-        <!-- Stat 4: Kandidat Area JAKARTA -->
+        <!-- Stat 4: Kandidat Area -->
         <div class="stat-box">
             <div class="flex items-center justify-between">
                 <div>
-                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Kandidat Area {{ strtoupper($user->area ?? 'JAKARTA') }}</div>
-                    <div class="text-2xl font-black text-purple-600 mt-1">{{ $areaCandidates->total() }}</div>
+                    <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Kandidat Area {{ strtoupper($displayRecruiterArea ?? ($user->area ?? 'JAKARTA')) }}</div>
+                    <div class="text-2xl font-black text-purple-600 mt-1">{{ ($isAdmin && (empty($filterUser) || $filterUser === 'all')) ? number_format($statTotal ?? $myCandidates->total()) : number_format($areaCandidates->total()) }}</div>
                     <div class="text-[11px] text-purple-600 font-semibold mt-0.5 flex items-center gap-1">
                         <i class="fa-solid fa-map-pin"></i>
-                        <span>Rekan Se-Wilayah</span>
+                        <span>{{ ($isAdmin && (empty($filterUser) || $filterUser === 'all')) ? 'Seluruh Indonesia (All)' : 'Rekan Se-Wilayah' }}</span>
                     </div>
                 </div>
                 <div class="stat-box-icon bg-purple-50 text-purple-600">
@@ -129,33 +129,62 @@
     <!-- 3. TABLE 1: DATA KANDIDAT MILIK REKRUTOR -->
     <div class="table-card">
         <!-- Table Header & Search Bar (Clean Flex Layout - NO OVERLAPPING) -->
-        <div class="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">
+        <div class="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white">
             <div class="flex items-center gap-2.5 flex-wrap">
                 <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
                 <h2 class="text-sm font-bold text-slate-900">
-                    Data Kandidat &bull; {{ $user->name }} ({{ strtoupper($user->job_title ?? 'REKRUTMEN') }} - {{ strtoupper($user->area ?? 'JAKARTA') }})
+                    @if($isAdmin && (empty($filterUser) || $filterUser === 'all'))
+                        Data Kandidat &bull; Administrator ( SUPER ADMIN - All )
+                    @else
+                        Data Kandidat &bull; {{ $displayRecruiterName ?? $user->name }} ({{ strtoupper($displayRecruiterTitle ?? ($user->job_title ?? 'REKRUTMEN')) }} - {{ strtoupper($displayRecruiterArea ?? ($user->area ?? 'JAKARTA')) }})
+                    @endif
                 </h2>
                 <span class="badge-pill bg-blue-50 text-primary border-blue-200">
-                    {{ $myCandidates->total() }} Kandidat
+                    {{ number_format($myCandidates->total()) }} Kandidat
                 </span>
             </div>
 
-            <!-- Search Form -->
-            <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-2 w-full md:w-auto">
-                <div class="relative w-full md:w-72">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="text" name="search_my" value="{{ request('search_my') }}" placeholder="Cari nama, NIK, jabatan..." 
-                           class="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50">
-                </div>
-                <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-700 shadow-sm flex-shrink-0">
-                    Cari
-                </button>
-                @if(request('search_my'))
-                    <a href="{{ route('interview.index') }}" class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200">
-                        Reset
-                    </a>
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+                <!-- Dropdown Filter Rekruter (Untuk Admin) -->
+                @if(Auth::check() && (Auth::user()->isAdmin() || Auth::user()->role === 'admin'))
+                <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-1.5 flex-shrink-0">
+                    @if(request('search_my'))
+                        <input type="hidden" name="search_my" value="{{ request('search_my') }}">
+                    @endif
+                    <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                        <i class="fa-solid fa-user-gear text-primary text-xs"></i>
+                        <select name="filter_user" onchange="this.form.submit()" class="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer">
+                            <option value="all" {{ (empty($filterUser) || $filterUser === 'all') ? 'selected' : '' }}>-- Semua Rekruter (SUPER ADMIN - All) --</option>
+                            @foreach($allRecruiters as $rec)
+                                <option value="{{ $rec->useras }}" {{ $filterUser === $rec->useras ? 'selected' : '' }}>
+                                    {{ $rec->display_name }} ({{ number_format($rec->total) }})
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                </form>
                 @endif
-            </form>
+
+                <!-- Search Form -->
+                <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-2 flex-1 sm:flex-initial">
+                    @if($filterUser)
+                        <input type="hidden" name="filter_user" value="{{ $filterUser }}">
+                    @endif
+                    <div class="relative w-full sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" name="search_my" value="{{ request('search_my') }}" placeholder="Cari nama, NIK, jabatan..." 
+                               class="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50">
+                    </div>
+                    <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-700 shadow-sm flex-shrink-0">
+                        Cari
+                    </button>
+                    @if(request('search_my') || $filterUser)
+                        <a href="{{ route('interview.index') }}" class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200">
+                            Reset
+                        </a>
+                    @endif
+                </form>
+            </div>
         </div>
 
         <!-- Responsive Custom Table -->
@@ -166,6 +195,7 @@
                         <th class="w-12 text-center">NO</th>
                         <th class="w-36">NO. KTP</th>
                         <th>NAMA KANDIDAT</th>
+                        <th>JENIS KELAMIN</th>
                         <th>TGL. LAHIR & USIA</th>
                         <th>PENDIDIKAN</th>
                         <th>PRINSIPLE & JABATAN</th>
@@ -199,9 +229,13 @@
                             <!-- NAMA KANDIDAT -->
                             <td>
                                 <div class="flex items-center gap-2.5">
-                                    <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-slate-200">
-                                        {{ strtoupper(substr($candidate->full_name, 0, 1)) }}
-                                    </div>
+                                    @if($candidate->photo_path)
+                                        <img src="{{ $candidate->photo_url }}" alt="{{ $candidate->full_name }}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-slate-200" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($candidate->full_name) }}&background=0F52BA&color=fff';">
+                                    @else
+                                        <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-slate-200">
+                                            {{ strtoupper(substr($candidate->full_name, 0, 1)) }}
+                                        </div>
+                                    @endif
                                     <div>
                                         <div class="font-bold text-xs text-slate-900 leading-tight">{{ $candidate->full_name }}</div>
                                         <div class="text-[10px] text-slate-400 mt-0.5">
@@ -209,6 +243,19 @@
                                         </div>
                                     </div>
                                 </div>
+                            </td>
+
+                            <!-- JENIS KELAMIN -->
+                            <td>
+                                @if(strtolower($candidate->gender ?? '') === 'perempuan')
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
+                                        <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                        <i class="fa-solid fa-mars text-[10px]"></i> Laki-laki
+                                    </span>
+                                @endif
                             </td>
 
                             <!-- TGL LAHIR & USIA -->
@@ -233,55 +280,47 @@
 
                             <!-- PSIKOTES (DISC) -->
                             <td class="text-center">
-                                @if($psikotes && $psikotes->is_passed)
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs shadow-sm" title="Lulus Psikotes">
+                                @if($candidate->is_psikotes_done)
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold shadow-sm" title="Sudah Tes Psikotes ({{ $candidate->tes_kepribadian ?? 'Selesai' }})">
                                         <i class="fa-solid fa-check"></i>
                                     </span>
-                                @elseif($psikotes && $psikotes->score > 0)
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-100 text-primary text-xs font-bold" title="Score: {{ $psikotes->score }}">
-                                        {{ $psikotes->score }}
-                                    </span>
                                 @else
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs" title="Belum Selesai">
-                                        <i class="fa-solid fa-minus"></i>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold" title="Belum Selesai">
+                                        <i class="fa-solid fa-xmark"></i>
                                     </span>
                                 @endif
                             </td>
 
                             <!-- MATH -->
                             <td class="text-center">
-                                @if($math && $math->is_passed)
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs shadow-sm" title="Lulus Matematika: {{ $math->score }}">
+                                @if($candidate->is_math_done)
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold shadow-sm" title="Sudah Tes Matematika ({{ $math?->score ? 'Score: ' . $math->score : ($candidate->tes_matematika ?? 'Selesai') }})">
                                         <i class="fa-solid fa-check"></i>
                                     </span>
-                                @elseif($math && $math->score > 0)
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-amber-100 text-amber-700 text-xs font-bold" title="Score: {{ $math->score }}">
-                                        {{ $math->score }}
-                                    </span>
                                 @else
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs" title="Belum Selesai">
-                                        <i class="fa-solid fa-minus"></i>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold" title="Belum Selesai">
+                                        <i class="fa-solid fa-xmark"></i>
                                     </span>
                                 @endif
                             </td>
 
                             <!-- COMPUTER -->
                             <td class="text-center">
-                                @if($computer && $computer->is_passed)
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs shadow-sm" title="Lulus Komputer">
+                                @if($candidate->is_komputer_done)
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold shadow-sm" title="Sudah Tes Komputer">
                                         <i class="fa-solid fa-check"></i>
                                     </span>
                                 @else
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs" title="Belum Selesai">
-                                        <i class="fa-solid fa-minus"></i>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold" title="Belum Selesai">
+                                        <i class="fa-solid fa-xmark"></i>
                                     </span>
                                 @endif
                             </td>
 
                             <!-- USER / REKRUTOR -->
                             <td>
-                                <div class="font-bold text-xs text-slate-800">{{ $candidate->recruiter->name ?? $user->name }}</div>
-                                <div class="text-[10px] text-slate-400 uppercase font-semibold">ARO {{ $candidate->area ?? 'JAKARTA' }}</div>
+                                <div class="font-bold text-xs text-slate-800">{{ $candidate->user_name_formatted ?? $candidate->user_display_name }}</div>
+                                <div class="text-[10px] text-slate-400 uppercase font-semibold">{{ $candidate->user_subtitle_formatted ?? ('ARO ' . ($candidate->area ?? 'JAKARTA')) }}</div>
                             </td>
 
                             <!-- ACTION TOOLS -->
@@ -313,9 +352,9 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="text-center py-12">
+                            <td colspan="12" class="text-center py-12">
                                 <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-lg">
-                                    <i class="fa-solid fa-user-slash"></i>
+                                    <i class="fa-solid fa-inbox"></i>
                                 </div>
                                 <div class="text-sm font-bold text-slate-700">Tidak ada kandidat ditemukan</div>
                                 <div class="text-xs text-slate-400 mt-1">Gunakan kata kunci pencarian lain atau import data baru.</div>
@@ -337,6 +376,7 @@
         </div>
     </div>
 
+    @if(!$isAdmin || (!empty($filterUser) && $filterUser !== 'all'))
     <!-- 4. TABLE 2: DATA KANDIDAT REKAN SE-AREA -->
     <div class="table-card">
         <div class="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">
@@ -370,6 +410,7 @@
                         <th class="w-12 text-center">NO</th>
                         <th class="w-36">NO. KTP</th>
                         <th>NAMA KANDIDAT</th>
+                        <th>JENIS KELAMIN</th>
                         <th>TGL. LAHIR & USIA</th>
                         <th>PENDIDIKAN</th>
                         <th>PRINSIPLE & JABATAN</th>
@@ -394,6 +435,17 @@
                                 <div class="text-[10px] text-slate-400">Area: {{ $candidate->area }}</div>
                             </td>
                             <td>
+                                @if(strtolower($candidate->gender ?? '') === 'perempuan')
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
+                                        <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                        <i class="fa-solid fa-mars text-[10px]"></i> Laki-laki
+                                    </span>
+                                @endif
+                            </td>
+                            <td>
                                 <div class="text-xs font-semibold text-slate-800">{{ $candidate->formatted_birth_date }}</div>
                                 <div class="text-[11px] text-slate-500">{{ $candidate->age }} Thn</div>
                             </td>
@@ -410,24 +462,29 @@
                                 $areaComputer = $candidate->computer_score;
                             @endphp
                             <td class="text-center">
-                                @if($areaPsikotes && ($areaPsikotes->is_passed || $areaPsikotes->score > 0))
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs"><i class="fa-solid fa-check"></i></span>
+                                @if($candidate->is_psikotes_done)
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold" title="Sudah Tes Psikotes"><i class="fa-solid fa-check"></i></span>
                                 @else
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs"><i class="fa-solid fa-minus"></i></span>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold" title="Belum Selesai"><i class="fa-solid fa-xmark"></i></span>
                                 @endif
                             </td>
                             <td class="text-center">
-                                @if($areaMath && ($areaMath->is_passed || $areaMath->score > 0))
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs"><i class="fa-solid fa-check"></i></span>
+                                @if($candidate->is_math_done)
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold"><i class="fa-solid fa-check"></i></span>
                                 @else
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs"><i class="fa-solid fa-minus"></i></span>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold"><i class="fa-solid fa-xmark"></i></span>
                                 @endif
                             </td>
                             <td class="text-center">
-                                <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs"><i class="fa-solid fa-minus"></i></span>
+                                @if($candidate->is_komputer_done)
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold"><i class="fa-solid fa-check"></i></span>
+                                @else
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold"><i class="fa-solid fa-xmark"></i></span>
+                                @endif
                             </td>
                             <td>
-                                <div class="font-semibold text-xs text-slate-700">{{ $candidate->recruiter->name ?? 'Rekan Area' }}</div>
+                                <div class="font-semibold text-xs text-slate-700">{{ $candidate->user_name_formatted ?? $candidate->user_display_name }}</div>
+                                <div class="text-[10px] text-slate-400 uppercase font-semibold">{{ $candidate->user_subtitle_formatted ?? ('ARO ' . ($candidate->area ?? 'JAKARTA')) }}</div>
                             </td>
                             <td class="text-center">
                                 <div class="inline-flex items-center gap-1.5 justify-center">
@@ -442,8 +499,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="11" class="text-center py-8 text-xs text-slate-400">
-                                Tidak ada data rekan area lain saat ini.
+                            <td colspan="12" class="text-center py-8 text-xs text-slate-400">
+                                Belum ada kandidat lain di area {{ strtoupper($user->area ?? 'JAKARTA') }}.
                             </td>
                         </tr>
                     @endforelse
@@ -451,6 +508,7 @@
             </table>
         </div>
     </div>
+    @endif
 
 </div>
 

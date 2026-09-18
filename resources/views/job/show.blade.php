@@ -3,6 +3,33 @@
 @section('title', $job->job_title . ' - Detail Lowongan - ASystem Career ESA Groups')
 
 @section('content')
+<style>
+    .job-rich-content ul {
+        list-style-type: disc !important;
+        padding-left: 1.25rem !important;
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    .job-rich-content ol {
+        list-style-type: decimal !important;
+        padding-left: 1.25rem !important;
+        margin-top: 0.5rem !important;
+        margin-bottom: 0.5rem !important;
+    }
+    .job-rich-content li {
+        margin-bottom: 0.4rem !important;
+        line-height: 1.6 !important;
+    }
+    .job-rich-content p {
+        margin-bottom: 0.75rem !important;
+        line-height: 1.6 !important;
+    }
+    .job-rich-content strong, .job-rich-content b {
+        font-weight: 700 !important;
+        color: #1e293b !important;
+    }
+</style>
+
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
     <!-- TOP NAV / BREADCRUMB -->
     <div class="flex items-center justify-between">
@@ -86,9 +113,9 @@
                     </div>
                 </div>
 
-                <div class="text-xs sm:text-sm text-slate-600 leading-relaxed space-y-3 prose prose-sm max-w-none">
-                    @if(!empty($job->job_desc))
-                        {!! nl2br(e($job->job_desc)) !!}
+                <div class="text-xs sm:text-sm text-slate-600 leading-relaxed job-rich-content">
+                    @if(!empty($job->formatted_desc))
+                        {!! $job->formatted_desc !!}
                     @else
                         <p class="text-slate-400 italic">Deskripsi lengkap pekerjaan dapat dikonfirmasi saat proses interview berlangsung.</p>
                     @endif
@@ -108,15 +135,15 @@
                     </div>
                 </div>
 
-                <div class="text-xs sm:text-sm text-slate-600 leading-relaxed space-y-3 prose prose-sm max-w-none">
-                    {!! nl2br(e($job->job_quals ?? $job->kualifikasi)) !!}
+                <div class="text-xs sm:text-sm text-slate-600 leading-relaxed job-rich-content">
+                    {!! $job->formatted_quals !!}
                 </div>
             </div>
             @endif
 
             <!-- 3. Keterampilan yang Dibutuhkan -->
             @php
-                $skills = array_filter(array_map('trim', explode(',', strip_tags($job->job_skills ?? ''))));
+                $skills = $job->skills_array;
             @endphp
             @if(count($skills) > 0)
             <div class="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 shadow-sm space-y-4">
@@ -222,7 +249,7 @@
                         </div>
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Pengalaman</span>
-                            <span class="font-semibold text-slate-800">{{ strip_tags($job->job_exp ?? 'Fresh Graduate / Pengalaman Relevan') }}</span>
+                            <span class="font-semibold text-slate-800">{{ $job->plain_exp ?: 'Fresh Graduate / Pengalaman Relevan' }}</span>
                         </div>
                     </div>
 
@@ -255,8 +282,8 @@
                         </div>
                         <div>
                             <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">PIC Rekrutmen</span>
-                            <span class="font-semibold text-slate-800 block">{{ $job->created_by ?? 'Tim Rekrutmen ESA' }}</span>
-                            <a href="https://wa.me/6283139797309?text=Halo%20Admin%20Rekrutmen,%20saya%20ingin%20bertanya%20mengenai%20posisi%20{{ urlencode($job->job_title) }}" target="_blank" class="text-[11px] font-semibold text-emerald-600 hover:underline inline-flex items-center gap-1 mt-0.5">
+                            <span class="font-semibold text-slate-800 block">{{ $job->pic_name }}</span>
+                            <a href="https://wa.me/{{ $job->creator_whatsapp }}?text=Halo%20Admin%20Rekrutmen,%20saya%20ingin%20bertanya%20mengenai%20posisi%20{{ urlencode($job->job_title) }}" target="_blank" class="text-[11px] font-semibold text-emerald-600 hover:underline inline-flex items-center gap-1 mt-0.5">
                                 <i class="fa-brands fa-whatsapp"></i> Chat WhatsApp PIC
                             </a>
                         </div>

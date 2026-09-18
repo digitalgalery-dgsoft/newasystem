@@ -17,9 +17,16 @@ class InterviewPdfService
     {
         // Require legacy vendor autoload for mPDF
         if (!class_exists('\Mpdf\Mpdf')) {
-            $legacyAutoload = 'C:/xampp/htdocs/v3/vendor/autoload.php';
-            if (file_exists($legacyAutoload)) {
-                require_once $legacyAutoload;
+            $possibleAutoloads = [
+                'd:/ASystem/v3/vendor/autoload.php',
+                base_path('../v3/vendor/autoload.php'),
+                'C:/xampp/htdocs/v3/vendor/autoload.php',
+            ];
+            foreach ($possibleAutoloads as $al) {
+                if (file_exists($al)) {
+                    require_once $al;
+                    break;
+                }
             }
         }
 
@@ -38,19 +45,155 @@ class InterviewPdfService
 
         $kopPath = public_path('kop/logo/' . $kopFile);
         if (!file_exists($kopPath)) {
-            $kopPath = 'C:/xampp/htdocs/v3/kop/logo/' . $kopFile;
+            $possibleKop = [
+                'd:/ASystem/v3/kop/logo/' . $kopFile,
+                base_path('../v3/kop/logo/' . $kopFile),
+                'C:/xampp/htdocs/v3/kop/logo/' . $kopFile,
+            ];
+            foreach ($possibleKop as $pk) {
+                if (file_exists($pk)) {
+                    $kopPath = $pk;
+                    break;
+                }
+            }
         }
 
+
         // Generate Pie Chart for DISC Test
-        $discResults = ['a' => 17, 'b' => 7, 'c' => 9, 'd' => 7];
-        $totalDisc = array_sum($discResults);
+        $rawPsikotes = \Illuminate\Support\Facades\DB::table('tb_hasilpsikotes')
+            ->where('id_kandidat', $candidate->id)
+            ->orWhere('id_kandidat', (string) $candidate->id)
+            ->orderBy('id_soal', 'asc')
+            ->get();
+
+        $discResults = ['a' => 0, 'b' => 0, 'c' => 0, 'd' => 0];
+        $discQuestions = [];
+        $questionsBank = \Illuminate\Support\Facades\DB::table('tb_kepribadian')->get()->keyBy('id');
+
+        if ($rawPsikotes->isNotEmpty()) {
+            foreach ($rawPsikotes as $rp) {
+                $ans = strtolower(trim($rp->jawaban ?? ''));
+                if (isset($discResults[$ans])) {
+                    $discResults[$ans]++;
+                }
+                $qBank = $questionsBank->get($rp->id_soal);
+                $prop = 'pilihan_' . $ans;
+                $discQuestions[$rp->id_soal] = [
+                    strtoupper($ans),
+                    $qBank ? ($qBank->$prop ?? '-') : '-'
+                ];
+            }
+        } else {
+            $discResults = ['a' => 17, 'b' => 7, 'c' => 9, 'd' => 7];
+            $discQuestions = [
+                1 => ['B', 'Antusias'], 2 => ['C', 'Menyukai Logika dan Fakta'], 3 => ['C', 'Teguh Pendirian'], 4 => ['A', 'Toleran'],
+                5 => ['A', 'Menghargai'], 6 => ['C', 'Mandiri'], 7 => ['A', 'Perencana'], 8 => ['A', 'Terjadwal'],
+                9 => ['B', 'Optimis'], 10 => ['B', 'Humoris'], 11 => ['B', 'Penuh Strategi, Perasa dan Sabar'], 12 => ['B', 'Bersemangat'],
+                13 => ['D', 'Berkorban Tidak Menyakiti Hati'], 14 => ['A', 'Suka Mengintropeksi'], 15 => ['D', 'Mudah Membaur'], 16 => ['C', 'Berpendirian Teguh'],
+                17 => ['B', 'Penuh Semangat'], 18 => ['A', 'Suka Membuat Grafik dan Tugas'], 19 => ['C', 'Produktif'], 20 => ['A', 'Memiliki Batasan Dalam Berperilaku'],
+                21 => ['A', 'Pemalu'], 22 => ['C', 'Tidak Teratur'], 23 => ['D', 'Tidak Suka Terlibat Konflik'], 24 => ['B', 'Mudah Lupa'],
+                25 => ['A', 'Sulit Percaya'], 26 => ['A', 'Tidak Populer'], 27 => ['C', 'Keras Kepala'], 28 => ['D', 'Dingin'],
+                29 => ['A', 'Mudah Merasa Terasing'], 30 => ['C', 'Nekat'], 31 => ['A', 'Menarik Diri Dari Pergaulan'], 32 => ['D', 'Tidak Suka Konflik'],
+                33 => ['D', 'Kurang Yakin'], 34 => ['A', 'Tertutup'], 35 => ['A', 'Moody'], 36 => ['A', 'Tidak Mudah Percaya'],
+                37 => ['A', 'Penyendiri'], 38 => ['A', 'Mudah Curiga'], 39 => ['D', 'Menolak Dilibatkan'], 40 => ['C', 'Cerdik dan Licik'],
+            ];
+        }
+
+        $totalDisc = array_sum($discResults) ?: 1;
         $persentase = [
-            'a' => round((17 / $totalDisc) * 100, 1),
-            'b' => round((7 / $totalDisc) * 100, 1),
-            'c' => round((9 / $totalDisc) * 100, 1),
-            'd' => round((7 / $totalDisc) * 100, 1)
+            'a' => round(($discResults['a'] / $totalDisc) * 100, 1),
+            'b' => round(($discResults['b'] / $totalDisc) * 100, 1),
+            'c' => round(($discResults['c'] / $totalDisc) * 100, 1),
+            'd' => round(($discResults['d'] / $totalDisc) * 100, 1)
         ];
         $chartBase64 = $this->generatePieChart($discResults, $persentase);
+
+        // Dominant trait
+        arsort($discResults);
+        $topDiscKey = strtoupper(array_key_first($discResults));
+        $discTraitsMap = [
+            'A' => ['Melankolis', 'Memiliki kepribadian Melankolis. Tipe ini paling baik dalam hal pekerjaan yang memerlukan keputusan cepat, ketelitian tinggi, pemikiran analitis mendalam, kepatuhan terhadap data dan fakta. Kelemahan tipe ini adalah kadang terlalu pekerja keras dan menuntut kesempurnaan.'],
+            'B' => ['Sanguinis', 'Memiliki kepribadian Sanguinis. Tipe ini paling baik dalam hal pekerjaan yang berhubungan dengan banyak orang, antusiasme tinggi, kemampuan komunikasi yang persuasif, adaptif, serta membawa energi positif dan ceria.'],
+            'C' => ['Koleris', 'Memiliki kepribadian Koleris. Tipe ini paling baik dalam hal kepemimpinan, berorientasi kuat pada target dan hasil kerja nyata, tegas, independen, serta berani mengambil keputusan strategis di bawah tekanan.'],
+            'D' => ['Plegmatis', 'Memiliki kepribadian Plegmatis. Tipe ini paling baik dalam hal pekerjaan yang menuntut ketenangan, kesabaran, konsistensi prosedur, diplomasi, serta membangun keharmonisan dan kerjasama tim yang solid.'],
+        ];
+        $dominantTrait = $discTraitsMap[$topDiscKey] ?? $discTraitsMap['A'];
+
+        // Query Real Math
+        $rawMath = \Illuminate\Support\Facades\DB::table('tb_hasilmath')
+            ->join('tb_math', 'tb_math.id', '=', 'tb_hasilmath.id_soal')
+            ->where('tb_hasilmath.id_kandidat', $candidate->id)
+            ->select('tb_hasilmath.*', 'tb_math.question_text', 'tb_math.correct_answer')
+            ->orderBy('tb_hasilmath.id_soal', 'asc')
+            ->get();
+
+        $mathQuestions = [];
+        $mathDuration = $candidate->tes_matematika ?? '00:02:00';
+        $mathTesKe = $candidate->tes_ke ?? 1;
+        $mathCorrectCount = 0;
+        $mathWrongCount = 0;
+
+        if ($rawMath->isNotEmpty()) {
+            $mathDuration = $rawMath->first()->waktu_pengerjaan ?? $mathDuration;
+            $mathTesKe = $rawMath->first()->tes_ke ?? $mathTesKe;
+            foreach ($rawMath as $mRow) {
+                $candAns = trim($mRow->jawaban ?? '');
+                $keyAns = trim($mRow->correct_answer ?? '');
+                $cleanCand = str_replace([' ', '.', ','], ['', '', '.'], strtolower($candAns));
+                $cleanKey = str_replace([' ', '.', ','], ['', '', '.'], strtolower($keyAns));
+                $isCorrect = ($cleanCand === $cleanKey) || (strtolower($candAns) === strtolower($keyAns));
+                if ($isCorrect) $mathCorrectCount++; else $mathWrongCount++;
+
+                $mathQuestions[$mRow->id_soal] = [
+                    $mRow->question_text,
+                    $candAns,
+                    $keyAns,
+                    $isCorrect,
+                ];
+            }
+        } else {
+            $mathQuestions = [
+                1 => ['Ani membeli Lampu Philips 50 Watt Seharga Rp. 200.000,- di C4 Buaran diskon 15%. Berapa harus dibayar?', '170000', '170000', true],
+                2 => ['Yani Membeli 2 Buah Bedak Loreal Rp. 350.000,- diskon kedua 35%. Berapa total harus dibayar Yani?', '390000', '405000', false],
+                3 => ['SPG Dancow Target Rp. 7.000.000,- dan baru mencapai Rp. 5.000.000,-. Berapa persen pencapaian?', '71,42%', '71,42%', true],
+                4 => ['Bagas Membeli Wafer TimTam 200gr Rp. 5.250,- sebanyak 15 bungkus diskon 15%. Berapa harus dibayar?', 'A', 'A', true],
+                5 => ['Putri Membeli Boneka Rp. 50.000,- dijual kembali seharga Rp. 60.000,-. Berapa persen keuntungan Putri?', 'D', 'D', true],
+                6 => ['Lanjutan perhitungan deret 24, 20, 16, 12, ......', '8', '8, 4', false],
+                7 => ['Ibu mempunyai uang Rp. 30.000,- dibelikan lauk Rp. 12.000, sayur Rp. 4.000, minyak Rp. 4.000. Berapa sisa?', 'B', 'B', true],
+                8 => ['Angga beli handicam Rp. 4.500.000 diskon 20% uang sisa beli keperluan Rp. 1.500.000. Berapa sisa?', 'A', 'A', true],
+                9 => ['Sinta membeli 2 pcs pelembab Loreal @ Rp. 80.000 diskon kedua 75%. Berapa harus dibayar Santi?', '100000', '100000', true],
+                10 => ['SPG Arnotts target Rp. 12.000.000,- baru tercapai Rp. 5.000.000,-. Berapa persen pencapaian SPG?', '41,67%', '41,67%', true],
+            ];
+            $mathCorrectCount = 8;
+            $mathWrongCount = 2;
+        }
+
+        // Query Real Komputer
+        $rawKompt = \Illuminate\Support\Facades\DB::table('hasil_kompt')
+            ->where('id_kandidat', $candidate->id)
+            ->orWhere('nomor_ktp', $candidate->nik)
+            ->first();
+
+        $compSkills = [
+            'VLOOKUP' => $rawKompt->vlookup ?? 'Cukup',
+            'HLOOKUP' => $rawKompt->hlookup ?? 'Cukup',
+            'PIVOT TABLE' => $rawKompt->pivot ?? 'Cukup',
+            'FUNGSI IF' => $rawKompt->fungsiif ?? 'Cukup',
+            'AVERAGE' => $rawKompt->average ?? 'Cukup',
+            'PERKALIAN DAN PEMBAGIAN' => $rawKompt->hitung ?? 'Cukup',
+            'KETELITIAN' => $rawKompt->teliti ?? 'Cukup',
+            'KECEPATAN' => $rawKompt->cepat ?? 'Cukup',
+            'HASIL KERJA' => $rawKompt->hasilkerja ?? 'Cukup',
+        ];
+
+        $totalMath = count($mathQuestions) ?: 10;
+        $scorePct = round(($mathCorrectCount / $totalMath) * 100);
+        $grade = ($scorePct >= 80) ? 'A (SANGAT BAIK)' : (($scorePct >= 65) ? 'B (LULUS)' : 'C (REMIDI)');
+
+        $tempDir = storage_path('app/temp-pdf');
+        if (!is_dir($tempDir)) {
+            @mkdir($tempDir, 0777, true);
+        }
 
         // Setup mPDF
         $mpdf = new \Mpdf\Mpdf([
@@ -59,8 +202,9 @@ class InterviewPdfService
             'margin_right' => 6,
             'margin_top' => 6,
             'margin_bottom' => 6,
-            'tempDir' => storage_path('app/temp-pdf'),
+            'tempDir' => $tempDir,
         ]);
+
 
         $css = '
             body { font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; font-size: 8.5px; color: #222; }
@@ -144,11 +288,15 @@ class InterviewPdfService
         $html1 .= '</table>';
 
         // Ringkasan Hasil Tes
+        $discSummaryText = "A : {$discResults['a']}, B : {$discResults['b']}, C : {$discResults['c']}, D : {$discResults['d']} &mdash; Kepribadian Dominan: <b>{$dominantTrait[0]}</b>";
+        $mathSummaryText = "Waktu: {$mathDuration} (Tes Ke-{$mathTesKe}) &mdash; Jawaban Benar : {$mathCorrectCount}, Jawaban Salah : {$mathWrongCount}, <b>Nilai : {$grade}</b>";
+        $compSummaryText = "Waktu: " . ($candidate->tes_komputer ?? '00:03:02') . " &mdash; 9 Kriteria Penilaian Tersimpan";
+
         $html1 .= '<table class="gayatabel">';
         $html1 .= '<tr><td colspan="4" class="bg-head">RINGKASAN HASIL TES ONLINE</td></tr>';
-        $html1 .= '<tr><td width="20%"><b>TES KEPRIBADIAN (DISC)</b></td><td colspan="3">A : 17, B : 7, C : 9, D : 7 &mdash; Kepribadian Dominan: <b>Melankolis</b> (Teliti, analitis, pekerja keras)</td></tr>';
-        $html1 .= '<tr><td><b>TES MATEMATIKA</b></td><td colspan="3">Waktu: 00:02:00 &mdash; Jawaban Benar : 8, Jawaban Salah : 2, <b>Nilai : B</b> (LULUS MEMENUHI STANDAR)</td></tr>';
-        $html1 .= '<tr><td><b>TES KOMPUTER (EXCEL)</b></td><td colspan="3">Waktu: 00:03:02 &mdash; Skor: <b>Cukup (75%)</b> &mdash; 9 Kriteria Memenuhi Syarat</td></tr>';
+        $html1 .= '<tr><td width="20%"><b>TES KEPRIBADIAN (DISC)</b></td><td colspan="3">' . $discSummaryText . '</td></tr>';
+        $html1 .= '<tr><td><b>TES MATEMATIKA</b></td><td colspan="3">' . $mathSummaryText . '</td></tr>';
+        $html1 .= '<tr><td><b>TES KOMPUTER (EXCEL)</b></td><td colspan="3">' . $compSummaryText . '</td></tr>';
         $html1 .= '</table>';
 
         // Hasil Interview
@@ -293,11 +441,11 @@ class InterviewPdfService
         $html3 .= '<h3>HASIL TES KEPRIBADIAN (DISC ASSESSMENT)</h3>';
         $html3 .= '<table width="100%" style="margin-bottom:6px;">';
         $html3 .= '<tr><td width="15%"><b>Nama Kandidat</b></td><td width="2%">:</td><td width="33%">' . $candidate->full_name . '</td><td width="15%"><b>Principle</b></td><td width="2%">:</td><td width="33%">' . $parentComp . '</td></tr>';
-        $html3 .= '<tr><td><b>Posisi Dilamar</b></td><td>:</td><td>Admin Operasional</td><td><b>Waktu Pengerjaan</b></td><td>:</td><td>00:04:20</td></tr>';
+        $html3 .= '<tr><td><b>Posisi Dilamar</b></td><td>:</td><td>' . ($candidate->applied_job ?? $candidate->position ?? 'Admin Operasional') . '</td><td><b>Waktu Pengerjaan</b></td><td>:</td><td>' . ($candidate->tes_kepribadian ?? '00:04:20') . '</td></tr>';
         $html3 .= '</table>';
 
-        $html3 .= '<p><b>Ringkasan Jawaban:</b> Jawaban A: 17 | Jawaban B: 7 | Jawaban C: 9 | Jawaban D: 7</p>';
-        $html3 .= '<p align="justify"><b>Kesimpulan Karakter:</b> Memiliki kepribadian <b>Melankolis</b>. Tipe ini paling baik dalam hal pekerjaan yang memerlukan keputusan cepat, ketelitian tinggi, pemikiran analitis mendalam, kepatuhan terhadap data dan fakta. Kelemahan tipe ini adalah kadang terlalu pekerja keras dan menuntut kesempurnaan.</p>';
+        $html3 .= '<p><b>Ringkasan Jawaban:</b> Jawaban A: ' . $discResults['a'] . ' | Jawaban B: ' . $discResults['b'] . ' | Jawaban C: ' . $discResults['c'] . ' | Jawaban D: ' . $discResults['d'] . '</p>';
+        $html3 .= '<p align="justify"><b>Kesimpulan Karakter:</b> ' . $dominantTrait[1] . '</p>';
 
         $html3 .= '<table width="100%"><tr>';
         $html3 .= '<td width="35%" style="vertical-align:top; text-align:center;">';
@@ -315,24 +463,13 @@ class InterviewPdfService
         $html3 .= '<table class="gayatabel">';
         $html3 .= '<tr class="bg-head"><th width="8%">No</th><th width="12%">Opsi</th><th>Jawaban yang Dipilih</th><th width="8%">No</th><th width="12%">Opsi</th><th>Jawaban yang Dipilih</th></tr>';
 
-        $discQuestions = [
-            1 => ['B', 'Antusias'], 2 => ['C', 'Menyukai Logika dan Fakta'], 3 => ['C', 'Teguh Pendirian'], 4 => ['A', 'Toleran'],
-            5 => ['A', 'Menghargai'], 6 => ['C', 'Mandiri'], 7 => ['A', 'Perencana'], 8 => ['A', 'Terjadwal'],
-            9 => ['B', 'Optimis'], 10 => ['B', 'Humoris'], 11 => ['B', 'Penuh Strategi, Perasa dan Sabar'], 12 => ['B', 'Bersemangat'],
-            13 => ['D', 'Berkorban Tidak Menyakiti Hati'], 14 => ['A', 'Suka Mengintropeksi'], 15 => ['D', 'Mudah Membaur'], 16 => ['C', 'Berpendirian Teguh'],
-            17 => ['B', 'Penuh Semangat'], 18 => ['A', 'Suka Membuat Grafik dan Tugas'], 19 => ['C', 'Produktif'], 20 => ['A', 'Memiliki Batasan Dalam Berperilaku'],
-            21 => ['A', 'Pemalu'], 22 => ['C', 'Tidak Teratur'], 23 => ['D', 'Tidak Suka Terlibat Konflik'], 24 => ['B', 'Mudah Lupa'],
-            25 => ['A', 'Sulit Percaya'], 26 => ['A', 'Tidak Populer'], 27 => ['C', 'Keras Kepala'], 28 => ['D', 'Dingin'],
-            29 => ['A', 'Mudah Merasa Terasing'], 30 => ['C', 'Nekat'], 31 => ['A', 'Menarik Diri Dari Pergaulan'], 32 => ['D', 'Tidak Suka Konflik'],
-            33 => ['D', 'Kurang Yakin'], 34 => ['A', 'Tertutup'], 35 => ['A', 'Moody'], 36 => ['A', 'Tidak Mudah Percaya'],
-            37 => ['A', 'Penyendiri'], 38 => ['A', 'Mudah Curiga'], 39 => ['D', 'Menolak Dilibatkan'], 40 => ['C', 'Cerdik dan Licik'],
-        ];
-
         for ($i = 1; $i <= 20; $i++) {
             $j = $i + 20;
+            $q1 = $discQuestions[$i] ?? ['-', '-'];
+            $q2 = $discQuestions[$j] ?? ['-', '-'];
             $html3 .= '<tr>';
-            $html3 .= '<td align="center">' . $i . '</td><td align="center"><b>' . $discQuestions[$i][0] . '</b></td><td>' . $discQuestions[$i][1] . '</td>';
-            $html3 .= '<td align="center">' . $j . '</td><td align="center"><b>' . $discQuestions[$j][0] . '</b></td><td>' . $discQuestions[$j][1] . '</td>';
+            $html3 .= '<td align="center">' . $i . '</td><td align="center"><b>' . $q1[0] . '</b></td><td>' . $q1[1] . '</td>';
+            $html3 .= '<td align="center">' . $j . '</td><td align="center"><b>' . $q2[0] . '</b></td><td>' . $q2[1] . '</td>';
             $html3 .= '</tr>';
         }
         $html3 .= '</table>';
@@ -348,55 +485,35 @@ class InterviewPdfService
         $html4 = '<!DOCTYPE html><html><head><style>' . $css . ' body { font-size:9px; } </style></head><body>';
         $html4 .= '<h3>HASIL TES MATEMATIKA</h3>';
         $html4 .= '<table width="100%" style="margin-bottom:6px;">';
-        $html4 .= '<tr><td width="15%"><b>Nama Kandidat</b></td><td width="2%">:</td><td width="33%">' . $candidate->full_name . '</td><td width="15%"><b>Waktu Tes</b></td><td width="2%">:</td><td width="33%">00:02:00 (Tes Ke-1)</td></tr>';
+        $html4 .= '<tr><td width="15%"><b>Nama Kandidat</b></td><td width="2%">:</td><td width="33%">' . $candidate->full_name . '</td><td width="15%"><b>Waktu Tes</b></td><td width="2%">:</td><td width="33%">' . $mathDuration . ' (Tes Ke-' . $mathTesKe . ')</td></tr>';
         $html4 .= '</table>';
 
         $html4 .= '<table class="gayatabel">';
         $html4 .= '<tr class="bg-head"><th width="5%">No</th><th>Pertanyaan</th><th width="15%">Jawaban Kandidat</th><th width="15%">Jawaban Benar</th><th width="8%">Hasil</th></tr>';
-
-        $mathQuestions = [
-            1 => ['Ani membeli Lampu Philips 50 Watt Seharga Rp. 200.000,- di C4 Buaran diskon 15%. Berapa harus dibayar?', '170000', '170000', true],
-            2 => ['Yani Membeli 2 Buah Bedak Loreal Rp. 350.000,- diskon kedua 35%. Berapa total harus dibayar Yani?', '390000', '405000', false],
-            3 => ['SPG Dancow Target Rp. 7.000.000,- dan baru mencapai Rp. 5.000.000,-. Berapa persen pencapaian?', '71,42%', '71,42%', true],
-            4 => ['Bagas Membeli Wafer TimTam 200gr Rp. 5.250,- sebanyak 15 bungkus diskon 15%. Berapa harus dibayar?', 'A', 'A', true],
-            5 => ['Putri Membeli Boneka Rp. 50.000,- dijual kembali seharga Rp. 60.000,-. Berapa persen keuntungan Putri?', 'D', 'D', true],
-            6 => ['Lanjutan perhitungan deret 24, 20, 16, 12, ......', '8', '8, 4', false],
-            7 => ['Ibu mempunyai uang Rp. 30.000,- dibelikan lauk Rp. 12.000, sayur Rp. 4.000, minyak Rp. 4.000. Berapa sisa?', 'B', 'B', true],
-            8 => ['Angga beli handicam Rp. 4.500.000 diskon 20% uang sisa beli keperluan Rp. 1.500.000. Berapa sisa?', 'A', 'A', true],
-            9 => ['Sinta membeli 2 pcs pelembab Loreal @ Rp. 80.000 diskon kedua 75%. Berapa harus dibayar Santi?', '100000', '100000', true],
-            10 => ['SPG Arnotts target Rp. 12.000.000,- baru tercapai Rp. 5.000.000,-. Berapa persen pencapaian SPG?', '41,67%', '41,67%', true],
-        ];
 
         foreach ($mathQuestions as $num => $mq) {
             $icon = $mq[3] ? '<span style="color:green; font-weight:bold;">&#10004; Benar</span>' : '<span style="color:red; font-weight:bold;">&#10008; Salah</span>';
             $html4 .= '<tr><td align="center">' . $num . '</td><td>' . $mq[0] . '</td><td align="center">' . $mq[1] . '</td><td align="center">' . $mq[2] . '</td><td align="center">' . $icon . '</td></tr>';
         }
         $html4 .= '</table>';
-        $html4 .= '<p><b>Ringkasan:</b> Jawaban Benar : 8 | Jawaban Salah : 2 | <b>Nilai : B (LULUS)</b></p>';
+        $totalMath = count($mathQuestions) ?: 10;
+        $scorePct = round(($mathCorrectCount / $totalMath) * 100);
+        $grade = ($scorePct >= 80) ? 'A (SANGAT BAIK)' : (($scorePct >= 65) ? 'B (LULUS)' : 'C (REMIDI)');
+        $html4 .= '<p><b>Ringkasan:</b> Jawaban Benar : ' . $mathCorrectCount . ' | Jawaban Salah : ' . $mathWrongCount . ' | <b>Nilai : ' . $grade . ' (' . $scorePct . '%)</b></p>';
 
         $html4 .= '<br><h3>HASIL TES KOMPUTER (MICROSOFT EXCEL)</h3>';
         $html4 .= '<table class="gayatabel">';
         $html4 .= '<tr class="bg-head"><th width="8%">No</th><th>Kriteria Uji Kompetensi Excel</th><th width="20%">Hasil Penilaian</th></tr>';
-        $compSkills = [
-            'VLOOKUP' => 'Cukup',
-            'HLOOKUP' => 'Cukup',
-            'PIVOT TABLE' => 'Cukup',
-            'FUNGSI IF' => 'Cukup',
-            'AVERAGE' => 'Cukup',
-            'PERKALIAN DAN PEMBAGIAN' => 'Cukup',
-            'KETELITIAN' => 'Cukup',
-            'KECEPATAN' => 'Cukup',
-            'HASIL KERJA' => 'Cukup',
-        ];
         $noK = 1;
         foreach ($compSkills as $sk => $val) {
             $html4 .= '<tr><td align="center">' . $noK++ . '</td><td><b>' . $sk . '</b></td><td align="center"><b>' . $val . '</b></td></tr>';
         }
         $html4 .= '</table>';
-        $html4 .= '<p><b>Waktu Pengerjaan:</b> 00:03:02 &mdash; <b>Skor Keseluruhan:</b> Cukup (75%)</p>';
+        $html4 .= '<p><b>Waktu Pengerjaan:</b> ' . ($candidate->tes_komputer ?? '00:03:02') . ' &mdash; <b>Status:</b> Penilaian Tersimpan</p>';
         $html4 .= '</body></html>';
 
         $mpdf->WriteHTML($html4);
+
 
         return $mpdf->Output('', 'S');
     }

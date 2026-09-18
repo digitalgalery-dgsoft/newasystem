@@ -14,6 +14,7 @@ use App\Http\Controllers\InterviewInhouseController;
 use App\Http\Controllers\AiRankingController;
 use App\Http\Controllers\AiSettingController;
 use App\Http\Controllers\PublicJobController;
+use App\Http\Controllers\CbtController;
 
 // ==========================================
 // HALAMAN AWAL WEB & LANDING PAGE (v3/index.php)
@@ -131,8 +132,12 @@ Route::get('/helpdesk', function () {
 })->name('helpdesk.index');
 
 // Public Client Approval Portal
-Route::get('/approval/{token}', [PrincipleApprovalController::class, 'show'])->name('principle.approval');
-Route::post('/approval/{token}/submit', [PrincipleApprovalController::class, 'submit'])->name('principle.approval.submit');
+Route::get('/approval/{token}', [PrincipleApprovalController::class, 'show'])
+    ->where('token', '^[A-Za-z0-9]{20,}$')
+    ->name('principle.approval');
+Route::post('/approval/{token}/submit', [PrincipleApprovalController::class, 'submit'])
+    ->where('token', '^[A-Za-z0-9]{20,}$')
+    ->name('principle.approval.submit');
 
 // Download Document PDF (Replikasi v3/printall.php)
 Route::get('/interview/{id}/pdf', [InterviewController::class, 'downloadPdf'])->name('interview.pdf');
@@ -157,6 +162,14 @@ Route::get('/kandidatportal', [KandidatPortalController::class, 'index'])->name(
 Route::get('/kandidatportal/{id}', [KandidatPortalController::class, 'show'])->name('kandidatportal.show');
 Route::post('/kandidatportal/{id}/reset-password', [KandidatPortalController::class, 'resetPassword'])->name('kandidatportal.reset_password');
 Route::post('/kandidatportal/{id}/interview', [KandidatPortalController::class, 'updateInterview'])->name('kandidatportal.interview');
+Route::post('/kandidatportal/{id}/refcek', [KandidatPortalController::class, 'storeRefcek'])->name('kandidatportal.refcek');
+Route::post('/kandidatportal/{id}/kompt', [KandidatPortalController::class, 'storeComputerTest'])->name('kandidatportal.kompt');
+Route::get('/kandidatportal/{id}/cetak-ai', [KandidatPortalController::class, 'cetakAiPdf'])->name('kandidatportal.cetak-ai');
+Route::get('/interview/{id}/cetak-ai', [InterviewController::class, 'cetakAiPdf'])->name('interview.cetak-ai');
+Route::get('/cetak_ai_result.php', function(\Illuminate\Http\Request $request) {
+    $id = $request->query('id', 64748);
+    return redirect()->route('kandidatportal.cetak-ai', $id);
+});
 Route::post('/kandidatportal/{id}/alihkan', [KandidatPortalController::class, 'alihkanAS'])->name('kandidatportal.alihkan');
 Route::post('/kandidatportal/{id}/ganti-area', [KandidatPortalController::class, 'gantiArea'])->name('kandidatportal.ganti_area');
 Route::post('/kandidatportal/{id}/arsipkan', [KandidatPortalController::class, 'arsipkan'])->name('kandidatportal.arsipkan');
@@ -227,6 +240,7 @@ Route::middleware(['admin'])->prefix('odoo-setting')->name('odoo.setting.')->gro
     Route::post('/{code}/test', [App\Http\Controllers\OdooSettingController::class, 'testConnection'])->name('test');
     Route::post('/{code}/sync', [App\Http\Controllers\OdooSettingController::class, 'sync'])->name('sync');
     Route::post('/sync-all', [App\Http\Controllers\OdooSettingController::class, 'syncAll'])->name('sync-all');
+    Route::post('/sync-by-nik', [App\Http\Controllers\OdooSettingController::class, 'syncByNik'])->name('sync-by-nik');
     Route::post('/cleanup-duplicates', [App\Http\Controllers\OdooSettingController::class, 'cleanupDuplicates'])->name('cleanup-duplicates');
 });
 // Legacy shortcut alias
@@ -243,3 +257,135 @@ Route::middleware(['admin'])->group(function () {
 });
 Route::get('/dataprinsiple', function() { return redirect()->route('userprinsiple.index'); });
 Route::get('/dataprinsiple.php', function() { return redirect()->route('userprinsiple.index'); });
+
+// ==============================================================
+// MODUL CBT & TEST ONLINE KANDIDAT (Replikasi D:\ASystem\interview)
+// ==============================================================
+Route::prefix('cbt')->name('cbt.')->group(function () {
+    // Autentikasi Peserta CBT
+    Route::get('/login', [CbtController::class, 'showLoginForm'])->name('login');
+    Route::post('/login', [CbtController::class, 'login'])->name('login.post');
+    Route::match(['get', 'post'], '/logout', [CbtController::class, 'logout'])->name('logout');
+
+    // Area Terproteksi Peserta CBT
+    Route::middleware(['candidate.auth'])->group(function () {
+        // Dashboard
+        Route::get('/', [CbtController::class, 'dashboard'])->name('dashboard');
+        Route::get('/dashboard', [CbtController::class, 'dashboard'])->name('dashboard.alias');
+
+        // Lengkapi Profil Kandidat
+        Route::get('/profile', [CbtController::class, 'profile'])->name('profile');
+        Route::post('/profile', [CbtController::class, 'updateProfile'])->name('profile.update');
+        Route::post('/experience', [CbtController::class, 'storeExperience'])->name('experience.store');
+        Route::delete('/experience/{id}', [CbtController::class, 'destroyExperience'])->name('experience.destroy');
+
+        // 1. Tes Kepribadian (DISC Assessment)
+        Route::get('/kepribadian', [CbtController::class, 'kepribadian'])->name('kepribadian');
+        Route::post('/kepribadian', [CbtController::class, 'submitKepribadian'])->name('kepribadian.submit');
+        Route::get('/kepribadian/result', [CbtController::class, 'kepribadianResult'])->name('kepribadian.result');
+
+        // 2. Tes Matematika & Logika Aritmetika
+        Route::get('/matematika', [CbtController::class, 'matematika'])->name('matematika');
+        Route::post('/matematika', [CbtController::class, 'submitMatematika'])->name('matematika.submit');
+        Route::get('/matematika/result', [CbtController::class, 'matematikaResult'])->name('matematika.result');
+
+        // 3. Tes Komputer & Spreadsheet
+        Route::get('/komputer', [CbtController::class, 'komputer'])->name('komputer');
+        Route::post('/komputer', [CbtController::class, 'submitKomputer'])->name('komputer.submit');
+    });
+});
+
+// Shortcut & Legacy Fallback Routes
+Route::get('/cbt.php', function() { return redirect()->route('cbt.login'); });
+Route::get('/tesonline', function() { return redirect()->route('cbt.login'); });
+Route::get('/testonline', function() { return redirect()->route('cbt.login'); });
+
+// ==============================================================
+// MODUL INSTALASI SISTEM (Replikasi att-admin-v12)
+// ==============================================================
+Route::middleware([\App\Http\Middleware\RedirectIfInstalled::class])->group(function () {
+    Route::get('/install', [\App\Http\Controllers\InstallController::class, 'index'])->name('install.index');
+    Route::post('/install', [\App\Http\Controllers\InstallController::class, 'process'])->name('install.process');
+});
+
+// ==============================================================
+// SERVING LAMPIRAN & FALLBACK KE SERVER LAMA
+// ==============================================================
+// 1. Lampiran Profil & CV Kandidat (Fallback: https://asystem.co.id/interview/lampiran/)
+Route::get('/lampiran/{filename}', function ($filename) {
+    $baseName = basename($filename);
+    $localPath = public_path('lampiran/' . $baseName);
+    if (file_exists($localPath)) {
+        return response()->file($localPath);
+    }
+    return redirect()->away('https://asystem.co.id/interview/lampiran/' . rawurlencode($baseName));
+})->where('filename', '.*')->name('lampiran.show');
+
+// 2. Lampiran Referensi Cek (Fallback: https://asystem.co.id/v3/refcekfile/)
+Route::get('/refcekfile/{filename}', function ($filename) {
+    $baseName = basename($filename);
+    $candidates = [
+        public_path('refcekfile/' . $baseName),
+        public_path('lampiran/' . $baseName),
+        public_path('storage/' . $baseName),
+    ];
+    foreach ($candidates as $cand) {
+        if (file_exists($cand) && !is_dir($cand)) {
+            return response()->file($cand);
+        }
+    }
+    return redirect()->away('https://asystem.co.id/v3/refcekfile/' . rawurlencode($baseName));
+})->where('filename', '.*')->name('refcekfile.show');
+
+// 3. Lampiran Approval Prinsiple (Fallback: https://asystem.co.id/v3/approval/)
+Route::get('/approval/{filename}', function ($filename) {
+    $baseName = basename($filename);
+    $candidates = [
+        public_path('approval/' . $baseName),
+        public_path('storage/approvals/' . $baseName),
+        public_path('storage/' . $baseName),
+        public_path('lampiran/' . $baseName),
+    ];
+    foreach ($candidates as $cand) {
+        if (file_exists($cand) && !is_dir($cand)) {
+            return response()->file($cand);
+        }
+    }
+    return redirect()->away('https://asystem.co.id/v3/approval/' . rawurlencode($baseName));
+})->where('filename', '.*')->name('approval.show');
+
+// 4. TTD Digital Prinsiple (Fallback: https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/)
+Route::get('/prinsiple/ttdfileprinsiple/{filename}', function ($filename) {
+    $baseName = basename($filename);
+    $candidates = [
+        public_path('prinsiple/ttdfileprinsiple/' . $baseName),
+        public_path('approval/' . $baseName),
+        public_path('storage/approvals/' . $baseName),
+        public_path('storage/' . $baseName),
+        public_path('lampiran/' . $baseName),
+    ];
+    foreach ($candidates as $cand) {
+        if (file_exists($cand) && !is_dir($cand)) {
+            return response()->file($cand);
+        }
+    }
+    return redirect()->away('https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName));
+})->where('filename', '.*')->name('prinsiple.ttd.show');
+
+// 5. Wildcard Fallback Semua Aset V3 Lama (https://asystem.co.id/v3/{path})
+Route::get('/v3/{path}', function ($path) {
+    $candidates = [
+        public_path('v3/' . $path),
+        public_path($path),
+        public_path('storage/' . $path),
+    ];
+    foreach ($candidates as $cand) {
+        if (file_exists($cand) && !is_dir($cand)) {
+            return response()->file($cand);
+        }
+    }
+    return redirect()->away('https://asystem.co.id/v3/' . $path);
+})->where('path', '.*')->name('legacy.v3.fallback');
+
+
+

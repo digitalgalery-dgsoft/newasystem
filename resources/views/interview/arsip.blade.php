@@ -37,6 +37,7 @@
                         <th class="py-3 px-3 w-12 text-center">NO</th>
                         <th class="py-3 px-3 w-36">NO. KTP</th>
                         <th class="py-3 px-4">NAMA KANDIDAT</th>
+                        <th class="py-3 px-3">JENIS KELAMIN</th>
                         <th class="py-3 px-3 w-28">TGL. LAHIR</th>
                         <th class="py-3 px-3 w-20 text-center">USIA</th>
                         <th class="py-3 px-4">PRINSIPLE</th>
@@ -51,6 +52,17 @@
                         <td class="py-2.5 px-3 text-center text-slate-400">{{ $candidates->firstItem() + $idx }}</td>
                         <td class="py-2.5 px-3 font-mono font-semibold">{{ $c->nik }}</td>
                         <td class="py-2.5 px-4 font-bold text-slate-950">{{ $c->full_name }}</td>
+                        <td class="py-2.5 px-3">
+                            @if(strtolower($c->gender ?? '') === 'perempuan')
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
+                                    <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                    <i class="fa-solid fa-mars text-[10px]"></i> Laki-laki
+                                </span>
+                            @endif
+                        </td>
                         <td class="py-2.5 px-3">{{ $c->formatted_birth_date }}</td>
                         <td class="py-2.5 px-3 text-center">{{ $c->age }} Thn</td>
                         <td class="py-2.5 px-4 font-medium">{{ $c->principle->name ?? '-' }}</td>
@@ -64,7 +76,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="9" class="py-8 text-center text-slate-400">Belum ada kandidat diarsipkan.</td>
+                        <td colspan="10" class="py-8 text-center text-slate-400">Belum ada kandidat diarsipkan.</td>
                     </tr>
                     @endforelse
                 </tbody>

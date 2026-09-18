@@ -164,11 +164,8 @@
             @foreach($jobs as $index => $item)
                 @php
                     $theme = $colorThemes[$index % count($colorThemes)];
-                    $skills = array_filter(array_map('trim', explode(',', strip_tags($item->job_skills ?? ''))));
-                    $cleanDesc = strip_tags($item->job_desc ?? ($item->kualifikasi ?? ''));
-                    if (empty($cleanDesc)) {
-                        $cleanDesc = 'Memiliki dedikasi kerja tinggi, mampu beradaptasi dan berkembang bersama perusahaan.';
-                    }
+                    $skills = $item->skills_array;
+                    $cleanDesc = $item->snippet_desc;
                 @endphp
                 <div class="bg-white rounded-2xl border border-slate-200/80 p-5 shadow-sm hover:shadow-md hover:border-primary/40 transition-all duration-200 flex flex-col justify-between group">
                     <div>

@@ -218,6 +218,7 @@
                         <th>Foto</th>
                         <th>No. KTP / NIK</th>
                         <th>Nama Kandidat</th>
+                        <th>Jenis Kelamin</th>
                         <th>Tgl Lahir / Usia</th>
                         <th>Pendidikan</th>
                         <th>Posisi Dilamar</th>
@@ -246,8 +247,8 @@
                         <!-- Foto Profil -->
                         <td class="text-center">
                             @if($cand->photo_path)
-                                <img src="https://ui-avatars.com/api/?name={{ urlencode($cand->full_name) }}&background=0F52BA&color=fff" 
-                                     alt="Avatar" class="w-8 h-8 rounded-full border border-slate-200 mx-auto object-cover">
+                                <img src="{{ $cand->photo_url }}" 
+                                     alt="Avatar" class="w-8 h-8 rounded-full border border-slate-200 mx-auto object-cover" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($cand->full_name) }}&background=0F52BA&color=fff';">
                             @else
                                 <div class="w-8 h-8 rounded-full bg-blue-50 border border-blue-200 text-primary flex items-center justify-center font-extrabold mx-auto text-xs">
                                     {{ strtoupper(substr($cand->full_name, 0, 1)) }}
@@ -272,6 +273,19 @@
                                 <i class="fa-brands fa-whatsapp text-emerald-500"></i>
                                 <span>{{ $cand->phone ?? '-' }}</span>
                             </div>
+                        </td>
+
+                        <!-- Jenis Kelamin -->
+                        <td>
+                            @if(strtolower($cand->gender ?? '') === 'perempuan')
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
+                                    <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
+                                </span>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                    <i class="fa-solid fa-mars text-[10px]"></i> Laki-laki
+                                </span>
+                            @endif
                         </td>
 
                         <!-- Tgl Lahir / Usia -->
@@ -341,9 +355,10 @@
                         <!-- File CV -->
                         <td class="text-center">
                             @if($cand->cv_path)
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <a href="{{ $cand->cv_url }}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-sm" title="Buka File CV">
                                     <i class="fa-solid fa-file-pdf"></i> Ada
-                                </span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+                                </a>
                             @else
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-400">
                                     Tidak Ada

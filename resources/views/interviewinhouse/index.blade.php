@@ -177,9 +177,10 @@
                             <td class="py-3 px-3.5">
                                 <div class="flex items-center gap-2.5">
                                     <div class="relative">
-                                        <img src="{{ $c->photo_path ?: 'https://ui-avatars.com/api/?name='.urlencode($c->full_name).'&background=0F52BA&color=fff' }}" 
+                                        <img src="{{ $c->photo_url }}" 
                                              alt="{{ $c->full_name }}" 
-                                             class="w-8 h-8 rounded-lg object-cover border border-slate-200">
+                                             class="w-8 h-8 rounded-lg object-cover border border-slate-200"
+                                             onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($c->full_name) }}&background=0F52BA&color=fff';">
                                         <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white {{ $isComplete ? 'bg-emerald-500' : 'bg-rose-500' }}"
                                               title="{{ $isComplete ? 'Profil Lengkap' : 'Profil Belum Lengkap' }}"></span>
                                     </div>

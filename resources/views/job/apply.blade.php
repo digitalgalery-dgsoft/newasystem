@@ -186,6 +186,21 @@
                             <span class="text-[10px] text-slate-400">Format tanggal lahir (DDMMYYYY) akan menjadi password akun Anda.</span>
                         </div>
 
+                        <!-- Jenis Kelamin -->
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-700">Jenis Kelamin <span class="text-rose-500">*</span></label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <label class="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-white hover:border-primary transition-all text-xs font-medium text-slate-700">
+                                    <input type="radio" name="gender" value="Laki-laki" {{ old('gender', 'Laki-laki') === 'Laki-laki' ? 'checked' : '' }} required class="text-primary focus:ring-primary">
+                                    <span><i class="fa-solid fa-mars text-blue-500 mr-1"></i> Laki-laki</span>
+                                </label>
+                                <label class="flex items-center gap-2 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:bg-white hover:border-primary transition-all text-xs font-medium text-slate-700">
+                                    <input type="radio" name="gender" value="Perempuan" {{ old('gender') === 'Perempuan' ? 'checked' : '' }} required class="text-primary focus:ring-primary">
+                                    <span><i class="fa-solid fa-venus text-pink-500 mr-1"></i> Perempuan</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <!-- Tinggi & Berat Badan -->
                         <div class="grid grid-cols-2 gap-2">
                             <div class="space-y-1">
@@ -261,42 +276,110 @@
                     </div>
                 </div>
 
-                <!-- SECTION 6: PENEMPATAN & WILAYAH -->
-                <div class="space-y-3">
+                <!-- SECTION 6: PENEMPATAN & WILAYAH DOMISILI -->
+                <div class="space-y-4">
                     <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider pb-2 border-b border-slate-100">
                         <i class="fa-solid fa-briefcase text-primary"></i>
-                        <span>6. Posisi & Penempatan</span>
+                        <span>6. Posisi &amp; Wilayah Domisili</span>
                     </div>
 
+                    <!-- Row 1: Posisi Dilamar & Area Penempatan -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div class="space-y-1">
                             <label class="text-xs font-bold text-slate-500">Posisi Dilamar</label>
-                            <input type="text" value="{{ $job->job_title }}" readonly class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-not-allowed">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-briefcase text-xs"></i>
+                                </div>
+                                <input type="text" value="{{ $job->job_title }}" readonly class="w-full pl-9 pr-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-not-allowed">
+                            </div>
                         </div>
 
                         <div class="space-y-1">
                             <label class="text-xs font-bold text-slate-500">Area Penempatan</label>
-                            <input type="text" value="{{ $job->job_area ?? 'Nasional' }}" readonly class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-not-allowed">
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-location-dot text-xs text-rose-500"></i>
+                                </div>
+                                <input type="text" value="{{ $job->job_area ?? 'Nasional' }}" readonly class="w-full pl-9 pr-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 cursor-not-allowed">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 2: Propinsi Domisili & Kota/Kabupaten Domisili -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-700">Propinsi Domisili <span class="text-rose-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-map-location-dot text-xs text-primary"></i>
+                                </div>
+                                <select id="inputPropinsiDomisili" name="propinsi_domisili" required onchange="onProvinceChange(this.value)" class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                                    <option value="" disabled {{ old('propinsi_domisili') ? '' : 'selected' }}>Pilih Propinsi Domisili</option>
+                                    @foreach($provinces as $prov)
+                                        <option value="{{ $prov }}" {{ old('propinsi_domisili') == $prov ? 'selected' : '' }}>{{ $prov }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-700">Kota/Kabupaten Domisili <span class="text-rose-500">*</span></label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                    <i class="fa-solid fa-city text-xs text-primary"></i>
+                                </div>
+                                <select id="inputKotaDomisili" name="kota_domisili" required class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                                    <option value="" disabled selected>Pilih Kota/Kabupaten Domisili</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Info Lowongan -->
+                    <div class="space-y-1">
+                        <label class="text-xs font-bold text-slate-700">Info Lowongan <span class="text-rose-500">*</span></label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <i class="fa-solid fa-bullhorn text-xs text-indigo-500"></i>
+                            </div>
+                            <select id="inputInfoLowongan" name="info_lowongan" required class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                                <option value="" disabled {{ old('info_lowongan') ? '' : 'selected' }}>Info Lowongan</option>
+                                <option value="Tiktok" {{ old('info_lowongan') == 'Tiktok' ? 'selected' : '' }}>Tiktok</option>
+                                <option value="Instagram" {{ old('info_lowongan') == 'Instagram' ? 'selected' : '' }}>Instagram</option>
+                                <option value="WhatsApp" {{ old('info_lowongan') == 'WhatsApp' ? 'selected' : '' }}>WhatsApp</option>
+                                <option value="Web" {{ old('info_lowongan') == 'Web' ? 'selected' : '' }}>Web</option>
+                                <option value="Lainnya" {{ old('info_lowongan') == 'Lainnya' ? 'selected' : '' }}>Lainnya</option>
+                            </select>
                         </div>
                     </div>
                 </div>
 
-                <!-- SECTION 7: MOTIVASI & KELEBIHAN -->
+                <!-- SECTION 7: PENGALAMAN, MOTIVASI & KELEBIHAN -->
                 <div class="space-y-3">
                     <div class="flex items-center gap-2 text-xs font-bold text-slate-700 uppercase tracking-wider pb-2 border-b border-slate-100">
                         <i class="fa-solid fa-comment-dots text-indigo-500"></i>
-                        <span>7. Motivasi Kerja &amp; Kelebihan Diri</span>
+                        <span>7. Pengalaman, Motivasi &amp; Kelebihan Diri</span>
                     </div>
 
                     <div class="space-y-4">
+                        <!-- Ringkasan Pengalaman Kerja -->
                         <div class="space-y-1">
-                            <label class="text-xs font-bold text-slate-700">Motivasi Bekerja</label>
-                            <textarea id="inputMotivasi" name="motivasi" rows="2" placeholder="Ceritakan motivasi Anda melamar posisi ini..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">{{ old('motivasi', 'Ingin berkontribusi secara maksimal, mengembangkan potensi karier, dan memberikan performa terbaik bagi perusahaan.') }}</textarea>
+                            <label class="text-xs font-bold text-slate-700">Ringkasan Pengalaman Kerja</label>
+                            <textarea id="inputRingkasanPengalaman" name="ringkasan_pengalaman" rows="3" placeholder="Ceritakan riwayat pekerjaan, nama perusahaan, posisi terakhir, atau pengalaman relevan Anda..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">{{ old('ringkasan_pengalaman') }}</textarea>
+                            <span class="text-[10px] text-slate-400">Contoh: 1 tahun SPG Kosmetik di PT ABC, 6 bulan Promotor Event. Jika belum memiliki pengalaman kerja, tulis Fresh Graduate.</span>
                         </div>
 
+                        <!-- Motivasi Bekerja (Placeholder Saja, Isian Dummy Dihilangkan) -->
+                        <div class="space-y-1">
+                            <label class="text-xs font-bold text-slate-700">Motivasi Bekerja</label>
+                            <textarea id="inputMotivasi" name="motivasi" rows="2" placeholder="Ceritakan motivasi Anda melamar posisi ini..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">{{ old('motivasi') }}</textarea>
+                        </div>
+
+                        <!-- Kelebihan & Keterampilan Utama Diri (Placeholder Saja, Isian Dummy Dihilangkan) -->
                         <div class="space-y-1">
                             <label class="text-xs font-bold text-slate-700">Kelebihan &amp; Keterampilan Utama Diri</label>
-                            <textarea id="inputKelebihan" name="kelebihan" rows="2" placeholder="Sebutkan kemampuan, integritas, dan keunggulan Anda..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">{{ old('kelebihan', 'Pekerja keras, jujur, cepat beradaptasi, mampu bekerja secara tim maupun mandiri, serta berorientasi pada target.') }}</textarea>
+                            <textarea id="inputKelebihan" name="kelebihan" rows="2" placeholder="Sebutkan kemampuan, integritas, dan keunggulan Anda..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">{{ old('kelebihan') }}</textarea>
                         </div>
                     </div>
                 </div>
@@ -403,7 +486,7 @@
                 <p class="text-[11px] text-slate-300 leading-relaxed">
                     Jika Anda mengalami kendala teknis saat mengunggah berkas atau mengisi data, hubungi tim support rekrutmen kami.
                 </p>
-                <a href="https://wa.me/6283139797309?text=Halo%20Admin%20Rekrutmen,%20saya%20mengalami%20kendala%20saat%20melamar%20posisi%20{{ urlencode($job->job_title) }}" target="_blank" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow transition-all">
+                <a href="https://wa.me/{{ $job->creator_whatsapp }}?text=Halo%20Admin%20Rekrutmen,%20saya%20mengalami%20kendala%20saat%20melamar%20posisi%20{{ urlencode($job->job_title) }}" target="_blank" class="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow transition-all">
                     <i class="fa-brands fa-whatsapp text-sm"></i>
                     <span>Hubungi Support WA</span>
                 </a>
@@ -413,6 +496,38 @@
 </div>
 
 <script>
+const regionsData = @json($regions ?? []);
+const oldCity = @json(old('kota_domisili', ''));
+
+function onProvinceChange(prov) {
+    const citySelect = document.getElementById('inputKotaDomisili');
+    if (!citySelect) return;
+
+    citySelect.innerHTML = '<option value="" disabled selected>Pilih Kota/Kabupaten Domisili</option>';
+    
+    if (prov && regionsData[prov]) {
+        regionsData[prov].forEach(city => {
+            const opt = document.createElement('option');
+            opt.value = city;
+            opt.textContent = city;
+            if (city === oldCity) {
+                opt.selected = true;
+            }
+            citySelect.appendChild(opt);
+        });
+        citySelect.removeAttribute('disabled');
+    } else {
+        citySelect.setAttribute('disabled', 'disabled');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const provSelect = document.getElementById('inputPropinsiDomisili');
+    if (provSelect && provSelect.value) {
+        onProvinceChange(provSelect.value);
+    }
+});
+
 function handleFotoPreview(input) {
     if (input.files && input.files[0]) {
         const reader = new FileReader();

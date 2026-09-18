@@ -29,13 +29,10 @@
             </form>
 
             <!-- Tombol Sync Semua Entitas -->
-            <form action="{{ route('odoo.setting.sync-all') }}" method="POST" onsubmit="return confirm('Jalankan sinkronisasi data karyawan untuk seluruh entitas aktif yang terkonfigurasi?')">
-                @csrf
-                <button type="submit" class="btn-att-primary text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md">
-                    <i class="fa-solid fa-cloud-arrow-down text-sm"></i>
-                    <span>Sync Semua Entitas (5 Entitas)</span>
-                </button>
-            </form>
+            <button type="button" onclick="document.getElementById('modalSyncAll').classList.remove('hidden')" class="btn-att-primary text-xs bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 shadow-md flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-down text-sm"></i>
+                <span>Sync Semua Entitas...</span>
+            </button>
 
             <!-- Link ke Master Karyawan -->
             <a href="{{ route('master.karyawan.index') }}" class="btn-att-secondary text-xs">
@@ -104,7 +101,10 @@
             <div>
                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Karyawan Aktif</p>
                 <p class="text-2xl font-black text-slate-800">{{ number_format($stats['total_aktif']) }}</p>
-                <span class="text-[11px] font-semibold text-emerald-600">Status Aktif Bekerja</span>
+                <div class="flex items-center gap-1.5 mt-0.5 text-[10px] font-bold">
+                    <span class="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200" title="Karyawan Inhouse (5 Entitas)">Inhouse: {{ number_format($stats['total_inhouse'] ?? 0) }}</span>
+                    <span class="text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200" title="Karyawan RateCard">RateCard: {{ number_format($stats['total_ratecard'] ?? 0) }}</span>
+                </div>
             </div>
         </div>
 
@@ -129,6 +129,30 @@
                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Entitas Aktif</p>
                 <p class="text-2xl font-black text-slate-800">{{ $stats['active_entities'] }} <span class="text-sm font-normal text-slate-400">/ 5 Entitas</span></p>
                 <span class="text-[11px] font-semibold text-cyan-600">Siap Sinkronisasi</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- BANNER ATURAN INHOUSE VS RATECARD -->
+    <div class="bg-gradient-to-r from-blue-50/80 via-indigo-50/50 to-slate-50 p-4 rounded-2xl border border-blue-200/70 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-3 text-xs">
+        <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center text-base shrink-0 shadow-xs">
+                <i class="fa-solid fa-building-shield"></i>
+            </div>
+            <div class="space-y-0.5">
+                <div class="flex items-center gap-2">
+                    <span class="font-extrabold text-slate-800">Ketentuan Kategori: Inhouse vs RateCard</span>
+                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Hanya Employee Aktif</span>
+                </div>
+                <p class="text-slate-600 text-[11px] leading-relaxed">
+                    Daftar Entitas Inhouse: 
+                    <strong class="text-blue-700">PT ARINA MULTI KARYA</strong>, 
+                    <strong class="text-emerald-700">PT ALVA KARYA PERKASA</strong>, 
+                    <strong class="text-purple-700">PT ANUGRAH TERPERCAYA KERJA</strong>, 
+                    <strong class="text-amber-700">PT ABADI BERKAT ODELIA</strong>, 
+                    <strong class="text-cyan-700">PT ANUGRAH TALENTA BERKARYA</strong>.
+                    Jika nilai <strong>Prinsiple</strong> pada data Odoo sama dengan entitas tersebut, maka otomatis dikategorikan sebagai <span class="px-1.5 py-0.5 font-bold rounded bg-emerald-100 text-emerald-800 border border-emerald-200">Inhouse</span>. Jika selain itu, dikategorikan sebagai <span class="px-1.5 py-0.5 font-bold rounded bg-blue-100 text-blue-800 border border-blue-200">RateCard</span>.
+                </p>
             </div>
         </div>
     </div>
@@ -370,15 +394,47 @@
                         </div>
 
                         <h4 class="text-lg font-black tracking-tight mb-1">Sinkronisasi Data Karyawan</h4>
-                        <p class="text-xs text-blue-100 leading-relaxed mb-4">
-                            Tarik data terbaru <code>hr.employee</code> dari Odoo untuk entitas <strong>{{ $currentEntity->code }}</strong>, memetakan NIK, Jabatan, Divisi, Prinsiple, Area, dan Status (Aktiv/Resign).
+                        <p class="text-xs text-blue-100 leading-relaxed mb-3">
+                            Tarik data terbaru <code>hr.employee</code> dari Odoo untuk entitas <strong>{{ $currentEntity->code }}</strong>.
                         </p>
 
                         <form action="{{ route('odoo.setting.sync', $currentEntity->code) }}" method="POST" onsubmit="return confirm('Mulai proses sinkronisasi data karyawan untuk entitas {{ $currentEntity->code }}?')">
                             @csrf
+                            
+                            <!-- Category Filter Selection -->
+                            <div class="mb-3.5 bg-white/10 p-2.5 rounded-xl border border-white/15 backdrop-blur-xs">
+                                <label class="block text-[10px] font-extrabold text-blue-100 uppercase tracking-wider mb-1.5">
+                                    Pilih Kategori Karyawan:
+                                </label>
+                                <div class="grid grid-cols-3 gap-1.5 text-xs">
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="category" value="inhouse" checked class="peer sr-only">
+                                        <div class="py-1.5 px-2 text-center rounded-lg bg-white/15 border border-white/20 peer-checked:bg-white peer-checked:text-primary peer-checked:font-black transition-all text-[11px]">
+                                            Inhouse
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="category" value="ratecard" class="peer sr-only">
+                                        <div class="py-1.5 px-2 text-center rounded-lg bg-white/15 border border-white/20 peer-checked:bg-white peer-checked:text-primary peer-checked:font-black transition-all text-[11px]">
+                                            RateCard
+                                        </div>
+                                    </label>
+                                    <label class="cursor-pointer">
+                                        <input type="radio" name="category" value="all" class="peer sr-only">
+                                        <div class="py-1.5 px-2 text-center rounded-lg bg-white/15 border border-white/20 peer-checked:bg-white peer-checked:text-primary peer-checked:font-black transition-all text-[11px]">
+                                            Semua
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="flex items-center gap-1.5 mt-2 text-[10px] text-blue-100">
+                                    <i class="fa-solid fa-circle-check text-emerald-300"></i>
+                                    <span>Hanya employee berstatus <strong>aktif</strong> yang disinkronkan.</span>
+                                </div>
+                            </div>
+
                             <button type="submit" class="w-full py-3 px-4 rounded-xl bg-white text-primary font-black text-xs hover:bg-blue-50 transition-all shadow-md flex items-center justify-center gap-2 group">
                                 <i class="fa-solid fa-arrows-rotate text-sm group-hover:rotate-180 transition-transform duration-500"></i>
-                                <span>SINKRONISASI KARYAWAN {{ $currentEntity->code }} SEKARANG</span>
+                                <span>SINKRONISASI KARYAWAN {{ $currentEntity->code }}</span>
                             </button>
                         </form>
 
@@ -430,6 +486,157 @@
                     </div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- FITUR SINKRONISASI & CEK 1 DATA KARYAWAN BY NIK -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-user-tag"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">Cek &amp; Sinkronisasi 1 Data Karyawan (By NIK)</h3>
+                    <p class="text-[11px] text-slate-500">Cek status atau tarik 1 karyawan spesifik langsung dari Odoo berdasarkan NIK / NIP tanpa perlu proses sinkronisasi massal.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200 self-start sm:self-auto">
+                <i class="fa-solid fa-circle-check"></i>
+                <span>Filter Otomatis Karyawan Aktif</span>
+            </div>
+        </div>
+
+        <form id="formSyncByNik" onsubmit="handleSyncByNik(event)" class="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+            @csrf
+            <!-- Input NIK -->
+            <div class="md:col-span-5 space-y-1">
+                <label class="block text-xs font-bold text-slate-700">
+                    Nomor Induk Karyawan (NIK / NIP) <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-id-card"></i>
+                    </div>
+                    <input type="text" id="nikInput" name="nik" required placeholder="Contoh: 202400123 / 357801..." 
+                           class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all">
+                </div>
+            </div>
+
+            <!-- Pilih Entitas Odoo -->
+            <div class="md:col-span-4 space-y-1">
+                <label class="block text-xs font-bold text-slate-700">
+                    Entitas Odoo <span class="text-rose-500">*</span>
+                </label>
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-building"></i>
+                    </div>
+                    <select id="entityCodeInput" name="entity_code" required
+                            class="w-full pl-9 pr-8 py-2.5 rounded-xl border border-slate-200 text-xs font-medium focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all appearance-none bg-white">
+                        @foreach($entities as $ent)
+                            <option value="{{ $ent->code }}" {{ $currentEntity->code === $ent->code ? 'selected' : '' }}>
+                                {{ $ent->code }} &bull; {{ $ent->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 text-xs">
+                        <i class="fa-solid fa-chevron-down"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tombol Cek & Sync -->
+            <div class="md:col-span-3">
+                <button type="submit" id="btnSyncByNik" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <span>Cek &amp; Sync NIK</span>
+                </button>
+            </div>
+        </form>
+
+        <!-- HASIL PENGECEKAN / SINKRONISASI 1 DATA (AJAX PREVIEW) -->
+        <div id="nikResultContainer" class="hidden mt-3 pt-4 border-t border-slate-100">
+            <!-- Dynamic Result Area -->
+        </div>
+    </div>
+
+    <!-- MODAL SYNC SEMUA ENTITAS DENGAN PILIHAN KATEGORI -->
+    <div id="modalSyncAll" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs hidden p-4">
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden">
+            <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-blue-100 text-primary flex items-center justify-center text-base">
+                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-black text-slate-800">Sync Semua Entitas Odoo</h3>
+                        <p class="text-[11px] text-slate-500">Proses sinkronisasi seluruh 5 entitas aktif</p>
+                    </div>
+                </div>
+                <button type="button" onclick="document.getElementById('modalSyncAll').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <form action="{{ route('odoo.setting.sync-all') }}" method="POST" class="p-5 space-y-4">
+                @csrf
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-2">
+                        Pilih Kategori Sinkronisasi:
+                    </label>
+                    <div class="space-y-2">
+                        <!-- Option 1: Inhouse Saja -->
+                        <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary/50 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-blue-50/40">
+                            <input type="radio" name="category" value="inhouse" checked class="mt-0.5 text-primary focus:ring-primary">
+                            <div class="flex-1 text-xs">
+                                <div class="flex items-center justify-between">
+                                    <span class="font-bold text-slate-800">Inhouse Saja (5 Entitas)</span>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700">Rekomendasi</span>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Prinsiple sama dengan 5 entitas: <strong>AMK, AKP, ATK, ABO, ATB</strong>. Beban proses lebih ringan.</p>
+                            </div>
+                        </label>
+
+                        <!-- Option 2: RateCard Saja -->
+                        <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary/50 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-blue-50/40">
+                            <input type="radio" name="category" value="ratecard" class="mt-0.5 text-primary focus:ring-primary">
+                            <div class="flex-1 text-xs">
+                                <span class="font-bold text-slate-800">RateCard Saja</span>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Karyawan dengan Prinsiple selain 5 entitas inhouse.</p>
+                            </div>
+                        </label>
+
+                        <!-- Option 3: Semua Kategori -->
+                        <label class="flex items-start gap-3 p-3 rounded-xl border border-slate-200 hover:border-primary/50 cursor-pointer transition-all has-[:checked]:border-primary has-[:checked]:bg-blue-50/40">
+                            <input type="radio" name="category" value="all" class="mt-0.5 text-primary focus:ring-primary">
+                            <div class="flex-1 text-xs">
+                                <span class="font-bold text-slate-800">Semua Kategori (Inhouse + RateCard)</span>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Tarik seluruh data karyawan aktif tanpa filter kategori.</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Filter Status Aktif Info -->
+                <div class="p-3 rounded-xl bg-emerald-50 border border-emerald-200/80 text-[11px] text-emerald-800 flex items-start gap-2.5">
+                    <i class="fa-solid fa-circle-check text-emerald-600 text-sm mt-0.5 shrink-0"></i>
+                    <div>
+                        <span class="font-bold">Hanya Karyawan Aktif:</span>
+                        Sistem hanya akan memproses karyawan yang berstatus aktif (tanpa tanggal resign) di Odoo.
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2.5 pt-2">
+                    <button type="button" onclick="document.getElementById('modalSyncAll').classList.add('hidden')" class="btn-att-secondary text-xs px-4 py-2">
+                        Batal
+                    </button>
+                    <button type="submit" class="btn-att-primary text-xs px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600">
+                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                        <span>Mulai Sinkronisasi</span>
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -527,7 +734,7 @@
     </div>
 </div>
 
-<!-- JAVASCRIPT FOR TEST CONNECTION -->
+<!-- JAVASCRIPT FOR TEST CONNECTION & SYNC BY NIK -->
 <script>
 function testOdooConnection(entityCode) {
     const btn = document.getElementById('btnTestConn');
@@ -559,6 +766,149 @@ function testOdooConnection(entityCode) {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
         alert('ERROR KONEKSI:\n\nTidak dapat menghubungi server lokal aplikasi: ' + error.message);
+    });
+}
+
+function handleSyncByNik(event) {
+    event.preventDefault();
+    const nikInput = document.getElementById('nikInput');
+    const nik = nikInput.value.trim();
+    const entityCode = document.getElementById('entityCodeInput').value;
+    const btn = document.getElementById('btnSyncByNik');
+    const resultContainer = document.getElementById('nikResultContainer');
+
+    if (!nik) {
+        alert('Mohon masukkan NIK / NIP terlebih dahulu.');
+        nikInput.focus();
+        return;
+    }
+
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = `<i class="fa-solid fa-circle-notch fa-spin text-white"></i><span>Mencari di Odoo...</span>`;
+
+    resultContainer.classList.remove('hidden');
+    resultContainer.innerHTML = `
+        <div class="p-6 text-center text-slate-500 bg-slate-50 rounded-2xl border border-slate-200/80 animate-pulse">
+            <i class="fa-solid fa-arrows-rotate fa-spin text-2xl text-indigo-600 mb-2"></i>
+            <p class="text-xs font-bold text-slate-700">Menghubungkan ke Odoo XML-RPC (${entityCode})...</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">Mencari data karyawan NIK '${nik}' dan memverifikasi status aktif...</p>
+        </div>
+    `;
+
+    fetch(`{{ route('odoo.setting.sync-by-nik') }}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+            'Accept': 'application/json'
+        },
+        body: JSON.stringify({
+            nik: nik,
+            entity_code: entityCode
+        })
+    })
+    .then(response => response.json().then(data => ({ status: response.status, body: data })))
+    .then(({ status, body }) => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+
+        if (body.success && body.employee) {
+            const emp = body.employee;
+            const isInhouse = (emp.tipe_karyawan === 'Inhouse');
+            const typeBadge = isInhouse
+                ? `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 shadow-xs"><i class="fa-solid fa-building-user text-emerald-600"></i>INHOUSE</span>`
+                : `<span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-blue-100 text-blue-800 border border-blue-300 shadow-xs"><i class="fa-solid fa-handshake text-blue-600"></i>RATECARD</span>`;
+
+            const actionBadge = body.action === 'created'
+                ? `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-200/80 text-emerald-900 border border-emerald-300">DATA BARU DIBUAT</span>`
+                : `<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-200/80 text-blue-900 border border-blue-300">DATA DIPERBARUI</span>`;
+
+            resultContainer.innerHTML = `
+                <div class="p-5 bg-gradient-to-r from-emerald-50/60 via-teal-50/40 to-white rounded-2xl border border-emerald-200/90 shadow-sm space-y-4 animate-in fade-in duration-200">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-200/70">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                                <i class="fa-solid fa-user-check"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <span class="text-xs font-black uppercase text-emerald-900 tracking-wide">Karyawan Berhasil Disinkronkan</span>
+                                    ${actionBadge}
+                                </div>
+                                <p class="text-xs text-slate-600 mt-0.5">${body.message}</p>
+                            </div>
+                        </div>
+                        <div>
+                            ${typeBadge}
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">NIK / NIP</span>
+                            <p class="font-black text-slate-800 text-sm mt-0.5 font-mono">${emp.nik || '-'}</p>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Nama Lengkap</span>
+                            <p class="font-black text-slate-800 text-sm mt-0.5">${emp.nama_karyawan || '-'}</p>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Jabatan / Divisi</span>
+                            <p class="font-bold text-slate-700 mt-0.5 truncate">${emp.jabatan || '-'}</p>
+                            <span class="text-[10px] text-slate-400">${emp.departemen || '-'}</span>
+                        </div>
+                        <div class="bg-white p-3.5 rounded-xl border border-slate-200/80 shadow-xs">
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Prinsiple &amp; Entitas</span>
+                            <p class="font-bold text-slate-700 mt-0.5 truncate">${emp.prinsiple || '-'}</p>
+                            <span class="text-[10px] text-primary font-bold">Entitas: ${emp.entitas || entityCode}</span>
+                        </div>
+                    </div>
+
+                    <div class="pt-2 flex flex-wrap items-center justify-between gap-3 text-xs border-t border-emerald-100">
+                        <div class="flex items-center gap-2 text-[11px] text-slate-600">
+                            <span class="inline-flex items-center gap-1 text-emerald-700 font-bold">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Status: Aktif Bekerja
+                            </span>
+                            <span>&bull;</span>
+                            <span>Kategori: <strong>${isInhouse ? 'Inhouse (Prinsiple Termasuk 5 Entitas)' : 'RateCard (Prinsiple Eksternal)'}</strong></span>
+                        </div>
+                        <a href="{{ route('master.karyawan.index') }}?search=${encodeURIComponent(emp.nik)}" class="btn-att-primary text-xs px-3.5 py-1.5 shadow-xs">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                            <span>Buka di Data Karyawan</span>
+                        </a>
+                    </div>
+                </div>
+            `;
+        } else {
+            resultContainer.innerHTML = `
+                <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 space-y-2 animate-in fade-in duration-200">
+                    <div class="flex items-start gap-2.5">
+                        <i class="fa-solid fa-circle-exclamation text-rose-600 text-lg mt-0.5 shrink-0"></i>
+                        <div class="flex-1">
+                            <p class="font-black text-rose-900 text-sm">Karyawan Tidak Ditemukan atau Non-Aktif di Odoo</p>
+                            <p class="text-xs text-rose-700 mt-0.5">${body.message || 'Data tidak ditemukan pada server Odoo entitas ' + entityCode}</p>
+                        </div>
+                    </div>
+                    <div class="p-2.5 bg-white/60 rounded-xl border border-rose-200 text-[11px] text-rose-700">
+                        <strong>Aturan Filter:</strong> Hanya karyawan yang berstatus <em>aktif</em> (field <code>active=True</code> dan tanggal resign/<code>departure_date</code> kosong) yang diizinkan untuk disinkronkan.
+                    </div>
+                </div>
+            `;
+        }
+    })
+    .catch(error => {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+        resultContainer.innerHTML = `
+            <div class="p-4 bg-rose-50 border border-rose-200 rounded-2xl text-xs text-rose-800 flex items-start gap-2.5">
+                <i class="fa-solid fa-triangle-exclamation text-rose-600 text-lg mt-0.5 shrink-0"></i>
+                <div>
+                    <p class="font-black text-rose-900">Gagal Menghubungi Server</p>
+                    <p class="text-xs text-rose-700 mt-0.5">${error.message}</p>
+                </div>
+            </div>
+        `;
     });
 }
 </script>

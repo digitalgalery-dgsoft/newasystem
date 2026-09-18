@@ -6,6 +6,7 @@ use App\Models\Candidate;
 use App\Models\Principle;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CandidateController extends Controller
 {
@@ -35,14 +36,25 @@ class CandidateController extends Controller
 
         $candidates = $query->paginate(15)->withQueryString();
 
-        // Status Counts
+        // Status Counts optimized in a single query
+        $statusAgg = DB::selectOne("
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE WHEN status = 'new' THEN 1 ELSE 0 END) as count_new,
+                SUM(CASE WHEN status = 'interview_process' THEN 1 ELSE 0 END) as count_interview_process,
+                SUM(CASE WHEN status = 'review_principle' THEN 1 ELSE 0 END) as count_review_principle,
+                SUM(CASE WHEN status = 'passed' THEN 1 ELSE 0 END) as count_passed,
+                SUM(CASE WHEN status = 'archived' THEN 1 ELSE 0 END) as count_archived
+            FROM candidates
+        ");
+
         $statusCounts = [
-            'total' => Candidate::count(),
-            'new' => Candidate::where('status', 'new')->count(),
-            'interview_process' => Candidate::where('status', 'interview_process')->count(),
-            'review_principle' => Candidate::where('status', 'review_principle')->count(),
-            'passed' => Candidate::where('status', 'passed')->count(),
-            'archived' => Candidate::where('status', 'archived')->count(),
+            'total' => (int) ($statusAgg->total ?? 0),
+            'new' => (int) ($statusAgg->count_new ?? 0),
+            'interview_process' => (int) ($statusAgg->count_interview_process ?? 0),
+            'review_principle' => (int) ($statusAgg->count_review_principle ?? 0),
+            'passed' => (int) ($statusAgg->count_passed ?? 0),
+            'archived' => (int) ($statusAgg->count_archived ?? 0),
         ];
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();

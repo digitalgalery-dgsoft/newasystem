@@ -26,8 +26,8 @@ class OdooSettingController extends Controller
                 ['code' => 'AMK', 'name' => 'PT Arina Multi Karya', 'odoo_url' => 'https://odoo.arinamultikarya.com', 'odoo_db' => 'AMK_LIVE'],
                 ['code' => 'AKP', 'name' => 'PT Alva Karya Perkasa', 'odoo_url' => 'https://odoo.arinamultikarya.com', 'odoo_db' => 'AKP_LIVE'],
                 ['code' => 'ATK', 'name' => 'PT Anugrah Terpercaya Kerja', 'odoo_url' => 'https://odoo.arinamultikarya.com', 'odoo_db' => 'ATK_LIVE'],
-                ['code' => 'ABO', 'name' => 'PT Arina Bintang Operasional', 'odoo_url' => 'https://odoo.arinamultikarya.com', 'odoo_db' => 'ABO_LIVE'],
-                ['code' => 'ATB', 'name' => 'PT Anugrah Tri Berkah', 'odoo_url' => 'https://odoo.arinamultikarya.com', 'odoo_db' => 'ATB_LIVE'],
+                ['code' => 'ABO', 'name' => 'PT Abadi Berkat Odelia', 'odoo_url' => 'https://odoo.arinamultikarya.com', 'odoo_db' => 'ABO_LIVE'],
+                ['code' => 'ATB', 'name' => 'PT Anugrah Talenta Berkarya', 'odoo_url' => 'https://odoo.arinamultikarya.com', 'odoo_db' => 'ATB_LIVE'],
             ];
             foreach ($defaults as $def) {
                 OdooEntity::firstOrCreate(['code' => $def['code']], $def);
@@ -43,6 +43,8 @@ class OdooSettingController extends Controller
             'total_karyawan'      => Employee::count(),
             'total_aktif'         => Employee::where('status', 'Aktiv')->count(),
             'total_resign'        => Employee::where('status', 'Resign')->count(),
+            'total_inhouse'       => Employee::where('tipe_karyawan', 'Inhouse')->count(),
+            'total_ratecard'      => Employee::where('tipe_karyawan', 'RateCard')->count(),
             'configured_entities' => $entities->filter->isConfigured()->count(),
             'active_entities'     => $entities->where('is_active', true)->count(),
         ];
@@ -120,6 +122,7 @@ class OdooSettingController extends Controller
 
     /**
      * Execute sync for a specific entity.
+     * Supports category filtering: 'all', 'inhouse', 'ratecard'.
      */
     public function sync(Request $request, string $code)
     {
@@ -139,9 +142,11 @@ class OdooSettingController extends Controller
             return redirect()->back()->with('error', $msg);
         }
 
+        $category = $request->input('category', 'all');
+
         try {
             $service = OdooSyncService::fromEntity($entity);
-            $result = $service->syncEmployees($entity);
+            $result = $service->syncEmployees($entity, null, $category);
 
             if ($request->wantsJson()) {
                 return response()->json([
@@ -167,6 +172,7 @@ class OdooSettingController extends Controller
 
     /**
      * Sync all configured & active entities sequentially.
+     * Supports category filtering: 'all', 'inhouse', 'ratecard'.
      */
     public function syncAll(Request $request)
     {
@@ -180,19 +186,24 @@ class OdooSettingController extends Controller
             return redirect()->back()->with('warning', $msg);
         }
 
+        $category = $request->input('category', 'all');
+        $categoryLabel = match($category) {
+            'inhouse'  => 'Inhouse Saja',
+            'ratecard' => 'RateCard Saja',
+            default    => 'Semua Kategori',
+        };
+
         $totalCreated  = 0;
         $totalUpdated  = 0;
-        $totalResigned = 0;
         $allErrors     = [];
         $syncedCodes   = [];
 
         foreach ($activeEntities as $entity) {
             try {
                 $service = OdooSyncService::fromEntity($entity);
-                $res = $service->syncEmployees($entity);
+                $res = $service->syncEmployees($entity, null, $category);
                 $totalCreated  += $res['created'] ?? 0;
                 $totalUpdated  += $res['updated'] ?? 0;
-                $totalResigned += $res['resigned'] ?? 0;
                 $syncedCodes[]  = $entity->code;
                 if (!empty($res['errors'])) {
                     $allErrors = array_merge($allErrors, $res['errors']);
@@ -203,16 +214,16 @@ class OdooSettingController extends Controller
         }
 
         $entitiesStr = implode(', ', $syncedCodes);
-        $summary = "Sinkronisasi selesai untuk entitas ({$entitiesStr}). Total Baru: {$totalCreated} | Diperbarui: {$totalUpdated} | Resign: {$totalResigned}" . (count($allErrors) > 0 ? " | Error: " . count($allErrors) : "");
+        $summary = "Sinkronisasi selesai ({$categoryLabel}) untuk entitas ({$entitiesStr}). Total Baru: {$totalCreated} | Diperbarui: {$totalUpdated}" . (count($allErrors) > 0 ? " | Error: " . count($allErrors) : "");
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => empty($allErrors),
                 'message' => $summary,
                 'data'    => [
+                    'category' => $category,
                     'created'  => $totalCreated,
                     'updated'  => $totalUpdated,
-                    'resigned' => $totalResigned,
                     'errors'   => $allErrors,
                 ],
             ]);
@@ -221,6 +232,57 @@ class OdooSettingController extends Controller
         return redirect()
             ->route('odoo.setting.index')
             ->with(empty($allErrors) ? 'success' : 'warning', $summary);
+    }
+
+    /**
+     * Search and sync a single employee by NIK from Odoo.
+     */
+    public function syncByNik(Request $request)
+    {
+        $validated = $request->validate([
+            'nik'         => 'required|string',
+            'entity_code' => 'required|string',
+        ]);
+
+        $entity = OdooEntity::where('code', strtoupper($validated['entity_code']))->first();
+        if (!$entity) {
+            $msg = "Entitas {$validated['entity_code']} tidak ditemukan.";
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 404);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+
+        if (!$entity->isConfigured()) {
+            $msg = "Kredensial Odoo untuk entitas {$entity->name} ({$entity->code}) belum lengkap. Silakan lengkapi pengaturan koneksi terlebih dahulu.";
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+
+        try {
+            $service = OdooSyncService::fromEntity($entity);
+            $result = $service->syncSingleEmployee($entity, $validated['nik']);
+
+            if ($request->wantsJson()) {
+                return response()->json($result, $result['success'] ? 200 : 404);
+            }
+
+            return redirect()
+                ->route('odoo.setting.index', ['tab' => $entity->code])
+                ->with($result['success'] ? 'success' : 'error', $result['message']);
+
+        } catch (\Throwable $e) {
+            $errMsg = 'Gagal sync NIK: ' . $e->getMessage();
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $errMsg], 500);
+            }
+
+            return redirect()
+                ->route('odoo.setting.index', ['tab' => $entity->code])
+                ->with('error', $errMsg);
+        }
     }
 
     /**

@@ -13,8 +13,25 @@
                     <i class="fa-solid fa-briefcase"></i>
                 </div>
                 <div>
-                    <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Input Job Requirement</h1>
-                    <p class="text-xs text-slate-500 font-medium mt-0.5">Kelola posisi lowongan pekerjaan, kualifikasi kandidat, dan masa berlaku kampanye rekrutmen</p>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">Input Job Requirement</h1>
+                        @if($isAdmin)
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-100 text-blue-800 border border-blue-200">
+                                <i class="fa-solid fa-shield-halved text-[9px]"></i> Akses Administrator
+                            </span>
+                        @else
+                            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                <i class="fa-solid fa-user-check text-[9px]"></i> Pembuat: {{ $user?->name ?? $user?->email }}
+                            </span>
+                        @endif
+                    </div>
+                    <p class="text-xs text-slate-500 font-medium mt-0.5">
+                        @if($isAdmin)
+                            Kelola seluruh posisi lowongan pekerjaan dari semua pembuat di sistem
+                        @else
+                            Kelola posisi lowongan pekerjaan yang Anda buat untuk kampanye rekrutmen Anda
+                        @endif
+                    </p>
                 </div>
             </div>
         </div>
@@ -99,7 +116,13 @@
                         </div>
                         <div>
                             <h2 class="text-sm font-bold text-slate-800">{{ $editData ? 'Edit Spesifikasi Job' : 'Tambah Job Baru' }}</h2>
-                            <p class="text-[11px] text-slate-500">{{ $editData ? 'Perbarui informasi posisi pekerjaan terpilih' : 'Lengkapi data posisi & kualifikasi' }}</p>
+                            <p class="text-[11px] text-slate-500">
+                                @if($editData)
+                                    Dibuat oleh: <span class="font-semibold text-slate-700">{{ $editData->created_by ?: 'System' }}</span>
+                                @else
+                                    Dibuat sebagai: <span class="font-semibold text-primary">{{ $user?->email ?? $user?->name }}</span>
+                                @endif
+                            </p>
                         </div>
                     </div>
 
@@ -155,6 +178,9 @@
                             <label for="job_prinsiple" class="block text-xs font-bold text-slate-700 mb-1">Prinsiple</label>
                             <select id="job_prinsiple" name="job_prinsiple" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
                                 <option value="">-- Pilih Prinsiple --</option>
+                                @if($editData && $editData->job_prinsiple && !$principles->contains('name', $editData->job_prinsiple))
+                                    <option value="{{ $editData->job_prinsiple }}" selected>{{ $editData->job_prinsiple }}</option>
+                                @endif
                                 @foreach($principles as $prin)
                                     <option value="{{ $prin->name }}" {{ old('job_prinsiple', $editData->job_prinsiple ?? '') == $prin->name ? 'selected' : '' }}>
                                         {{ $prin->name }}
@@ -167,8 +193,11 @@
                             <label for="job_area" class="block text-xs font-bold text-slate-700 mb-1">Area Penempatan</label>
                             <select id="job_area" name="job_area" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
                                 <option value="">-- Pilih Area --</option>
+                                @if($editData && $editData->job_area && !$areas->contains(fn($a) => strcasecmp($a, $editData->job_area) === 0))
+                                    <option value="{{ $editData->job_area }}" selected>{{ $editData->job_area }}</option>
+                                @endif
                                 @foreach($areas as $ar)
-                                    <option value="{{ $ar }}" {{ old('job_area', $editData->job_area ?? '') == $ar ? 'selected' : '' }}>
+                                    <option value="{{ $ar }}" {{ strcasecmp(old('job_area', $editData->job_area ?? ''), $ar) === 0 ? 'selected' : '' }}>
                                         {{ $ar }}
                                     </option>
                                 @endforeach
@@ -221,7 +250,7 @@
                                   name="job_quals" 
                                   rows="3" 
                                   placeholder="- Pendidikan minimal S1 Akuntansi / Manajemen&#10;- Usia maksimal 28 tahun&#10;- Berpenampilan rapi dan komunikatif"
-                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none leading-relaxed">{{ old('job_quals', $editData->job_quals ?? '') }}</textarea>
+                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none leading-relaxed">{{ old('job_quals', $editData ? $editData->plain_quals : '') }}</textarea>
                     </div>
 
                     <!-- Spesialisasi Keterampilan (Skills) -->
@@ -234,7 +263,7 @@
                                   name="job_skills" 
                                   rows="2" 
                                   placeholder="Microsoft Excel, VLOOKUP, Administrasi Kantor, Typing Speed"
-                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">{{ old('job_skills', $editData->job_skills ?? '') }}</textarea>
+                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">{{ old('job_skills', $editData ? $editData->plain_skills : '') }}</textarea>
                     </div>
 
                     <!-- Pengalaman Kerja -->
@@ -244,7 +273,7 @@
                                   name="job_exp" 
                                   rows="2" 
                                   placeholder="Minimal 1 tahun pengalaman di bidang administrasi perkantoran / retail."
-                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">{{ old('job_exp', $editData->job_exp ?? '') }}</textarea>
+                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">{{ old('job_exp', $editData ? $editData->plain_exp : '') }}</textarea>
                     </div>
 
                     <!-- Deskripsi Pekerjaan (Job Desc) -->
@@ -254,7 +283,7 @@
                                   name="job_desc" 
                                   rows="3" 
                                   placeholder="- Menginput data harian operasional cabang&#10;- Melakukan rekonsiliasi arsip dokumen&#10;- Menyusun laporan berkala ke manajemen"
-                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none leading-relaxed">{{ old('job_desc', $editData->job_desc ?? '') }}</textarea>
+                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none leading-relaxed">{{ old('job_desc', $editData ? $editData->plain_desc : '') }}</textarea>
                     </div>
 
                     <!-- Informasi Tambahan (Internal HR Only) -->
@@ -266,7 +295,7 @@
                                   name="additional_info" 
                                   rows="2" 
                                   placeholder="Catatan penempatan internal, rentang gaji, atau kebutuhan mendesak."
-                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">{{ old('additional_info', $editData->additional_info ?? '') }}</textarea>
+                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">{{ old('additional_info', $editData ? $editData->plain_additional_info : '') }}</textarea>
                     </div>
 
                     <!-- Tips Penulisan -->
@@ -300,33 +329,65 @@
             
             <!-- ACTIVE JOBS CARD -->
             <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-                <!-- Header with Search -->
-                <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
+                <!-- Header with Search & Creator Filter -->
+                <div class="p-4 sm:p-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-slate-50/50">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-sm">
                             <i class="fa-solid fa-list-check"></i>
                         </div>
                         <div>
-                            <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
-                                <span>Daftar Job Aktif</span>
+                            <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2 flex-wrap">
+                                <span>{{ $isAdmin ? 'Daftar Job Aktif' : 'Daftar Job Aktif Anda' }}</span>
                                 <span class="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">{{ $activeJobs->count() }} Lowongan</span>
                             </h2>
-                            <p class="text-[11px] text-slate-500">Lowongan yang sedang dibuka untuk proses seleksi & rekrutmen</p>
+                            <p class="text-[11px] text-slate-500">
+                                @if($isAdmin)
+                                    Seluruh lowongan aktif dari semua rekruter / pembuat
+                                @else
+                                    Lowongan aktif yang Anda buat untuk proses seleksi rekrutmen
+                                @endif
+                            </p>
                         </div>
                     </div>
 
-                    <!-- Search Input -->
-                    <form action="{{ route('job.input') }}" method="GET" class="relative w-full sm:w-64">
-                        <input type="text" 
-                               name="search" 
-                               value="{{ $search ?? '' }}"
-                               placeholder="Cari jabatan, skill, area..." 
-                               class="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-primary-500 outline-none">
-                        <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                        @if($search)
-                            <a href="{{ route('job.input') }}" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">✕</a>
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                        <!-- Dropdown Filter Pembuat (Khusus Akses Administrator) -->
+                        @if($isAdmin && isset($allCreators) && $allCreators->isNotEmpty())
+                        <form method="GET" action="{{ route('job.input') }}" class="flex items-center gap-1.5 flex-shrink-0">
+                            @if(request('search'))
+                                <input type="hidden" name="search" value="{{ request('search') }}">
+                            @endif
+                            <div class="flex items-center gap-1 bg-white border border-slate-200 rounded-xl px-2.5 py-1.5 shadow-sm">
+                                <i class="fa-solid fa-user-gear text-primary text-xs"></i>
+                                <select name="filter_creator" onchange="this.form.submit()" class="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer">
+                                    <option value="" {{ empty($filterCreator) || $filterCreator === 'all' ? 'selected' : '' }}>Semua Pembuat ({{ $allCreators->sum('total') }})</option>
+                                    <option value="my" {{ $filterCreator === 'my' ? 'selected' : '' }}>Akun Saya ({{ $user?->name ?? 'Admin' }})</option>
+                                    @foreach($allCreators as $cr)
+                                        <option value="{{ $cr->created_by }}" {{ $filterCreator === $cr->created_by ? 'selected' : '' }}>
+                                            {{ $cr->created_by }} ({{ $cr->total }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </form>
                         @endif
-                    </form>
+
+                        <!-- Search Input -->
+                        <form action="{{ route('job.input') }}" method="GET" class="relative w-full sm:w-56">
+                            @if(!empty($filterCreator))
+                                <input type="hidden" name="filter_creator" value="{{ $filterCreator }}">
+                            @endif
+                            <input type="text" 
+                                   name="search" 
+                                   value="{{ $search ?? '' }}"
+                                   placeholder="Cari jabatan, skill, area..." 
+                                   class="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs font-medium focus:ring-2 focus:ring-primary-500 outline-none">
+                            <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            @if($search)
+                                <a href="{{ route('job.input', array_filter(['filter_creator' => $filterCreator])) }}" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">✕</a>
+                            @endif
+                        </form>
+                    </div>
                 </div>
 
                 <!-- Table Content -->
@@ -336,7 +397,13 @@
                         <i class="fa-solid fa-briefcase"></i>
                     </div>
                     <h3 class="text-sm font-bold text-slate-700">Belum Ada Lowongan Aktif</h3>
-                    <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Gunakan formulir di sebelah kiri untuk membuat spesifikasi pekerjaan baru atau gunakan template cepat.</p>
+                    <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+                        @if($isAdmin)
+                            Tidak ada data lowongan aktif yang cocok dengan kriteria pencarian/filter.
+                        @else
+                            Anda belum membuat lowongan aktif. Gunakan formulir di sebelah kiri untuk menambah lowongan baru.
+                        @endif
+                    </p>
                 </div>
                 @else
                 <div class="overflow-x-auto">
@@ -352,13 +419,16 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @foreach($activeJobs as $index => $job)
+                            @php
+                                $canManage = $isAdmin || (strtolower(trim($job->created_by ?? '')) === strtolower(trim($user?->email ?? '')) || strtolower(trim($job->created_by ?? '')) === strtolower(trim($user?->name ?? '')));
+                            @endphp
                             <tr class="hover:bg-slate-50/80 transition-colors">
                                 <td class="text-center font-bold text-slate-400">{{ $index + 1 }}</td>
                                 <td>
                                     <div class="flex items-start gap-2.5">
                                         <!-- QR Code Trigger -->
                                         <button type="button" 
-                                                @click="showQR('{{ $job->job_title }}', '{{ $job->slug }}')"
+                                                @click="showQR('{{ addslashes($job->job_title) }}', '{{ $job->slug }}')"
                                                 class="w-9 h-9 rounded-lg border border-slate-200 bg-slate-50 hover:bg-primary-50 hover:border-primary-300 text-slate-600 hover:text-primary flex items-center justify-center flex-shrink-0 transition-all text-sm"
                                                 title="Lihat & Unduh QR Code Lowongan">
                                             <i class="fa-solid fa-qrcode"></i>
@@ -367,7 +437,7 @@
                                             <div class="font-bold text-slate-900 text-xs leading-snug">
                                                 {{ $job->job_title }}
                                             </div>
-                                            <div class="flex items-center gap-2 mt-1">
+                                            <div class="flex items-center flex-wrap gap-1.5 mt-1">
                                                 @if($job->tgl_expired)
                                                     <span class="inline-flex items-center gap-1 text-[10px] font-semibold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded">
                                                         <i class="fa-regular fa-clock text-[9px]"></i>
@@ -379,8 +449,11 @@
                                                         Tanpa Batas
                                                     </span>
                                                 @endif
-                                                <span class="text-[10px] text-slate-400">•</span>
-                                                <span class="text-[10px] text-slate-500 font-medium">{{ $job->created_at->diffForHumans() }}</span>
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-medium text-slate-600 bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded" title="Dibuat oleh">
+                                                    <i class="fa-solid fa-user-pen text-[9px] text-primary"></i>
+                                                    {{ $job->created_by ?: 'System' }}
+                                                </span>
+                                                <span class="text-[10px] text-slate-400">• {{ $job->created_at ? $job->created_at->diffForHumans() : '-' }}</span>
                                             </div>
                                         </div>
                                     </div>
@@ -392,6 +465,12 @@
                                             <i class="fa-solid fa-location-dot text-[9px]"></i>
                                             {{ $job->job_area }}
                                         </span>
+                                        @endif
+                                        @if($job->city || $job->province)
+                                        <div class="text-[10px] text-slate-500 font-medium flex items-center gap-1">
+                                            <i class="fa-solid fa-map-pin text-[9px] text-slate-400"></i>
+                                            {{ implode(', ', array_filter([$job->city, $job->province])) }}
+                                        </div>
                                         @endif
                                         @if($job->job_prinsiple)
                                         <span class="block text-[11px] font-bold text-slate-700">
@@ -424,20 +503,23 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="flex items-center justify-center gap-1.5">
+                                        @if($canManage)
                                         <a href="{{ route('job.input', ['edit' => $job->id]) }}" 
                                            class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 flex items-center justify-center transition-all"
                                            title="Edit Spesifikasi Job">
                                             <i class="fa-solid fa-pen-to-square text-xs"></i>
                                         </a>
+                                        @endif
 
                                         <button type="button" 
-                                                @click="copyJobShareLink('{{ $job->job_title }}', '{{ $job->job_area }}', '{{ $job->job_prinsiple }}')"
+                                                @click="copyJobShareLink('{{ addslashes($job->job_title) }}', '{{ addslashes($job->job_area) }}', '{{ addslashes($job->job_prinsiple) }}')"
                                                 class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 flex items-center justify-center transition-all"
                                                 title="Copy Broadcast Lowongan untuk WhatsApp">
                                             <i class="fa-brands fa-whatsapp text-xs"></i>
                                         </button>
 
-                                        <form action="{{ route('job.destroy', $job->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus lowongan {{ $job->job_title }}?');" class="inline">
+                                        @if($canManage)
+                                        <form action="{{ route('job.destroy', $job->id) }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin menghapus lowongan {{ addslashes($job->job_title) }}?');" class="inline">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" 
@@ -446,6 +528,7 @@
                                                 <i class="fa-solid fa-trash text-xs"></i>
                                             </button>
                                         </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -465,8 +548,8 @@
                             <i class="fa-solid fa-business-time"></i>
                         </div>
                         <div>
-                            <h2 class="text-sm font-bold text-rose-900 flex items-center gap-2">
-                                <span>Daftar Lowongan Expired</span>
+                            <h2 class="text-sm font-bold text-rose-900 flex items-center gap-2 flex-wrap">
+                                <span>{{ $isAdmin ? 'Daftar Lowongan Expired' : 'Daftar Lowongan Expired Anda' }}</span>
                                 <span class="bg-rose-200 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full">{{ $expiredJobs->count() }} Job</span>
                             </h2>
                             <p class="text-[11px] text-rose-600">Lowongan telah melewati tanggal expired namun tetap tersimpan dalam sistem</p>
@@ -488,17 +571,30 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @foreach($expiredJobs as $index => $exp)
+                            @php
+                                $canManageExp = $isAdmin || (strtolower(trim($exp->created_by ?? '')) === strtolower(trim($user?->email ?? '')) || strtolower(trim($exp->created_by ?? '')) === strtolower(trim($user?->name ?? '')));
+                            @endphp
                             <tr class="hover:bg-slate-50/80 transition-colors opacity-80">
                                 <td class="text-center font-bold text-slate-400">{{ $index + 1 }}</td>
                                 <td>
                                     <div class="font-bold text-slate-600 line-through">
                                         {{ $exp->job_title }}
                                     </div>
-                                    <span class="text-[10px] text-slate-400">{{ $exp->created_by }}</span>
+                                    <div class="flex items-center gap-1.5 mt-1">
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded" title="Dibuat oleh">
+                                            <i class="fa-solid fa-user-pen text-[9px] text-slate-400"></i>
+                                            {{ $exp->created_by ?: 'System' }}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td>
                                     <div class="space-y-0.5">
                                         <span class="text-xs font-semibold text-slate-600">{{ $exp->job_area ?? '-' }}</span>
+                                        @if($exp->city || $exp->province)
+                                        <div class="text-[10px] text-slate-400">
+                                            {{ implode(', ', array_filter([$exp->city, $exp->province])) }}
+                                        </div>
+                                        @endif
                                         <span class="block text-[10px] text-slate-400">{{ $exp->job_prinsiple ?? '-' }}</span>
                                     </div>
                                 </td>
@@ -510,6 +606,7 @@
                                 </td>
                                 <td class="text-center">
                                     <div class="flex items-center justify-center gap-1.5">
+                                        @if($canManageExp)
                                         <a href="{{ route('job.input', ['edit' => $exp->id]) }}" 
                                            class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 flex items-center justify-center transition-all"
                                            title="Perpanjang / Edit Tanggal Expired">
@@ -525,6 +622,7 @@
                                                 <i class="fa-solid fa-trash text-xs"></i>
                                             </button>
                                         </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

@@ -109,13 +109,10 @@ class PublicJobController extends Controller
     {
         $job = JobSpec::findOrFail($id);
 
-        $provinces = [
-            'DKI Jakarta', 'Jawa Barat', 'Jawa Tengah', 'Jawa Timur', 
-            'Banten', 'DI Yogyakarta', 'Sumatera Utara', 'Sumatera Selatan',
-            'Sulawesi Selatan', 'Bali', 'Kalimantan Timur'
-        ];
+        $provinces = \App\Services\IndonesiaRegionService::getProvinces();
+        $regions = \App\Services\IndonesiaRegionService::getProvincesWithCities();
 
-        return view('job.apply', compact('job', 'provinces'));
+        return view('job.apply', compact('job', 'provinces', 'regions'));
     }
 
     /**
@@ -128,10 +125,17 @@ class PublicJobController extends Controller
         $request->validate([
             'nik' => 'required|string|min:16|max:16',
             'nama_lengkap' => 'required|string|max:255',
+            'gender' => 'required|in:Laki-laki,Perempuan',
             'tgl_lahir' => 'required|date',
             'no_wa' => 'required|string|max:20',
             'alamat_ktp' => 'required|string',
             'pendidikan' => 'required|string',
+            'propinsi_domisili' => 'required|string|max:100',
+            'kota_domisili' => 'required|string|max:100',
+            'info_lowongan' => 'required|string|max:100',
+            'ringkasan_pengalaman' => 'nullable|string',
+            'motivasi' => 'nullable|string',
+            'kelebihan' => 'nullable|string',
         ]);
 
         $nik = $request->input('nik');
@@ -151,9 +155,9 @@ class PublicJobController extends Controller
 
         $aiAnalysis = [
             'evaluation_match_score' => $simulatedAiScore,
-            'executive_summary' => "Pelamar {$request->input('nama_lengkap')} memiliki latar belakang pendidikan {$request->input('pendidikan')} dan keterampilan yang sesuai dengan kualifikasi {$job->job_title}. Siap diproses untuk tahapan interview.",
+            'executive_summary' => "Pelamar {$request->input('nama_lengkap')} berdomisili di {$request->input('kota_domisili')}, {$request->input('propinsi_domisili')} dengan pendidikan {$request->input('pendidikan')}. Keterampilan dan pengalaman sesuai dengan kualifikasi {$job->job_title}.",
             'key_strengths' => $job->skills_array ?: ['Komunikasi Efektif', 'Kedisiplinan', 'Kerjasama Tim'],
-            'suitability_reason' => "Kualifikasi dan motivasi kerja selaras dengan deskripsi pekerjaan {$job->job_title}.",
+            'suitability_reason' => "Kualifikasi, domisili, dan motivasi kerja selaras dengan deskripsi pekerjaan {$job->job_title}.",
             'rekomendasi' => 'Sangat Direkomendasikan untuk Seleksi Lanjutan'
         ];
 
@@ -162,23 +166,30 @@ class PublicJobController extends Controller
         $candidateData = [
             'nik' => $nik,
             'full_name' => $request->input('nama_lengkap'),
+            'gender' => $request->input('gender'),
             'birth_date' => $request->input('tgl_lahir'),
             'height' => $request->input('tinggi', 165),
             'weight' => $request->input('berat', 55),
             'address_ktp' => $request->input('alamat_ktp'),
             'address_domicile' => $request->input('alamat_domisili', $request->input('alamat_ktp')),
+            'province_domicile' => $request->input('propinsi_domisili'),
+            'city_domicile' => $request->input('kota_domisili'),
+            'secondary_city' => $request->input('kota_domisili'),
             'phone' => $request->input('no_wa'),
             'whatsapp' => $request->input('no_wa'),
             'education' => $request->input('pendidikan'),
             'applied_job' => $job->job_title,
             'area' => $job->job_area ?? 'JAKARTA',
             'principle_id' => $principle?->id ?? 1,
-            'source_type' => 'Job Portal',
+            'info_lowongan' => $request->input('info_lowongan'),
+            'info' => $request->input('info_lowongan'),
+            'source_type' => $request->input('info_lowongan', 'Job Portal'),
             'jenis' => 'Job Portal',
             'status' => 'Active',
             'status_kandidat' => 'Baru',
-            'work_motivation' => $request->input('motivasi', 'Ingin berkarier dan mengembangkan potensi di perusahaan'),
-            'strengths' => $request->input('kelebihan', 'Pekerja keras, teliti, dan bertanggung jawab'),
+            'experience_summary' => $request->input('ringkasan_pengalaman'),
+            'work_motivation' => $request->input('motivasi'),
+            'strengths' => $request->input('kelebihan'),
             'ai_score' => $simulatedAiScore,
             'kategori_kandidat' => $kategoriKandidat,
             'ai_cv_analysis' => json_encode($aiAnalysis),
@@ -191,6 +202,50 @@ class PublicJobController extends Controller
             $candidate->update($candidateData);
         } else {
             $candidate = Candidate::create($candidateData);
+        }
+
+        // Simpan Ringkasan Pengalaman ke tabel work_experiences jika diisi
+        if ($request->filled('ringkasan_pengalaman')) {
+            $candidate->workExperiences()->create([
+                'company_name' => 'Pengalaman Kerja Pelamar',
+                'position' => $job->job_title,
+                'responsibility_notes' => $request->input('ringkasan_pengalaman'),
+                'performance_notes' => 'Diinput mandiri pada form pendaftaran',
+            ]);
+        }
+
+        // Sinkronisasi ke legacy tb_kandidat jika tabel tersedia
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+            \Illuminate\Support\Facades\DB::table('tb_kandidat')->updateOrInsert(
+                ['no_ktp' => $nik],
+                [
+                    'applicants_name' => $candidateData['full_name'],
+                    'gender' => $candidateData['gender'],
+                    'tanggal_lahir' => $candidateData['birth_date'],
+                    'height' => $candidateData['height'],
+                    'weight' => $candidateData['weight'],
+                    'alamat_ktp' => $candidateData['address_ktp'],
+                    'alamat_domisili' => $candidateData['address_domicile'],
+                    'province_domicile' => $candidateData['province_domicile'],
+                    'city_domicile' => $candidateData['city_domicile'],
+                    'secondary_city' => $candidateData['city_domicile'],
+                    'phone' => $candidateData['phone'],
+                    'mobile' => $candidateData['whatsapp'],
+                    'pendidikan_terakhir' => $candidateData['education'],
+                    'applied_job' => $candidateData['applied_job'],
+                    'area' => $candidateData['area'],
+                    'info' => $candidateData['info_lowongan'],
+                    'info_lowongan' => $candidateData['info_lowongan'],
+                    'experience_summary' => $candidateData['experience_summary'],
+                    'motivasi_kerja' => $candidateData['work_motivation'],
+                    'kelebihan' => $candidateData['strengths'],
+                    'status' => 'Active',
+                    'status_kandidat' => 'Baru',
+                    'useras' => $candidateData['useras'],
+                    'waktukirim' => now(),
+                    'password' => $birthDateFormatted,
+                ]
+            );
         }
 
         $successMessage = "Selamat, berkas pendaftaran posisi {$job->job_title} berhasil dikirim! Akun Anda aktif. Gunakan Username: {$nik} dan Password: {$birthDateFormatted} untuk masuk ke Tes Online.";

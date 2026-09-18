@@ -135,5 +135,8 @@ class DatabaseSeeder extends Seeder
                 ]);
             }
         }
+
+        // 4. Seed Demo CBT Online Test Candidates
+        $this->call(CbtCandidateSeeder::class);
     }
 }

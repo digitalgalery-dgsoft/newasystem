@@ -114,6 +114,18 @@
                         <span class="font-bold text-slate-900">{{ $candidate->full_name }}</span>
                     </div>
 
+                    <!-- Jenis Kelamin -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Jenis Kelamin:</span>
+                        <span class="font-bold text-slate-800">
+                            @if(strtolower($candidate->gender ?? '') === 'perempuan')
+                                <span class="inline-flex items-center gap-1 text-pink-600 font-bold"><i class="fa-solid fa-venus"></i> Perempuan</span>
+                            @else
+                                <span class="inline-flex items-center gap-1 text-blue-600 font-bold"><i class="fa-solid fa-mars"></i> Laki-laki</span>
+                            @endif
+                        </span>
+                    </div>
+
                     <!-- 3. Alamat KTP -->
                     <div class="flex items-start gap-2 md:col-span-2">
                         <span class="w-32 text-slate-400 font-medium flex-shrink-0">Alamat KTP:</span>
@@ -182,7 +194,27 @@
                         </span>
                     </div>
 
-                    <!-- 11. Catatan Khusus -->
+                    <!-- 11. Lampiran CV -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Lampiran CV:</span>
+                        @if($candidate->cv_path)
+                            @php
+                                $cvExt = strtolower(pathinfo($candidate->cv_path, PATHINFO_EXTENSION));
+                                $isCvImage = in_array($cvExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+                            @endphp
+                            <a href="{{ $candidate->cv_url }}" target="_blank" 
+                               onclick="openCandidateMedia('{{ $isCvImage ? 'image' : 'pdf' }}', '{{ $candidate->cv_url }}', 'Lampiran CV: {{ addslashes($candidate->full_name) }}'); return false;"
+                               class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold text-xs border border-emerald-200 transition-colors shadow-sm cursor-pointer" title="Lihat Berkas CV">
+                                <i class="fa-solid fa-file-pdf text-emerald-600"></i>
+                                <span>Lihat File CV</span>
+                                <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                            </a>
+                        @else
+                            <span class="text-slate-400 text-xs italic">Belum ada lampiran CV</span>
+                        @endif
+                    </div>
+
+                    <!-- 12. Catatan Khusus -->
                     <div class="flex items-start gap-2 md:col-span-2">
                         <span class="w-32 text-slate-400 font-medium flex-shrink-0">Catatan Khusus:</span>
                         <span class="text-slate-600 italic">{{ $candidate->notes ?? 'Tidak ada catatan tambahan.' }}</span>
@@ -190,25 +222,84 @@
                 </div>
             </div>
 
-            <!-- Right: Foto Profil 3x4 Dropzone (Identik dengan Detail Kandidat Portal) -->
-            <div class="w-full lg:w-48 flex flex-col items-center justify-center p-4 bg-slate-50 rounded-2xl border border-slate-200 text-center">
-                <div class="relative group cursor-pointer w-32 h-40 rounded-xl overflow-hidden border-2 border-dashed border-slate-300 hover:border-primary-400 bg-white flex flex-col items-center justify-center transition-all shadow-sm">
-                    @if($candidate->photo_path)
-                        <img id="photoPreview" src="https://ui-avatars.com/api/?name={{ urlencode($candidate->full_name) }}&background=0F52BA&color=fff&size=256" alt="Foto Kandidat" class="w-full h-full object-cover">
-                    @else
-                        <div id="photoPlaceholder" class="flex flex-col items-center text-slate-400 p-2">
-                            <i class="fa-solid fa-camera text-2xl mb-1 text-slate-300 group-hover:text-primary transition-colors"></i>
-                            <span class="text-[11px] font-bold">Pasfoto 3x4</span>
-                            <span class="text-[9px] text-slate-400 mt-0.5">JPG / PNG</span>
+            <!-- Right: Foto Profil 3x4 & Lampiran CV (Side-by-Side dengan Preview Modal) -->
+            @php
+                $cvUrl = $candidate->cv_url;
+                $cvExt = $candidate->cv_path ? strtolower(pathinfo($candidate->cv_path, PATHINFO_EXTENSION)) : '';
+                $isCvImage = in_array($cvExt, ['jpg', 'jpeg', 'png', 'webp', 'gif']);
+            @endphp
+            <div class="w-full lg:w-auto flex flex-row flex-wrap sm:flex-nowrap items-stretch justify-center gap-3.5 p-3.5 bg-slate-50/90 rounded-2xl border border-slate-200 shadow-2xs">
+                
+                <!-- 1. FOTO RESMI PELAMAR (3x4) -->
+                <div class="w-36 p-2 rounded-xl bg-white border border-slate-200/90 shadow-2xs hover:border-primary-400 hover:shadow-md transition-all flex flex-col items-center justify-between group cursor-pointer"
+                     onclick="openCandidateMedia('image', '{{ $candidate->photo_url }}', 'Foto Resmi: {{ addslashes($candidate->full_name) }}')"
+                     title="Klik untuk melihat preview foto">
+                    <div class="relative w-32 h-40 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex flex-col items-center justify-center shadow-inner">
+                        @if($candidate->photo_path)
+                            <img id="photoPreview" src="{{ $candidate->photo_url }}" alt="Foto {{ $candidate->full_name }}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($candidate->full_name) }}&background=0F52BA&color=fff&size=256';">
+                        @else
+                            <div id="photoPlaceholder" class="flex flex-col items-center text-slate-400 p-2">
+                                <i class="fa-solid fa-camera text-2xl mb-1 text-slate-300 group-hover:text-primary transition-colors"></i>
+                                <span class="text-[11px] font-bold">Pasfoto 3x4</span>
+                                <span class="text-[9px] text-slate-400 mt-0.5">JPG / PNG</span>
+                            </div>
+                        @endif
+                        <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-semibold transition-opacity gap-1 backdrop-blur-[1px]">
+                            <i class="fa-solid fa-magnifying-glass-plus text-base"></i>
+                            <span class="text-[10px] font-bold tracking-wider uppercase">Preview</span>
                         </div>
-                    @endif
-                    <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white text-xs font-semibold transition-opacity">
-                        <i class="fa-solid fa-upload mr-1"></i> Ganti
                     </div>
-                    <input type="file" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" onchange="previewImage(this)">
+                    <div class="mt-2 text-center">
+                        <span class="text-[11px] font-bold text-slate-700 block leading-tight">Foto Resmi Pelamar</span>
+                        <span class="text-[9px] text-slate-400 block mt-0.5">Ukuran 3x4 • Klik Preview</span>
+                    </div>
                 </div>
-                <span class="text-[11px] font-bold text-slate-700 mt-2.5">Foto Resmi Pelamar</span>
-                <span class="text-[10px] text-slate-400">Ukuran Rekomendasi 3x4</span>
+
+                <!-- 2. LAMPIRAN BERKAS CV -->
+                @if($candidate->cv_path)
+                    <div class="w-36 p-2 rounded-xl bg-white border border-slate-200/90 shadow-2xs hover:border-emerald-500 hover:shadow-md transition-all flex flex-col items-center justify-between group cursor-pointer"
+                         onclick="openCandidateMedia('{{ $isCvImage ? 'image' : 'pdf' }}', '{{ $cvUrl }}', 'Lampiran CV: {{ addslashes($candidate->full_name) }}')"
+                         title="Klik untuk membuka preview CV">
+                        <div class="relative w-32 h-40 rounded-lg overflow-hidden border border-slate-200 bg-slate-50 flex flex-col items-center justify-center p-2 text-center group-hover:bg-emerald-50/30 transition-colors shadow-inner">
+                            @if($isCvImage)
+                                <img src="{{ $cvUrl }}" alt="CV {{ $candidate->full_name }}" class="w-full h-full object-cover rounded transition-transform duration-300 group-hover:scale-105">
+                            @else
+                                <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center text-2xl mb-1.5 shadow-2xs group-hover:scale-110 transition-transform">
+                                    <i class="fa-solid fa-file-pdf"></i>
+                                </div>
+                                <span class="text-[10px] font-bold text-slate-800 line-clamp-2 px-1 break-all leading-snug">{{ basename($candidate->cv_path) }}</span>
+                                <span class="inline-flex items-center gap-1 text-[8.5px] font-extrabold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-full mt-1.5">
+                                    <i class="fa-solid fa-circle-check text-[7.5px]"></i> Berkas CV
+                                </span>
+                            @endif
+                            <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-semibold transition-opacity gap-1 backdrop-blur-[1px]">
+                                <i class="fa-solid fa-eye text-base"></i>
+                                <span class="text-[10px] font-bold tracking-wider uppercase">Preview CV</span>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <span class="text-[11px] font-bold text-slate-700 block leading-tight">Lampiran Berkas CV</span>
+                            <span class="text-[9px] text-emerald-600 font-bold flex items-center justify-center gap-1 mt-0.5">
+                                <i class="fa-solid fa-file-lines text-[8px]"></i> Klik Buka CV
+                            </span>
+                        </div>
+                    </div>
+                @else
+                    <div class="w-36 p-2 rounded-xl bg-white/70 border border-dashed border-slate-300 opacity-80 flex flex-col items-center justify-between text-center cursor-not-allowed"
+                         onclick="alert('Kandidat ini belum mengunggah berkas lampiran CV.')"
+                         title="Belum ada lampiran CV">
+                        <div class="w-32 h-40 rounded-lg bg-slate-50 border border-slate-100 flex flex-col items-center justify-center p-2 text-slate-400">
+                            <i class="fa-regular fa-file-pdf text-2xl mb-1.5 text-slate-300"></i>
+                            <span class="text-[11px] font-bold text-slate-500">Belum Ada CV</span>
+                            <span class="text-[9px] text-slate-400 mt-0.5">Tidak terlampir</span>
+                        </div>
+                        <div class="mt-2 text-center">
+                            <span class="text-[11px] font-bold text-slate-400 block leading-tight">Lampiran Berkas CV</span>
+                            <span class="text-[9px] text-slate-400 block mt-0.5">Belum Diunggah</span>
+                        </div>
+                    </div>
+                @endif
+
             </div>
 
         </div>
@@ -570,8 +661,40 @@
                             </div>
                         </div>
 
+                        <!-- Current Uploaded Proof Preview (Refcek) -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Lampiran Bukti Referensi Cek Tersimpan :</label>
+                            <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                                @if($firstExp && ($firstExp->proof_attachment_path || $firstExp->proof_url))
+                                    <div class="flex items-center justify-between gap-3">
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 cursor-pointer shadow-xs group" onclick="openCandidateMedia('image', '{{ $firstExp->proof_url }}', 'Bukti Referensi Cek: {{ addslashes($firstExp->company_name) }}')" title="Klik untuk preview lampiran">
+                                                <i class="fa-solid fa-file-shield text-base group-hover:scale-110 transition-transform"></i>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="text-xs font-bold text-slate-800 truncate">{{ basename($firstExp->proof_attachment_path) }}</div>
+                                                <span class="text-[10px] text-emerald-600 font-semibold block">Bukti Verifikasi Terlampir (Server / Fallback V3)</span>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-1.5 flex-shrink-0">
+                                            <button type="button" onclick="openCandidateMedia('image', '{{ $firstExp->proof_url }}', 'Bukti Referensi Cek: {{ addslashes($firstExp->company_name) }}')" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1">
+                                                <i class="fa-solid fa-eye text-xs"></i> Preview
+                                            </button>
+                                            <a href="{{ $firstExp->proof_url }}" target="_blank" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-primary hover:bg-slate-100 transition-colors inline-flex items-center gap-1 shadow-2xs">
+                                                <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Buka
+                                            </a>
+                                        </div>
+                                    </div>
+                                @else
+                                    <div class="text-xs text-slate-400 italic text-center py-2">
+                                        <i class="fa-regular fa-image text-slate-300 mr-1"></i> Belum ada lampiran screenshot verifikasi untuk perusahaan ini
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+
                         <!-- Plus Button at bottom right -->
-                        <div class="flex justify-end pt-8">
+                        <div class="flex justify-end pt-4">
                             <button type="submit" class="inline-flex items-center justify-center w-11 h-11 rounded-xl bg-rose-500 hover:bg-rose-600 text-white shadow-lg shadow-rose-500/25 transition-all" title="Tambah / Simpan Pengalaman">
                                 <i class="fa-solid fa-plus text-base font-black"></i>
                             </button>
@@ -659,22 +782,23 @@
         <!-- TAB 4: TES KEPRIBADIAN (Matching Image 4) -->
         <!-- ============================================================= -->
         <div x-show="activeTab === 'kepribadian'" class="space-y-5">
+            @if($hasPsikotes)
             <!-- Header Bar with Timer & 4 Answer Badges -->
             <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
                 <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
                     <i class="fa-solid fa-clock text-slate-500"></i>
-                    <span>Waktu Pengerjaan : <strong>00:04:20</strong></span>
+                    <span>Waktu Pengerjaan : <strong>{{ $psikotesDuration }}</strong></span>
                 </div>
 
                 <div class="flex items-center flex-wrap gap-2 text-xs font-bold">
-                    <span class="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">Jawaban A : 17</span>
-                    <span class="px-3 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">Jawaban B : 7</span>
-                    <span class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">Jawaban C : 9</span>
-                    <span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">Jawaban D : 7</span>
+                    <span class="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">Jawaban A : {{ $psikotesCounts['A'] ?? 0 }}</span>
+                    <span class="px-3 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">Jawaban B : {{ $psikotesCounts['B'] ?? 0 }}</span>
+                    <span class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">Jawaban C : {{ $psikotesCounts['C'] ?? 0 }}</span>
+                    <span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">Jawaban D : {{ $psikotesCounts['D'] ?? 0 }}</span>
                 </div>
             </div>
 
-            <!-- Kesimpulan Box (Exact text from screenshot) -->
+            <!-- Kesimpulan Box -->
             <div class="bg-gradient-to-r from-amber-50/80 to-amber-100/50 border border-amber-200/80 rounded-2xl p-5 text-xs text-slate-800 leading-relaxed shadow-xs flex items-start gap-3.5">
                 <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 text-sm shadow-sm">
                     <i class="fa-solid fa-lightbulb"></i>
@@ -682,57 +806,12 @@
                 <div>
                     <h4 class="font-bold text-amber-900 text-sm mb-1">Kesimpulan Karakter:</h4>
                     <p class="text-slate-700">
-                        Memiliki kepribadian <strong class="text-slate-900 font-bold">Melankolis</strong>. Tipe ini paling baik dalam hal pekerjaan yang memerlukan keputusan cepat; persoalan yang memerlukan tindakan dan pencapaian seketika; bidang-bidang yang menuntut kontrol dan wewenang yang kuat. Kelemahan tipe ini adalah tidak tahu bagaimana cara menangani orang lain; sulit mengakui kesalahan; sulit bersikap sabar; terlalu pekerja keras.
+                        {{ $dominantDisc['summary'] }}
                     </p>
                 </div>
             </div>
 
-            <!-- 4-Column Table of 40 Questions (Exact screenshot layout) -->
-            @php
-                $qData = [
-                    1 => ['ans' => 'B', 'text' => 'Antusias'],
-                    2 => ['ans' => 'C', 'text' => 'Menyukai Logika dan Fakta'],
-                    3 => ['ans' => 'C', 'text' => 'Teguh Pendirian'],
-                    4 => ['ans' => 'A', 'text' => 'Toleran'],
-                    5 => ['ans' => 'A', 'text' => 'Menghargai'],
-                    6 => ['ans' => 'C', 'text' => 'Mandiri'],
-                    7 => ['ans' => 'A', 'text' => 'Perencana'],
-                    8 => ['ans' => 'A', 'text' => 'Terjadwal'],
-                    9 => ['ans' => 'B', 'text' => 'Optimis'],
-                    10 => ['ans' => 'B', 'text' => 'Humoris'],
-                    11 => ['ans' => 'B', 'text' => 'Penuh Strategi, Perasa dan Sabar'],
-                    12 => ['ans' => 'B', 'text' => 'Bersemangat'],
-                    13 => ['ans' => 'D', 'text' => 'Berkorban Tidak Menyakiti Hati Orang Lain'],
-                    14 => ['ans' => 'A', 'text' => 'Suka Mengintropeksi'],
-                    15 => ['ans' => 'D', 'text' => 'Mudah Membaur'],
-                    16 => ['ans' => 'C', 'text' => 'Berpendirian Teguh'],
-                    17 => ['ans' => 'B', 'text' => 'Penuh Semangat'],
-                    18 => ['ans' => 'A', 'text' => 'Suka Membuat Grafik dan Daftar Tugas'],
-                    19 => ['ans' => 'C', 'text' => 'Produktif'],
-                    20 => ['ans' => 'A', 'text' => 'Memiliki Batasan Dalam Berperilaku'],
-                    21 => ['ans' => 'A', 'text' => 'Pemalu'],
-                    22 => ['ans' => 'C', 'text' => 'Tidak Teratur'],
-                    23 => ['ans' => 'D', 'text' => 'Tidak Suka Terlibat Dalam Masalah Polik'],
-                    24 => ['ans' => 'B', 'text' => 'Mudah Lupa'],
-                    25 => ['ans' => 'A', 'text' => 'Sulit Percaya'],
-                    26 => ['ans' => 'A', 'text' => 'Tidak Populer'],
-                    27 => ['ans' => 'C', 'text' => 'Keras Kepala'],
-                    28 => ['ans' => 'D', 'text' => 'Dingin'],
-                    29 => ['ans' => 'A', 'text' => 'Mudah Merasa Terasing'],
-                    30 => ['ans' => 'C', 'text' => 'Nekat'],
-                    31 => ['ans' => 'A', 'text' => 'Menarik Diri Dari Pergaulan'],
-                    32 => ['ans' => 'D', 'text' => 'Tidak Suka Konflik'],
-                    33 => ['ans' => 'D', 'text' => 'Kurang Yakin'],
-                    34 => ['ans' => 'A', 'text' => 'Tertutup'],
-                    35 => ['ans' => 'A', 'text' => 'Moody'],
-                    36 => ['ans' => 'A', 'text' => 'Tidak Mudah Percaya'],
-                    37 => ['ans' => 'A', 'text' => 'Penyendiri'],
-                    38 => ['ans' => 'A', 'text' => 'Mudah Curiga'],
-                    39 => ['ans' => 'D', 'text' => 'Menolak Dilibatkan'],
-                    40 => ['ans' => 'C', 'text' => 'Cerdik dan Licik'],
-                ];
-            @endphp
-
+            <!-- 4-Column Table of Questions -->
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 @for($col = 0; $col < 4; $col++)
                 <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs bg-white">
@@ -746,10 +825,13 @@
                         </thead>
                         <tbody class="divide-y divide-slate-100">
                             @for($i = ($col * 10) + 1; $i <= ($col * 10) + 10; $i++)
+                            @php
+                                $item = $psikotesItems[$i] ?? ['ans' => '-', 'text' => '-'];
+                            @endphp
                             <tr class="hover:bg-slate-50/70 transition-colors">
                                 <td class="py-2 px-2.5 text-center font-bold text-slate-400">{{ $i }}</td>
-                                <td class="py-2 px-2 text-center font-mono font-bold text-primary-700 bg-slate-50/50">{{ $qData[$i]['ans'] }}</td>
-                                <td class="py-2 px-2.5 text-slate-700 leading-tight">{{ $qData[$i]['text'] }}</td>
+                                <td class="py-2 px-2 text-center font-mono font-bold text-primary-700 bg-slate-50/50">{{ $item['ans'] }}</td>
+                                <td class="py-2 px-2.5 text-slate-700 leading-tight">{{ $item['text'] }}</td>
                             </tr>
                             @endfor
                         </tbody>
@@ -757,6 +839,17 @@
                 </div>
                 @endfor
             </div>
+            @else
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <h4 class="text-sm font-bold text-slate-800">Kandidat Belum Mengikuti Tes Kepribadian</h4>
+                <p class="text-xs text-slate-500 max-w-md mx-auto">
+                    Kandidat belum menyelesaikan Tes Kepribadian (DISC). Hasil tes dan rincian 40 butir jawaban akan otomatis tersinkronisasi di sini setelah kandidat menyelesaikan tes online.
+                </p>
+            </div>
+            @endif
         </div>
 
         <!-- ============================================================= -->
@@ -767,10 +860,10 @@
                 <div class="flex items-center gap-3">
                     <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
                         <i class="fa-solid fa-stopwatch text-slate-500"></i>
-                        <span>Waktu Pengerjaan : <strong>00:02:00</strong></span>
+                        <span>Waktu Pengerjaan : <strong>{{ $mathDuration }}</strong></span>
                     </div>
                     <span class="text-xs font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-                        Tes Ke - 1
+                        Tes Ke - {{ $mathTesKe }}
                     </span>
                 </div>
 
@@ -785,52 +878,8 @@
                 </form>
             </div>
 
-            <!-- Table of 10 Math Questions (Exact from screenshot) -->
-            @php
-                $mathItems = [
-                    1 => [
-                        'q' => 'Ani membeli Lampu Philips 50 Watt Seharga Rp. 200.000,- di C4 Buaran, dan di C4 Sedang ada Promo Diskon 15% Untuk Pembelian Lampu Philips. Berapa Rupiah Yang Harus Dibayar Ani?',
-                        'cand' => '170000', 'key' => '170000', 'correct' => true
-                    ],
-                    2 => [
-                        'q' => 'Yani Membeli 2 Buah Bedak Loreal Seharga Rp. 350.000,- di Matahari Departemen Store Pejaten dan Sedang Ada Promo Untuk Pembelian Kedua Diskon 35%. Berapa Rupiah Yang Harus Dibayar Yani?',
-                        'cand' => '390000', 'key' => '405000', 'correct' => false
-                    ],
-                    3 => [
-                        'q' => 'SPG Dancow di C4 Cempaka Mas Mempunyai Target Sebanyak Rp. 7.000.000,- dan Baru Mencapai Target Sebanyak Rp. 5.000.000,-. Sudah Berapa Persen Pencapaian SPG Tersebut?',
-                        'cand' => '71,42%', 'key' => '71,42%', 'correct' => true
-                    ],
-                    4 => [
-                        'q' => 'Bagas Membeli Wafer TimTam 200gr Seharga Rp. 5.250,- sebanyak 15 Bungkus di Lotte Kelapa Gading dan Sedang Ada Promo Diskon 15%. Berapa Rupiah Yang Harus Dibayar Bagas?',
-                        'cand' => 'A', 'key' => 'A', 'correct' => true
-                    ],
-                    5 => [
-                        'q' => 'Putri Membeli Boneka Rp. 50.000,- Kemudian Boneka itu Dijual kembali dengan Harga Rp. 60.000. Berapa persen Keuntungan Putri?',
-                        'cand' => 'D', 'key' => 'D', 'correct' => true
-                    ],
-                    6 => [
-                        'q' => 'Lanjutan perhitungan berikut 24, 20, 16, 12, ......',
-                        'cand' => '8', 'key' => '8,4', 'correct' => false
-                    ],
-                    7 => [
-                        'q' => 'Ibu mempunyai uang sebesar Rp. 30.000,- Uang itu dibelikan lauk pauk Rp. 12.000,- Sayuran Rp. 4.000,- dan Minyak Goreng Rp. 4.000,- Berapa Sisa uang ibu?',
-                        'cand' => 'B', 'key' => 'B', 'correct' => true
-                    ],
-                    8 => [
-                        'q' => 'Angga mempunyai uang sebesar Rp. 4.500.000,- dan ia berniat membeli sebuah handicam seharga Rp. 2.500.000,- sebelum diskon. harga handycam tersebut adalah 20% setelah itu Angga juga membelanjakan uangnya untuk keperluan lain sebesar Rp. 1.500.000,-. Berapa sisa uang Angga Saat ini?',
-                        'cand' => 'A', 'key' => 'A', 'correct' => true
-                    ],
-                    9 => [
-                        'q' => 'Sinta membeli 2 pcs pelembab Loreal seharga Rp. 80.000,- untuk satu pelembab dan di MDS Pejaten sedang ada promosi untuk pembelian kedua diskon 75%. Berapa Rupiah yang harus dibayar santi?',
-                        'cand' => '100000', 'key' => '100000', 'correct' => true
-                    ],
-                    10 => [
-                        'q' => 'SPG Arnotts di C4 KLL mempunyai target sebanyak Rp. 12.000.000,- dan baru mencapai target sebanyak Rp. 5.000.000,-. Sudah berapa persen pencapaian SPG tersebut?',
-                        'cand' => '41,67%', 'key' => '41,67%', 'correct' => true
-                    ],
-                ];
-            @endphp
-
+            @if($hasMath && count($mathItems) > 0)
+            <!-- Table of Math Questions -->
             <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                 <table class="w-full text-xs text-left">
                     <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px]">
@@ -866,18 +915,30 @@
             <div class="grid grid-cols-3 gap-4 pt-2">
                 <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
                     <span class="text-[11px] font-semibold text-emerald-700 block">Jawaban Benar</span>
-                    <span class="text-xl font-black text-emerald-900">8</span>
+                    <span class="text-xl font-black text-emerald-900">{{ $mathCorrectCount }}</span>
                 </div>
                 <div class="bg-rose-50 border border-rose-200 rounded-xl p-3 text-center">
                     <span class="text-[11px] font-semibold text-rose-700 block">Jawaban Salah</span>
-                    <span class="text-xl font-black text-rose-900">2</span>
+                    <span class="text-xl font-black text-rose-900">{{ $mathWrongCount }}</span>
                 </div>
                 <div class="bg-primary-50 border border-primary-200 rounded-xl p-3 text-center">
                     <span class="text-[11px] font-semibold text-primary-700 block">Nilai Akhir</span>
-                    <span class="text-xl font-black text-primary-900">B</span>
+                    <span class="text-xl font-black text-primary-900">{{ $mathGrade }} ({{ $mathScorePercent }}%)</span>
                 </div>
             </div>
+            @else
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-calculator"></i>
+                </div>
+                <h4 class="text-sm font-bold text-slate-800">Kandidat Belum Mengikuti Tes Matematika</h4>
+                <p class="text-xs text-slate-500 max-w-md mx-auto">
+                    Kandidat belum menyelesaikan Tes Matematika. Data nilai, rincian benar/salah, dan pembahasan butir soal akan otomatis terisi setelah kandidat menyelesaikan ujian.
+                </p>
+            </div>
+            @endif
         </div>
+
 
                 <!-- ============================================================= -->
         <!-- TAB 6: APPROVAL INHOUSE & TANDA TANGAN DIGITAL (Replikasi hasilinhouse.php) -->
@@ -1201,6 +1262,9 @@
             </form>
         </div>
     </div>
+
+    <!-- CANDIDATE MEDIA PREVIEW MODAL -->
+    @include('partials.candidate-media-modal')
 </div>
 
 @push('scripts')

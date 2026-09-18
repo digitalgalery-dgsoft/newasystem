@@ -51,6 +51,10 @@
     
     <!-- Custom CSS matching Attendance Portal -->
     <style>
+        html {
+            zoom: 80%;
+            -webkit-text-size-adjust: 100%;
+        }
         * {
             font-family: 'Outfit', sans-serif;
         }
@@ -158,21 +162,38 @@
     </style>
 </head>
 <body class="h-full antialiased text-slate-800 flex flex-col bg-slate-50">
+    @include('partials.page-loader')
 
-    <div class="min-h-full flex">
+    <div class="min-h-full flex"
+         x-data="{ 
+             sidebarCollapsed: localStorage.getItem('asystem_sidebar_collapsed') === 'true',
+             toggleSidebar() {
+                 this.sidebarCollapsed = !this.sidebarCollapsed;
+                 localStorage.setItem('asystem_sidebar_collapsed', this.sidebarCollapsed);
+             }
+         }">
         <!-- Sidebar -->
-        <aside id="sidebar" class="w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0 transition-all duration-300 z-30">
+        <aside id="sidebar" 
+               class="bg-white border-r border-slate-200 flex flex-col flex-shrink-0 transition-all duration-300 z-30 fixed inset-y-0 left-0 lg:static lg:translate-x-0 -translate-x-full"
+               :class="sidebarCollapsed ? 'w-20' : 'w-64'">
             <!-- Sidebar Header / Logo -->
-            <div class="h-16 flex items-center justify-between px-5 border-b border-slate-200 bg-white">
-                <a href="{{ route('fitur.index') }}" class="flex items-center gap-3">
-                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary-700 via-primary-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-primary-500/20">
+            <div class="h-16 flex items-center border-b border-slate-200 bg-white transition-all duration-300"
+                 :class="sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-5'">
+                <a href="{{ route('fitur.index') }}" class="flex items-center gap-3 min-w-0" :title="sidebarCollapsed ? 'ASYSTEM - Support System ESA Groups' : ''">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary-700 via-primary-600 to-blue-500 flex items-center justify-center text-white shadow-md shadow-primary-500/20 flex-shrink-0">
                         <i class="fa-solid fa-fingerprint text-lg"></i>
                     </div>
-                    <div>
-                        <div class="text-base font-bold tracking-tight text-slate-900 leading-tight">ASYSTEM</div>
-                        <div class="text-[10px] font-semibold tracking-wider text-primary uppercase">Support System ESA Groups</div>
+                    <div x-show="!sidebarCollapsed" class="min-w-0">
+                        <div class="text-base font-bold tracking-tight text-slate-900 leading-tight truncate">ASYSTEM</div>
+                        <div class="text-[10px] font-semibold tracking-wider text-primary uppercase truncate">Support System ESA Groups</div>
                     </div>
                 </a>
+                <button @click="toggleSidebar()" 
+                        type="button"
+                        class="hidden lg:flex items-center justify-center w-7 h-7 text-slate-400 hover:text-primary hover:bg-slate-100 rounded-lg transition-all flex-shrink-0"
+                        :title="sidebarCollapsed ? 'Perbesar Menu' : 'Kecilkan Menu'">
+                    <i class="fa-solid text-xs" :class="sidebarCollapsed ? 'fa-chevron-right' : 'fa-chevron-left'"></i>
+                </button>
                 <button id="sidebarToggleBtn" class="text-slate-400 hover:text-slate-600 lg:hidden text-lg">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
@@ -183,17 +204,20 @@
                 
                 <!-- GROUP 1: DASHBOARD -->
                 <div>
-                    <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between">
+                    <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between" x-show="!sidebarCollapsed">
                         <span>Dashboard</span>
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                     </div>
+                    <div x-show="sidebarCollapsed" class="w-8 h-px bg-slate-200 mx-auto my-2" x-cloak></div>
                     <ul class="space-y-1">
                         <li>
                             <a href="{{ route('fitur.index') }}" 
-                               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('fitur.index') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}">
-                                <i class="fa-solid fa-house text-base w-5 text-center {{ request()->routeIs('fitur.index') ? 'text-white' : 'text-slate-400' }}"></i>
-                                <span class="flex-1">Beranda</span>
-                                <span class="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-md">HOME</span>
+                               title="Beranda"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('fitur.index') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-house text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('fitur.index') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Beranda</span>
+                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-md">HOME</span>
                             </a>
                         </li>
                     </ul>
@@ -202,32 +226,39 @@
                 <!-- GROUP 2: MASTER DATA (ADMINISTRATOR ONLY) -->
                 @if(Auth::check() && Auth::user()->isAdmin())
                 <div>
-                    <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between">
+                    <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between" x-show="!sidebarCollapsed">
                         <span>Master Data</span>
                         <span class="text-[9px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.2 rounded border border-indigo-200">ADMIN</span>
                     </div>
+                    <div x-show="sidebarCollapsed" class="w-8 h-px bg-slate-200 mx-auto my-2" x-cloak></div>
                     <ul class="space-y-1">
                         <li>
                             <a href="{{ route('master.karyawan.index') }}" 
-                               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.karyawan.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}">
-                                <i class="fa-solid fa-users-gear text-base w-5 text-center {{ request()->routeIs('master.karyawan.*') ? 'text-white' : 'text-slate-400' }}"></i>
-                                <span class="flex-1">Master Karyawan</span>
-                                <span class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded-md">Inhouse</span>
+                               title="Master Karyawan"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.karyawan.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-users-gear text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('master.karyawan.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Master Karyawan</span>
+                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded-md">Inhouse</span>
                             </a>
                         </li>
                         <li>
                             <a href="{{ route('master.prinsiple.index') }}" 
-                               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.prinsiple.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}">
-                                <i class="fa-solid fa-building-shield text-base w-5 text-center {{ request()->routeIs('master.prinsiple.*') ? 'text-white' : 'text-slate-400' }}"></i>
-                                <span class="flex-1">Master Prinsiple</span>
+                               title="Master Prinsiple"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.prinsiple.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-building-shield text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('master.prinsiple.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Master Prinsiple</span>
                             </a>
                         </li>
                         <li>
                             <a href="{{ route('odoo.setting.index') }}" 
-                               class="flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('odoo.setting.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}">
-                                <i class="fa-solid fa-arrows-rotate text-base w-5 text-center {{ request()->routeIs('odoo.setting.*') ? 'text-white' : 'text-slate-400' }}"></i>
-                                <span class="flex-1">Setting Sync Odoo</span>
-                                <span class="text-[10px] bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded-md border border-blue-200">5 Entitas</span>
+                               title="Setting Sync Odoo"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('odoo.setting.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-arrows-rotate text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('odoo.setting.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Setting Sync Odoo</span>
+                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded-md border border-blue-200">5 Entitas</span>
                             </a>
                         </li>
                     </ul>
@@ -239,25 +270,29 @@
                     $isInterviewActive = request()->is('interview*') || request()->is('interviewinhouse*') || request()->is('user-prinsiple*') || request()->is('airanking*') || request()->is('ai-settings*') || request()->is('inputjob*') || request()->is('kandidatportal*') || request()->is('job*') || request()->is('interviewdone*') || request()->is('interviewarsip*') || request()->is('inputjob*') || request()->is('kandidatportal*');
                 @endphp
                 <div x-data="{ interviewOpen: {{ $isInterviewActive ? 'true' : 'false' }} }">
-                    <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between">
+                    <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between" x-show="!sidebarCollapsed">
                         <span>Fitur & Layanan</span>
                         <span class="text-[10px] text-primary font-bold">MODUL</span>
                     </div>
+                    <div x-show="sidebarCollapsed" class="w-8 h-px bg-slate-200 mx-auto my-2" x-cloak></div>
                     <ul class="space-y-1">
                         <!-- SUB-MENU INTERVIEW (COLLAPSIBLE ACCORDION) -->
                         <li>
-                            <button @click="interviewOpen = !interviewOpen" 
+                            <button @click="if(sidebarCollapsed) { toggleSidebar(); interviewOpen = true; } else { interviewOpen = !interviewOpen }" 
                                     type="button"
-                                    class="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-semibold transition-all {{ $isInterviewActive ? 'bg-primary-50 text-primary' : 'text-slate-700 hover:bg-slate-50 hover:text-primary' }}">
-                                <i class="fa-solid fa-user-tie text-base w-5 text-center {{ $isInterviewActive ? 'text-primary' : 'text-slate-400' }}"></i>
-                                <span class="flex-1 text-left">Talent Pool / Rekrutment</span>
-                                <i class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': interviewOpen }"></i>
+                                    title="Talent Pool / Rekrutment"
+                                    class="w-full flex items-center rounded-xl text-sm font-semibold transition-all {{ $isInterviewActive ? 'bg-primary-50 text-primary' : 'text-slate-700 hover:bg-slate-50 hover:text-primary' }}"
+                                    :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-user-tie text-base w-5 text-center flex-shrink-0 {{ $isInterviewActive ? 'text-primary' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 text-left truncate">Talent Pool / Rekrutment</span>
+                                <i x-show="!sidebarCollapsed" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': interviewOpen }"></i>
                             </button>
 
                             <!-- SUB-MENU ITEMS LIST -->
-                            <div x-show="interviewOpen" x-collapse class="pl-4 pr-1 py-1.5 space-y-1 border-l-2 border-primary-200 ml-4 mt-1">
+                            <div x-show="interviewOpen && !sidebarCollapsed" x-collapse class="pl-4 pr-1 py-1.5 space-y-1 border-l-2 border-primary-200 ml-4 mt-1">
                                 <!-- 1. Input Job -->
                                 <a href="{{ route('job.input') }}" 
+                                   title="Input Job"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('job.input') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-briefcase text-[11px] w-4 text-center"></i>
                                     <span>Input Job</span>
@@ -266,8 +301,9 @@
                                     @endif
                                 </a>
 
-                                                                <!-- 2. Portal Lowongan Job -->
+                                <!-- 2. Portal Lowongan Job -->
                                 <a href="{{ route('job.public') }}" target="_blank"
+                                   title="Portal Lowongan Job"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('job.public') || request()->routeIs('job.detail') || request()->routeIs('job.apply') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-arrow-up-right-from-square text-[11px] w-4 text-center"></i>
                                     <span>Portal Lowongan Job</span>
@@ -278,6 +314,7 @@
 
                                 <!-- 3. Kandidat Portal -->
                                 <a href="{{ route('kandidatportal.index') }}" 
+                                   title="Kandidat Portal"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('kandidatportal.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-globe text-[11px] w-4 text-center"></i>
                                     <span>Kandidat Portal</span>
@@ -286,8 +323,9 @@
                                     @endif
                                 </a>
 
-                                                                <!-- 3. AI Ranking -->
+                                <!-- 4. AI Ranking -->
                                 <a href="{{ route('airanking.index') }}" 
+                                   title="AI Ranking"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('airanking.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-ranking-star text-[11px] w-4 text-center {{ request()->routeIs('airanking.*') ? 'text-white' : 'text-amber-500' }}"></i>
                                     <span>AI Ranking</span>
@@ -299,9 +337,10 @@
                                     @endif
                                 </a>
 
-                                                                @if(Auth::check() && Auth::user()->isAdmin())
+                                @if(Auth::check() && Auth::user()->isAdmin())
                                 <!-- 5. Setting AI (Admin Only) -->
                                 <a href="{{ route('aisetting.index') }}" 
+                                   title="Setting AI & WA"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('aisetting.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-sliders text-[11px] w-4 text-center"></i>
                                     <span>Setting AI & WA</span>
@@ -312,6 +351,7 @@
 
                                 <!-- Master User Prinsiple (Admin Only) -->
                                 <a href="{{ route('userprinsiple.index') }}" 
+                                   title="Master User Prinsiple"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('userprinsiple.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-users-viewfinder text-[11px] w-4 text-center"></i>
                                     <span>Master User Prinsiple</span>
@@ -326,13 +366,15 @@
 
                                 <!-- 6. Kandidat Interview -->
                                 <a href="{{ route('interview.index') }}" 
+                                   title="Kandidat Interview"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interview.index') || request()->routeIs('interview.show') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-clipboard-user text-[11px] w-4 text-center"></i>
                                     <span>Kandidat Interview</span>
                                 </a>
 
-                                                                <!-- 3. Kandidat Inhouse -->
+                                <!-- 7. Kandidat Inhouse -->
                                 <a href="{{ route('interviewinhouse.index') }}" 
+                                   title="Kandidat Inhouse"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interviewinhouse.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-house-user text-[11px] w-4 text-center"></i>
                                     <span>Kandidat Inhouse</span>
@@ -341,15 +383,17 @@
                                     @endif
                                 </a>
 
-                                <!-- 4. Interview Selesai -->
+                                <!-- 8. Interview Selesai -->
                                 <a href="{{ route('interview.done') }}" 
+                                   title="Interview Selesai"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interview.done') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-circle-check text-[11px] w-4 text-center"></i>
                                     <span>Interview Selesai</span>
                                 </a>
 
-                                <!-- 4. Arsip Interview -->
+                                <!-- 9. Arsip Interview -->
                                 <a href="{{ route('interview.arsip') }}" 
+                                   title="Arsip Interview"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interview.arsip') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-box-archive text-[11px] w-4 text-center"></i>
                                     <span>Arsip Interview</span>
@@ -383,7 +427,8 @@
                         default => '6366F1'
                     };
                 @endphp
-                <div class="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 shadow-sm">
+                <!-- Expanded User Profile -->
+                <div class="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 shadow-sm" x-show="!sidebarCollapsed">
                     <img src="https://ui-avatars.com/api/?name={{ urlencode($userName) }}&background={{ $avatarColor }}&color=fff" alt="User Avatar" class="w-9 h-9 rounded-lg border border-slate-100 flex-shrink-0">
                     <div class="flex-1 min-w-0">
                         <div class="text-xs font-bold text-slate-900 truncate">{{ $userName }}</div>
@@ -399,6 +444,16 @@
                         </button>
                     </form>
                 </div>
+                <!-- Collapsed User Profile -->
+                <div class="flex flex-col items-center gap-2 p-1" x-show="sidebarCollapsed" x-cloak>
+                    <img src="https://ui-avatars.com/api/?name={{ urlencode($userName) }}&background={{ $avatarColor }}&color=fff" alt="User Avatar" title="{{ $userName }} ({{ $roleLabel }})" class="w-9 h-9 rounded-lg border border-slate-200 shadow-sm">
+                    <form method="POST" action="{{ route('logout') }}" class="inline m-0 p-0">
+                        @csrf
+                        <button type="submit" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all">
+                            <i class="fa-solid fa-arrow-right-from-bracket text-xs"></i>
+                        </button>
+                    </form>
+                </div>
             </div>
         </aside>
 
@@ -409,6 +464,13 @@
                 <div class="flex items-center gap-3">
                     <button id="mobileSidebarToggle" class="text-slate-500 hover:text-slate-800 lg:hidden p-1.5 rounded-lg border border-slate-200">
                         <i class="fa-solid fa-bars text-lg"></i>
+                    </button>
+                    <!-- Desktop Minimize/Expand Toggle Button -->
+                    <button @click="toggleSidebar()" 
+                            type="button"
+                            class="hidden lg:inline-flex items-center justify-center w-9 h-9 text-slate-500 hover:text-primary hover:bg-slate-100 rounded-xl transition-all border border-slate-200 shadow-sm" 
+                            :title="sidebarCollapsed ? 'Perbesar Side Menu (Expand)' : 'Kecilkan Side Menu (Minimize)'">
+                        <i class="fa-solid text-sm" :class="sidebarCollapsed ? 'fa-bars text-primary' : 'fa-bars-staggered'"></i>
                     </button>
                     <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500 font-medium">
                         <span class="inline-flex items-center gap-1 text-slate-700 font-semibold">
@@ -461,7 +523,7 @@
             </header>
 
             <!-- Main Page Content -->
-            <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6">
+            <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 space-y-6 asystem-page-enter">
                 <!-- Alerts / Flash Messages -->
                 @if(session('success'))
                     <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 flex items-center justify-between shadow-sm animate-fade-in">

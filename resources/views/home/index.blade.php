@@ -30,18 +30,22 @@
                 </p>
 
                 <!-- CTA Buttons -->
-                <div class="flex flex-wrap items-center gap-3.5 pt-4">
-                    <a href="{{ route('job.public') }}" class="px-7 py-4 rounded-2xl bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary text-white font-black text-sm shadow-xl shadow-blue-900/40 hover:shadow-primary/50 hover:-translate-y-0.5 transition-all flex items-center gap-2.5">
-                        <i class="fa-solid fa-briefcase text-base"></i>
+                <div class="flex flex-wrap items-center gap-3 pt-4">
+                    <a href="{{ route('job.public') }}" class="px-6 py-3.5 rounded-2xl bg-gradient-to-r from-primary to-blue-600 hover:from-blue-600 hover:to-primary text-white font-black text-xs sm:text-sm shadow-xl shadow-blue-900/40 hover:shadow-primary/50 hover:-translate-y-0.5 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-briefcase text-sm"></i>
                         <span>Jelajahi Lowongan Kerja</span>
                     </a>
-                    <a href="{{ route('login') }}" class="px-7 py-4 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-sm backdrop-blur-md border border-white/20 transition-all hover:-translate-y-0.5 flex items-center gap-2.5">
-                        <i class="fa-solid fa-arrow-right-to-bracket text-sky-300"></i>
-                        <span>Portal Karyawan / HR</span>
+                    <a href="{{ route('login') }}" class="px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm backdrop-blur-md border border-white/20 transition-all hover:-translate-y-0.5 flex items-center gap-2 shadow-sm group">
+                        <i class="fa-solid fa-users-viewfinder text-sky-400 group-hover:scale-110 transition-transform"></i>
+                        <span>Talent Pool / Rekrutmen - Login Disini</span>
                     </a>
-                    <a href="https://whatsapp.com/channel/0029VbDqNdb60eBgrCxsnt07" target="_blank" class="px-5 py-4 rounded-2xl bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold text-sm transition-all hover:-translate-y-0.5 flex items-center gap-2">
-                        <i class="fa-brands fa-whatsapp text-lg"></i>
-                        <span class="hidden sm:inline">Info LowKer</span>
+                    <a href="https://asystem.co.id/v3/login" target="_blank" class="px-5 py-3.5 rounded-2xl bg-indigo-500/20 hover:bg-indigo-500/35 text-indigo-100 font-bold text-xs sm:text-sm backdrop-blur-md border border-indigo-400/30 transition-all hover:-translate-y-0.5 flex items-center gap-2 shadow-sm group">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-indigo-300 group-hover:scale-110 transition-transform"></i>
+                        <span>Fitur Lain - Akses ASystem V3</span>
+                    </a>
+                    <a href="https://whatsapp.com/channel/0029VbDqNdb60eBgrCxsnt07" target="_blank" class="px-4 py-3.5 rounded-2xl bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold text-xs sm:text-sm transition-all hover:-translate-y-0.5 flex items-center gap-2 shadow-sm">
+                        <i class="fa-brands fa-whatsapp text-base"></i>
+                        <span class="hidden lg:inline">Info LowKer</span>
                     </a>
                 </div>
 
@@ -63,6 +67,85 @@
                         <p class="text-2xl sm:text-3xl font-black text-purple-400">{{ $distinctAreasCount }}+</p>
                         <p class="text-xs text-slate-400 font-medium">Area Penempatan</p>
                     </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 1.5 DEDICATED PORTAL GATEWAY CARDS SECTION -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-6 sm:-mt-10 relative z-20">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Card 1: Talent Pool / Rekrutmen -->
+            <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl hover:shadow-2xl hover:border-primary/50 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-36 h-36 bg-blue-50/70 rounded-bl-full -z-0 pointer-events-none group-hover:scale-110 transition-transform"></div>
+                
+                <div class="space-y-4 relative z-10">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-2xl bg-blue-50 text-primary border border-blue-100 flex items-center justify-center text-xl group-hover:bg-primary group-hover:text-white transition-all shadow-sm">
+                            <i class="fa-solid fa-users-viewfinder"></i>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-[10px] font-extrabold bg-blue-50 text-primary border border-blue-200 uppercase tracking-wider">
+                            <i class="fa-solid fa-circle-check text-[9px] mr-1"></i>Portal Karyawan / HR
+                        </span>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900 group-hover:text-primary transition-colors tracking-tight">
+                            Talent Pool / Rekrutmen
+                        </h3>
+                        <p class="text-xs font-bold text-primary mt-1 flex items-center gap-1.5">
+                            <span>Login Disini</span>
+                            <i class="fa-solid fa-arrow-right text-[10px] group-hover:translate-x-1 transition-transform"></i>
+                        </p>
+                    </div>
+
+                    <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                        Akses modul seleksi dan rekrutmen terpadu untuk Admin HR, Recruiter, dan User Prinsiple. Mengelola data pelamar, evaluasi AI, jadwal wawancara, tes psikotes online, dan persetujuan digital.
+                    </p>
+                </div>
+
+                <div class="pt-5 mt-6 border-t border-slate-100 relative z-10">
+                    <a href="{{ route('login') }}" class="w-full py-3.5 px-5 rounded-2xl bg-primary hover:bg-primary-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-primary/20 hover:shadow-lg transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-arrow-right-to-bracket"></i>
+                        <span>Talent Pool / Rekrutmen - Login Disini</span>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Card 2: Fitur Lain - Akses ASystem V3 -->
+            <div class="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/90 shadow-xl hover:shadow-2xl hover:border-indigo-400 transition-all duration-300 flex flex-col justify-between group relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-36 h-36 bg-indigo-50/70 rounded-bl-full -z-0 pointer-events-none group-hover:scale-110 transition-transform"></div>
+
+                <div class="space-y-4 relative z-10">
+                    <div class="flex items-center justify-between">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 flex items-center justify-center text-xl group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-sm">
+                            <i class="fa-solid fa-layer-group"></i>
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 uppercase tracking-wider">
+                            <i class="fa-solid fa-up-right-from-square text-[9px] mr-1"></i>Sistem Pusat
+                        </span>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-black text-slate-900 group-hover:text-indigo-600 transition-colors tracking-tight">
+                            Fitur Lain
+                        </h3>
+                        <p class="text-xs font-bold text-indigo-600 mt-1 flex items-center gap-1.5">
+                            <span>Akses ASystem V3</span>
+                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform"></i>
+                        </p>
+                    </div>
+
+                    <p class="text-xs sm:text-sm text-slate-500 leading-relaxed">
+                        Akses modul operasional lengkap ASystem V3 pada server pusat (<strong class="text-slate-700">asystem.co.id</strong>), mencakup administrasi historis, kontrol sistem data, dan layanan operasional lainnya.
+                    </p>
+                </div>
+
+                <div class="pt-5 mt-6 border-t border-slate-100 relative z-10">
+                    <a href="https://asystem.co.id/v3/login" target="_blank" class="w-full py-3.5 px-5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs sm:text-sm shadow-md transition-all flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs text-sky-400"></i>
+                        <span>Fitur Lain - Akses ASystem V3</span>
+                    </a>
                 </div>
             </div>
         </div>
@@ -94,7 +177,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 @foreach($featuredJobs as $index => $item)
                     @php
-                        $skills = array_filter(array_map('trim', explode(',', strip_tags($item->job_skills ?? ''))));
+                        $skills = $item->skills_array;
                         $colors = ['indigo', 'emerald', 'amber', 'purple', 'sky', 'rose'];
                         $theme = $colors[$index % count($colors)];
                     @endphp
@@ -125,7 +208,7 @@
 
                             <!-- Desc Snippet -->
                             <p class="text-xs text-slate-500 line-clamp-2 leading-relaxed mb-4">
-                                {{ strip_tags($item->job_desc ?? 'Memiliki dedikasi kerja tinggi, mampu beradaptasi dan berkembang bersama perusahaan.') }}
+                                {{ $item->snippet_desc }}
                             </p>
 
                             <!-- Pelamar Counter -->

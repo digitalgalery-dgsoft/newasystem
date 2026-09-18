@@ -22,3 +22,8 @@
 Homestead.json
 Homestead.yaml
 Thumbs.db
+asystem_interview
+*.sqlite
+*.sqlite3
+*.zip
+scratch/

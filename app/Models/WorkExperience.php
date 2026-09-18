@@ -34,8 +34,34 @@ class WorkExperience extends Model
         'check_date' => 'date',
     ];
 
+    protected $appends = [
+        'proof_url',
+    ];
+
     public function candidate(): BelongsTo
     {
         return $this->belongsTo(Candidate::class);
+    }
+
+    public function getProofUrlAttribute(): ?string
+    {
+        $val = trim($this->proof_attachment_path ?? '');
+        if (empty($val)) {
+            return null;
+        }
+
+        $baseName = basename($val);
+
+        if (file_exists(public_path('refcekfile/' . $baseName))) {
+            return asset('refcekfile/' . $baseName);
+        }
+        if (file_exists(public_path('lampiran/' . $baseName))) {
+            return asset('lampiran/' . $baseName);
+        }
+        if (file_exists(public_path('storage/' . $baseName))) {
+            return asset('storage/' . $baseName);
+        }
+
+        return route('refcekfile.show', $baseName);
     }
 }

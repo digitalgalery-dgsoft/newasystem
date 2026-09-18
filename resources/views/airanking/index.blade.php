@@ -104,9 +104,10 @@
             @php $c2 = $podiumCandidates[1]; @endphp
             <div class="order-2 md:order-1 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-5 text-center flex flex-col items-center hover:bg-white/15 transition-all">
                 <div class="relative mb-3">
-                    <img src="{{ $c2->photo_path ?: 'https://ui-avatars.com/api/?name='.urlencode($c2->full_name).'&background=64748B&color=fff' }}" 
+                    <img src="{{ $c2->photo_url }}" 
                          alt="{{ $c2->full_name }}" 
-                         class="w-16 h-16 rounded-2xl object-cover border-2 border-slate-300 shadow-md">
+                         class="w-16 h-16 rounded-2xl object-cover border-2 border-slate-300 shadow-md"
+                         onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($c2->full_name) }}&background=64748B&color=fff';">
                     <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-tr from-slate-400 to-slate-200 text-slate-800 text-xs font-black flex items-center justify-center shadow-md border-2 border-slate-800">
                         🥈
                     </div>
@@ -132,9 +133,10 @@
                     #1 HIGHEST MATCH
                 </div>
                 <div class="relative my-3">
-                    <img src="{{ $c1->photo_path ?: 'https://ui-avatars.com/api/?name='.urlencode($c1->full_name).'&background=F59E0B&color=fff' }}" 
+                    <img src="{{ $c1->photo_url }}" 
                          alt="{{ $c1->full_name }}" 
-                         class="w-20 h-20 rounded-2xl object-cover border-2 border-amber-300 shadow-xl ring-4 ring-amber-400/20">
+                         class="w-20 h-20 rounded-2xl object-cover border-2 border-amber-300 shadow-xl ring-4 ring-amber-400/20"
+                         onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($c1->full_name) }}&background=F59E0B&color=fff';">
                     <div class="absolute -top-2.5 -right-2.5 w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-yellow-300 text-slate-900 text-sm font-black flex items-center justify-center shadow-lg border-2 border-slate-900">
                         🥇
                     </div>
@@ -157,9 +159,10 @@
             @php $c3 = $podiumCandidates[2]; @endphp
             <div class="order-3 md:order-3 bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-5 text-center flex flex-col items-center hover:bg-white/15 transition-all">
                 <div class="relative mb-3">
-                    <img src="{{ $c3->photo_path ?: 'https://ui-avatars.com/api/?name='.urlencode($c3->full_name).'&background=B45309&color=fff' }}" 
+                    <img src="{{ $c3->photo_url }}" 
                          alt="{{ $c3->full_name }}" 
-                         class="w-16 h-16 rounded-2xl object-cover border-2 border-amber-700/60 shadow-md">
+                         class="w-16 h-16 rounded-2xl object-cover border-2 border-amber-700/60 shadow-md"
+                         onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($c3->full_name) }}&background=B45309&color=fff';">
                     <div class="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-gradient-to-tr from-amber-700 to-amber-500 text-white text-xs font-black flex items-center justify-center shadow-md border-2 border-slate-800">
                         🥉
                     </div>
@@ -316,9 +319,10 @@
                             <!-- Candidate Profile Column -->
                             <td class="py-3.5 px-3.5">
                                 <div class="flex items-center gap-2.5">
-                                    <img src="{{ $c->photo_path ?: 'https://ui-avatars.com/api/?name='.urlencode($c->full_name).'&background=0F52BA&color=fff' }}" 
+                                    <img src="{{ $c->photo_url }}" 
                                          alt="{{ $c->full_name }}" 
-                                         class="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-2xs">
+                                         class="w-9 h-9 rounded-xl object-cover border border-slate-200 shadow-2xs"
+                                         onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($c->full_name) }}&background=0F52BA&color=fff';">
                                     <div class="min-w-0">
                                         <a href="{{ route('kandidatportal.show', $c->id) }}" class="font-bold text-slate-900 hover:text-primary transition-colors block truncate">
                                             {{ $c->full_name }}
