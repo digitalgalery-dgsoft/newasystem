@@ -668,8 +668,8 @@
                                 @if($firstExp && ($firstExp->proof_attachment_path || $firstExp->proof_url))
                                     <div class="flex items-center justify-between gap-3">
                                         <div class="flex items-center gap-2.5 min-w-0">
-                                            <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 cursor-pointer shadow-xs group" onclick="openCandidateMedia('image', '{{ $firstExp->proof_url }}', 'Bukti Referensi Cek: {{ addslashes($firstExp->company_name) }}')" title="Klik untuk preview lampiran">
-                                                <i class="fa-solid fa-file-shield text-base group-hover:scale-110 transition-transform"></i>
+                                            <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 cursor-pointer shadow-xs group" onclick="openCandidateMedia('image', '{{ $firstExp->proof_url }}', 'Bukti Referensi Cek: {{ addslashes($firstExp->company_name) }}')" title="Klik untuk preview lampiran">
+                                                <img src="{{ $firstExp->proof_url }}" alt="Bukti Refcek" class="w-full h-full object-cover transition-transform group-hover:scale-105" onerror="this.onerror=null; this.src='{{ $firstExp->proof_legacy_url }}';">
                                             </div>
                                             <div class="min-w-0">
                                                 <div class="text-xs font-bold text-slate-800 truncate">{{ basename($firstExp->proof_attachment_path) }}</div>

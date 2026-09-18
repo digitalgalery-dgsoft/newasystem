@@ -36,6 +36,7 @@ class WorkExperience extends Model
 
     protected $appends = [
         'proof_url',
+        'proof_legacy_url',
     ];
 
     public function candidate(): BelongsTo
@@ -63,5 +64,16 @@ class WorkExperience extends Model
         }
 
         return route('refcekfile.show', $baseName);
+    }
+
+    public function getProofLegacyUrlAttribute(): ?string
+    {
+        $val = trim($this->proof_attachment_path ?? '');
+        if (empty($val)) {
+            return null;
+        }
+
+        $baseName = basename($val);
+        return 'https://asystem.co.id/v3/refcekfile/' . rawurlencode($baseName);
     }
 }

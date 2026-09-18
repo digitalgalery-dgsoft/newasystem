@@ -27,3 +27,7 @@ asystem_interview
 *.sqlite3
 *.zip
 scratch/
+/public/approval/*
+!/public/approval/.gitkeep
+/public/refcekfile/*
+!/public/refcekfile/.gitkeep

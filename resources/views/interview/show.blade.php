@@ -612,8 +612,8 @@
                             <div id="refcek_current_proof" class="p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs">
                                 <div id="refcek_has_proof" style="{{ ($firstExp && $firstExp->proof_url) ? '' : 'display:none;' }}" class="flex items-center justify-between gap-3">
                                     <div class="flex items-center gap-2.5 min-w-0">
-                                        <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center flex-shrink-0 cursor-pointer shadow-xs group" onclick="previewCurrentRefcek()" title="Klik untuk preview lampiran">
-                                            <i class="fa-solid fa-file-shield text-base group-hover:scale-110 transition-transform"></i>
+                                        <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 cursor-pointer shadow-xs group" onclick="previewCurrentRefcek()" title="Klik untuk preview lampiran">
+                                            <img id="refcek_proof_thumb" src="{{ $firstExp?->proof_url ?? '' }}" alt="Bukti Refcek" class="w-full h-full object-cover transition-transform group-hover:scale-105" onerror="this.onerror=null; this.src='{{ $firstExp?->proof_legacy_url ?? '' }}';">
                                         </div>
                                         <div class="min-w-0">
                                             <div class="text-xs font-bold text-slate-800 truncate" id="refcek_proof_filename">{{ $firstExp ? basename($firstExp->proof_attachment_path) : '' }}</div>
@@ -1223,10 +1223,10 @@
                             <div class="p-3.5 bg-white border border-slate-200 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
                                 <div class="flex items-center gap-3 min-w-0">
                                     <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 cursor-pointer group relative" onclick="openCandidateMedia('image', '{{ $candidate->approval_proof_url }}', 'Bukti Approval Prinsiple: {{ addslashes($candidate->full_name) }}')">
-                                        <img src="{{ $candidate->approval_proof_url }}" alt="Approval Proof" class="w-full h-full object-cover transition-transform group-hover:scale-105" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\'w-full h-full flex items-center justify-center text-slate-400 bg-slate-50\'><i class=\'fa-solid fa-file-image text-lg\'></i></div>';">
+                                        <img src="{{ $candidate->approval_proof_url }}" alt="Approval Proof" class="w-full h-full object-cover transition-transform group-hover:scale-105" onerror="this.onerror=null; this.src='{{ $candidate->approval_legacy_url }}';">
                                     </div>
                                     <div class="min-w-0">
-                                        <div class="text-xs font-bold text-slate-900 truncate">{{ basename($candidate->ttd_prinsiple) }}</div>
+                                        <div class="text-xs font-bold text-slate-900 truncate">{{ basename($candidate->ttd_prinsiple ?? $candidate->principleApprovals->first()?->signature_path ?? '') }}</div>
                                         <div class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
                                             <i class="fa-solid fa-circle-check text-[9px]"></i> Berkas Tersimpan / Fallback Live V3
                                         </div>
@@ -1578,6 +1578,11 @@
             const fname = (exp.proof_attachment_path || '').split('/').pop().split('\\').pop();
             if (filenameEl) filenameEl.textContent = fname;
             if (linkEl) linkEl.href = exp.proof_url;
+            const thumbEl = document.getElementById('refcek_proof_thumb');
+            if (thumbEl) {
+                thumbEl.src = exp.proof_url;
+                thumbEl.onerror = () => { thumbEl.src = exp.proof_legacy_url || ''; };
+            }
             if (hasProofBox) hasProofBox.style.display = 'flex';
             if (noProofBox) noProofBox.style.display = 'none';
         } else {

@@ -128,6 +128,12 @@ class Candidate extends Model
     {
         $val = trim($this->ttd_prinsiple ?? '');
         if (empty($val)) {
+            $appr = $this->principleApprovals->first();
+            if ($appr && !empty($appr->signature_path)) {
+                $val = trim($appr->signature_path);
+            }
+        }
+        if (empty($val)) {
             return null;
         }
 
@@ -144,9 +150,6 @@ class Candidate extends Model
             if (file_exists(public_path('prinsiple/ttdfileprinsiple/' . $baseName))) {
                 return asset('prinsiple/ttdfileprinsiple/' . $baseName);
             }
-            if (file_exists(public_path('approval/' . $baseName))) {
-                return asset('approval/' . $baseName);
-            }
             return route('prinsiple.ttd.show', $baseName);
         }
 
@@ -161,6 +164,27 @@ class Candidate extends Model
         }
 
         return route('approval.show', $baseName);
+    }
+
+    public function getApprovalLegacyUrlAttribute(): ?string
+    {
+        $val = trim($this->ttd_prinsiple ?? '');
+        if (empty($val)) {
+            $appr = $this->principleApprovals->first();
+            if ($appr && !empty($appr->signature_path)) {
+                $val = trim($appr->signature_path);
+            }
+        }
+        if (empty($val)) {
+            return null;
+        }
+
+        $baseName = basename($val);
+        if (str_starts_with($baseName, 'ttd_')) {
+            return 'https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName);
+        }
+
+        return 'https://asystem.co.id/v3/approval/' . rawurlencode($baseName);
     }
 
 

@@ -342,50 +342,29 @@ Route::get('/lampiran/{filename}', function ($filename) {
 // 2. Lampiran Referensi Cek (Fallback: https://asystem.co.id/v3/refcekfile/)
 Route::get('/refcekfile/{filename}', function ($filename) {
     $baseName = basename($filename);
-    $candidates = [
-        public_path('refcekfile/' . $baseName),
-        public_path('lampiran/' . $baseName),
-        public_path('storage/' . $baseName),
-    ];
-    foreach ($candidates as $cand) {
-        if (file_exists($cand) && !is_dir($cand)) {
-            return response()->file($cand);
-        }
+    $resolved = \App\Services\LegacyAttachmentService::resolveRefcek($baseName);
+    if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
+        return response()->file($resolved);
     }
     return redirect()->away('https://asystem.co.id/v3/refcekfile/' . rawurlencode($baseName));
 })->where('filename', '.*')->name('refcekfile.show');
 
-// 3. Lampiran Approval Prinsiple (Fallback: https://asystem.co.id/v3/approval/)
+// 3. Lampiran Approval Prinsiple (Fallback: https://asystem.co.id/v3/)
 Route::get('/approval/{filename}', function ($filename) {
     $baseName = basename($filename);
-    $candidates = [
-        public_path('approval/' . $baseName),
-        public_path('storage/approvals/' . $baseName),
-        public_path('storage/' . $baseName),
-        public_path('lampiran/' . $baseName),
-    ];
-    foreach ($candidates as $cand) {
-        if (file_exists($cand) && !is_dir($cand)) {
-            return response()->file($cand);
-        }
+    $resolved = \App\Services\LegacyAttachmentService::resolveApproval($baseName);
+    if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
+        return response()->file($resolved);
     }
-    return redirect()->away('https://asystem.co.id/v3/approval/' . rawurlencode($baseName));
+    return redirect()->away('https://asystem.co.id/v3/' . rawurlencode($baseName));
 })->where('filename', '.*')->name('approval.show');
 
 // 4. TTD Digital Prinsiple (Fallback: https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/)
 Route::get('/prinsiple/ttdfileprinsiple/{filename}', function ($filename) {
     $baseName = basename($filename);
-    $candidates = [
-        public_path('prinsiple/ttdfileprinsiple/' . $baseName),
-        public_path('approval/' . $baseName),
-        public_path('storage/approvals/' . $baseName),
-        public_path('storage/' . $baseName),
-        public_path('lampiran/' . $baseName),
-    ];
-    foreach ($candidates as $cand) {
-        if (file_exists($cand) && !is_dir($cand)) {
-            return response()->file($cand);
-        }
+    $resolved = \App\Services\LegacyAttachmentService::resolveApproval($baseName);
+    if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
+        return response()->file($resolved);
     }
     return redirect()->away('https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName));
 })->where('filename', '.*')->name('prinsiple.ttd.show');

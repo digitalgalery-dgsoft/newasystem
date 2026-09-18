@@ -374,35 +374,33 @@ class InterviewPdfService
         }
 
         // =========================================================================
-        // LAMPIRAN APPROVAL PRINSIPLE (Jika status Approval By WA / Ada Screenshot)
+        // LAMPIRAN APPROVAL PRINSIPLE (Jika status Approval By WA / Ada Screenshot / TTD)
         // Meniru logika asli v3/printall.php (lines 530-550)
         // =========================================================================
         $approval = $candidate->principleApprovals->first();
-        $approvalFile = $approval?->signature_path ?? $candidate->approval_screenshot ?? null;
+        $approvalFilename = $candidate->ttd_prinsiple ?? $approval?->signature_path ?? null;
         $approvalImgPath = null;
-        $htmlApproval = '';
+        $approvalBase64 = null;
 
-        if ($approvalFile) {
-            $fullPath = storage_path('app/public/' . $approvalFile);
-            if (file_exists($fullPath)) {
-                $approvalImgPath = $fullPath;
-            }
-        }
-        // Fallback ke sample file jika ada catatan approval by WA/Email
-        if (!$approvalImgPath && ($candidate->note_principle == 'Approval By WA - Email' || $candidate->status_approval == 'Approve' || $approval)) {
-            $sampleApproval = storage_path('app/public/approvals/sample_approval_7.jpg');
-            if (file_exists($sampleApproval)) {
-                $approvalImgPath = $sampleApproval;
-            }
+        if ($approvalFilename) {
+            $approvalImgPath = \App\Services\LegacyAttachmentService::resolveApproval($approvalFilename);
         }
 
         if ($approvalImgPath && file_exists($approvalImgPath)) {
+            $approvalBase64 = \App\Services\LegacyAttachmentService::getImageBase64($approvalImgPath);
+        }
+
+        if ($approvalBase64) {
+            $titleApproval = str_starts_with(basename($approvalFilename), 'ttd_') 
+                ? 'Tanda Tangan Digital Approval User Principle' 
+                : 'ScreenShot Approval Prinsiple By WA / Email';
+
             $htmlApproval = '<!DOCTYPE html><html><head><style>' . $css . '</style></head><body>';
             $htmlApproval .= '<div style="text-align:center; padding-top:15px;">';
-            $htmlApproval .= '<h2 style="font-size:15px; text-transform:uppercase; color:#1e3a8a; margin-bottom:6px;">ScreenShot Approval Prinsiple By WA / Email</h2>';
+            $htmlApproval .= '<h2 style="font-size:15px; text-transform:uppercase; color:#1e3a8a; margin-bottom:6px;">' . $titleApproval . '</h2>';
             $htmlApproval .= '<p style="font-size:9.5px; color:#475569; margin-bottom:14px;">Kandidat: <b>' . $candidate->full_name . '</b> (NIK: ' . $candidate->nik . ') &mdash; Prinsiple: <b>' . $parentComp . '</b></p>';
             $htmlApproval .= '<div style="border:1px solid #cbd5e1; padding:10px; display:inline-block; background:#fff; border-radius:8px;">';
-            $htmlApproval .= '<img src="' . $approvalImgPath . '" style="max-width:80%; max-height:800px;">';
+            $htmlApproval .= '<img src="' . $approvalBase64 . '" style="max-width:85%; max-height:750px;">';
             $htmlApproval .= '</div>';
             $htmlApproval .= '</div></body></html>';
             if ($mpdf) {
@@ -429,24 +427,27 @@ class InterviewPdfService
         $html2 .= '<tr><td><b>NIK</b></td><td>:</td><td>' . $candidate->nik . '</td></tr>';
         $html2 .= '</table>';
 
-        $firstExp = $candidate->workExperiences->first();
+        $firstExp = $candidate->workExperiences->first(function($e) {
+            return !empty($e->proof_attachment_path);
+        }) ?? $candidate->workExperiences->first();
+
         $html2 .= '<p align="justify"><b>Berdasarkan Referensi Kerja dari Perusahaan Sebelumnya:</b></p>';
         $html2 .= '<table width="100%" style="margin-bottom:8px;">';
-        $html2 .= '<tr><td width="25%"><b>Perusahaan Lama</b></td><td width="3%">:</td><td>' . ($firstExp?->company_name ?? 'bravo supermarket') . ' (Telp. ' . ($firstExp?->company_phone ?? '081234567890') . ')</td></tr>';
+        $html2 .= '<tr><td width="25%"><b>Perusahaan Lama</b></td><td width="3%">:</td><td>' . ($firstExp?->company_name ?? 'Perusahaan Sebelumnya') . ' (Telp. ' . ($firstExp?->company_phone ?? '-') . ')</td></tr>';
         $html2 .= '<tr><td><b>Periode Kerja</b></td><td>:</td><td>' . ($firstExp?->start_date ? $firstExp->start_date->format('d M Y') : '01 Jan 2022') . ' <b>s.d</b> ' . ($firstExp?->end_date ? $firstExp->end_date->format('d M Y') : '31 Des 2023') . '</td></tr>';
-        $html2 .= '<tr><td><b>Bagian / Jabatan</b></td><td>:</td><td>' . ($firstExp?->position ?? 'Kasir Operasional') . '</td></tr>';
+        $html2 .= '<tr><td><b>Bagian / Jabatan</b></td><td>:</td><td>' . ($firstExp?->position ?? 'Karyawan') . '</td></tr>';
         $html2 .= '<tr><td><b>Alasan Keluar</b></td><td>:</td><td>' . ($firstExp?->reason_for_leaving ?? 'Habis Kontrak Kerja') . '</td></tr>';
         $html2 .= '</table>';
 
         $html2 .= '<p align="center" style="font-weight:bold; margin:6px 0;">--------------------- HASIL PENILAIAN ATASAN (SPV) ---------------------</p>';
         $html2 .= '<table width="100%">';
-        $html2 .= '<tr><td width="25%"><b>Nama SPV</b></td><td width="3%">:</td><td>' . ($firstExp?->supervisor_name ?? 'Bpk. Bambang') . '</td></tr>';
+        $html2 .= '<tr><td width="25%"><b>Nama SPV</b></td><td width="3%">:</td><td>' . ($firstExp?->supervisor_name ?? 'Bpk. Supervisor') . '</td></tr>';
         $html2 .= '<tr><td><b>Performa Kerja</b></td><td>:</td><td>' . ($firstExp?->performance_notes ?? 'Target tercapai dengan sangat baik') . '</td></tr>';
         $html2 .= '<tr><td><b>Disiplin</b></td><td>:</td><td>' . ($firstExp?->discipline_notes ?? 'Tepat waktu dan patuh terhadap SOP kerja') . '</td></tr>';
-        $html2 .= '<tr><td><b>Tanggung Jawab</b></td><td>:</td><td>' . ($firstExp?->responsibility_notes ?? 'Bertanggung jawab penuh atas operasional dan kasir') . '</td></tr>';
+        $html2 .= '<tr><td><b>Tanggung Jawab</b></td><td>:</td><td>' . ($firstExp?->responsibility_notes ?? 'Bertanggung jawab penuh atas tugas pekerjaan') . '</td></tr>';
         $html2 .= '<tr><td><b>Problem / Masalah</b></td><td>:</td><td>Tidak ada catatan pelanggaran atau SP</td></tr>';
-        $html2 .= '<tr><td><b>Keunggulan (Strengths)</b></td><td>:</td><td>' . ($firstExp?->strengths ?? 'Cepat menghitung, teliti, dan ramah kepada pelanggan') . '</td></tr>';
-        $html2 .= '<tr><td><b>Kelemahan (Weakness)</b></td><td>:</td><td>' . ($firstExp?->weaknesses ?? 'Kadang kurang sabar saat antrean sedang sangat panjang') . '</td></tr>';
+        $html2 .= '<tr><td><b>Keunggulan (Strengths)</b></td><td>:</td><td>' . ($firstExp?->strengths ?? 'Disiplin, cepat belajar, dan teliti') . '</td></tr>';
+        $html2 .= '<tr><td><b>Kelemahan (Weakness)</b></td><td>:</td><td>' . ($firstExp?->weaknesses ?? 'Perlu sedikit bimbingan saat transisi sistem baru') . '</td></tr>';
         $html2 .= '</table>';
 
         $html2 .= '<br><br><table width="100%"><tr>';
@@ -463,29 +464,23 @@ class InterviewPdfService
         // =========================================================================
         $refCekProof = $firstExp?->proof_attachment_path ?? null;
         $refCekImgPath = null;
+        $refCekBase64 = null;
 
         if ($refCekProof) {
-            $fullRefPath = storage_path('app/public/' . $refCekProof);
-            if (file_exists($fullRefPath)) {
-                $refCekImgPath = $fullRefPath;
-            }
-        }
-        // Fallback ke sample bukti chat refcek jika file ada
-        if (!$refCekImgPath) {
-            $sampleRef = storage_path('app/public/refcek_proofs/sample_refcek_7.jpg');
-            if (file_exists($sampleRef)) {
-                $refCekImgPath = $sampleRef;
-            }
+            $refCekImgPath = \App\Services\LegacyAttachmentService::resolveRefcek($refCekProof);
         }
 
-        $htmlRefCek = '';
         if ($refCekImgPath && file_exists($refCekImgPath)) {
+            $refCekBase64 = \App\Services\LegacyAttachmentService::getImageBase64($refCekImgPath);
+        }
+
+        if ($refCekBase64) {
             $htmlRefCek = '<!DOCTYPE html><html><head><style>' . $css . '</style></head><body>';
             $htmlRefCek .= '<div style="text-align:center; padding-top:15px;">';
             $htmlRefCek .= '<h3 style="font-size:14px; text-transform:uppercase; color:#1e3a8a; margin-bottom:6px;">BUKTI SCREENSHOT CHAT REFERENSI CEK</h3>';
-            $htmlRefCek .= '<p style="font-size:9.5px; color:#475569; margin-bottom:14px;">Verifikasi Riwayat Kerja: <b>' . ($firstExp?->company_name ?? 'bravo supermarket') . '</b> &mdash; Calon: <b>' . $candidate->full_name . '</b> (' . $candidate->nik . ')</p>';
+            $htmlRefCek .= '<p style="font-size:9.5px; color:#475569; margin-bottom:14px;">Verifikasi Riwayat Kerja: <b>' . ($firstExp?->company_name ?? 'Perusahaan Sebelumnya') . '</b> &mdash; Calon: <b>' . $candidate->full_name . '</b> (' . $candidate->nik . ')</p>';
             $htmlRefCek .= '<div style="border:1px solid #cbd5e1; padding:10px; display:inline-block; background:#fff; border-radius:8px;">';
-            $htmlRefCek .= '<img src="' . $refCekImgPath . '" style="max-width:80%; max-height:800px;">';
+            $htmlRefCek .= '<img src="' . $refCekBase64 . '" style="max-width:85%; max-height:750px;">';
             $htmlRefCek .= '</div>';
             $htmlRefCek .= '</div></body></html>';
             if ($mpdf) {

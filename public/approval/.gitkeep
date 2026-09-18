@@ -1,0 +1,6 @@
+
+# Cache downloads from legacy server
+/public/approval/*
+!/public/approval/.gitkeep
+/public/refcekfile/*
+!/public/refcekfile/.gitkeep
