@@ -566,6 +566,46 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 34. 📊 Fitur Export Data Kandidat Job Portal ke Excel (.xlsx) dengan Filter Area & Kolom Lengkap (19 September 2026)
+- **Desain Modal Export Terpadu (Sesuai Referensi Sistem Sebelumnya)**:
+  - Mengadaptasi tata letak modal form pop-up `Export Data Kandidat Job Portal` persis seperti gambar yang dilampirkan:
+    1. **Dari Tanggal (Tanggal Daftar)**: Input pemilih tanggal awal dilengkapi petunjuk keterangan *"Kosongkan untuk mengexport semua tanggal"*.
+    2. **Sampai Tanggal (Tanggal Daftar)**: Input pemilih tanggal akhir periode pendaftaran.
+    3. **Kategori AI**: Dropdown filter kategori (*Semua Kategori, Green, Yellow, Red, Belum Dianalisa AI*).
+    4. **Status Kandidat**: Dropdown filter status seleksi (*Semua Status, Baru, Interview, Terima, Arsip*).
+    5. **Area Penempatan (Filter Baru)**: Dropdown filter area penempatan kerja kandidat yang diisi dinamis dari data kandidat Job Portal (*Semua Area, Jakarta, Surabaya, Makassar, Denpasar, dll.*).
+    6. **Tombol Aksi**: Tombol *"Tutup"* (abu-abu) dan tombol *"Download Excel"* (hijau emerald dengan ikon unduh).
+- **Format File Asli Microsoft Excel OpenXML (.xlsx)**:
+  - Mengembangkan service mandiri [CandidateXlsxExportService.php](file:///d:/ASystem/newasystem/app/Services/CandidateXlsxExportService.php) berbasis `ZipArchive` & OpenXML Spreadsheet standard tanpa ketergantungan library pihak ketiga (*zero external dependency*), menjamin file Excel valid 100% dan dapat dibuka langsung di Microsoft Excel, WPS Office, LibreOffice, maupun Google Sheets.
+  - **Tampilan Visual Menarik & Profesional**:
+    - **Header Banner**: Judul dokumen `ASYSTEM - REKAPITULASI DATA PELAMAR JOB PORTAL` dengan sub-judul rincian filter yang diterapkan, tanggal & jam export (WIB), serta total data kandidat.
+    - **Header Tabel**: Latar belakang hijau emerald tua elegan (`#065F46`), teks putih tebal (*bold white*), tinggi baris 30pt, dan teks rata tengah.
+    - **Freeze Pane**: Baris header dikunci (*frozen row*) pada baris ke-4 sehingga judul kolom tetap terlihat saat pengguna menggulir ke bawah data ribuan pelamar.
+    - **Zebra Striping**: Pewarnaan baris berselang-seling (`#F8FAFC` dan `#FFFFFF`) dengan border sel tipis (`#E2E8F0`) untuk keterbacaan optimal.
+    - **Badge Warna Kategori AI**: Kategori Green diberi highlight hijau lembut (`#ECFDF5`), Yellow dengan kuning lembut (`#FFFBEB`), dan Red dengan merah lembut (`#FFF1F2`).
+    - **Auto Column Width**: Lebar masing-masing dari 18 kolom telah diatur proporsional sesuai panjang kontennya sehingga teks tidak terpotong.
+- **Kelengkapan Kolom Data yang Diexport**:
+  1. `NO`
+  2. `TANGGAL DAFTAR`
+  3. `NIK (KTP)` (*diformat sebagai teks untuk mencegah Excel mengubah angka 16 digit menjadi notasi ilmiah*)
+  4. `NAMA LENGKAP`
+  5. `JENIS KELAMIN` (*kolom baru yang diminta*)
+  6. `TANGGAL LAHIR`
+  7. `USIA`
+  8. `PENDIDIKAN`
+  9. `NO WHATSAPP / HP`
+  10. `EMAIL`
+  11. `POSISI DILAMAR`
+  12. `AREA PENEMPATAN`
+  13. `RINGKASAN PENGALAMAN KERJA` (*kolom baru yang diminta: dirangkum dari kolom experience_summary atau riwayat kerja workExperiences dengan format wrap-text rapi*)
+  14. `KATEGORI AI`
+  15. `AI SCORE`
+  16. `STATUS KANDIDAT`
+  17. `HASIL ANALISIS AI (PDF)` (*kolom baru yang diminta: berupa formula hyperlink Excel aktif `=HYPERLINK("...", "Lihat PDF AI")` berwarna biru garis bawah yang dapat diklik langsung untuk mengunduh laporan PDF AI*)
+  18. `REKRUTER / AS`
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |

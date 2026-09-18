@@ -270,6 +270,13 @@ class KandidatPortalController extends Controller
 
         $candidates = $tableQuery->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
 
+        $distinctAreas = Candidate::where('jenis', 'Job Portal')
+            ->whereNotNull('area')
+            ->where('area', '!=', '')
+            ->distinct()
+            ->orderBy('area')
+            ->pluck('area');
+
         return view('kandidatportal.index', compact(
             'candidates',
             'tab',
@@ -282,6 +289,7 @@ class KandidatPortalController extends Controller
             'scopeTitle',
             'isAdmin',
             'allRecruiters',
+            'distinctAreas',
             'totalPelamar',
             'masukHariIni',
             'kandidatGreen',
@@ -711,12 +719,13 @@ class KandidatPortalController extends Controller
     }
 
     /**
-     * Export Data Pelamar Job Portal ke CSV/Excel (Filtered by Logged-in User)
+     * Export Data Pelamar Job Portal ke XLSX Profesional (Filtered by User, Tanggal, Kategori, Status, dan Area)
      */
     public function exportExcel(Request $request)
     {
-        $tab = $request->query('tab', 'baru');
+        $status_kandidat = $request->query('status_kandidat') ?? $request->query('tab');
         $kategori = $request->query('kategori');
+        $area = $request->query('area');
         $start = $request->query('start');
         $end = $request->query('end');
         $search = $request->query('q') ?? $request->query('search');
@@ -750,48 +759,69 @@ class KandidatPortalController extends Controller
             });
         }
 
-        if ($tab === 'interview') {
-            $baseQuery->whereNotIn('status', ['Arsip', 'archived'])
-                ->where(function ($q) {
-                    $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
-                })
-                ->where('status_kandidat', 'Interview');
-        } elseif ($tab === 'terima') {
-            $baseQuery->whereNotIn('status', ['Arsip', 'archived'])
-                ->where(function ($q) {
-                    $q->where(function ($sub) {
-                        $sub->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
-                    })->orWhere('status_kandidat', 'Terima');
+        // Filter Status Kandidat
+        if (!empty($status_kandidat) && !in_array(strtolower($status_kandidat), ['all', 'semua', ''])) {
+            if (strcasecmp($status_kandidat, 'interview') === 0) {
+                $baseQuery->whereNotIn('status', ['Arsip', 'archived'])
+                    ->where(function ($q) {
+                        $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
+                    })
+                    ->where('status_kandidat', 'Interview');
+            } elseif (strcasecmp($status_kandidat, 'terima') === 0) {
+                $baseQuery->whereNotIn('status', ['Arsip', 'archived'])
+                    ->where(function ($q) {
+                        $q->where(function ($sub) {
+                            $sub->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
+                        })->orWhere('status_kandidat', 'Terima');
+                    });
+            } elseif (strcasecmp($status_kandidat, 'arsip') === 0) {
+                $baseQuery->where(function ($q) {
+                    $q->where('status', 'Arsip')
+                      ->orWhere('status', 'archived')
+                      ->orWhere('status_kandidat', 'Arsip');
                 });
-        } elseif ($tab === 'arsip') {
-            $baseQuery->where(function ($q) {
-                $q->where('status', 'Arsip')
-                  ->orWhere('status', 'archived')
-                  ->orWhere('status_kandidat', 'Arsip');
-            });
-        } elseif ($tab === 'baru') {
-            $baseQuery->whereNotIn('status', ['Arsip', 'archived'])
-                ->where(function ($q) {
-                    $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
-                })
-                ->where(function ($q) {
-                    $q->where('status_kandidat', 'Baru')
-                      ->orWhereNull('status_kandidat')
-                      ->orWhereNotIn('status_kandidat', ['Interview', 'Terima', 'Arsip']);
-                });
+            } elseif (strcasecmp($status_kandidat, 'baru') === 0) {
+                $baseQuery->whereNotIn('status', ['Arsip', 'archived'])
+                    ->where(function ($q) {
+                        $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
+                    })
+                    ->where(function ($q) {
+                        $q->where('status_kandidat', 'Baru')
+                          ->orWhereNull('status_kandidat')
+                          ->orWhereNotIn('status_kandidat', ['Interview', 'Terima', 'Arsip']);
+                    });
+            }
         }
 
-        if (!empty($kategori)) {
-            $baseQuery->where('kategori_kandidat', $kategori);
+        // Filter Area Penempatan
+        if (!empty($area) && !in_array(strtolower($area), ['all', 'semua', ''])) {
+            $baseQuery->where('area', $area);
         }
 
+        // Filter Kategori AI
+        if (!empty($kategori) && !in_array(strtolower($kategori), ['all', 'semua', ''])) {
+            if (in_array(strtolower($kategori), ['pending', 'belum', 'belum dianalisa'])) {
+                $baseQuery->where(function ($q) {
+                    $q->whereNull('ai_score')->orWhere('ai_score', 0);
+                });
+            } else {
+                $baseQuery->where('kategori_kandidat', $kategori);
+            }
+        }
+
+        // Filter Rentang Tanggal Daftar
         if (!empty($start) && !empty($end)) {
             $baseQuery->whereBetween('created_at', [
                 Carbon::parse($start)->startOfDay(),
                 Carbon::parse($end)->endOfDay()
             ]);
+        } elseif (!empty($start)) {
+            $baseQuery->where('created_at', '>=', Carbon::parse($start)->startOfDay());
+        } elseif (!empty($end)) {
+            $baseQuery->where('created_at', '<=', Carbon::parse($end)->endOfDay());
         }
 
+        // Filter Search Keyword
         if (!empty($search)) {
             $baseQuery->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
@@ -801,44 +831,27 @@ class KandidatPortalController extends Controller
             });
         }
 
-        $candidates = $baseQuery->orderBy('created_at', 'desc')->get();
-        $csvFileName = 'kandidat_job_portal_' . date('Ymd_His') . '.csv';
-        $headers = [
-            "Content-type"        => "text/csv; charset=UTF-8",
-            "Content-Disposition" => "attachment; filename=$csvFileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
+        $candidates = $baseQuery->with(['workExperiences'])
+            ->orderBy('created_at', 'desc')
+            ->get();
+
+        $meta = [
+            'start' => $start,
+            'end' => $end,
+            'kategori' => $kategori,
+            'status_kandidat' => $status_kandidat,
+            'area' => $area,
+            'recruiter_name' => $isAdmin ? ($filterRecruiter === 'all' ? 'Semua Rekruter' : ($filterRecruiter ?: 'Semua')) : ($user ? $user->name : ''),
         ];
 
-        $columns = ['NO', 'TANGGAL DAFTAR', 'NIK', 'NAMA KANDIDAT', 'JENIS KELAMIN', 'TANGGAL LAHIR', 'USIA', 'PENDIDIKAN', 'POSISI DILAMAR', 'AREA', 'KATEGORI AI', 'AI SCORE', 'STATUS KANDIDAT', 'REKRUTER / AS'];
+        $filePath = \App\Services\CandidateXlsxExportService::generateXlsx($candidates, $meta);
+        $fileName = 'Data_Kandidat_Job_Portal_' . date('Ymd_His') . '.xlsx';
 
-        $callback = function() use ($candidates, $columns) {
-            $file = fopen('php://output', 'w');
-            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
-            fputcsv($file, $columns);
-            $no = 1;
-            foreach ($candidates as $c) {
-                fputcsv($file, [
-                    $no++,
-                    $c->created_at ? $c->created_at->format('d/m/Y H:i') : '-',
-                    "'" . $c->nik,
-                    $c->full_name,
-                    $c->gender ?? '-',
-                    $c->birth_date ? $c->birth_date->format('d/m/Y') : '-',
-                    $c->age ?? '-',
-                    $c->education ?? '-',
-                    $c->applied_job ?? '-',
-                    $c->area ?? '-',
-                    $c->kategori_kandidat ?? '-',
-                    $c->ai_score ? $c->ai_score . '%' : 'Pending',
-                    $c->status_kandidat ?? 'Baru',
-                    $c->useras ?? '-',
-                ]);
-            }
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
+        return response()->download($filePath, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+            'Pragma' => 'public',
+        ])->deleteFileAfterSend(true);
     }
 }
