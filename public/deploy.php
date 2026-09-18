@@ -17,12 +17,17 @@ echo "Direktori: {$baseDir}\n\n";
 
 $commands = [
     "cd {$baseDir} && git config --global --add safe.directory {$baseDir} 2>&1",
+    "cd {$baseDir} && rm -f database/migrations/2026_07_* 2>&1",
+    "cd {$baseDir} && git clean -f database/migrations/ 2>&1",
     "cd {$baseDir} && git clean -fd config/ 2>&1",
     "cd {$baseDir} && git fetch origin main 2>&1",
     "cd {$baseDir} && git reset --hard origin/main 2>&1",
+    "cd {$baseDir} && rm -rf app/Providers/Filament 2>&1",
     "cd {$baseDir} && rm -f bootstrap/cache/*.php 2>&1",
+    "cd {$baseDir} && rm -f storage/framework/views/*.php 2>&1",
     "cd {$baseDir} && rm -f config/octane.php config/sanctum.php 2>&1",
-    "cd {$baseDir} && (composer install --no-dev --optimize-autoloader --no-interaction 2>&1 || /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction 2>&1 || true)",
+    "cd {$baseDir} && php artisan migrate --force 2>&1",
+    "cd {$baseDir} && chown -R www:www {$baseDir} 2>&1 || true",
     "cd {$baseDir} && php artisan optimize:clear 2>&1",
 ];
 
