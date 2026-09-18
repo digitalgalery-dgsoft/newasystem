@@ -15,12 +15,12 @@ echo "Waktu: " . date('Y-m-d H:i:s') . "\n\n";
 // 0. Auto pull dan sync git jika diminta atau selalu cek
 $baseDir = dirname(__DIR__);
 $cacheDir = $baseDir . '/bootstrap/cache';
-if (isset($_GET['pull']) || true) {
-    exec("cd {$baseDir} && git config --global --add safe.directory {$baseDir} 2>&1");
-    exec("cd {$baseDir} && git clean -fd config/ 2>&1");
-    exec("cd {$baseDir} && git fetch origin main 2>&1");
-    exec("cd {$baseDir} && git reset --hard origin/main 2>&1");
-    exec("cd {$baseDir} && rm -f bootstrap/cache/*.php 2>&1");
+if (function_exists('exec') && (isset($_GET['pull']) || true)) {
+    @exec("cd {$baseDir} && git config --global --add safe.directory {$baseDir} 2>&1");
+    @exec("cd {$baseDir} && git clean -fd config/ 2>&1");
+    @exec("cd {$baseDir} && git fetch origin main 2>&1");
+    @exec("cd {$baseDir} && git reset --hard origin/main 2>&1");
+    @exec("cd {$baseDir} && rm -f bootstrap/cache/*.php 2>&1");
 }
 
 echo "[1] Membersihkan berkas cache di {$cacheDir}...\n";
