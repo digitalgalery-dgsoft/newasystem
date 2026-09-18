@@ -50,6 +50,16 @@ if (is_dir($configDir)) {
     }
 }
 
+// Bersihkan legacy Filament providers jika ada
+$filamentProviderDir = $baseDir . '/app/Providers/Filament';
+if (is_dir($filamentProviderDir)) {
+    foreach (glob($filamentProviderDir . '/*.php') as $fFile) {
+        @unlink($fFile);
+    }
+    @rmdir($filamentProviderDir);
+    echo "  ✓ Berhasil membersihkan legacy app/Providers/Filament\n";
+}
+
 echo "\n[2] Membersihkan view cache di storage/framework/views...\n";
 $viewCacheDir = $baseDir . '/storage/framework/views';
 if (is_dir($viewCacheDir)) {
