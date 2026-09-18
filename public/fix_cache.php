@@ -12,8 +12,16 @@ echo "<pre style='font-family: monospace; background: #0f172a; color: #f8fafc; p
 echo "=== ASYSTEM SERVER CACHE & BINDING FIXER ===\n";
 echo "Waktu: " . date('Y-m-d H:i:s') . "\n\n";
 
+// 0. Auto pull dan sync git jika diminta atau selalu cek
 $baseDir = dirname(__DIR__);
 $cacheDir = $baseDir . '/bootstrap/cache';
+if (isset($_GET['pull']) || true) {
+    exec("cd {$baseDir} && git config --global --add safe.directory {$baseDir} 2>&1");
+    exec("cd {$baseDir} && git clean -fd config/ 2>&1");
+    exec("cd {$baseDir} && git fetch origin main 2>&1");
+    exec("cd {$baseDir} && git reset --hard origin/main 2>&1");
+    exec("cd {$baseDir} && rm -f bootstrap/cache/*.php 2>&1");
+}
 
 echo "[1] Membersihkan berkas cache di {$cacheDir}...\n";
 if (is_dir($cacheDir)) {
@@ -85,6 +93,23 @@ try {
             $totCand = \App\Models\Candidate::count();
             $totPortal = \App\Models\Candidate::where('jenis', 'Job Portal')->count();
             echo "  Total Kandidat di DB: {$totCand} (Job Portal: {$totPortal})\n";
+            
+            echo "\n  Cek Sesi Login Aktif:\n";
+            $sessions = glob($baseDir . '/storage/framework/sessions/*');
+            $foundSession = false;
+            foreach ($sessions as $sfile) {
+                if (basename($sfile) === '.gitignore') continue;
+                $data = @file_get_contents($sfile);
+                if ($data && preg_match('/login_web_[a-f0-9]+.*?i:(\d+);/', $data, $m)) {
+                    $uid = $m[1];
+                    $u = \App\Models\User::find($uid);
+                    echo "    - Sesi User ID {$uid}: " . ($u ? "{$u->name} ({$u->email}, role: {$u->role})" : "User ID {$uid}") . "\n";
+                    $foundSession = true;
+                }
+            }
+            if (!$foundSession) {
+                echo "    - Tidak ada session login aktif (user belum login / logout)\n";
+            }
         } catch (\Throwable $dbe) {
             echo "  ✗ Gagal cek DB: " . $dbe->getMessage() . "\n";
         }
