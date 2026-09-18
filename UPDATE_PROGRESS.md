@@ -604,12 +604,24 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   17. `HASIL ANALISIS AI (PDF)` (*kolom baru yang diminta: berupa formula hyperlink Excel aktif `=HYPERLINK("...", "Lihat PDF AI")` berwarna biru garis bawah yang dapat diklik langsung untuk mengunduh laporan PDF AI*)
   18. `REKRUTER / AS`
 
+### 35. 🐛 Perbaikan Filter Export Kandidat Job Portal (19 September 2026)
+- **Akar Masalah**:
+  - Saat diexport oleh Administrator, kueri export sebelumnya membatasi data kandidat hanya ke `useras = admin@asystem.co.id` jika parameter `recruiter` bernilai kosong atau `'my'`, sehingga kandidat nyata milik AS di berbagai cabang tidak terexport dan hanya menyisakan 1 dummy kandidat.
+  - Parsing tanggal pada input rentang tanggal (`01/09/2026`) secara bawaan PHP dapat salah terinterpretasi sebagai format US (`mm/dd/yyyy`).
+  - Dropdown Status Kandidat di modal sebelumnya secara otomatis terpilih `"Baru"` mengikuti tab aktif, padahal referensi sistem lama adalah `"Semua Status"`.
+- **Solusi & Perbaikan**:
+  - Menyelaraskan kueri export Administrator dengan tampilan UI halaman web: Administrator mengekspor seluruh data pelamar (Nasional) secara default kecuali jika memilih rekruter tertentu.
+  - Implementasi parser tanggal aman (`$parseDate`) yang menormalisasi pemisah tanggal (`/` menjadi `-`) sebelum diparsing oleh Carbon, sehingga tanggal `01/09/2026` dibaca akurat sebagai 1 September 2026.
+  - Mengatur default dropdown status kandidat di modal export menjadi `"Semua Status"` sesuai tampilan sistem sebelumnya, serta mendukung filter status jika dipilih spesifik.
+  - Memverifikasi ekspor rentang `01/09/2026` s/d `19/09/2026`: seluruh 1.148 kandidat (status Baru) atau 1.377 kandidat (Semua Status) berhasil diexport secara utuh.
+
 ---
 
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `[PENDING]` | fix: Perbaiki filter export kandidat portal untuk admin, parsing tanggal rentang, dan default semua status |
 | `f2e1425` | feat: Fitur export data kandidat job portal ke file XLSX profesional dengan filter area, jenis kelamin, ringkasan pengalaman, dan link PDF AI |
 | `599a696` | feat: Tambahkan line chart statistik progress pertumbuhan employee 12 jam terakhir dan 4 kartu metrik sesuai referensi desain |
 | `ca03ce3` | fix: Perbaiki loading overlay agar tidak menutupi modal konfirmasi SweetAlert bulk pimpinan |

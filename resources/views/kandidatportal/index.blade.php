@@ -560,11 +560,11 @@
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Status Kandidat</label>
                     <select name="status_kandidat" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer">
-                        <option value="">Semua Status</option>
-                        <option value="Baru" {{ ($tab === 'baru' || request('status_kandidat') === 'Baru') ? 'selected' : '' }}>Baru</option>
-                        <option value="Interview" {{ ($tab === 'interview' || request('status_kandidat') === 'Interview') ? 'selected' : '' }}>Interview</option>
-                        <option value="Terima" {{ ($tab === 'terima' || request('status_kandidat') === 'Terima') ? 'selected' : '' }}>Terima</option>
-                        <option value="Arsip" {{ ($tab === 'arsip' || request('status_kandidat') === 'Arsip') ? 'selected' : '' }}>Arsip</option>
+                        <option value="" {{ empty(request('status_kandidat')) ? 'selected' : '' }}>Semua Status</option>
+                        <option value="Baru" {{ request('status_kandidat') === 'Baru' ? 'selected' : '' }}>Baru</option>
+                        <option value="Interview" {{ request('status_kandidat') === 'Interview' ? 'selected' : '' }}>Interview</option>
+                        <option value="Terima" {{ request('status_kandidat') === 'Terima' ? 'selected' : '' }}>Terima</option>
+                        <option value="Arsip" {{ request('status_kandidat') === 'Arsip' ? 'selected' : '' }}>Arsip</option>
                     </select>
                 </div>
 

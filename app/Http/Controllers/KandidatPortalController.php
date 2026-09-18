@@ -251,11 +251,28 @@ class KandidatPortalController extends Controller
         }
 
         // Filter Rentang Tanggal
-        if (!empty($start) && !empty($end)) {
+        $parseDate = function ($d) {
+            if (empty($d)) return null;
+            $clean = str_replace('/', '-', trim($d));
+            try {
+                return Carbon::parse($clean);
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
+
+        $startDate = $parseDate($start);
+        $endDate = $parseDate($end);
+
+        if ($startDate && $endDate) {
             $tableQuery->whereBetween('created_at', [
-                Carbon::parse($start)->startOfDay(),
-                Carbon::parse($end)->endOfDay()
+                $startDate->copy()->startOfDay(),
+                $endDate->copy()->endOfDay()
             ]);
+        } elseif ($startDate) {
+            $tableQuery->where('created_at', '>=', $startDate->copy()->startOfDay());
+        } elseif ($endDate) {
+            $tableQuery->where('created_at', '<=', $endDate->copy()->endOfDay());
         }
 
         // Pencarian Teks
@@ -737,14 +754,17 @@ class KandidatPortalController extends Controller
 
         $baseQuery = Candidate::where('jenis', 'Job Portal');
 
-        if ($isAdmin && $filterRecruiter === 'all') {
-            // Semua
-        } elseif ($isAdmin && !empty($filterRecruiter) && $filterRecruiter !== 'my') {
-            $baseQuery->where(function ($q) use ($filterRecruiter) {
-                $q->where('useras', $filterRecruiter)
-                  ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterRecruiter))]);
-            });
+        if ($isAdmin) {
+            if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
+                // Admin memfilter rekruter terpilih
+                $baseQuery->where(function ($q) use ($filterRecruiter) {
+                    $q->where('useras', $filterRecruiter)
+                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterRecruiter))]);
+                });
+            }
+            // Jika $filterRecruiter bernilai 'all', 'my', atau kosong -> Admin mengexport semua lowongan (Nasional)
         } else {
+            // User biasa / AS / Rekruter: Hanya kandidat miliknya
             $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
                 if (!empty($userIdentifiers)) {
                     $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
@@ -809,16 +829,29 @@ class KandidatPortalController extends Controller
             }
         }
 
-        // Filter Rentang Tanggal Daftar
-        if (!empty($start) && !empty($end)) {
+        // Filter Rentang Tanggal Daftar (Aman untuk format dd/mm/yyyy, dd-mm-yyyy, dan yyyy-mm-dd)
+        $parseDate = function ($d) {
+            if (empty($d)) return null;
+            $clean = str_replace('/', '-', trim($d));
+            try {
+                return Carbon::parse($clean);
+            } catch (\Throwable $e) {
+                return null;
+            }
+        };
+
+        $startDate = $parseDate($start);
+        $endDate = $parseDate($end);
+
+        if ($startDate && $endDate) {
             $baseQuery->whereBetween('created_at', [
-                Carbon::parse($start)->startOfDay(),
-                Carbon::parse($end)->endOfDay()
+                $startDate->copy()->startOfDay(),
+                $endDate->copy()->endOfDay()
             ]);
-        } elseif (!empty($start)) {
-            $baseQuery->where('created_at', '>=', Carbon::parse($start)->startOfDay());
-        } elseif (!empty($end)) {
-            $baseQuery->where('created_at', '<=', Carbon::parse($end)->endOfDay());
+        } elseif ($startDate) {
+            $baseQuery->where('created_at', '>=', $startDate->copy()->startOfDay());
+        } elseif ($endDate) {
+            $baseQuery->where('created_at', '<=', $endDate->copy()->endOfDay());
         }
 
         // Filter Search Keyword
@@ -835,13 +868,22 @@ class KandidatPortalController extends Controller
             ->orderBy('created_at', 'desc')
             ->get();
 
+        $recruiterLabel = 'Semua Rekruter (Nasional)';
+        if ($isAdmin) {
+            if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
+                $recruiterLabel = $filterRecruiter;
+            }
+        } else {
+            $recruiterLabel = $user ? $user->name : 'User';
+        }
+
         $meta = [
-            'start' => $start,
-            'end' => $end,
+            'start' => $startDate ? $startDate->format('Y-m-d') : null,
+            'end' => $endDate ? $endDate->format('Y-m-d') : null,
             'kategori' => $kategori,
             'status_kandidat' => $status_kandidat,
             'area' => $area,
-            'recruiter_name' => $isAdmin ? ($filterRecruiter === 'all' ? 'Semua Rekruter' : ($filterRecruiter ?: 'Semua')) : ($user ? $user->name : ''),
+            'recruiter_name' => $recruiterLabel,
         ];
 
         $filePath = \App\Services\CandidateXlsxExportService::generateXlsx($candidates, $meta);

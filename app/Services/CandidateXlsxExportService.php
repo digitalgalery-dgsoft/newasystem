@@ -176,12 +176,22 @@ class CandidateXlsxExportService
 
         // Filter details text
         $filterParts = [];
+        $safeDateFmt = function ($d) {
+            if (empty($d)) return '';
+            $clean = str_replace('/', '-', trim($d));
+            try {
+                return Carbon::parse($clean)->format('d/m/Y');
+            } catch (\Throwable $e) {
+                return $d;
+            }
+        };
+
         if (!empty($meta['start']) && !empty($meta['end'])) {
-            $filterParts[] = 'Periode Daftar: ' . Carbon::parse($meta['start'])->format('d/m/Y') . ' s/d ' . Carbon::parse($meta['end'])->format('d/m/Y');
+            $filterParts[] = 'Periode Daftar: ' . $safeDateFmt($meta['start']) . ' s/d ' . $safeDateFmt($meta['end']);
         } elseif (!empty($meta['start'])) {
-            $filterParts[] = 'Mulai: ' . Carbon::parse($meta['start'])->format('d/m/Y');
+            $filterParts[] = 'Mulai: ' . $safeDateFmt($meta['start']);
         } elseif (!empty($meta['end'])) {
-            $filterParts[] = 'Sampai: ' . Carbon::parse($meta['end'])->format('d/m/Y');
+            $filterParts[] = 'Sampai: ' . $safeDateFmt($meta['end']);
         } else {
             $filterParts[] = 'Periode: Semua Tanggal';
         }
