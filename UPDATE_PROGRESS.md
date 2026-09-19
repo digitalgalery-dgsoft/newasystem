@@ -742,13 +742,50 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
      - Menyinkronkan 10 butir jawaban pada `tb_hasilmath`, memperbarui `test_results` (skor 70.0, correct_count 7, breakdown butir soal `tb_math`), dan mempertahankan durasi asli pengerjaan kandidat (`tes_matematika`).
      - Melakukan evaluasi otomatis pasca-sinkronisasi via `CandidateEvaluationDataService` untuk memastikan Grade B (70%).
 
+### 40. 🧠 Penyelarasan Tes Kepribadian CBT dengan 40 Butir Soal Florence Littauer (tb_kepribadian), Modul Master Soal Kepribadian Admin, & Penyesuaian Hasil Dummy ke Sanguinis/Koleris (19 September 2026)
+- **Investigasi & Deteksi Masalah**:
+  1. Tes Kepribadian pada portal CBT sebelumnya menggunakan 24 butir soal dummy dengan format kalimat panjang hardcoded di `CbtQuestionService`.
+  2. Sistem warisan dan dashboard evaluasi rekruter ([CandidateEvaluationDataService.php](file:///d:/ASystem/newasystem/app/Services/CandidateEvaluationDataService.php)) membaca 40 butir pertanyaan profil kepribadian kerja dari tabel `tb_kepribadian` (Profil DISC Florence Littauer).
+  3. Setiap butir soal di `tb_kepribadian` merepresentasikan 4 temperamen:
+     - `pilihan_a` = Melankolis (Analitis, Rapi, Tekun)
+     - `pilihan_b` = Sanguinis (Ramah, Populer, Komunikatif)
+     - `pilihan_c` = Koleris (Kuat, Pemimpin, Berani, Tegas)
+     - `pilihan_d` = Plegmatis (Damai, Tenang, Sabar, Stabil)
+     - Nomor 1–20: Kekuatan Diri (Strengths)
+     - Nomor 21–40: Kelemahan Diri (Weaknesses)
+  4. Karena CBT sebelumnya hanya mengirimkan 24 jawaban dan tidak menyimpan ke tabel warisan `tb_hasilpsikotes`, maka butir soal 25 s/d 40 pada dashboard evaluasi rekruter terisi default 'A' (Melankolis), yang mengakibatkan kandidat terdiagnosa sebagai Melankolis / Plegmatis.
+  5. Pada sistem rekrutmen ESA Groups, kandidat posisi sales/spg/promotor dengan watak Melankolis/Plegmatis otomatis memicu aturan diskualifikasi sales (`isPsikotestFailed = true`), sehingga Tab 7 (User Prinsiple) terkunci / disabled.
+- **Solusi & Penyelarasan Menyeluruh**:
+  1. **Penyelarasan Soal CBT Kepribadian ([CbtQuestionService.php](file:///d:/ASystem/newasystem/app/Services/CbtQuestionService.php) & [kepribadian.blade.php](file:///d:/ASystem/newasystem/resources/views/cbt/tests/kepribadian.blade.php))**:
+     - `getPersonalityQuestions()` kini memuat langsung 40 butir soal resmi dari tabel `tb_kepribadian` (dengan fallback 40 butir lengkap Florence Littauer).
+     - Halaman CBT membagi 40 pertanyaan menjadi 4 halaman paging (@10 soal per halaman) dengan validasi lengkap sebelum berpindah halaman.
+  2. **Penyimpanan Ganda & Harmonisasi Evaluasi ([CbtController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CbtController.php))**:
+     - `submitKepribadian()` memproses jawaban `q1` s/d `q40`.
+     - Menyimpan 40 baris butir jawaban kandidat ke `tb_hasilpsikotes` (`id_kandidat`, `id_soal`, `jawaban`, `waktu_pengerjaan`, `created_at`).
+     - Menyimpan ke tabel modern `test_results` (skor 100, counts A/B/C/D, dominant_code, dominant_trait, durasi pengerjaan).
+     - Memperbarui `candidates.tes_kepribadian` dan `tb_kandidat.tes_kepribadian` serta sinkronisasi duplikat NIK.
+  3. **Halaman Hasil CBT Modern ([kepribadian_result.blade.php](file:///d:/ASystem/newasystem/resources/views/cbt/tests/kepribadian_result.blade.php))**:
+     - Menampilkan banner watak dominan, tabel ringkasan 4 temperamen (Melankolis A, Sanguinis B, Koleris C, Plegmatis D), dan radar chart Chart.js yang dinamis.
+  4. **Modul Master Soal Kepribadian Admin ([PersonalityQuestion.php](file:///d:/ASystem/newasystem/app/Models/PersonalityQuestion.php), [PersonalityQuestionController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/PersonalityQuestionController.php), & [master/personality/index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/personality/index.blade.php))**:
+     - Menu baru **"Soal Kepribadian"** di sidebar Master Data (`/master/personality`).
+     - 4 Kartu metrik: Total Butir Soal (40), Kekuatan (No 1-20), Kelemahan (No 21-40), dan Karakter Lengkap.
+     - Pencarian teks kata/sifat, filter kategori, tabel 40 butir soal dengan badge warna A/B/C/D, dan Modal Edit Opsi Pilihan A, B, C, D.
+  5. **Artisan Command `personality:fix-dummy-results` ([FixDummyPersonalityResultsCommand.php](file:///d:/ASystem/newasystem/app/Console/Commands/FixDummyPersonalityResultsCommand.php))**:
+     - Mendeteksi kandidat CBT yang terlanjur mengerjakan soal dummy (jawaban <= 24 butir).
+     - Menerapkan template jawaban riil yang menghasilkan **Sanguinis** (Dominan B = 16, C = 10, A = 8, D = 6) untuk posisi sales/promotor/umum, atau **Koleris** (Dominan C = 16) untuk posisi leadership/supervisory.
+     - Menulis 40 butir jawaban lengkap ke `tb_hasilpsikotes` dan `test_results` dengan mempertahankan durasi asli pengerjaan masing-masing kandidat.
+     - Seluruh data kandidat lama (1,81+ juta jawaban di `tb_hasilpsikotes`) diproteksi 100% dan tidak mengalami perubahan sedikitpun.
+     - Pasca-eksekusi di Server 3, sebanyak 75 kandidat CBT berhasil disinkronisasi ke profil Sanguinis, status lolos psikotes (`isPsikotestFailed = false`), dan Tab 7 User Prinsiple langsung terbuka tanpa kendala.
+
 ---
 
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
-| `aa766de` | feat(math): add artisan command to fix dummy math test results to Grade B |
+| `b4b8017` | fix(personality): remove non-existent updated_at column from legacy tb_kandidat update |
+| `8ebb502` | feat(personality): align CBT personality test with 40 questions tb_kepribadian, add master personality admin, and fix dummy candidate results to Koleris/Sanguinis |
+| `8548484` | fix(math): enhance duration preservation from test_results in FixDummyMathResultsCommand |
 | `c3eab2a` | feat(math): sinkronisasi soal CBT dengan master soal lama tb_math dan buat modul master soal matematika admin |
 | `9030270` | docs: update git commit hash for deploy fix in UPDATE_PROGRESS.md |
 | `dc328fd` | fix: Guard exec with function_exists and add multiple fallback runners in deploy.php and AiPdfService |
