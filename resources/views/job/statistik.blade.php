@@ -34,9 +34,9 @@
                 <i class="fa-solid fa-globe text-slate-500"></i>
                 <span>Kandidat Portal</span>
             </a>
-            <a href="{{ route('job.statistik.export', request()->all()) }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-600/20">
+            <a href="{{ route('job.statistik.export', request()->all()) }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-600/20" title="Download Laporan Format Microsoft Excel (.xlsx)">
                 <i class="fa-solid fa-file-excel"></i>
-                <span>Export CSV/Excel</span>
+                <span>Export Excel (.xlsx)</span>
             </a>
         </div>
     </div>
@@ -182,9 +182,9 @@
                     <i class="fa-solid fa-rotate-left text-slate-400"></i>
                     <span>Reset Filter</span>
                 </a>
-                <a href="{{ route('job.statistik.export', request()->all()) }}" class="px-4 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center gap-1.5">
-                    <i class="fa-solid fa-file-csv text-emerald-600"></i>
-                    <span>Export Data</span>
+                <a href="{{ route('job.statistik.export', request()->all()) }}" class="px-4 py-2 rounded-xl text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center gap-1.5" title="Download Laporan Format Microsoft Excel (.xlsx)">
+                    <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                    <span>Export Excel (.xlsx)</span>
                 </a>
                 <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold text-white bg-primary hover:bg-primary-700 transition-all shadow-sm shadow-primary-500/20 flex items-center gap-1.5">
                     <i class="fa-solid fa-filter"></i>

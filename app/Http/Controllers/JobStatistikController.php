@@ -6,9 +6,10 @@ use App\Models\Candidate;
 use App\Models\Employee;
 use App\Models\JobSpec;
 use App\Models\Principle;
+use App\Services\JobStatistikXlsxExportService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class JobStatistikController extends Controller
 {
@@ -203,9 +204,9 @@ class JobStatistikController extends Controller
     }
 
     /**
-     * Export Excel / CSV Statistik.
+     * Export Excel (.xlsx) Statistik multi-sheet dengan format profesional.
      */
-    public function export(Request $request): StreamedResponse
+    public function export(Request $request): BinaryFileResponse
     {
         $filters = [
             'region'    => trim((string)$request->input('f_region', '')),
@@ -216,76 +217,16 @@ class JobStatistikController extends Controller
         ];
 
         $data = $this->calculateStatistics($filters);
-        $fileName = 'statistik_job_kandidat_' . date('Ymd_His') . '.csv';
+        
+        $filePath = JobStatistikXlsxExportService::generateXlsx($data, $filters);
+        $fileName = 'Statistik_Job_Kandidat_Portal_' . date('Ymd_His') . '.xlsx';
 
-        return response()->streamDownload(function () use ($data, $filters) {
-            $handle = fopen('php://output', 'w');
-            
-            // Tulis UTF-8 BOM untuk Microsoft Excel
-            fputs($handle, "\xEF\xBB\xBF");
-
-            // HEADER INFORMASI
-            fputcsv($handle, ['STATISTIK JOB REQUIREMENT & KANDIDAT PORTAL - ASYSTEM ESA GROUPS']);
-            fputcsv($handle, ['Keterangan', 'Data pelamar khusus dari Kandidat Portal (jenis: Job Portal), kandidat interview tidak termasuk']);
-            fputcsv($handle, ['Waktu Export', date('d/m/Y H:i:s')]);
-            fputcsv($handle, ['Filter Region', $filters['region'] ?: 'Semua Region']);
-            fputcsv($handle, ['Filter Area', $filters['area'] ?: 'Semua Area']);
-            fputcsv($handle, ['Filter Prinsiple', $filters['prinsiple'] ?: 'Semua Prinsiple']);
-            fputcsv($handle, ['Filter User', $filters['user'] ?: 'Semua User']);
-            fputcsv($handle, ['Filter Info', $filters['info'] ?: 'Semua Info Lowongan']);
-            fputcsv($handle, []);
-
-            // 1. STATISTIK PER AREA
-            fputcsv($handle, ['=== 1. STATISTIK PER AREA ===']);
-            fputcsv($handle, ['Region', 'Area', 'Jumlah Job Post', 'Jumlah Pelamar']);
-            foreach ($data['statsArea'] as $row) {
-                fputcsv($handle, [$row['region'], $row['area'], $row['job_post'], $row['pelamar']]);
-            }
-            fputcsv($handle, []);
-
-            // 2. STATISTIK PER NAMA USER & AREA
-            fputcsv($handle, ['=== 2. STATISTIK PER NAMA USER & AREA ===']);
-            fputcsv($handle, ['Nama User / Rekrutor', 'Region', 'Area', 'Jumlah Job Post', 'Jumlah Pelamar']);
-            foreach ($data['statsUserArea'] as $row) {
-                fputcsv($handle, [$row['user'], $row['region'], $row['area'], $row['job_post'], $row['pelamar']]);
-            }
-            fputcsv($handle, []);
-
-            // 3. STATISTIK DETAIL KANDIDAT BERDASARKAN PRINSIPLE
-            fputcsv($handle, ['=== 3. STATISTIK DETAIL KANDIDAT BERDASARKAN PRINSIPLE ===']);
-            fputcsv($handle, ['Nama User / Rekrutor', 'Region', 'Area', 'Prinsiple', 'Nama Job / Posisi', 'Kandidat Green', 'Kandidat Yellow', 'Kandidat Red', 'Total Pelamar']);
-            foreach ($data['statsDetail'] as $row) {
-                fputcsv($handle, [
-                    $row['user'], $row['region'], $row['area'], $row['prinsiple'], $row['job_title'],
-                    $row['green'], $row['yello'], $row['red'], $row['total_pelamar']
-                ]);
-            }
-            fputcsv($handle, []);
-
-            // 4. STATISTIK KANDIDAT PER REKRUTOR BERDASARKAN STEP ODOO ERP
-            fputcsv($handle, ['=== 4. STATISTIK KANDIDAT PER REKRUTOR / AS BERDASARKAN STEP ODOO ERP ===']);
-            fputcsv($handle, ['Nama Rekrutor / AS', 'Region', 'Area', 'Total Kandidat', 'Data Pelamar (Odoo)', 'Interview (Odoo)', 'Principal (Odoo)', 'E-Learning (Odoo)', 'PKWT (Odoo)', 'Joined (Odoo)', 'Belum di Odoo']);
-            foreach ($data['statsOdooRecruiter'] as $row) {
-                fputcsv($handle, [
-                    $row['user_display'],
-                    $row['region'],
-                    $row['area'],
-                    $row['total'],
-                    $row['data_pelamar'],
-                    $row['interview'],
-                    $row['principal'],
-                    $row['elearning'],
-                    $row['pkwt'],
-                    $row['joined'],
-                    $row['belum_di_odoo'],
-                ]);
-            }
-
-            fclose($handle);
-        }, $fileName, [
-            'Content-Type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
-        ]);
+        return response()->download($filePath, $fileName, [
+            'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires'       => '0',
+            'Pragma'        => 'public',
+        ])->deleteFileAfterSend(true);
     }
 
     /**
