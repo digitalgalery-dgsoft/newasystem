@@ -786,6 +786,40 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   - Berhasil dideploy ke Server 3 Production dan cache bootstrap dibersihkan (`php artisan optimize:clear`).
   - Halaman `https://new.asystem.co.id/master/prinsiple` terbukti berhasil me-render 150.866 bytes HTML dengan sempurna tanpa exception.
 
+### 42. 🛡️ Pemisahan Menu Sync Odoo ke Group 'System Setting' & Implementasi Sistem Manajemen Hak Akses (RBAC) Terpadu (19 September 2026)
+- **Pemisahan Menu Sync Odoo dari Master Data ke Group Baru 'System Setting'**:
+  - Mengeluarkan item menu **Setting Sync Odoo** dari group sidebar **Master Data**.
+  - Membuat group menu baru di sidebar bertajuk **System Setting** (`CONFIG`) khusus Administrator pada [resources/views/layouts/app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php).
+  - Group **Master Data** kini fokus dan bersih hanya berisi: *Master Karyawan, Master Prinsiple, Soal Matematika, dan Soal Kepribadian*.
+  - Group **System Setting** memuat:
+    1. **Setting Sync Odoo** (`/odoo-setting`) - Pengaturan koneksi 5 entitas Odoo ERP & sinkronisasi live terminal.
+    2. **Hak Akses (RBAC)** (`/setting/rbac`) - Pengaturan hak akses matriks role, izin user/karyawan, dan reset password.
+    3. **Setting AI & WA** (`/ai-settings`) - Konfigurasi integrasi OpenAI dan WhatsApp Gateway.
+- **Implementasi Komprehensif Role-Based Access Control (RBAC)**:
+  1. **Struktur Database & Migrasi (`2026_09_19_160000_create_rbac_roles_and_permissions_tables.php`)**:
+     - Tabel `roles`: Mendefinisikan peran (`admin`, `recruiter`, `head_hr`, `karyawan_inhouse`, `karyawan_ratecard`) beserta deskripsi dan status aktif.
+     - Tabel `permissions`: Mendefinisikan izin spesifik lintas modul (*Master Karyawan, Master Prinsiple, Bank Soal CBT, Sync Odoo, RBAC, AI & WA, Lowongan, Talent Pool, Rekrutmen Inhouse, AI Ranking, dll.*).
+     - Tabel `role_permissions`: Pemetaan relasi many-to-many antara role dengan permission.
+     - Tabel `user_permissions`: Dukungan *granular override* izin individual per pengguna/karyawan (`is_granted = true/false`), memungkinkan administrator memberikan atau mencabut akses modul tertentu pada karyawan spesifik tanpa harus membuat role baru.
+  2. **Model Eloquent & Accessor Cerdas**:
+     - [app/Models/Role.php](file:///d:/ASystem/newasystem/app/Models/Role.php): Relasi ke permissions dan users, helper `hasPermission()`.
+     - [app/Models/Permission.php](file:///d:/ASystem/newasystem/app/Models/Permission.php): Relasi ke roles dan users.
+     - [app/Models/User.php](file:///d:/ASystem/newasystem/app/Models/User.php): Relasi `roleModel()`, `customPermissions()`, serta method `hasPermission(string $permissionName): bool` dengan proteksi hierarki:
+       1. *Super Admin Bypass*: Administrator selalu memiliki akses ke seluruh modul secara permanen sehingga tidak dapat terkunci dari sistem.
+       2. *Individual User Override*: Memeriksa apakah ada aturan izin khusus pada tabel `user_permissions`.
+       3. *Role Permission Fallback*: Mewarisi kumpulan izin default dari role yang diemban.
+  3. **Antarmuka Manajemen RBAC Modern ([resources/views/setting/rbac/index.blade.php](file:///d:/ASystem/newasystem/resources/views/setting/rbac/index.blade.php))**:
+     - Didesain dengan standar premium ASystem (Glassmorphism, Tailwind CSS, Alpine.js, Phosphor/FontAwesome Icons).
+     - **4 Kartu Metrik Ringkasan**: Total Pengguna Terdaftar, Total Role, Total Modul Izin (Permissions), dan Pengguna Aktif.
+     - **Tab 1: Matriks Hak Akses Per Role**: Grid tabel interaktif per modul kategori (Master Data, System Setting, Rekrutmen & Interview, Portal Lowongan, AI & Laporan) dengan *bulk save* dan proteksi otomatis role Administrator.
+     - **Tab 2: Manajemen Pengguna & Karyawan**: Tabel pencarian dan filter cepat pengguna/karyawan, modal penugasan role + override izin perorangan (*Beri Akses / Kunci Akses / Ikuti Role*), serta modal reset password instan.
+     - **Tab 3: Katalog Role & Tanggung Jawab**: Kartu penjelasan peran, hierarki, dan hak istimewa masing-masing role.
+  4. **Backend Controller ([app/Http/Controllers/RbacController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/RbacController.php))**:
+     - Rute `GET /setting/rbac` (`RbacController@index`): Memuat data matrik, pengguna, filter, dan metrik.
+     - Rute `POST /setting/rbac/matrix` (`RbacController@updateRoleMatrix`): Sinkronisasi massal izin peran.
+     - Rute `PUT /setting/rbac/user/{id}` (`RbacController@updateUserAccess`): Perubahan role, status aktif, dan custom overrides.
+     - Rute `POST /setting/rbac/user/{id}/reset-password` (`RbacController@resetUserPassword`): Reset password aman dan cepat.
+
 ---
 
 ## 📜 Riwayat Commit Terkini (Git Log)

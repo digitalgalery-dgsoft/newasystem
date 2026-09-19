@@ -252,16 +252,6 @@
                             </a>
                         </li>
                         <li>
-                            <a href="{{ route('odoo.setting.index') }}" 
-                               title="Setting Sync Odoo"
-                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('odoo.setting.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
-                                <i class="fa-solid fa-arrows-rotate text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('odoo.setting.*') ? 'text-white' : 'text-slate-400' }}"></i>
-                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Setting Sync Odoo</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded-md border border-blue-200">5 Entitas</span>
-                            </a>
-                        </li>
-                        <li>
                             <a href="{{ route('master.math.index') }}" 
                                title="Master Soal Matematika"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.math.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
@@ -279,6 +269,49 @@
                                 <i class="fa-solid fa-brain text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('master.personality.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Soal Kepribadian</span>
                                 <span x-show="!sidebarCollapsed" class="text-[10px] bg-purple-50 text-purple-700 font-bold px-1.5 py-0.5 rounded-md border border-purple-200">DISC</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                @endif
+
+                <!-- GROUP: SYSTEM SETTING (ADMINISTRATOR ONLY) -->
+                @if(Auth::check() && Auth::user()->isAdmin())
+                <div>
+                    <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between" x-show="!sidebarCollapsed">
+                        <span>System Setting</span>
+                        <span class="text-[9px] bg-slate-100 text-slate-700 font-bold px-1.5 py-0.2 rounded border border-slate-200">CONFIG</span>
+                    </div>
+                    <div x-show="sidebarCollapsed" class="w-8 h-px bg-slate-200 mx-auto my-2" x-cloak></div>
+                    <ul class="space-y-1">
+                        <li>
+                            <a href="{{ route('odoo.setting.index') }}" 
+                               title="Setting Sync Odoo"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('odoo.setting.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-arrows-rotate text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('odoo.setting.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Setting Sync Odoo</span>
+                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded-md border border-blue-200">5 Entitas</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('setting.rbac.index') }}" 
+                               title="Hak Akses (RBAC)"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('setting.rbac.*') || request()->routeIs('rbac.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-user-shield text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('setting.rbac.*') || request()->routeIs('rbac.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Hak Akses (RBAC)</span>
+                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded-md border border-indigo-200">Role & Akses</span>
+                            </a>
+                        </li>
+                        <li>
+                            <a href="{{ route('aisetting.index') }}" 
+                               title="Setting AI & WA"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('aisetting.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-sliders text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('aisetting.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Setting AI & WA</span>
+                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-amber-50 text-amber-700 font-bold px-1.5 py-0.5 rounded-md border border-amber-200">AI</span>
                             </a>
                         </li>
                     </ul>

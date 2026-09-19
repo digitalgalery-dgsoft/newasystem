@@ -286,6 +286,18 @@ Route::middleware(['admin'])->prefix('odoo-setting')->name('odoo.setting.')->gro
 Route::get('/odoo-sync', function() { return redirect()->route('odoo.setting.index'); });
 Route::get('/odoo_setting.php', function() { return redirect()->route('odoo.setting.index'); });
 
+// ==============================================================
+// PENGATURAN SISTEM & HAK AKSES (RBAC)
+// ==============================================================
+Route::middleware(['admin'])->prefix('setting/rbac')->name('setting.rbac.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\RbacController::class, 'index'])->name('index');
+    Route::post('/matrix', [\App\Http\Controllers\RbacController::class, 'updateRoleMatrix'])->name('matrix.update');
+    Route::put('/user/{id}', [\App\Http\Controllers\RbacController::class, 'updateUserAccess'])->name('user.update');
+    Route::post('/user/{id}/reset-password', [\App\Http\Controllers\RbacController::class, 'resetUserPassword'])->name('user.reset-password');
+});
+// Shortcut aliases
+Route::get('/rbac', function() { return redirect()->route('setting.rbac.index'); })->name('rbac.index');
+
 
 // ==============================================================
 // MASTER USER PRINSIPLE (v3/dataprinsiple.php)

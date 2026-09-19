@@ -79,6 +79,48 @@ class User extends Authenticatable
         return in_array($this->role, ['head_hr', 'admin']);
     }
 
+    /**
+     * Relasi ke role model
+     */
+    public function roleModel()
+    {
+        return $this->belongsTo(Role::class, 'role', 'name');
+    }
+
+    /**
+     * Relasi ke permissions yang di-override langsung pada user
+     */
+    public function customPermissions()
+    {
+        return $this->belongsToMany(Permission::class, 'user_permissions')
+            ->withPivot('is_granted');
+    }
+
+    /**
+     * Cek apakah user memiliki izin akses tertentu (RBAC)
+     */
+    public function hasPermission(string $permissionName): bool
+    {
+        // 1. Super Administrator selalu memiliki akses ke seluruh modul
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        // 2. Periksa apakah ada override spesifik pada user_permissions
+        $override = $this->customPermissions()->where('name', $permissionName)->first();
+        if ($override) {
+            return (bool) $override->pivot->is_granted;
+        }
+
+        // 3. Periksa izin dari Role yang diemban
+        $role = $this->roleModel;
+        if ($role && $role->hasPermission($permissionName)) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function getSignatureUrlAttribute(): ?string
     {
         if (empty($this->signature_path)) {
