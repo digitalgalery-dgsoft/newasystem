@@ -734,18 +734,64 @@ class InterviewController extends Controller
         $candidate = Candidate::findOrFail($id);
         $user = $this->getCurrentUser();
 
-        TestResult::where('candidate_id', $candidate->id)
+        // 1. Hitung tes_ke berikutnya (naik 1 tingkat: misal dari 1 jadi 2, dst)
+        $currentTesKe = max(1, intval($candidate->tes_ke ?? 1));
+        $nextTesKe = $currentTesKe + 1;
+
+        // 2. Reset status tes matematika & persetujuan pada kandidat
+        $candidate->tes_matematika = null;
+        $candidate->tes_ke = $nextTesKe;
+        $candidate->idprinsiple = null;
+        $candidate->ttd_prinsiple = null;
+        $candidate->time_prinsiple = null;
+        $candidate->status_approval = null;
+        $candidate->save();
+
+        // 3. Sinkronkan ke tabel legacy tb_kandidat jika ada
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+            \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                ->where('id', $candidate->id)
+                ->orWhere(function ($q) use ($candidate) {
+                    if (!empty($candidate->nik)) {
+                        $q->where('no_ktp', $candidate->nik);
+                    }
+                })
+                ->update([
+                    'tes_matematika' => null,
+                    'tes_ke' => $nextTesKe,
+                    'idprinsiple' => '',
+                    'ttd_prinsiple' => null,
+                ]);
+        }
+
+        // 4. Sinkronkan juga record kandidat lain dengan NIK yang sama jika ada
+        if (!empty($candidate->nik)) {
+            Candidate::where('nik', $candidate->nik)
+                ->where('id', '!=', $candidate->id)
+                ->update([
+                    'tes_matematika' => null,
+                    'tes_ke' => $nextTesKe,
+                    'idprinsiple' => null,
+                    'ttd_prinsiple' => null,
+                    'time_prinsiple' => null,
+                    'status_approval' => null,
+                ]);
+        }
+
+        // 5. Hapus hasil TestResult math lama dari CBT agar kandidat dapat mengulang tes di CBT
+        $allCandIds = Candidate::where('nik', $candidate->nik)->pluck('id')->push($candidate->id)->unique();
+        TestResult::whereIn('candidate_id', $allCandIds)
             ->where('test_type', 'math')
             ->delete();
 
         $salam = $this->getSalam();
         $asName = self::resolveCandidateAsName($candidate, $user);
-        $pesan = "Halo {$candidate->full_name}\n\nNilai Matematika Kamu Belum Memuaskan. Silahkan Lakukan Test Ulang.\n\nAkses Melalui Link Berikut https://new.asystem.co.id/cbt/login\n\n_Terima Kasih_\n\n_Regards_\n{$asName}";
+        $pesan = "Halo {$candidate->full_name}\n\nNilai Matematika Kamu Belum Memuaskan. Silahkan Lakukan Test Ulang (Tes Ke - {$nextTesKe}).\n\nAkses Melalui Link Berikut https://new.asystem.co.id/cbt/login\n\n_Terima Kasih_\n\n_Regards_\n{$asName}";
 
         $waUrl = "https://web.whatsapp.com/send?phone={$candidate->clean_whatsapp}&text=" . urlencode($pesan);
 
-        return redirect()->route('interview.show', $candidate->id)
-            ->with('success', 'Remidi Berhasil Diset! Silakan hubungi kandidat untuk mengulang tes.')
+        return redirect()->back()
+            ->with('success', "Remidi Berhasil Diset! Tes Matematika telah direset ke Tes Ke - {$nextTesKe}. Silakan hubungi kandidat untuk mengulang tes.")
             ->with('remidi_wa_url', $waUrl);
     }
 

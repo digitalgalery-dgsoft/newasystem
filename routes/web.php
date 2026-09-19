@@ -329,6 +329,12 @@ Route::prefix('cbt')->name('cbt.')->group(function () {
 Route::get('/cbt.php', function() { return redirect()->route('cbt.login'); });
 Route::get('/tesonline', function() { return redirect()->route('cbt.login'); });
 Route::get('/testonline', function() { return redirect()->route('cbt.login'); });
+Route::get('/awalmath', function() { return redirect()->route('cbt.matematika'); });
+Route::get('/awalmath.php', function() { return redirect()->route('cbt.matematika'); });
+Route::get('/soal.php', function() { return redirect()->route('cbt.matematika'); });
+Route::get('/soaltes.php', function() { return redirect()->route('cbt.matematika'); });
+Route::get('/soalpsikotes.php', function() { return redirect()->route('cbt.kepribadian'); });
+Route::get('/soalkomputer.php', function() { return redirect()->route('cbt.komputer'); });
 
 // ==============================================================
 // MODUL INSTALASI SISTEM (Replikasi att-admin-v12)

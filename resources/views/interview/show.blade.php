@@ -979,14 +979,21 @@
                 </div>
             </div>
             @else
-            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-3">
-                <div class="w-12 h-12 rounded-2xl bg-sky-100 text-sky-600 flex items-center justify-center mx-auto text-xl">
+            <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-8 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl">
                     <i class="fa-solid fa-calculator"></i>
                 </div>
-                <h4 class="text-sm font-bold text-slate-800">Kandidat Belum Mengikuti Tes Matematika</h4>
-                <p class="text-xs text-slate-500 max-w-md mx-auto">
-                    Kandidat belum menyelesaikan Tes Matematika. Data nilai, rincian benar/salah, dan pembahasan butir soal akan otomatis terisi setelah kandidat menyelesaikan ujian.
-                </p>
+                @if($mathTesKe > 1)
+                    <h4 class="text-sm font-bold text-slate-800">Status Remidi Aktif (Tes Ke - {{ $mathTesKe }})</h4>
+                    <p class="text-xs text-slate-600 max-w-md mx-auto">
+                        Kandidat telah dijadwalkan untuk melakukan <strong>Remidi Tes Matematika (Tes Ke - {{ $mathTesKe }})</strong>. Status tes saat ini belum selesai (silang merah). Nilai dan butir jawaban akan otomatis diperbarui setelah kandidat mengerjakan ulang tes di portal CBT.
+                    </p>
+                @else
+                    <h4 class="text-sm font-bold text-slate-800">Kandidat Belum Mengikuti Tes Matematika</h4>
+                    <p class="text-xs text-slate-500 max-w-md mx-auto">
+                        Kandidat belum menyelesaikan Tes Matematika. Data nilai, rincian benar/salah, dan pembahasan butir soal akan otomatis terisi setelah kandidat menyelesaikan ujian.
+                    </p>
+                @endif
             </div>
             @endif
         </div>

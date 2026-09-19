@@ -480,16 +480,18 @@ class CbtController extends Controller
         }
 
         $score = round(($correctCount / max(1, $totalQuestions)) * 100, 2);
+        $currentTesKe = max(1, intval($candidate->tes_ke ?? 1));
 
         $details = [
             'score' => $score,
             'correct_count' => $correctCount,
             'total_questions' => $totalQuestions,
             'duration_formatted' => $formattedDuration,
+            'tes_ke' => $currentTesKe,
             'breakdown' => $breakdown,
         ];
 
-        // Simpan ke TestResult
+        // 1. Simpan ke TestResult
         TestResult::updateOrCreate(
             ['candidate_id' => $candidate->id, 'test_type' => 'math'],
             [
@@ -499,11 +501,47 @@ class CbtController extends Controller
             ]
         );
 
+        // 2. Simpan butir jawaban ke tb_hasilmath jika tabel ada
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_hasilmath')) {
+            try {
+                foreach ($userAnswers as $qId => $ans) {
+                    \Illuminate\Support\Facades\DB::table('tb_hasilmath')->insert([
+                        'id_kandidat' => $candidate->id,
+                        'id_soal' => intval($qId),
+                        'jawaban' => strval($ans),
+                        'waktu_pengerjaan' => $formattedDuration,
+                        'tes_ke' => $currentTesKe,
+                        'created_at' => now(),
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                // Abaikan jika ada kegagalan insert legacy
+            }
+        }
+
+        // 3. Update candidate
         $candidate->tes_matematika = $formattedDuration;
+        $candidate->tes_ke = $currentTesKe;
         $candidate->saveQuietly();
+
+        // 4. Update tabel legacy tb_kandidat jika ada
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+            \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                ->where('id', $candidate->id)
+                ->orWhere(function ($q) use ($candidate) {
+                    if (!empty($candidate->nik)) {
+                        $q->where('no_ktp', $candidate->nik);
+                    }
+                })
+                ->update([
+                    'tes_matematika' => $formattedDuration,
+                    'tes_ke' => $currentTesKe,
+                ]);
+        }
+
         $this->syncTestAcrossCandidates($candidate, 'math', $formattedDuration, $details);
 
-        $this->logActivity($candidate, 'Selesai Mengerjakan Tes Matematika (Nilai: ' . $score . ')', $request);
+        $this->logActivity($candidate, 'Selesai Mengerjakan Tes Matematika (Tes Ke - ' . $currentTesKe . ', Nilai: ' . $score . ')', $request);
 
         return redirect()->route('cbt.matematika.result')
             ->with('success', 'Tes Matematika berhasil diselesaikan!');
@@ -630,6 +668,7 @@ class CbtController extends Controller
                 $other->tes_kepribadian = $duration;
             } elseif ($testType === 'math') {
                 $other->tes_matematika = $duration;
+                $other->tes_ke = $details['tes_ke'] ?? 1;
             } elseif ($testType === 'computer') {
                 $other->tes_komputer = $duration;
                 if ($file) {

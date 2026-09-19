@@ -153,9 +153,9 @@
                     @forelse($candidates as $index => $c)
                         @php
                             $isComplete = $c->is_profile_complete || (!empty($c->address_ktp) && !empty($c->education) && !empty($c->phone));
-                            $hasPsikotes = $c->psikotes_score !== null || $c->testResults->where('test_type', 'psychology')->isNotEmpty();
-                            $hasMath = $c->math_score !== null || $c->testResults->where('test_type', 'math')->isNotEmpty();
-                            $hasKomputer = $c->computer_score !== null || $c->testResults->where('test_type', 'computer')->isNotEmpty();
+                            $hasPsikotes = $c->is_psikotes_done;
+                            $hasMath = $c->is_math_done;
+                            $hasKomputer = $c->is_komputer_done;
                             $statusReplaceBadge = ($c->status_replace === 'Replace') 
                                 ? 'bg-amber-50 text-amber-700 border-amber-200'
                                 : 'bg-emerald-50 text-emerald-700 border-emerald-200';

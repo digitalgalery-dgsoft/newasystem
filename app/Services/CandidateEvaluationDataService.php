@@ -100,70 +100,99 @@ class CandidateEvaluationDataService
         $dominantDisc = $discConclusions[$dominantKey] ?? $discConclusions['A'];
 
         // 2. Data Tes Matematika
-        $rawMath = DB::table('tb_hasilmath')
-            ->join('tb_math', 'tb_math.id', '=', 'tb_hasilmath.id_soal')
-            ->where('tb_hasilmath.id_kandidat', $candidate->id)
-            ->select('tb_hasilmath.*', 'tb_math.question_text', 'tb_math.correct_answer')
-            ->orderBy('tb_hasilmath.id_soal', 'asc')
-            ->get();
-
         $mathItems = [];
-        $mathDuration = '00:02:00';
-        $mathTesKe = 1;
+        $mathDuration = '-';
+        $mathTesKe = max(1, intval($candidate->tes_ke ?? 1));
         $mathCorrectCount = 0;
         $mathWrongCount = 0;
+        $mathScorePercent = 0;
+        $mathGrade = '-';
         $hasMath = false;
 
-        if ($rawMath->isNotEmpty()) {
-            $hasMath = true;
-            $mathDuration = $rawMath->first()->waktu_pengerjaan ?? $candidate->tes_matematika ?? '00:02:00';
-            $mathTesKe = $rawMath->first()->tes_ke ?? $candidate->tes_ke ?? 1;
+        $isMathCompleted = !empty($candidate->tes_matematika) 
+            && $candidate->tes_matematika !== '00:00:00' 
+            && $candidate->tes_matematika !== '-';
 
-            foreach ($rawMath as $mRow) {
-                $candAns = trim($mRow->jawaban ?? '');
-                $keyAns = trim($mRow->correct_answer ?? '');
-                $cleanCand = str_replace([' ', '.', ','], ['', '', '.'], strtolower($candAns));
-                $cleanKey = str_replace([' ', '.', ','], ['', '', '.'], strtolower($keyAns));
-                $isCorrect = ($cleanCand === $cleanKey) || (strtolower($candAns) === strtolower($keyAns));
+        if ($isMathCompleted) {
+            $targetTesKe = $mathTesKe;
 
-                if ($isCorrect) {
-                    $mathCorrectCount++;
-                } else {
-                    $mathWrongCount++;
+            // Cari di tb_hasilmath sesuai tes_ke kandidat saat ini
+            $rawMath = DB::table('tb_hasilmath')
+                ->join('tb_math', 'tb_math.id', '=', 'tb_hasilmath.id_soal')
+                ->where('tb_hasilmath.id_kandidat', $candidate->id)
+                ->where('tb_hasilmath.tes_ke', $targetTesKe)
+                ->select('tb_hasilmath.*', 'tb_math.question_text', 'tb_math.correct_answer')
+                ->orderBy('tb_hasilmath.id_soal', 'asc')
+                ->get();
+
+            // Fallback jika tidak ditemukan dengan tes_ke spesifik
+            if ($rawMath->isEmpty()) {
+                $latestTesKe = DB::table('tb_hasilmath')->where('id_kandidat', $candidate->id)->max('tes_ke');
+                if ($latestTesKe) {
+                    $rawMath = DB::table('tb_hasilmath')
+                        ->join('tb_math', 'tb_math.id', '=', 'tb_hasilmath.id_soal')
+                        ->where('tb_hasilmath.id_kandidat', $candidate->id)
+                        ->where('tb_hasilmath.tes_ke', $latestTesKe)
+                        ->select('tb_hasilmath.*', 'tb_math.question_text', 'tb_math.correct_answer')
+                        ->orderBy('tb_hasilmath.id_soal', 'asc')
+                        ->get();
+                    $mathTesKe = $latestTesKe;
                 }
-
-                $mathItems[$mRow->id_soal] = [
-                    'q' => $mRow->question_text,
-                    'cand' => $candAns,
-                    'key' => $keyAns,
-                    'correct' => $isCorrect,
-                ];
             }
-        } else {
-            // Cek jika ada di testResults (CBT baru)
-            $cbtMath = $candidate->testResults->firstWhere('test_type', 'math');
-            if ($cbtMath && !empty($cbtMath->test_details)) {
+
+            if ($rawMath->isNotEmpty()) {
                 $hasMath = true;
-                $mDetails = is_array($cbtMath->test_details) ? $cbtMath->test_details : json_decode($cbtMath->test_details, true);
-                $mathDuration = $mDetails['duration_formatted'] ?? gmdate('H:i:s', $cbtMath->duration_seconds ?? 0);
-                $mathCorrectCount = $mDetails['correct_answers'] ?? round(($cbtMath->score / 100) * 10);
-                $mathWrongCount = 10 - $mathCorrectCount;
-                $mathTesKe = 1;
-                $mBreakdown = $mDetails['breakdown'] ?? [];
-                foreach ($mBreakdown as $idx => $b) {
-                    $mathItems[$idx] = [
-                        'q' => $b['question'] ?? ('Pertanyaan Soal #' . $idx),
-                        'cand' => $b['user_answer'] ?? '-',
-                        'key' => $b['correct_answer'] ?? '-',
-                        'correct' => (bool) ($b['is_correct'] ?? false),
+                $mathDuration = $rawMath->first()->waktu_pengerjaan ?? $candidate->tes_matematika ?? '00:02:00';
+                $mathTesKe = $rawMath->first()->tes_ke ?? $mathTesKe;
+
+                foreach ($rawMath as $mRow) {
+                    $candAns = trim($mRow->jawaban ?? '');
+                    $keyAns = trim($mRow->correct_answer ?? '');
+                    $cleanCand = str_replace([' ', '.', ','], ['', '', '.'], strtolower($candAns));
+                    $cleanKey = str_replace([' ', '.', ','], ['', '', '.'], strtolower($keyAns));
+                    $isCorrect = ($cleanCand === $cleanKey) || (strtolower($candAns) === strtolower($keyAns));
+
+                    if ($isCorrect) {
+                        $mathCorrectCount++;
+                    } else {
+                        $mathWrongCount++;
+                    }
+
+                    $mathItems[$mRow->id_soal] = [
+                        'q' => $mRow->question_text,
+                        'cand' => $candAns,
+                        'key' => $keyAns,
+                        'correct' => $isCorrect,
                     ];
                 }
+            } else {
+                // Cek jika ada di testResults (CBT baru)
+                $cbtMath = $candidate->testResults->firstWhere('test_type', 'math');
+                if ($cbtMath && !empty($cbtMath->test_details)) {
+                    $hasMath = true;
+                    $mDetails = is_array($cbtMath->test_details) ? $cbtMath->test_details : json_decode($cbtMath->test_details, true);
+                    $mathDuration = $mDetails['duration_formatted'] ?? gmdate('H:i:s', $cbtMath->duration_seconds ?? 0);
+                    $mathCorrectCount = $mDetails['correct_answers'] ?? $mDetails['correct_count'] ?? round(($cbtMath->score / 100) * 10);
+                    $mathWrongCount = 10 - $mathCorrectCount;
+                    $mathTesKe = $mDetails['tes_ke'] ?? $candidate->tes_ke ?? 1;
+                    $mBreakdown = $mDetails['breakdown'] ?? [];
+                    foreach ($mBreakdown as $idx => $b) {
+                        $mathItems[$idx] = [
+                            'q' => $b['question'] ?? $b['question_text'] ?? ('Pertanyaan Soal #' . $idx),
+                            'cand' => $b['user_answer'] ?? '-',
+                            'key' => $b['correct_answer'] ?? '-',
+                            'correct' => (bool) ($b['is_correct'] ?? false),
+                        ];
+                    }
+                }
+            }
+
+            if ($hasMath) {
+                $mathTotalQuestions = count($mathItems) > 0 ? count($mathItems) : 10;
+                $mathScorePercent = $mathTotalQuestions > 0 ? round(($mathCorrectCount / $mathTotalQuestions) * 100) : 0;
+                $mathGrade = ($mathScorePercent >= 85) ? 'A' : (($mathScorePercent >= 70) ? 'B' : (($mathScorePercent >= 55) ? 'C' : 'D'));
             }
         }
-
-        $mathTotalQuestions = count($mathItems) > 0 ? count($mathItems) : 10;
-        $mathScorePercent = $mathTotalQuestions > 0 ? round(($mathCorrectCount / $mathTotalQuestions) * 100) : 0;
-        $mathGrade = ($mathScorePercent >= 85) ? 'A' : (($mathScorePercent >= 70) ? 'B' : (($mathScorePercent >= 55) ? 'C' : 'D'));
 
         // 3. Data Tes Komputer
         $rawKompt = DB::table('hasil_kompt')
@@ -200,18 +229,36 @@ class CandidateEvaluationDataService
             }
         }
 
-        $baikCount = count(array_filter($savedComp, fn($v) => strtolower($v ?? '') === 'baik'));
-        $cukupCount = count(array_filter($savedComp, fn($v) => strtolower($v ?? '') === 'cukup'));
-        $komptPercentage = count($compSkills) > 0 ? round((($baikCount + ($cukupCount * 0.5)) / count($compSkills)) * 100) : 75;
-        $komptSummaryLabel = ($komptPercentage >= 80) ? 'Baik (' . $komptPercentage . '%)' : (($komptPercentage >= 60) ? 'Cukup (' . $komptPercentage . '%)' : 'Kurang (' . $komptPercentage . '%)');
+        $komptSummaryLabel = 'Cukup (75%)';
+        if ($hasKompt && !empty($savedComp)) {
+            $totalPoints = 0;
+            $pointMap = ['Sangat Baik' => 100, 'Baik' => 85, 'Cukup' => 70, 'Kurang' => 50];
+            foreach ($savedComp as $val) {
+                $totalPoints += $pointMap[$val] ?? 70;
+            }
+            $avgPoints = round($totalPoints / max(1, count($savedComp)));
+            $label = $avgPoints >= 85 ? 'Baik' : ($avgPoints >= 70 ? 'Cukup' : 'Kurang');
+            $komptSummaryLabel = "{$label} ({$avgPoints}%)";
+        }
 
-        // 4. Validasi Kelayakan Tab User Prinsiple
-        $job = trim($candidate->applied_job ?? $candidate->position ?? '');
-        $isSalesRelated = (bool) preg_match('/\b(spg|spb|dc|sales|salest promotion girl|sales promotion girl|sales promotion boy|ba|beauty advisor|bc|beauty consultant|dulux consultant|promotor|promoter|canvasser|md|smd|merchandiser)\b/i', $job);
+        // Validasi Posisi Sales & Hasil Psikotest DISC
+        $job = strtolower(trim($candidate->applied_job ?? ''));
+        $salesKeywords = [
+            'spg', 'spb', 'ba', 'bc', 'beauty advisor', 'brand ambassador',
+            'direct consultant', 'sales', 'merchandiser', 'md', 'smd',
+            'salesman', 'canvasser', 'motoris', 'promotor', 'frontliner'
+        ];
 
-        $dominantType = strtolower($dominantDisc['type'] ?? '');
-        $isMelankolisOrPlegmatis = in_array($dominantType, ['melankolis', 'plegmatis', 'pragmatis']);
-        $psikotestNama = ($dominantType === 'melankolis') ? 'Melankolis' : (($dominantType === 'plegmatis' || $dominantType === 'pragmatis') ? 'Plegmatis' : ucfirst($dominantType));
+        $isSalesRelated = false;
+        foreach ($salesKeywords as $kw) {
+            if (str_contains($job, $kw)) {
+                $isSalesRelated = true;
+                break;
+            }
+        }
+
+        $psikotestNama = $dominantDisc['type'] ?? 'Melankolis';
+        $isMelankolisOrPlegmatis = in_array(strtolower($psikotestNama), ['melankolis', 'plegmatis']);
 
         // Syarat 1: Nilai Matematika tidak boleh C / D (minimal B untuk lolos)
         $isMathFailed = $hasMath && !in_array(strtoupper($mathGrade ?? ''), ['A', 'B']);
@@ -219,7 +266,7 @@ class CandidateEvaluationDataService
         // Syarat 2: Psikotes tidak boleh Melankolis / Plegmatis untuk posisi penjualan/sales
         $isPsikotestFailed = $hasPsikotes && $isSalesRelated && $isMelankolisOrPlegmatis;
 
-        $isUserPrinsipleDisabled = $isMathFailed || $isPsikotestFailed;
+        $isUserPrinsipleDisabled = $isMathFailed || $isPsikotestFailed || !$hasMath;
 
         $userPrinsipleDisableReasons = [];
         if ($isPsikotestFailed) {
@@ -227,6 +274,8 @@ class CandidateEvaluationDataService
         }
         if ($isMathFailed) {
             $userPrinsipleDisableReasons[] = "Nilai Matematika kandidat adalah {$mathGrade}. Untuk lolos, minimal nilai Matematika adalah B.";
+        } elseif (!$hasMath) {
+            $userPrinsipleDisableReasons[] = "Kandidat belum menyelesaikan Tes Matematika (atau sedang dalam status Remidi Tes Ke - {$mathTesKe}).";
         }
 
         $catatanRekomendasi = !empty($userPrinsipleDisableReasons) ? implode(' | ', $userPrinsipleDisableReasons) : null;

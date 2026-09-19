@@ -18,6 +18,7 @@ class Candidate extends Model
         'ai_analysis' => 'array',
         'expected_salary' => 'decimal:2',
         'last_salary' => 'decimal:2',
+        'tes_ke' => 'integer',
     ];
 
     protected static function booted()
@@ -41,6 +42,7 @@ class Candidate extends Model
                 $candidate->tes_kepribadian = $donor->tes_kepribadian;
                 if (empty($candidate->tes_matematika) || $candidate->tes_matematika === '00:00:00' || $candidate->tes_matematika === '-') {
                     $candidate->tes_matematika = $donor->tes_matematika;
+                    $candidate->tes_ke = $donor->tes_ke ?? 1;
                 }
                 if (empty($candidate->tes_komputer) || $candidate->tes_komputer === '00:00:00' || $candidate->tes_komputer === '-') {
                     $candidate->tes_komputer = $donor->tes_komputer;
@@ -469,13 +471,10 @@ class Candidate extends Model
 
     public function getIsMathDoneAttribute(): bool
     {
-        if (!empty($this->tes_matematika) && $this->tes_matematika !== '00:00:00' && $this->tes_matematika !== '-') {
-            return true;
+        if (empty($this->tes_matematika) || $this->tes_matematika === '00:00:00' || $this->tes_matematika === '-') {
+            return false;
         }
-        if ($this->relationLoaded('testResults')) {
-            return $this->testResults->firstWhere('test_type', 'math') !== null;
-        }
-        return $this->testResults()->where('test_type', 'math')->exists();
+        return true;
     }
 
     public function getIsKomputerDoneAttribute(): bool
