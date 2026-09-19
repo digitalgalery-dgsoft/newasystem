@@ -250,7 +250,6 @@ class FixDummyPersonalityResultsCommand extends Command
                         })
                         ->update([
                             'tes_kepribadian' => $existingDuration,
-                            'updated_at' => now(),
                         ]);
                 }
 

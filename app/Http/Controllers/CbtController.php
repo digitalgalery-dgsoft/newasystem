@@ -447,7 +447,6 @@ class CbtController extends Controller
                 })
                 ->update([
                     'tes_kepribadian' => $formattedDuration,
-                    'updated_at' => now(),
                 ]);
         }
 
