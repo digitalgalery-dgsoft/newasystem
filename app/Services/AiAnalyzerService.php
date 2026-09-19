@@ -40,6 +40,18 @@ class AiAnalyzerService
         $id = $candidate->id;
         $candidateName = $candidate->full_name ?? "Candidate #$id";
 
+        // Update Live Status Cache agar running text langsung memunculkan kandidat ini
+        Cache::put('ai_analyzer_current_status', [
+            'is_processing'   => true,
+            'candidate_id'     => $candidate->id,
+            'candidate_name'   => $candidateName,
+            'applied_job'      => $candidate->applied_job ?? '-',
+            'area'             => $candidate->area ?? '-',
+            'started_at'       => now('Asia/Jakarta')->toIso8601String(),
+            'formatted_time'   => now('Asia/Jakarta')->format('H:i:s') . ' WIB',
+            'status_text'      => 'Memindai CV dan analisis AI Gemini...',
+        ], 180);
+
         // 1. Validasi berkas CV
         if (!$candidate->hasCv()) {
             $errorMsg = 'File CV tidak ditemukan atau kandidat belum mengunggah CV.';
@@ -220,6 +232,12 @@ class AiAnalyzerService
 
             $log("ERROR: Gagal memproses AI untuk kandidat #$id (Seluruh API Key Gemini & Sumopod Limit/Error).", 'error');
 
+            Cache::put('ai_analyzer_current_status', [
+                'is_processing' => false,
+                'status_text'   => 'Standby (Seluruh API Key mencapai limit/cooldown)',
+                'completed_at'  => now('Asia/Jakarta')->format('H:i:s') . ' WIB',
+            ], 180);
+
             return [
                 'success' => false,
                 'message' => 'Seluruh API Key AI (Gemini & Sumopod) saat ini sedang mencapai limit.',
@@ -291,6 +309,27 @@ class AiAnalyzerService
         if ($aiScore >= 85) {
             $this->sendWhatsAppNotification($candidate, $aiSetting, $userSettings, $aiScore, $log);
         }
+
+        // Update Live Status Cache: Last Completed
+        Cache::put('ai_analyzer_last_completed', [
+            'candidate_id'   => $candidate->id,
+            'candidate_name' => $candidateName,
+            'applied_job'    => $candidate->applied_job ?? '-',
+            'area'           => $candidate->area ?? '-',
+            'score'          => $aiScore,
+            'category'       => $kategoriKandidat,
+            'provider'       => $usedProvider,
+            'model'          => $usedModel,
+            'completed_at'   => now('Asia/Jakarta')->toIso8601String(),
+            'formatted_time' => now('Asia/Jakarta')->format('H:i:s') . ' WIB',
+            'success'        => true,
+        ], 86400);
+
+        Cache::put('ai_analyzer_current_status', [
+            'is_processing' => false,
+            'status_text'   => 'Standby (Menunggu siklus analisis berikutnya)',
+            'completed_at'  => now('Asia/Jakarta')->format('H:i:s') . ' WIB',
+        ], 180);
 
         return [
             'success' => true,
@@ -791,5 +830,64 @@ Catatan:
         $timestamp = date('Y-m-d H:i:s');
         $logLine = "[$timestamp] [$level] $message\n";
         @file_put_contents($logFile, $logLine, FILE_APPEND);
+    }
+
+    /**
+     * Ambil status live terkini untuk running text AI CV Analyzer
+     */
+    public static function getLiveRunningStatus(): array
+    {
+        $current = Cache::get('ai_analyzer_current_status');
+        $last = Cache::get('ai_analyzer_last_completed');
+
+        // Jika cache last completed kosong, cari kandidat terakhir yang berhasil dinilai
+        if (!$last) {
+            $latestAnalyzed = Candidate::whereNotNull('ai_score')
+                ->where('ai_score', '>', 0)
+                ->orderByDesc('updated_at')
+                ->first(['id', 'full_name', 'applied_job', 'area', 'ai_score', 'kategori_kandidat', 'updated_at']);
+
+            if ($latestAnalyzed) {
+                $last = [
+                    'candidate_id'   => $latestAnalyzed->id,
+                    'candidate_name' => $latestAnalyzed->full_name,
+                    'applied_job'    => $latestAnalyzed->applied_job ?? '-',
+                    'area'           => $latestAnalyzed->area ?? '-',
+                    'score'          => $latestAnalyzed->ai_score,
+                    'category'       => $latestAnalyzed->kategori_kandidat ?? 'Green',
+                    'provider'       => 'Gemini',
+                    'formatted_time' => $latestAnalyzed->updated_at ? $latestAnalyzed->updated_at->timezone('Asia/Jakarta')->format('H:i:s') . ' WIB' : '-',
+                    'success'        => true,
+                ];
+            }
+        }
+
+        $queueQuery = Candidate::where(function ($q) {
+            $q->whereNotNull('cv_path')
+              ->where('cv_path', '!=', '')
+              ->where('cv_path', '!=', '-');
+        })->where(function ($q) {
+            $q->whereNull('ai_score')
+              ->orWhere('ai_score', 0);
+        })->where(function ($q) {
+            $q->whereNull('ai_cv_analysis')
+              ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
+        });
+
+        $queueCount = (clone $queueQuery)->count();
+        $nextCandidate = (clone $queueQuery)
+            ->orderByRaw("CASE WHEN jenis = 'Job Portal' THEN 0 ELSE 1 END, id ASC")
+            ->first(['id', 'full_name', 'applied_job', 'area']);
+
+        $isProcessing = !empty($current['is_processing']);
+
+        return [
+            'is_processing'   => $isProcessing,
+            'current'         => $current,
+            'last_completed'  => $last,
+            'queue_count'     => $queueCount,
+            'next_candidate'  => $nextCandidate,
+            'pace'            => '1 kandidat / 30 detik (1 menit 2 kandidat)',
+        ];
     }
 }

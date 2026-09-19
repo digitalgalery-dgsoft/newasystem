@@ -45,6 +45,141 @@
         </div>
     </div>
 
+    <!-- AI LIVE RUNNING TEXT / REALTIME TICKER BAR -->
+    <style>
+        @keyframes tickerAnimation {
+            0% { transform: translate3d(0, 0, 0); }
+            100% { transform: translate3d(-50%, 0, 0); }
+        }
+        .animate-ticker-track {
+            display: inline-flex;
+            animation: tickerAnimation 35s linear infinite;
+        }
+        .animate-ticker-track:hover {
+            animation-play-state: paused;
+        }
+        .mask-ticker {
+            mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
+            -webkit-mask-image: linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent);
+        }
+    </style>
+
+    <div class="relative overflow-hidden rounded-2xl border border-indigo-200/80 bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white shadow-md transition-all select-none"
+         x-data="aiLiveTickerManager(@js($aiLiveStatus ?? []))"
+         x-init="initTicker()"
+         @mouseenter="paused = true"
+         @mouseleave="paused = false">
+        
+        <div class="flex items-center">
+            <!-- Badge Kiri (Live Indicator) -->
+            <div class="flex items-center gap-2 px-3.5 py-2.5 bg-indigo-950/95 border-r border-indigo-500/30 flex-shrink-0 z-10 shadow-sm backdrop-blur-sm">
+                <span class="relative flex h-2.5 w-2.5">
+                    <span :class="isProcessing ? 'animate-ping bg-emerald-400 opacity-75' : 'bg-slate-400 opacity-20'" class="absolute inline-flex h-full w-full rounded-full"></span>
+                    <span :class="isProcessing ? 'bg-emerald-500 shadow-sm shadow-emerald-400/50' : 'bg-amber-400'" class="relative inline-flex rounded-full h-2.5 w-2.5"></span>
+                </span>
+                <div class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-brain text-indigo-300 text-xs"></i>
+                    <span class="text-[11px] font-black tracking-wider uppercase bg-gradient-to-r from-indigo-200 via-white to-indigo-100 bg-clip-text text-transparent">AI CV Analyzer</span>
+                </div>
+                <span :class="isProcessing ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-xs shadow-emerald-500/20' : 'bg-amber-500/20 text-amber-300 border-amber-500/40'" 
+                      class="text-[9px] font-black uppercase px-2 py-0.5 rounded-full border tracking-wider flex items-center gap-1">
+                    <i class="fa-solid fa-bolt text-[8px]" x-show="isProcessing"></i>
+                    <span x-text="isProcessing ? 'PROSES' : 'STANDBY'"></span>
+                </span>
+            </div>
+
+            <!-- Tengah: Running Text (Marquee Ticker) -->
+            <div class="flex-1 overflow-hidden py-2.5 px-2 relative mask-ticker">
+                <div class="inline-flex whitespace-nowrap animate-ticker-track" :style="paused ? 'animation-play-state: paused;' : ''">
+                    <!-- Loop dua kali untuk efek infinite loop yang mulus tanpa jeda -->
+                    <template x-for="copy in 2" :key="copy">
+                        <div class="inline-flex items-center gap-6 text-xs font-medium text-slate-200 pr-8">
+                            
+                            <!-- Item 1: Kandidat Sedang Dianalisis / Status Aktif -->
+                            <template x-if="isProcessing && current">
+                                <div class="inline-flex items-center gap-2 bg-gradient-to-r from-amber-500/25 to-orange-500/25 px-3 py-1 rounded-xl border border-amber-500/50 text-amber-200 shadow-xs">
+                                    <i class="fa-solid fa-spinner fa-spin text-amber-400 text-xs"></i>
+                                    <span class="font-bold text-amber-300 uppercase tracking-wide text-[10px]">Sedang Dianalisis:</span>
+                                    <strong class="text-white font-extrabold" x-text="current.candidate_name"></strong>
+                                    <span class="text-amber-100/90 text-[11px]" x-text="'(' + (current.applied_job || '-') + ' • ' + (current.area || '-') + ')'"></span>
+                                    <span class="text-[10px] text-amber-300 font-mono" x-text="'[Mulai: ' + (current.formatted_time || '') + ']'"></span>
+                                </div>
+                            </template>
+
+                            <template x-if="!isProcessing">
+                                <div class="inline-flex items-center gap-2 bg-indigo-500/15 px-3 py-1 rounded-xl border border-indigo-500/30 text-indigo-200">
+                                    <i class="fa-solid fa-circle-check text-indigo-400 text-xs"></i>
+                                    <span class="text-slate-300 font-semibold text-[11px]" x-text="current?.status_text || 'Sistem siap memproses antrean berikutnya'"></span>
+                                </div>
+                            </template>
+
+                            <span class="text-indigo-400/40">•</span>
+
+                            <!-- Item 2: Kecepatan Proses (1 kandidat / 30 detik) -->
+                            <div class="inline-flex items-center gap-1.5 text-cyan-300 bg-cyan-500/10 px-2.5 py-1 rounded-xl border border-cyan-500/20">
+                                <i class="fa-solid fa-gauge-high text-cyan-400 text-xs"></i>
+                                <span class="text-slate-300">Kecepatan:</span>
+                                <strong class="text-cyan-200 font-bold">1 kandidat per 30 detik (1 menit 2 kandidat)</strong>
+                            </div>
+
+                            <span class="text-indigo-400/40">•</span>
+
+                            <!-- Item 3: Total Antrean Menunggu -->
+                            <div class="inline-flex items-center gap-1.5 text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-xl border border-purple-500/20">
+                                <i class="fa-solid fa-clock-rotate-left text-purple-400 text-xs"></i>
+                                <span class="text-slate-300">Antrean Menunggu:</span>
+                                <strong class="text-purple-200 font-black" x-text="queueCount + ' kandidat'"></strong>
+                            </div>
+
+                            <span class="text-indigo-400/40">•</span>
+
+                            <!-- Item 4: Kandidat Berikutnya Dalam Antrean -->
+                            <template x-if="nextCandidate">
+                                <div class="inline-flex items-center gap-1.5 text-blue-300 bg-blue-500/10 px-2.5 py-1 rounded-xl border border-blue-500/20">
+                                    <i class="fa-solid fa-forward text-blue-400 text-xs"></i>
+                                    <span class="text-slate-300">Berikutnya:</span>
+                                    <strong class="text-blue-100 font-bold" x-text="nextCandidate.full_name"></strong>
+                                    <span class="text-slate-400 text-[11px]" x-text="'(' + (nextCandidate.applied_job || '-') + ')'"></span>
+                                </div>
+                            </template>
+
+                            <!-- Item 5: Kandidat Terakhir Selesai -->
+                            <template x-if="lastCompleted && lastCompleted.candidate_name">
+                                <div class="inline-flex items-center gap-2 bg-emerald-500/15 px-3 py-1 rounded-xl border border-emerald-500/30 text-emerald-200">
+                                    <i class="fa-solid fa-circle-check text-emerald-400 text-xs"></i>
+                                    <span class="font-bold text-emerald-300 uppercase tracking-wide text-[10px]">Baru Selesai:</span>
+                                    <strong class="text-white font-bold" x-text="lastCompleted.candidate_name"></strong>
+                                    <span class="px-1.5 py-0.5 rounded text-[10px] font-black uppercase"
+                                          :class="lastCompleted.category === 'Green' ? 'bg-emerald-500 text-white' : (lastCompleted.category === 'Yellow' ? 'bg-amber-500 text-white' : 'bg-red-500 text-white')"
+                                          x-text="'Score ' + (lastCompleted.score ?? 0) + '% (' + (lastCompleted.category || '-') + ')'"></span>
+                                    <span class="text-slate-400 text-[10px]" x-text="'[' + (lastCompleted.formatted_time || '') + ']'"></span>
+                                </div>
+                            </template>
+
+                            <span class="text-indigo-400/40">•</span>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Badge Kanan: Counter & Shortcut Leaderboard -->
+            <div class="hidden lg:flex items-center gap-2.5 px-3.5 py-2 bg-indigo-950/95 border-l border-indigo-500/30 flex-shrink-0 text-right z-10 backdrop-blur-sm">
+                <div class="text-right">
+                    <div class="text-[9px] font-bold text-indigo-300 uppercase tracking-wider">Antrean AI</div>
+                    <div class="text-xs font-black text-white flex items-center justify-end gap-1">
+                        <span x-text="queueCount"></span>
+                        <span class="text-[10px] text-indigo-300 font-normal">Kandidat</span>
+                    </div>
+                </div>
+                <a href="{{ route('airanking.index') }}" 
+                   class="w-7 h-7 rounded-xl bg-indigo-800/80 hover:bg-indigo-700 text-indigo-200 hover:text-white flex items-center justify-center text-xs transition-all shadow-xs" 
+                   title="Lihat AI Ranking Leaderboard">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
     <!-- 4 STAT CARDS -->
     <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <!-- 1. Total Pelamar -->
@@ -931,6 +1066,44 @@
                 const msg = `Halo Sdr/i *${name}*,\n\nTerima kasih telah melamar posisi *${job || 'Pekerjaan'}* penempatan *${area || 'Cabang'}* melalui Job Portal PT Arina Multi Karya.\n\nKami ingin mengonfirmasi kelengkapan data berkas Anda untuk tahapan seleksi selanjutnya.`;
                 const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(msg)}`;
                 window.open(url, '_blank');
+            }
+        };
+    }
+
+    function aiLiveTickerManager(initialData) {
+        return {
+            isProcessing: initialData?.is_processing || false,
+            current: initialData?.current || null,
+            lastCompleted: initialData?.last_completed || null,
+            queueCount: initialData?.queue_count || 0,
+            nextCandidate: initialData?.next_candidate || null,
+            paused: false,
+            pollTimer: null,
+
+            initTicker() {
+                this.startPolling();
+            },
+
+            startPolling() {
+                this.pollTimer = setInterval(() => {
+                    this.fetchLiveStatus();
+                }, 5000);
+            },
+
+            async fetchLiveStatus() {
+                try {
+                    const res = await fetch('{{ route("kandidatportal.ai_live_status") }}');
+                    if (res.ok) {
+                        const data = await res.json();
+                        this.isProcessing = data.is_processing;
+                        this.current = data.current;
+                        this.lastCompleted = data.last_completed;
+                        this.queueCount = data.queue_count;
+                        this.nextCandidate = data.next_candidate;
+                    }
+                } catch (err) {
+                    // silent fallback
+                }
             }
         };
     }

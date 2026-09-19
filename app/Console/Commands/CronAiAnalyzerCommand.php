@@ -13,14 +13,14 @@ class CronAiAnalyzerCommand extends Command
      *
      * @var string
      */
-    protected $signature = 'ai:cron-analyzer {--limit=3 : Jumlah kandidat yang diproses per eksekusi} {--candidate_id= : ID kandidat spesifik untuk dianalisis} {--force : Paksa analisa ulang meski sudah ada skor}';
+    protected $signature = 'ai:cron-analyzer {--limit=2 : Jumlah kandidat yang diproses per eksekusi (default: 2)} {--interval=30 : Jeda target per kandidat dalam detik (default: 30)} {--candidate_id= : ID kandidat spesifik untuk dianalisis} {--force : Paksa analisa ulang meski sudah ada skor}';
 
     /**
      * The console command description.
      *
      * @var string
      */
-    protected $description = 'Auto Analisa CV Kandidat menggunakan AI Gemini (Smart Rotation & Cooldown) dan Sumopod Fallback';
+    protected $description = 'Auto Analisa CV Kandidat menggunakan AI Gemini (1 kandidat per 30 detik / 2 per menit)';
 
     /**
      * Execute the console command.
@@ -29,12 +29,14 @@ class CronAiAnalyzerCommand extends Command
     {
         $this->info("=================================================");
         $this->info("=== ASystem Cron AI CV Analyzer Started ===");
-        $this->info("Time: " . now()->translatedFormat('d M Y H:i:s') . " WIB");
+        $this->info("Time: " . now('Asia/Jakarta')->translatedFormat('d M Y H:i:s') . " WIB");
+        $this->info("Pace: 1 kandidat per 30 detik (1 menit 2 kandidat)");
         $this->info("=================================================");
 
         $specificId = $this->option('candidate_id');
         $force = $this->option('force');
-        $limit = intval($this->option('limit') ?: 3);
+        $limit = intval($this->option('limit') ?: 2);
+        $interval = intval($this->option('interval') ?: 30);
 
         if ($specificId) {
             $candidates = Candidate::where('id', $specificId)->get();
@@ -55,27 +57,31 @@ class CronAiAnalyzerCommand extends Command
                 });
             }
 
-
-            // Diurutkan dari yang paling awal masuk (oldest first)
-            $candidates = $query->orderBy('id', 'asc')
+            // Prioritaskan kandidat dari Job Portal terlebih dahulu, urutkan ID tertua ke terbaru
+            $candidates = $query->orderByRaw("CASE WHEN jenis = 'Job Portal' THEN 0 ELSE 1 END, id ASC")
                                 ->limit($limit)
                                 ->get();
         }
 
         if ($candidates->isEmpty()) {
             $this->comment("INFO: Tidak ada kandidat antrean dengan skor 0 yang membutuhkan analisa AI.");
+            \Illuminate\Support\Facades\Cache::put('ai_analyzer_current_status', [
+                'is_processing' => false,
+                'status_text'   => 'Standby (Semua antrean CV kandidat telah selesai dianalisis)',
+            ], 180);
             return 0;
         }
 
         $count = $candidates->count();
-        $this->info("INFO: Ditemukan $count kandidat untuk diproses...");
+        $this->info("INFO: Ditemukan $count kandidat untuk diproses (Target ritme: 1 kandidat per $interval detik)...");
 
         $successCount = 0;
         $failedCount = 0;
 
-        foreach ($candidates as $candidate) {
+        foreach ($candidates as $index => $candidate) {
+            $startTime = microtime(true);
             $this->line("-------------------------------------------------");
-            $this->info("Memproses Kandidat ID #{$candidate->id} - {$candidate->full_name} ({$candidate->applied_job})");
+            $this->info("Memproses Kandidat [" . ($index + 1) . "/{$count}] ID #{$candidate->id} - {$candidate->full_name} ({$candidate->applied_job})");
 
             $res = $analyzerService->analyzeCandidate($candidate, function ($msg, $level) {
                 if ($level === 'error') {
@@ -95,6 +101,21 @@ class CronAiAnalyzerCommand extends Command
             } else {
                 $failedCount++;
                 $this->warn("  -> Tertunda/Gagal: {$res['message']}");
+            }
+
+            $elapsed = microtime(true) - $startTime;
+            $sleepTime = max(0, $interval - $elapsed);
+
+            // Jeda antar kandidat jika masih ada antrean berikutnya dalam batch ini
+            if ($index < $count - 1 && $sleepTime > 0) {
+                $sec = (int) ceil($sleepTime);
+                $this->comment("  -> Memberikan jeda {$sec}s menuju kandidat berikutnya (Kecepatan: 1 kandidat / $interval detik)...");
+                \Illuminate\Support\Facades\Cache::put('ai_analyzer_current_status', [
+                    'is_processing' => false,
+                    'status_text'   => "Jeda {$sec}s sebelum memproses kandidat berikutnya (Kecepatan: 1/30 detik)...",
+                    'cooldown_sec'  => $sec,
+                ], 120);
+                sleep($sec);
             }
         }
 

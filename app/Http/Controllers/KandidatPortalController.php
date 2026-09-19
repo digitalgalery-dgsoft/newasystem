@@ -371,6 +371,8 @@ class KandidatPortalController extends Controller
             ->orderBy('odoo_stage_name')
             ->pluck('odoo_stage_name');
 
+        $aiLiveStatus = \App\Services\AiAnalyzerService::getLiveRunningStatus();
+
         return view('kandidatportal.index', compact(
             'candidates',
             'tab',
@@ -395,8 +397,17 @@ class KandidatPortalController extends Controller
             'countInterview',
             'countTerima',
             'countArsip',
-            'odooStats'
+            'odooStats',
+            'aiLiveStatus'
         ));
+    }
+
+    /**
+     * Endpoint API status live AI CV Analyzer untuk Running Text
+     */
+    public function aiLiveStatus()
+    {
+        return response()->json(\App\Services\AiAnalyzerService::getLiveRunningStatus());
     }
 
     /**

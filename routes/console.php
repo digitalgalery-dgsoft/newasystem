@@ -20,8 +20,8 @@ Schedule::command('odoo:sync-updates-resigns --silent')
     ->withoutOverlapping()
     ->runInBackground();
 
-// 3. Cron Job: AI CV Analyzer Otomatis Setiap Menit (Kandidat skor 0, urut paling awal masuk)
-Schedule::command('ai:cron-analyzer --limit=3')
+// 3. Cron Job: AI CV Analyzer Otomatis Setiap Menit (1 kandidat per 30 detik / 1 menit 2 kandidat)
+Schedule::command('ai:cron-analyzer --limit=2 --interval=30')
     ->everyMinute()
     ->withoutOverlapping()
     ->runInBackground();
