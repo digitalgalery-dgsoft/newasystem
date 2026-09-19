@@ -41,11 +41,12 @@ class CronAiAnalyzerCommand extends Command
         if ($specificId) {
             $candidates = Candidate::where('id', $specificId)->get();
         } else {
-            $query = Candidate::where(function ($q) {
-                $q->whereNotNull('cv_path')
-                  ->where('cv_path', '!=', '')
-                  ->where('cv_path', '!=', '-');
-            });
+            $query = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+                ->where(function ($q) {
+                    $q->whereNotNull('cv_path')
+                      ->where('cv_path', '!=', '')
+                      ->where('cv_path', '!=', '-');
+                });
 
             if (!$force) {
                 $query->where(function ($q) {
@@ -57,17 +58,17 @@ class CronAiAnalyzerCommand extends Command
                 });
             }
 
-            // Prioritaskan kandidat dari Job Portal terlebih dahulu, urutkan ID tertua ke terbaru
-            $candidates = $query->orderByRaw("CASE WHEN jenis = 'Job Portal' THEN 0 ELSE 1 END, id ASC")
+            // Urutkan ID tertua ke terbaru khusus kandidat Job Portal
+            $candidates = $query->orderBy('id', 'asc')
                                 ->limit($limit)
                                 ->get();
         }
 
         if ($candidates->isEmpty()) {
-            $this->comment("INFO: Tidak ada kandidat antrean dengan skor 0 yang membutuhkan analisa AI.");
+            $this->comment("INFO: Tidak ada kandidat Job Portal dengan skor 0 yang membutuhkan analisa AI.");
             \Illuminate\Support\Facades\Cache::put('ai_analyzer_current_status', [
                 'is_processing' => false,
-                'status_text'   => 'Standby (Semua antrean CV kandidat telah selesai dianalisis)',
+                'status_text'   => 'Standby (Semua antrean CV kandidat Job Portal telah selesai dianalisis)',
             ], 180);
             return 0;
         }

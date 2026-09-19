@@ -840,9 +840,10 @@ Catatan:
         $current = Cache::get('ai_analyzer_current_status');
         $last = Cache::get('ai_analyzer_last_completed');
 
-        // Jika cache last completed kosong, cari kandidat terakhir yang berhasil dinilai
+        // Jika cache last completed kosong, cari kandidat Job Portal terakhir yang berhasil dinilai
         if (!$last) {
-            $latestAnalyzed = Candidate::whereNotNull('ai_score')
+            $latestAnalyzed = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+                ->whereNotNull('ai_score')
                 ->where('ai_score', '>', 0)
                 ->orderByDesc('updated_at')
                 ->first(['id', 'full_name', 'applied_job', 'area', 'ai_score', 'kategori_kandidat', 'updated_at']);
@@ -862,21 +863,27 @@ Catatan:
             }
         }
 
-        $queueQuery = Candidate::where(function ($q) {
-            $q->whereNotNull('cv_path')
-              ->where('cv_path', '!=', '')
-              ->where('cv_path', '!=', '-');
-        })->where(function ($q) {
-            $q->whereNull('ai_score')
-              ->orWhere('ai_score', 0);
-        })->where(function ($q) {
-            $q->whereNull('ai_cv_analysis')
-              ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
-        });
+        // Antrean kandidat khusus Job Portal yang belum dinilai AI (sinkron dengan stat card Belum Dianalisa)
+        $queueCount = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+            ->where(function ($q) {
+                $q->whereNull('ai_score')
+                  ->orWhere('ai_score', 0);
+            })->count();
 
-        $queueCount = (clone $queueQuery)->count();
-        $nextCandidate = (clone $queueQuery)
-            ->orderByRaw("CASE WHEN jenis = 'Job Portal' THEN 0 ELSE 1 END, id ASC")
+        // Kandidat Job Portal berikutnya yang siap diproses (memiliki berkas CV dan belum ada file_error)
+        $nextCandidate = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+            ->where(function ($q) {
+                $q->whereNotNull('cv_path')
+                  ->where('cv_path', '!=', '')
+                  ->where('cv_path', '!=', '-');
+            })->where(function ($q) {
+                $q->whereNull('ai_score')
+                  ->orWhere('ai_score', 0);
+            })->where(function ($q) {
+                $q->whereNull('ai_cv_analysis')
+                  ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
+            })
+            ->orderBy('id', 'asc')
             ->first(['id', 'full_name', 'applied_job', 'area']);
 
         $isProcessing = !empty($current['is_processing']);

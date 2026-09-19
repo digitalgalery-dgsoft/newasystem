@@ -21,11 +21,12 @@ $analyzer = app(\App\Services\AiAnalyzerService::class);
 echo "=== Cron AI Analyzer HTTP Trigger Started ===\n";
 echo "Waktu: " . date('Y-m-d H:i:s') . "\n";
 
-$query = \App\Models\Candidate::where(function ($q) {
-    $q->whereNotNull('cv_path')
-      ->where('cv_path', '!=', '')
-      ->where('cv_path', '!=', '-');
-});
+$query = \App\Models\Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+    ->where(function ($q) {
+        $q->whereNotNull('cv_path')
+          ->where('cv_path', '!=', '')
+          ->where('cv_path', '!=', '-');
+    });
 
 if ($candidateId) {
     $query->where('id', $candidateId);
