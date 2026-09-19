@@ -184,24 +184,8 @@ class PublicJobController extends Controller
             $cvPath = $cvName;
         }
 
-        // 3. AI Score matching simulation - HANYA DILAKUKAN JIKA ADA BERKAS CV VALID
+        // 3. AI Score matching - HANYA DILAKUKAN JIKA ADA BERKAS CV VALID
         $hasCv = !empty($cvPath) && $cvPath !== '-';
-        $simulatedAiScore = null;
-        $kategoriKandidat = null;
-        $aiAnalysis = null;
-
-        if ($hasCv) {
-            $simulatedAiScore = rand(82, 95);
-            $kategoriKandidat = $simulatedAiScore >= 85 ? 'Green' : 'Yellow';
-
-            $aiAnalysis = [
-                'evaluation_match_score' => $simulatedAiScore,
-                'executive_summary' => "Pelamar {$request->input('nama_lengkap')} berdomisili di {$request->input('kota_domisili')}, {$request->input('propinsi_domisili')} dengan pendidikan {$request->input('pendidikan')}. Keterampilan dan pengalaman sesuai dengan kualifikasi {$job->job_title}.",
-                'key_strengths' => $job->skills_array ?: ['Komunikasi Efektif', 'Kedisiplinan', 'Kerjasama Tim'],
-                'suitability_reason' => "Kualifikasi, domisili, dan motivasi kerja selaras dengan deskripsi pekerjaan {$job->job_title}.",
-                'rekomendasi' => 'Sangat Direkomendasikan untuk Seleksi Lanjutan'
-            ];
-        }
 
         $birthDateFormatted = Carbon::parse($request->input('tgl_lahir'))->format('dmY');
 
@@ -234,9 +218,9 @@ class PublicJobController extends Controller
             'experience_summary' => $request->input('ringkasan_pengalaman'),
             'work_motivation' => $request->input('motivasi'),
             'strengths' => $request->input('kelebihan'),
-            'ai_score' => $simulatedAiScore,
-            'kategori_kandidat' => $kategoriKandidat,
-            'ai_cv_analysis' => $aiAnalysis ? json_encode($aiAnalysis) : null,
+            'ai_score' => null,
+            'kategori_kandidat' => null,
+            'ai_cv_analysis' => null,
             'is_profile_complete' => 1,
             'password' => Hash::make($birthDateFormatted),
             'useras' => $job->created_by ?? 'Publik',
@@ -247,6 +231,16 @@ class PublicJobController extends Controller
         } else {
             $candidate = Candidate::create($candidateData);
         }
+
+        // Jalankan analisa AI otomatis secara nyata jika ada berkas CV
+        if ($hasCv) {
+            try {
+                app(\App\Services\AiAnalyzerService::class)->analyzeCandidate($candidate);
+            } catch (\Throwable $e) {
+                // Jika sedang jeda limit atau ada kendala koneksi, skor tetap null dan cron job latar belakang akan menganalisisnya
+            }
+        }
+
 
         // Simpan Ringkasan Pengalaman ke tabel work_experiences jika diisi
         if ($request->filled('ringkasan_pengalaman')) {

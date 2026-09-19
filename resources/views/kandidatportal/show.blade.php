@@ -1105,7 +1105,7 @@
                     </div>
                     <div class="p-5">
                         <ul class="space-y-2 text-xs text-slate-700">
-                            @forelse((array)($aiData['core_strengths'] ?? []) as $str)
+                            @forelse((array)($aiData['core_strengths'] ?? ($aiData['key_strengths'] ?? [])) as $str)
                             <li class="flex items-start gap-2">
                                 <i class="fa-solid fa-check text-emerald-600 text-xs mt-0.5 flex-shrink-0"></i>
                                 <span class="leading-relaxed">{{ $str }}</span>
@@ -1163,7 +1163,7 @@
                     <div>
                         <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Work Style</span>
                         <p class="text-xs text-slate-700 bg-slate-50 p-3 rounded-xl border border-slate-200 leading-relaxed">
-                            {{ $aiData['psychological_traits']['work_style'] ?? '-' }}
+                            {{ $aiData['psychological_traits']['work_style'] ?? ($aiData['suitability_reason'] ?? '-') }}
                         </p>
                     </div>
 
@@ -1184,7 +1184,7 @@
                             <h5 class="text-xs font-bold text-sky-900 uppercase tracking-wider">Core Skills Evaluation</h5>
                         </div>
                         <div class="flex flex-wrap gap-1.5">
-                            @forelse((array)($aiData['core_skills'] ?? []) as $skill)
+                            @forelse((array)($aiData['core_skills'] ?? ($aiData['key_strengths'] ?? [])) as $skill)
                             <span class="px-2.5 py-1 rounded-lg text-xs font-semibold bg-sky-50 text-sky-800 border border-sky-200">
                                 {{ $skill }}
                             </span>
@@ -1193,6 +1193,7 @@
                             @endforelse
                         </div>
                     </div>
+
 
                     <!-- Other Candidates Comparison -->
                     <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
@@ -1267,8 +1268,9 @@
                     <span>Final Recruiter Recommendation</span>
                 </div>
                 <p class="text-xs text-slate-800 leading-relaxed font-medium">
-                    {!! nl2br(e($aiData['recommendation'] ?? ($aiData['ai_verdict'] ?? 'Kandidat memiliki rekam jejak kerja yang relevan dan kualifikasi yang sesuai untuk tahapan rekrutmen.'))) !!}
+                    {!! nl2br(e($aiData['recommendation'] ?? ($aiData['rekomendasi'] ?? ($aiData['ai_verdict'] ?? 'Kandidat memiliki rekam jejak kerja yang relevan dan kualifikasi yang sesuai untuk tahapan rekrutmen.')))) !!}
                 </p>
+
             </div>
 
             @elseif(!empty($aiData['error']) || ($candidate->hasCv() && empty($candidate->ai_score) && !empty($candidate->ai_cv_analysis)))
