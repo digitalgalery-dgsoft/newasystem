@@ -49,8 +49,12 @@ class CronAiAnalyzerCommand extends Command
                 $query->where(function ($q) {
                     $q->whereNull('ai_score')
                       ->orWhere('ai_score', 0);
+                })->where(function ($q) {
+                    $q->whereNull('ai_cv_analysis')
+                      ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
                 });
             }
+
 
             // Diurutkan dari yang paling awal masuk (oldest first)
             $candidates = $query->orderBy('id', 'asc')

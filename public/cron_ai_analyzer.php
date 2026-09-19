@@ -33,7 +33,11 @@ if ($candidateId) {
     $query->where(function ($q) {
         $q->whereNull('ai_score')
           ->orWhere('ai_score', 0);
+    })->where(function ($q) {
+        $q->whereNull('ai_cv_analysis')
+          ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
     })->orderBy('id', 'asc')->limit($limit);
+
 }
 
 $candidates = $query->get();
