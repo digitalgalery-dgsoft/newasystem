@@ -3,9 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Candidate;
+use App\Models\Principle;
+use App\Models\OdooEntity;
 use App\Services\CandidateImportService;
+use App\Services\OdooSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Exception;
 
@@ -166,5 +173,370 @@ class CandidateImportController extends Controller
             'Connection'        => 'keep-alive',
             'X-Accel-Buffering' => 'no',
         ]);
+    }
+
+    /**
+     * Cari Pelamar di Rekrutmen Odoo ERP berdasarkan NIK
+     */
+    public function lookupOdooByNik(Request $request)
+    {
+        $rawNik = trim((string)$request->input('nik'));
+        $cleanNik = preg_replace('/\D/', '', $rawNik);
+
+        if (empty($cleanNik) || strlen($cleanNik) !== 16) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nomor NIK / KTP harus terdiri dari 16 digit angka.',
+            ], 422);
+        }
+
+        $entityCode = strtoupper(trim((string)$request->input('entity', 'all')));
+
+        $query = OdooEntity::where('is_active', true);
+        if ($entityCode !== 'ALL' && !empty($entityCode)) {
+            $query->where('code', $entityCode);
+        }
+        $entities = $query->get();
+
+        if ($entities->isEmpty()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada entitas Odoo ERP yang aktif.',
+            ], 404);
+        }
+
+        $foundApplicant = null;
+        $foundEntity = null;
+
+        foreach ($entities as $entity) {
+            if (!$entity->isConfigured()) {
+                continue;
+            }
+
+            try {
+                $service = OdooSyncService::fromEntity($entity);
+                if (!$service) {
+                    continue;
+                }
+                $uid = $service->authenticate();
+
+                $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
+                    $entity->odoo_db, $uid, $entity->odoo_api_key,
+                    'hr.applicant', 'search_read',
+                    [[['no_ktp', '=', $cleanNik]]],
+                    [
+                        'fields' => [
+                            'id', 'name', 'partner_name', 'no_ktp', 'email_from',
+                            'partner_phone', 'partner_mobile', 'birth', 'place_of_birth',
+                            'ktp_address', 'gender', 'height', 'weight', 'religion',
+                            'marital_status', 'type_id', 'job_id', 'principle_id',
+                            'area_id', 'department_id', 'stage_id', 'user_id',
+                            'write_date', 'create_date', 'active',
+                        ],
+                        'context' => ['active_test' => false],
+                        'order' => 'write_date desc, id desc',
+                        'limit' => 1,
+                    ]
+                ]);
+
+                if (is_array($applicants) && !empty($applicants)) {
+                    $foundApplicant = $applicants[0];
+                    $foundEntity = $entity->code;
+                    break;
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+
+        if (!$foundApplicant) {
+            return response()->json([
+                'success' => false,
+                'message' => "NIK {$cleanNik} tidak ditemukan di modul Rekrutmen Odoo ERP (AMK, AKP, ATK, ABO, ATB). Pastikan pelamar sudah diinput di Odoo atau periksa kembali nomor NIK.",
+            ], 404);
+        }
+
+        // Format data yang ditemukan
+        $name = ucwords(strtolower(trim((string)($foundApplicant['partner_name'] ?: $foundApplicant['name']))));
+        $job = is_array($foundApplicant['job_id']) ? $foundApplicant['job_id'][1] : (string)($foundApplicant['job_id'] ?? '-');
+        $principle = is_array($foundApplicant['principle_id']) ? $foundApplicant['principle_id'][1] : (string)($foundApplicant['principle_id'] ?? '-');
+        $area = is_array($foundApplicant['area_id']) ? $foundApplicant['area_id'][1] : (string)($foundApplicant['area_id'] ?? '-');
+        $stage = is_array($foundApplicant['stage_id']) ? $foundApplicant['stage_id'][1] : (string)($foundApplicant['stage_id'] ?? 'Data Pelamar');
+        $phone = preg_replace('/[^0-9]/', '', (string)($foundApplicant['partner_mobile'] ?: $foundApplicant['partner_phone']));
+        if (str_starts_with($phone, '62')) {
+            $phone = '0' . substr($phone, 2);
+        }
+
+        $birth = $foundApplicant['birth'] ?: null;
+        $age = null;
+        if ($birth) {
+            $age = \Carbon\Carbon::parse($birth)->age;
+        }
+
+        $existingCandidate = Candidate::where('nik', $cleanNik)
+            ->where(function($q) {
+                $q->whereNull('jenis')->orWhere('jenis', '');
+            })
+            ->where('status', 'Active')
+            ->first();
+
+        return response()->json([
+            'success' => true,
+            'message' => "Data pelamar ditemukan di Odoo [{$foundEntity}]!",
+            'applicant' => [
+                'odoo_id'      => $foundApplicant['id'],
+                'entity'       => $foundEntity,
+                'name'         => $name,
+                'nik'          => $cleanNik,
+                'job'          => $job,
+                'principle'    => $principle,
+                'area'         => $area,
+                'stage'        => $stage,
+                'phone'        => $phone,
+                'birth'        => $birth,
+                'age'          => $age,
+                'birth_place'  => $foundApplicant['place_of_birth'] ?? null,
+                'address'      => $foundApplicant['ktp_address'] ?? null,
+                'email'        => $foundApplicant['email_from'] ?? null,
+                'gender'       => $foundApplicant['gender'] ?? null,
+            ],
+            'existing_candidate' => $existingCandidate ? [
+                'id'         => $existingCandidate->id,
+                'name'       => $existingCandidate->full_name,
+                'status'     => $existingCandidate->status,
+                'created_at' => $existingCandidate->created_at ? $existingCandidate->created_at->format('d/m/Y H:i') : null,
+            ] : null,
+        ]);
+    }
+
+    /**
+     * Tarik dan Simpan Pelamar dari Odoo ke ASystem & Siapkan Tes Online CBT
+     */
+    public function importOdooByNik(Request $request)
+    {
+        $rawNik = trim((string)$request->input('nik'));
+        $cleanNik = preg_replace('/\D/', '', $rawNik);
+
+        if (empty($cleanNik) || strlen($cleanNik) !== 16) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Nomor NIK / KTP harus terdiri dari 16 digit angka.',
+            ], 422);
+        }
+
+        $entityCode = strtoupper(trim((string)$request->input('entity', 'all')));
+
+        $query = OdooEntity::where('is_active', true);
+        if ($entityCode !== 'ALL' && !empty($entityCode)) {
+            $query->where('code', $entityCode);
+        }
+        $entities = $query->get();
+
+        $foundApplicant = null;
+        $foundEntity = null;
+
+        foreach ($entities as $entity) {
+            if (!$entity->isConfigured()) {
+                continue;
+            }
+
+            try {
+                $service = OdooSyncService::fromEntity($entity);
+                if (!$service) {
+                    continue;
+                }
+                $uid = $service->authenticate();
+
+                $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
+                    $entity->odoo_db, $uid, $entity->odoo_api_key,
+                    'hr.applicant', 'search_read',
+                    [[['no_ktp', '=', $cleanNik]]],
+                    [
+                        'fields' => [
+                            'id', 'name', 'partner_name', 'no_ktp', 'email_from',
+                            'partner_phone', 'partner_mobile', 'birth', 'place_of_birth',
+                            'ktp_address', 'gender', 'height', 'weight', 'religion',
+                            'marital_status', 'type_id', 'job_id', 'principle_id',
+                            'area_id', 'department_id', 'stage_id', 'user_id',
+                            'write_date', 'create_date', 'active',
+                        ],
+                        'context' => ['active_test' => false],
+                        'order' => 'write_date desc, id desc',
+                        'limit' => 1,
+                    ]
+                ]);
+
+                if (is_array($applicants) && !empty($applicants)) {
+                    $foundApplicant = $applicants[0];
+                    $foundEntity = $entity->code;
+                    break;
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+
+        if (!$foundApplicant) {
+            return response()->json([
+                'success' => false,
+                'message' => "NIK {$cleanNik} tidak ditemukan di modul Rekrutmen Odoo ERP.",
+            ], 404);
+        }
+
+        $name = ucwords(strtolower(trim((string)($foundApplicant['partner_name'] ?: $foundApplicant['name']))));
+        if (empty($name)) {
+            $name = 'Kandidat NIK ' . $cleanNik;
+        }
+
+        $job = is_array($foundApplicant['job_id']) ? $foundApplicant['job_id'][1] : (string)($foundApplicant['job_id'] ?? 'Kandidat Odoo');
+        $prinName = is_array($foundApplicant['principle_id']) ? $foundApplicant['principle_id'][1] : (string)($foundApplicant['principle_id'] ?? '');
+        $area = is_array($foundApplicant['area_id']) ? $foundApplicant['area_id'][1] : (string)($foundApplicant['area_id'] ?? '');
+        $stage = is_array($foundApplicant['stage_id']) ? $foundApplicant['stage_id'][1] : (string)($foundApplicant['stage_id'] ?? 'Data Pelamar');
+
+        // Cari principle_id di database lokal
+        $principleId = null;
+        if (!empty($prinName)) {
+            $foundPrinciple = Principle::where('name', 'like', "%{$prinName}%")->first();
+            if ($foundPrinciple) {
+                $principleId = $foundPrinciple->id;
+            }
+        }
+
+        // Normalisasi nomor telepon
+        $phone = preg_replace('/[^0-9]/', '', (string)($foundApplicant['partner_mobile'] ?: $foundApplicant['partner_phone']));
+        if (str_starts_with($phone, '62')) {
+            $phone = '0' . substr($phone, 2);
+        }
+
+        // Tanggal lahir & password default
+        $birthDate = !empty($foundApplicant['birth']) ? date('Y-m-d', strtotime($foundApplicant['birth'])) : null;
+        $passwordPlain = $birthDate ? date('dmY', strtotime($birthDate)) : '12345678';
+        $passwordHashed = bcrypt($passwordPlain);
+
+        // Pengguna / Rekruter saat ini
+        $user = $this->getCurrentUser();
+        $userEmail = $user ? $user->email : 'recruitment@asystem.co.id';
+        $userId = $user ? $user->id : null;
+
+        try {
+            DB::beginTransaction();
+
+            // 1. Arsipkan data lama dengan NIK sama
+            DB::table('candidates')->where('nik', $cleanNik)->where('status', '!=', 'Arsip')->update(['status' => 'Arsip']);
+            if (Schema::hasTable('tb_kandidat')) {
+                DB::table('tb_kandidat')->where('no_ktp', $cleanNik)->where('status', '!=', 'Arsip')->update(['status' => 'Arsip']);
+            }
+
+            // 2. Simpan kandidat baru
+            $candidate = Candidate::create([
+                'nik'                      => $cleanNik,
+                'full_name'                => $name,
+                'birth_place'              => $foundApplicant['place_of_birth'] ?? null,
+                'birth_date'               => $birthDate,
+                'address_ktp'              => $foundApplicant['ktp_address'] ?? null,
+                'address_domicile'         => $foundApplicant['ktp_address'] ?? null,
+                'gender'                   => $foundApplicant['gender'] ?? null,
+                'height'                   => (int)($foundApplicant['height'] ?? null) ?: null,
+                'weight'                   => (int)($foundApplicant['weight'] ?? null) ?: null,
+                'religion'                 => $foundApplicant['religion'] ?? null,
+                'marital_status'           => $foundApplicant['marital_status'] ?? null,
+                'education'                => is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : ($foundApplicant['type_id'] ?? null),
+                'phone'                    => $phone,
+                'whatsapp'                 => $phone,
+                'email'                    => $foundApplicant['email_from'] ?? null,
+                'area'                     => $area,
+                'penempatan'               => $area,
+                'principle'                => $prinName,
+                'principle_id'             => $principleId,
+                'applied_job'              => $job,
+                'status'                   => 'Active',
+                'jenis'                    => '', // Walkin / Inhouse Interview list
+                'source_type'              => 'odoo_sync',
+                'useras'                   => $userEmail,
+                'recruiter_id'             => $userId,
+                'password'                 => $passwordHashed,
+                'odoo_applicant_id'        => $foundApplicant['id'],
+                'odoo_stage_name'          => $stage,
+                'odoo_entity'              => $foundEntity,
+                'odoo_synced_at'           => now(),
+                'is_profile_complete'      => false,
+                'created_at'               => now(),
+                'updated_at'               => now(),
+            ]);
+
+            // 3. Simpan juga ke tb_kandidat jika tabel legacy tersedia
+            if (Schema::hasTable('tb_kandidat')) {
+                try {
+                    DB::table('tb_kandidat')->insert([
+                        'id'                  => $candidate->id,
+                        'tanggal'             => date('Y-m-d'),
+                        'no_ktp'              => $cleanNik,
+                        'applicants_name'     => $name,
+                        'alamat_ktp'          => $foundApplicant['ktp_address'] ?? null,
+                        'alamat_domisili'     => $foundApplicant['ktp_address'] ?? null,
+                        'kota_lahir'          => $foundApplicant['place_of_birth'] ?? null,
+                        'tanggal_lahir'       => $birthDate ?: '1970-01-01',
+                        'height'              => (string)($foundApplicant['height'] ?? ''),
+                        'weight'              => (string)($foundApplicant['weight'] ?? ''),
+                        'religion'            => (string)($foundApplicant['religion'] ?? ''),
+                        'pendidikan_terakhir' => is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : (string)($foundApplicant['type_id'] ?? ''),
+                        'phone'               => $phone,
+                        'mobile'              => $phone,
+                        'area'                => $area,
+                        'principle'           => $prinName,
+                        'applied_job'         => $job,
+                        'status_kawin'        => (string)($foundApplicant['marital_status'] ?? ''),
+                        'password'            => $passwordHashed,
+                        'useras'              => $userEmail,
+                        'status'              => 'Active',
+                        'jenis'               => '',
+                        'info'                => 'WhatsApp',
+                        'undangan'            => 'WhatsApp',
+                        'waktukirim'          => now(),
+                    ]);
+                } catch (\Throwable $eTb) {
+                    // Abaikan duplikasi ID jika primary key berkonflik
+                }
+            }
+
+            DB::commit();
+
+            // Link CBT Login & Undangan WhatsApp
+            $cbtLoginUrl = route('cbt.login');
+            $waPhone = $phone;
+            if (str_starts_with($waPhone, '0')) {
+                $waPhone = '62' . substr($waPhone, 1);
+            }
+
+            $waText = "Halo {$name},\n\nAnda telah terdaftar untuk mengikuti tahapan seleksi tes online di ASystem ESA Groups ({$prinName} - {$job}).\n\nSilakan login untuk mengerjakan tes online (Psikotes DISC, Matematika, dan Profil):\n🔗 *Link Tes Online*: {$cbtLoginUrl}\n🆔 *Username (NIK)*: {$cleanNik}\n🔑 *Password*: {$passwordPlain}\n\nMohon segera menyelesaikan tes tersebut. Terima kasih.\n*Tim Rekrutmen ESA Groups*";
+            $waLink = !empty($waPhone) ? "https://api.whatsapp.com/send?phone={$waPhone}&text=" . rawurlencode($waText) : null;
+
+            return response()->json([
+                'success'          => true,
+                'message'          => "Kandidat {$name} berhasil ditarik dari Odoo [{$foundEntity}] dan siap diproses!",
+                'candidate_id'     => $candidate->id,
+                'detail_url'       => route('interview.show', $candidate->id),
+                'cbt_login_url'    => $cbtLoginUrl,
+                'full_name'        => $name,
+                'nik'              => $cleanNik,
+                'phone'            => $phone,
+                'job'              => $job,
+                'principle'        => $prinName,
+                'area'             => $area,
+                'stage'            => $stage,
+                'entity'           => $foundEntity,
+                'default_password' => $passwordPlain,
+                'wa_link'          => $waLink,
+                'wa_phone'         => $waPhone,
+                'wa_text'          => $waText,
+            ]);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Gagal menyimpan kandidat ke database: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 }

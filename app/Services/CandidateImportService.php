@@ -338,6 +338,8 @@ class CandidateImportService
                         'recruiter_id'             => $userId,
                         'password'                 => $passwordHashed,
                         'is_profile_complete'      => false,
+                        'odoo_stage_name'          => self::sanitizeInput($colStage) ?: null,
+                        'odoo_synced_at'           => !empty(trim((string)$colStage)) ? now() : null,
                         'created_at'               => now(),
                         'updated_at'               => now(),
                     ];

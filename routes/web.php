@@ -107,6 +107,10 @@ Route::get('/interview/import/stream', [CandidateImportController::class, 'strea
 Route::get('/importcalontest', fn() => redirect()->route('interview.index', ['open_import' => 1]));
 Route::get('/importkandidatint.php', fn() => redirect()->route('interview.index', ['open_import' => 1]));
 
+// Fitur Tarik Kandidat dari Rekrutmen Odoo via NIK (One-Click Instant Pull)
+Route::post('/interview/odoo/lookup-nik', [CandidateImportController::class, 'lookupOdooByNik'])->name('interview.odoo.lookup_nik');
+Route::post('/interview/odoo/import-nik', [CandidateImportController::class, 'importOdooByNik'])->name('interview.odoo.import_nik');
+
 // Export Route
 Route::get('/export/interview', function () {
     $candidates = \App\Models\Candidate::with('principle')->where('status', 'Active')->get();

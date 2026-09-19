@@ -42,9 +42,15 @@
             </a>
 
             <!-- 3. Import Data Button -->
-            <button onclick="openImportCandidateModal()" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-primary border border-blue-200 text-xs font-bold transition-all shadow-sm cursor-pointer">
+            <button onclick="openImportCandidateModal()" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-primary border border-blue-200 text-xs font-bold transition-all shadow-sm cursor-pointer" title="Import data kandidat dari file Excel format Odoo hr.applicant">
                 <i class="fa-solid fa-cloud-arrow-up text-primary"></i>
                 <span>Import Data</span>
+            </button>
+
+            <!-- 3b. Tarik dari Odoo (NIK) Button -->
+            <button onclick="openOdooNikModal()" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200 text-xs font-bold transition-all shadow-sm cursor-pointer" title="Tarik data kandidat dari Odoo ERP secara instan berdasarkan NIK">
+                <i class="fa-solid fa-id-card-clip text-indigo-600"></i>
+                <span>Tarik dari Odoo (NIK)</span>
             </button>
 
             <!-- 4. Export Data Button -->
@@ -901,19 +907,34 @@
                 </p>
             </div>
 
-            <!-- Download Template Button -->
-            <div class="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <!-- Keterangan Template ASystem di Rekrutmen Odoo -->
+            <div class="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50/90 border border-amber-200/90 text-amber-950 shadow-xs">
+                <div class="w-8 h-8 rounded-lg bg-amber-100 text-amber-700 flex items-center justify-center shrink-0 text-sm mt-0.5">
+                    <i class="fa-solid fa-file-lines"></i>
+                </div>
+                <div>
+                    <div class="text-xs font-bold text-amber-900">Gunakan Template ASystem di Page Rekrutmen Odoo</div>
+                    <p class="text-[11px] text-amber-800 mt-1 leading-relaxed">
+                        Silakan export data pelamar langsung dari modul <b>Recruitment Odoo ERP</b> menggunakan tampilan / preset <b>"Template ASystem"</b>, kemudian unggah file <b>.xlsx</b> hasil export tersebut di bawah ini.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Opsi Cepat: Tarik Langsung via NIK -->
+            <div class="p-3 rounded-xl bg-indigo-50/80 border border-indigo-200 flex items-center justify-between shadow-xs">
                 <div class="flex items-center gap-2.5">
-                    <i class="fa-solid fa-download text-slate-400 text-sm"></i>
+                    <div class="w-7 h-7 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center text-xs">
+                        <i class="fa-solid fa-bolt"></i>
+                    </div>
                     <div>
-                        <div class="text-xs font-bold text-slate-800">Belum punya template?</div>
-                        <div class="text-[10px] text-slate-400">Unduh format template resmi</div>
+                        <div class="text-xs font-bold text-indigo-950">Ingin Lebih Praktis? Tarik via NIK</div>
+                        <div class="text-[10px] text-indigo-600">Tarik kandidat perorangan instan tanpa perlu export-import Excel</div>
                     </div>
                 </div>
-                <a href="{{ route('interview.import.template') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-slate-300 hover:border-primary hover:text-primary text-xs font-bold text-slate-700 transition shadow-xs">
-                    <i class="fa-solid fa-file-arrow-down text-emerald-600"></i>
-                    <span>Unduh hr.applicant.xlsx</span>
-                </a>
+                <button type="button" onclick="closeImportCandidateModal(); openOdooNikModal();" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5">
+                    <i class="fa-solid fa-id-card-clip"></i>
+                    <span>Input NIK</span>
+                </button>
             </div>
 
             <!-- File Upload Dropzone -->
@@ -1043,6 +1064,208 @@
                     Tutup
                 </button>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- MODAL TARIK KANDIDAT DARI ODOO ERP VIA NIK -->
+<!-- ============================================================== -->
+<div id="modalOdooNik" class="fixed inset-0 z-[999990] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden" onclick="if(event.target === this) closeOdooNikModal()">
+    <div class="bg-white rounded-3xl max-w-xl w-full shadow-2xl border border-slate-200 overflow-hidden transform transition-all animate-scale-up" onclick="event.stopPropagation()">
+        <!-- Modal Header -->
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-indigo-50/80 via-purple-50/40 to-white">
+            <div class="flex items-center gap-3">
+                <div class="w-11 h-11 rounded-2xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-md shadow-indigo-600/20 shrink-0">
+                    <i class="fa-solid fa-id-card-clip"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-extrabold text-slate-900 tracking-tight">Tarik Kandidat dari Odoo ERP</h3>
+                    <p class="text-xs text-slate-500">Input NIK untuk tarik profil otomatis & proses tes online tanpa export-import file</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeOdooNikModal()" class="w-8 h-8 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 flex items-center justify-center transition">
+                <i class="fa-solid fa-xmark text-sm"></i>
+            </button>
+        </div>
+
+        <!-- Modal Body -->
+        <div class="p-6 space-y-5">
+            <!-- Form Input NIK & Entitas -->
+            <div class="space-y-3.5">
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
+                        <span>Nomor Induk Kependudukan (NIK / KTP)</span>
+                        <span id="odooNikCounter" class="text-[11px] font-semibold text-slate-400 font-mono">0 / 16 Digit</span>
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                            <i class="fa-solid fa-address-card text-base"></i>
+                        </div>
+                        <input type="text" id="odooNikInput" maxlength="16" placeholder="Masukkan 16 digit NIK pelamar..." 
+                               oninput="handleNikInput(this)" 
+                               onkeydown="if(event.key === 'Enter'){ event.preventDefault(); searchCandidateByNik(); }"
+                               class="w-full pl-10 pr-24 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 text-base font-bold text-slate-800 tracking-wider font-mono outline-none transition placeholder:font-sans placeholder:font-normal placeholder:text-xs">
+                        <button type="button" id="btnSearchOdoo" onclick="searchCandidateByNik()" 
+                                class="absolute right-1.5 top-1.5 bottom-1.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
+                            <i class="fa-solid fa-magnifying-glass text-xs"></i>
+                            <span>Cari</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Pilihan Entitas Odoo -->
+                <div class="flex items-center gap-2">
+                    <label class="text-[11px] font-bold text-slate-500 shrink-0">Entitas Odoo:</label>
+                    <select id="odooNikEntity" class="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-slate-50/60 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
+                        <option value="all" selected>Semua Entitas Odoo ERP (AMK, AKP, ATK, ABO, ATB)</option>
+                        <option value="AKP">AKP - PT Alva Karya Perkasa</option>
+                        <option value="AMK">AMK - PT Arina Multikarya</option>
+                        <option value="ATK">ATK - PT Anugrah Talenta Berkarya</option>
+                        <option value="ABO">ABO - PT Abadi Berkat Odelia</option>
+                        <option value="ATB">ATB - PT Arina Talenta Berkarya</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- STATE 1: LOADING SPINNER -->
+            <div id="odooNikLoading" class="hidden p-6 rounded-2xl bg-indigo-50/50 border border-indigo-100 text-center space-y-3 animate-pulse">
+                <div class="w-10 h-10 rounded-full border-3 border-indigo-600 border-t-transparent animate-spin mx-auto"></div>
+                <div class="text-xs font-bold text-indigo-950">Memeriksa Database Rekrutmen Odoo ERP...</div>
+                <p class="text-[11px] text-indigo-700">Mencari data pelamar pada model hr.applicant lintas entitas ESA Groups</p>
+            </div>
+
+            <!-- STATE 2: PREVIEW CARD (DITEMUKAN DI ODOO) -->
+            <div id="odooNikPreview" class="hidden space-y-4">
+                <div class="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/80 via-white to-purple-50/50 border-2 border-indigo-200/80 shadow-sm space-y-3.5">
+                    <div class="flex items-start justify-between gap-3 border-b border-indigo-100/80 pb-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 font-extrabold flex items-center justify-center text-sm" id="previewInitial">
+                                NY
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-extrabold text-slate-900 leading-tight" id="previewName">Nama Pelamar</h4>
+                                <div class="text-[11px] font-mono text-slate-500 mt-0.5" id="previewNik">NIK: 1610065111980003</div>
+                            </div>
+                        </div>
+                        <span id="previewEntityBadge" class="px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-600 text-white shadow-xs">
+                            AKP
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2.5 text-xs">
+                        <div class="bg-white/80 p-2.5 rounded-xl border border-slate-200/70">
+                            <span class="text-[10px] font-bold text-slate-400 block uppercase">Posisi / Job</span>
+                            <span class="font-extrabold text-slate-800 line-clamp-1" id="previewJob">-</span>
+                        </div>
+                        <div class="bg-white/80 p-2.5 rounded-xl border border-slate-200/70">
+                            <span class="text-[10px] font-bold text-slate-400 block uppercase">Prinsiple</span>
+                            <span class="font-extrabold text-slate-800 line-clamp-1" id="previewPrinciple">-</span>
+                        </div>
+                        <div class="bg-white/80 p-2.5 rounded-xl border border-slate-200/70">
+                            <span class="text-[10px] font-bold text-slate-400 block uppercase">Area / Penempatan</span>
+                            <span class="font-extrabold text-slate-800" id="previewArea">-</span>
+                        </div>
+                        <div class="bg-white/80 p-2.5 rounded-xl border border-slate-200/70">
+                            <span class="text-[10px] font-bold text-slate-400 block uppercase">Tahapan Odoo</span>
+                            <span class="font-extrabold text-purple-700" id="previewStage">-</span>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-[11px] text-slate-600 px-1">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-phone text-indigo-500"></i>
+                            <span id="previewPhone">-</span>
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-calendar-day text-indigo-500"></i>
+                            <span id="previewTtl">-</span>
+                        </span>
+                    </div>
+
+                    <!-- Warning jika ada kandidat lama dengan NIK sama -->
+                    <div id="previewArchiveWarning" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-2">
+                        <i class="fa-solid fa-circle-exclamation text-amber-500 text-xs shrink-0"></i>
+                        <span>NIK ini sebelumnya sudah pernah terdaftar di ASystem. Data lama otomatis diarsipkan agar pelamar dapat memulai proses seleksi baru.</span>
+                    </div>
+                </div>
+
+                <!-- Tombol Eksekusi Tarik & Simpan -->
+                <div class="flex items-center justify-end gap-2.5 pt-1">
+                    <button type="button" onclick="resetOdooNikModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+                        Batal / Ganti NIK
+                    </button>
+                    <button type="button" id="btnSaveCandidate" onclick="saveCandidateFromOdoo()" 
+                            class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition hover:-translate-y-0.5 cursor-pointer">
+                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                        <span>Tarik & Proses Kandidat ke ASystem</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- STATE 3: SUCCESS RESULT (SETELAH TERSIMPAN DI ASYSTEM) -->
+            <div id="odooNikSuccess" class="hidden space-y-4">
+                <div class="p-5 rounded-2xl bg-gradient-to-br from-emerald-50 via-white to-teal-50 border-2 border-emerald-300 shadow-sm space-y-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 rounded-2xl bg-emerald-500 text-white flex items-center justify-center text-2xl shadow-md shadow-emerald-500/30 shrink-0">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <div>
+                            <span class="text-[10px] font-black uppercase tracking-wider text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">BERHASIL DIPROSES</span>
+                            <h4 class="text-base font-extrabold text-slate-900 mt-0.5" id="succCandidateName">Nama Pelamar</h4>
+                            <p class="text-xs text-slate-500" id="succCandidateJob">Posisi & Prinsiple</p>
+                        </div>
+                    </div>
+
+                    <!-- Kredensial Tes Online CBT -->
+                    <div class="p-4 rounded-xl bg-white border border-emerald-200 shadow-xs space-y-2.5">
+                        <div class="text-xs font-extrabold text-slate-800 flex items-center gap-2">
+                            <i class="fa-solid fa-laptop-code text-emerald-600"></i>
+                            <span>Akun Login Tes Online (CBT Peserta)</span>
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs font-mono">
+                            <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                                <span class="text-[10px] font-sans font-bold text-slate-400 block uppercase">Username (NIK)</span>
+                                <span class="font-bold text-slate-900 select-all" id="succLoginNik">-</span>
+                            </div>
+                            <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200">
+                                <span class="text-[10px] font-sans font-bold text-slate-400 block uppercase">Password Default</span>
+                                <span class="font-bold text-emerald-700 select-all" id="succLoginPass">-</span>
+                            </div>
+                        </div>
+                        <div class="text-[11px] text-slate-500 flex items-center gap-1.5 pt-0.5">
+                            <i class="fa-solid fa-link text-slate-400"></i>
+                            <span>URL Tes: <b class="font-mono text-indigo-600 select-all" id="succLoginUrl">-</b></span>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons for Success -->
+                    <div class="flex flex-col sm:flex-row items-center gap-2.5 pt-1">
+                        <a id="btnSendWaInvite" href="#" target="_blank" class="w-full sm:w-auto flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition hover:-translate-y-0.5">
+                            <i class="fa-brands fa-whatsapp text-sm"></i>
+                            <span>Kirim Undangan Tes via WA</span>
+                        </a>
+                        <a id="btnViewCandidateProfile" href="#" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition">
+                            <i class="fa-solid fa-user text-xs"></i>
+                            <span>Buka Profil</span>
+                        </a>
+                        <button type="button" onclick="resetOdooNikModal()" class="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition cursor-pointer">
+                            <i class="fa-solid fa-plus text-xs mr-1"></i> Tarik NIK Lain
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer (ketika state awal) -->
+        <div id="odooNikFooter" class="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <span class="text-[11px] text-slate-500 flex items-center gap-1.5">
+                <i class="fa-solid fa-shield-halved text-indigo-500"></i>
+                <span>Terkoneksi langsung ke server Odoo XML-RPC</span>
+            </span>
+            <button type="button" onclick="closeOdooNikModal()" class="px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-xl transition">
+                Tutup
+            </button>
         </div>
     </div>
 </div>
@@ -1426,6 +1649,225 @@
         }
     }
 
+    // ==============================================================
+    // FITUR TARIK KANDIDAT DARI ODOO ERP VIA NIK
+    // ==============================================================
+    let currentOdooApplicantData = null;
+
+    function openOdooNikModal() {
+        document.getElementById('modalOdooNik').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        setTimeout(() => {
+            const inp = document.getElementById('odooNikInput');
+            if (inp) {
+                inp.focus();
+                inp.select();
+            }
+        }, 150);
+    }
+
+    function closeOdooNikModal() {
+        document.getElementById('modalOdooNik').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    function handleNikInput(input) {
+        input.value = input.value.replace(/\D/g, '').slice(0, 16);
+        const len = input.value.length;
+        const counter = document.getElementById('odooNikCounter');
+        if (counter) {
+            counter.textContent = `${len} / 16 Digit`;
+            if (len === 16) {
+                counter.className = 'text-[11px] font-bold text-emerald-600 font-mono';
+            } else {
+                counter.className = 'text-[11px] font-semibold text-slate-400 font-mono';
+            }
+        }
+    }
+
+    function resetOdooNikModal() {
+        currentOdooApplicantData = null;
+        document.getElementById('odooNikLoading').classList.add('hidden');
+        document.getElementById('odooNikPreview').classList.add('hidden');
+        document.getElementById('odooNikSuccess').classList.add('hidden');
+        document.getElementById('odooNikFooter').classList.remove('hidden');
+        const inp = document.getElementById('odooNikInput');
+        if (inp) {
+            inp.value = '';
+            inp.focus();
+        }
+        const counter = document.getElementById('odooNikCounter');
+        if (counter) {
+            counter.textContent = '0 / 16 Digit';
+            counter.className = 'text-[11px] font-semibold text-slate-400 font-mono';
+        }
+    }
+
+    async function searchCandidateByNik() {
+        const nikInput = document.getElementById('odooNikInput');
+        const nik = (nikInput.value || '').trim();
+        const entity = document.getElementById('odooNikEntity').value || 'all';
+
+        if (nik.length !== 16) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Format NIK Belum Sesuai',
+                text: `NIK wajib 16 digit angka (saat ini ${nik.length} digit).`,
+            });
+            nikInput.focus();
+            return;
+        }
+
+        // Tampilkan loading
+        document.getElementById('odooNikLoading').classList.remove('hidden');
+        document.getElementById('odooNikPreview').classList.add('hidden');
+        document.getElementById('odooNikSuccess').classList.add('hidden');
+        document.getElementById('btnSearchOdoo').disabled = true;
+
+        try {
+            const resp = await fetch("{{ route('interview.odoo.lookup_nik') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ nik: nik, entity: entity })
+            });
+
+            const data = await resp.json();
+            document.getElementById('odooNikLoading').classList.add('hidden');
+            document.getElementById('btnSearchOdoo').disabled = false;
+
+            if (!data.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Tidak Ditemukan di Odoo',
+                    text: data.message || 'Data pelamar tidak ditemukan di Odoo ERP.',
+                });
+                return;
+            }
+
+            // Render Preview
+            currentOdooApplicantData = data.applicant;
+            const app = data.applicant;
+
+            document.getElementById('previewName').textContent = app.name || '-';
+            document.getElementById('previewNik').textContent = `NIK: ${app.nik}`;
+            document.getElementById('previewInitial').textContent = (app.name || 'KD').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
+            document.getElementById('previewEntityBadge').textContent = app.entity || 'Odoo';
+            document.getElementById('previewJob').textContent = app.job || '-';
+            document.getElementById('previewPrinciple').textContent = app.principle || '-';
+            document.getElementById('previewArea').textContent = app.area || '-';
+            document.getElementById('previewStage').textContent = app.stage || 'Data Pelamar';
+            document.getElementById('previewPhone').textContent = app.phone ? `0${app.phone.replace(/^0+/, '')}` : 'Tidak ada telepon';
+            
+            let ttlText = app.birth || '-';
+            if (app.birth_place) ttlText = `${app.birth_place}, ${ttlText}`;
+            if (app.age) ttlText += ` (${app.age} Thn)`;
+            document.getElementById('previewTtl').textContent = ttlText;
+
+            // Warning jika data lama ada
+            const warnEl = document.getElementById('previewArchiveWarning');
+            if (data.existing_candidate) {
+                warnEl.classList.remove('hidden');
+            } else {
+                warnEl.classList.add('hidden');
+            }
+
+            document.getElementById('odooNikPreview').classList.remove('hidden');
+
+        } catch (err) {
+            document.getElementById('odooNikLoading').classList.add('hidden');
+            document.getElementById('btnSearchOdoo').disabled = false;
+            Swal.fire({
+                icon: 'error',
+                title: 'Koneksi Gagal',
+                text: 'Terjadi gangguan saat menghubungi server Odoo: ' + err.message,
+            });
+        }
+    }
+
+    async function saveCandidateFromOdoo() {
+        if (!currentOdooApplicantData) return;
+        const nik = currentOdooApplicantData.nik;
+        const entity = currentOdooApplicantData.entity;
+
+        const btnSave = document.getElementById('btnSaveCandidate');
+        btnSave.disabled = true;
+        btnSave.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>Menyimpan ke ASystem...</span>`;
+
+        try {
+            const resp = await fetch("{{ route('interview.odoo.import_nik') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ nik: nik, entity: entity })
+            });
+
+            const data = await resp.json();
+            btnSave.disabled = false;
+            btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> <span>Tarik & Proses Kandidat ke ASystem</span>`;
+
+            if (!data.success) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Gagal Menyimpan',
+                    text: data.message || 'Terjadi kesalahan saat menyimpan data kandidat.',
+                });
+                return;
+            }
+
+            // Sembunyikan form & preview, tampilkan kartu sukses
+            document.getElementById('odooNikPreview').classList.add('hidden');
+            document.getElementById('odooNikFooter').classList.add('hidden');
+
+            document.getElementById('succCandidateName').textContent = data.full_name;
+            document.getElementById('succCandidateJob').textContent = `${data.principle} • ${data.job} • Area: ${data.area}`;
+            document.getElementById('succLoginNik').textContent = data.nik;
+            document.getElementById('succLoginPass').textContent = data.default_password;
+            document.getElementById('succLoginUrl').textContent = data.cbt_login_url;
+
+            const btnWa = document.getElementById('btnSendWaInvite');
+            if (data.wa_link) {
+                btnWa.href = data.wa_link;
+                btnWa.classList.remove('hidden');
+            } else {
+                btnWa.classList.add('hidden');
+            }
+
+            const btnProfile = document.getElementById('btnViewCandidateProfile');
+            btnProfile.href = data.detail_url;
+
+            document.getElementById('odooNikSuccess').classList.remove('hidden');
+
+            // Notifikasi Toast
+            const Toast = Swal.mixin({
+                toast: true,
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 4000,
+                timerProgressBar: true
+            });
+            Toast.fire({
+                icon: 'success',
+                title: `Kandidat ${data.full_name} berhasil disimpan!`
+            });
+
+        } catch (err) {
+            btnSave.disabled = false;
+            btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> <span>Tarik & Proses Kandidat ke ASystem</span>`;
+            Swal.fire({
+                icon: 'error',
+                title: 'Galat Sistem',
+                text: 'Terjadi kesalahan: ' + err.message,
+            });
+        }
+    }
+
     // Auto open modal jika URL mengandung ?open_import=1
     document.addEventListener('DOMContentLoaded', function() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -1448,6 +1890,7 @@
             closeEditPrincipleModal();
             closeImportCandidateModal();
             closeSyncOdooModal();
+            closeOdooNikModal();
         }
     });
 </script>
