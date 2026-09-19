@@ -100,8 +100,6 @@ class RbacController extends Controller
             'display_name' => 'required|string|max:100',
             'name' => 'nullable|string|max:50|unique:roles,name',
             'description' => 'nullable|string|max:255',
-            'scope_principle_type' => 'required|string|in:all,specific',
-            'scope_area_type' => 'required|string|in:all,specific',
         ]);
 
         $name = $request->input('name');
@@ -119,21 +117,15 @@ class RbacController extends Controller
             $counter++;
         }
 
-        $handleAllPrinciples = $request->input('scope_principle_type') === 'all';
-        $allowedPrinciples = $handleAllPrinciples ? null : array_values(array_filter((array) $request->input('allowed_principles', [])));
-
-        $coverAllAreas = $request->input('scope_area_type') === 'all';
-        $allowedAreas = $coverAllAreas ? null : array_values(array_filter((array) $request->input('allowed_areas', [])));
-
         $role = Role::create([
             'name' => $name,
             'display_name' => $request->display_name,
             'description' => $request->description,
             'is_system' => false,
-            'handle_all_principles' => $handleAllPrinciples,
-            'allowed_principles' => $allowedPrinciples,
-            'cover_all_areas' => $coverAllAreas,
-            'allowed_areas' => $allowedAreas,
+            'handle_all_principles' => true,
+            'allowed_principles' => null,
+            'cover_all_areas' => true,
+            'allowed_areas' => null,
         ]);
 
         // Simpan permission terpilih jika ada
@@ -142,11 +134,11 @@ class RbacController extends Controller
         }
 
         return redirect()->route('setting.rbac.index', ['tab' => 'roles'])
-            ->with('success', "Role baru '{$role->display_name}' ({$role->name}) berhasil ditambahkan beserta pengaturan scope-nya!");
+            ->with('success', "Role baru '{$role->display_name}' ({$role->name}) berhasil ditambahkan! Anda dapat langsung mengatur penugasan user beserta cakupan prinsiple & areanya di Tab Manajemen Pengguna.");
     }
 
     /**
-     * Perbarui Data Role, Deskripsi, Scope Prinsiple & Area
+     * Perbarui Data Role, Deskripsi, dan Hak Akses Modul
      */
     public function updateRole(Request $request, $id)
     {
@@ -177,23 +169,6 @@ class RbacController extends Controller
 
         $role->display_name = $request->display_name;
         $role->description = $request->description;
-
-        // Admin selalu handle all
-        if ($role->name === 'admin') {
-            $role->handle_all_principles = true;
-            $role->allowed_principles = null;
-            $role->cover_all_areas = true;
-            $role->allowed_areas = null;
-        } else {
-            $handleAllPrinciples = $request->input('scope_principle_type') === 'all';
-            $role->handle_all_principles = $handleAllPrinciples;
-            $role->allowed_principles = $handleAllPrinciples ? null : array_values(array_filter((array) $request->input('allowed_principles', [])));
-
-            $coverAllAreas = $request->input('scope_area_type') === 'all';
-            $role->cover_all_areas = $coverAllAreas;
-            $role->allowed_areas = $coverAllAreas ? null : array_values(array_filter((array) $request->input('allowed_areas', [])));
-        }
-
         $role->save();
 
         if ($request->has('permissions') && is_array($request->permissions)) {
@@ -205,7 +180,7 @@ class RbacController extends Controller
         }
 
         return redirect()->route('setting.rbac.index', ['tab' => 'roles'])
-            ->with('success', "Data role '{$role->display_name}' dan pengaturan scope berhasil diperbarui!");
+            ->with('success', "Data role '{$role->display_name}' berhasil diperbarui!");
     }
 
     /**
@@ -269,50 +244,53 @@ class RbacController extends Controller
 
         $request->validate([
             'role' => 'required|string|exists:roles,name',
-            'is_active' => 'nullable|boolean',
-            'scope_override' => 'nullable|boolean',
+            'is_active' => 'nullable',
+            'scope_principle_type' => 'nullable|string|in:all,specific',
+            'scope_area_type' => 'nullable|string|in:all,specific',
+            'allowed_principles' => 'nullable|array',
+            'allowed_areas' => 'nullable|array',
         ]);
 
         $user->role = $request->role;
         $user->is_active = $request->has('is_active');
 
-        // Pengaturan Scope Override User
-        if ($request->has('scope_override')) {
-            $user->scope_override = true;
-            $userHandleAll = $request->input('user_scope_principle_type') === 'all';
-            $user->handle_all_principles = $userHandleAll;
-            $user->allowed_principles = $userHandleAll ? null : array_values(array_filter((array) $request->input('user_allowed_principles', [])));
+        // Pengaturan Scope Prinsiple & Area langsung per Karyawan / Pengguna
+        $principleType = $request->input('scope_principle_type') ?? $request->input('user_scope_principle_type', 'all');
+        $handleAllPrinciples = ($principleType === 'all');
+        $principlesInput = $request->input('allowed_principles') ?? $request->input('user_allowed_principles', []);
+        
+        $user->handle_all_principles = $handleAllPrinciples;
+        $user->allowed_principles = $handleAllPrinciples ? null : array_values(array_filter((array) $principlesInput));
 
-            $userCoverAll = $request->input('user_scope_area_type') === 'all';
-            $user->cover_all_areas = $userCoverAll;
-            $user->allowed_areas = $userCoverAll ? null : array_values(array_filter((array) $request->input('user_allowed_areas', [])));
-        } else {
-            $user->scope_override = false;
-            $user->handle_all_principles = true;
-            $user->allowed_principles = null;
-            $user->cover_all_areas = true;
-            $user->allowed_areas = null;
-        }
+        $areaType = $request->input('scope_area_type') ?? $request->input('user_scope_area_type', 'all');
+        $coverAllAreas = ($areaType === 'all');
+        $areasInput = $request->input('allowed_areas') ?? $request->input('user_allowed_areas', []);
+
+        $user->cover_all_areas = $coverAllAreas;
+        $user->allowed_areas = $coverAllAreas ? null : array_values(array_filter((array) $areasInput));
+        $user->scope_override = true;
 
         $user->save();
 
         // Simpan permission overrides individual jika ada
         $customOverrides = $request->input('custom_permissions', []);
-        $syncData = [];
-
-        foreach ($customOverrides as $permId => $action) {
-            if ($action === 'allow') {
-                $syncData[$permId] = ['is_granted' => true];
-            } elseif ($action === 'deny') {
-                $syncData[$permId] = ['is_granted' => false];
+        if (is_array($customOverrides)) {
+            $syncData = [];
+            foreach ($customOverrides as $permId => $action) {
+                if ($action === 'allow') {
+                    $syncData[$permId] = ['is_granted' => true];
+                } elseif ($action === 'deny') {
+                    $syncData[$permId] = ['is_granted' => false];
+                }
             }
-            // jika 'inherit' atau kosong, jangan masukkan ke pivot agar mewarisi role default
+            $user->customPermissions()->sync($syncData);
         }
 
-        $user->customPermissions()->sync($syncData);
+        $principleSummary = $handleAllPrinciples ? 'Semua Prinsiple' : count((array) $user->allowed_principles) . ' Prinsiple';
+        $areaSummary = $coverAllAreas ? 'Semua Area' : count((array) $user->allowed_areas) . ' Area';
 
         return redirect()->route('setting.rbac.index', ['tab' => 'users'])
-            ->with('success', "Pengaturan akses, scope kerja, dan role untuk {$user->name} berhasil diperbarui!");
+            ->with('success', "Pengaturan akses untuk {$user->name} berhasil diperbarui (Role: {$user->role}, Prinsiple: {$principleSummary}, Area: {$areaSummary})!");
     }
 
     /**

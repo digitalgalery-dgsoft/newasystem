@@ -15,10 +15,7 @@
         display_name: '',
         description: '',
         is_system: false,
-        scope_principle_type: 'all',
-        allowed_principles: [],
-        scope_area_type: 'all',
-        allowed_areas: []
+        permissions: []
     },
     selectedUser: {
         id: null,
@@ -26,18 +23,13 @@
         email: '',
         role: '',
         is_active: true,
-        scope_override: false,
-        user_scope_principle_type: 'all',
-        user_allowed_principles: [],
-        user_scope_area_type: 'all',
-        user_allowed_areas: []
+        scope_principle_type: 'all',
+        allowed_principles: [],
+        scope_area_type: 'all',
+        allowed_areas: []
     },
     allPrinciples: {{ json_encode($allPrinciples) }},
     allAreas: {{ json_encode($allAreas) }},
-    searchPrincipleNew: '',
-    searchAreaNew: '',
-    searchPrincipleEdit: '',
-    searchAreaEdit: '',
     searchPrincipleUser: '',
     searchAreaUser: '',
 
@@ -48,32 +40,44 @@
             display_name: role.display_name,
             description: role.description || '',
             is_system: !!role.is_system,
-            scope_principle_type: role.handle_all_principles ? 'all' : 'specific',
-            allowed_principles: Array.isArray(role.allowed_principles) ? [...role.allowed_principles] : [],
-            scope_area_type: role.cover_all_areas ? 'all' : 'specific',
-            allowed_areas: Array.isArray(role.allowed_areas) ? [...role.allowed_areas] : []
+            permissions: role.permissions ? role.permissions.map(p => p.id) : []
         };
-        this.searchPrincipleEdit = '';
-        this.searchAreaEdit = '';
         this.editRoleModal = true;
     },
 
     openEditUser(user) {
+        const handleAll = (user.handle_all_principles === false || user.handle_all_principles === 0) ? 'specific' : 'all';
+        const coverAll = (user.cover_all_areas === false || user.cover_all_areas === 0) ? 'specific' : 'all';
         this.selectedUser = {
             id: user.id,
             name: user.name,
             email: user.email,
             role: user.role,
-            is_active: !!user.is_active,
-            scope_override: !!user.scope_override,
-            user_scope_principle_type: user.handle_all_principles ? 'all' : 'specific',
-            user_allowed_principles: Array.isArray(user.allowed_principles) ? [...user.allowed_principles] : [],
-            user_scope_area_type: user.cover_all_areas ? 'all' : 'specific',
-            user_allowed_areas: Array.isArray(user.allowed_areas) ? [...user.allowed_areas] : []
+            is_active: user.is_active !== undefined ? !!user.is_active : true,
+            scope_principle_type: handleAll,
+            allowed_principles: Array.isArray(user.allowed_principles) ? [...user.allowed_principles] : [],
+            scope_area_type: coverAll,
+            allowed_areas: Array.isArray(user.allowed_areas) ? [...user.allowed_areas] : []
         };
         this.searchPrincipleUser = '';
         this.searchAreaUser = '';
         this.editUserModal = true;
+    },
+
+    toggleAllUserPrinciples() {
+        if (this.selectedUser.allowed_principles.length === this.allPrinciples.length) {
+            this.selectedUser.allowed_principles = [];
+        } else {
+            this.selectedUser.allowed_principles = [...this.allPrinciples];
+        }
+    },
+
+    toggleAllUserAreas() {
+        if (this.selectedUser.allowed_areas.length === this.allAreas.length) {
+            this.selectedUser.allowed_areas = [];
+        } else {
+            this.selectedUser.allowed_areas = [...this.allAreas];
+        }
     },
 
     openResetPassword(user) {
@@ -142,10 +146,10 @@
                 <div class="flex items-center gap-2 mb-1 flex-wrap">
                     <h1 class="text-xl font-black text-slate-900 tracking-tight">Hak Akses Pengguna & Role Dinamis (RBAC)</h1>
                     <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold text-[10px] border border-indigo-200">Role-Based Access Control</span>
-                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">Scope Prinsiple & Area</span>
+                    <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold text-[10px] border border-emerald-200">Scope Prinsiple & Area per User</span>
                 </div>
                 <p class="text-xs text-slate-500 leading-relaxed">
-                    Kelola peran dinamis, matriks izin modul, serta pengaturan cakupan prinsiple dan area kerja karyawan agar data tampil sesuai dengan otorisasi rolenya.
+                    Kelola peran akses (seperti <strong>Role Akses AS</strong>), matriks izin modul, serta cakupan prinsiple & area kerja masing-masing karyawan agar data tampil sesuai dengan tugasnya.
                 </p>
             </div>
         </div>
@@ -178,91 +182,83 @@
         <!-- 2. Total Roles -->
         <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center gap-3.5">
             <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center text-lg flex-shrink-0 border border-purple-100">
-                <i class="fa-solid fa-id-badge"></i>
+                <i class="fa-solid fa-id-card-clip"></i>
             </div>
             <div>
-                <div class="text-xl font-black text-purple-700">{{ $totalRoles }}</div>
-                <div class="text-[11px] font-semibold text-slate-500">Role Terkonfigurasi</div>
+                <div class="text-xl font-black text-slate-900">{{ $totalRoles }}</div>
+                <div class="text-[11px] font-semibold text-slate-500">Total Role Dinamis</div>
             </div>
         </div>
 
         <!-- 3. Total Permissions -->
         <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center gap-3.5">
-            <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-lg flex-shrink-0 border border-blue-100">
-                <i class="fa-solid fa-shield-halved"></i>
+            <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center text-lg flex-shrink-0 border border-emerald-100">
+                <i class="fa-solid fa-shield-check"></i>
             </div>
             <div>
-                <div class="text-xl font-black text-blue-700">{{ $totalPermissions }}</div>
-                <div class="text-[11px] font-semibold text-slate-500">Modul Perizinan</div>
+                <div class="text-xl font-black text-slate-900">{{ $totalPermissions }}</div>
+                <div class="text-[11px] font-semibold text-slate-500">Total Izin Modul</div>
             </div>
         </div>
 
-        <!-- 4. Active Logins -->
-        <div class="bg-white rounded-2xl p-4 border border-emerald-200/80 bg-emerald-50/20 shadow-sm flex items-center gap-3.5">
-            <div class="w-11 h-11 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-lg flex-shrink-0 border border-emerald-200">
-                <i class="fa-solid fa-user-check"></i>
+        <!-- 4. Active Users -->
+        <div class="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center text-lg flex-shrink-0 border border-blue-100">
+                <i class="fa-solid fa-circle-check"></i>
             </div>
             <div>
-                <div class="text-xl font-black text-emerald-700">{{ $activeUsers }}</div>
-                <div class="text-[11px] font-semibold text-emerald-600">Pengguna Aktif Login</div>
+                <div class="text-xl font-black text-slate-900">{{ $activeUsers }}</div>
+                <div class="text-[11px] font-semibold text-slate-500">Pengguna Aktif Login</div>
             </div>
         </div>
     </div>
 
-    <!-- TAB NAVIGATION HEADER -->
-    <div class="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-sm flex items-center justify-between gap-1.5 overflow-x-auto">
-        <div class="flex items-center gap-1.5">
-            <button type="button" 
-                    @click="activeTab = 'matrix'" 
-                    :class="activeTab === 'matrix' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
-                    class="px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 whitespace-nowrap">
-                <i class="fa-solid fa-table-cells text-xs"></i>
-                <span>Matriks Hak Akses Role</span>
-            </button>
+    <!-- TAB NAVIGATION -->
+    <div class="bg-white rounded-2xl p-1.5 border border-slate-200 shadow-sm inline-flex flex-wrap gap-1">
+        <button type="button" 
+                @click="activeTab = 'matrix'" 
+                :class="activeTab === 'matrix' ? 'bg-primary text-white shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold'"
+                class="px-5 py-2 rounded-xl text-xs transition-all flex items-center gap-2">
+            <i class="fa-solid fa-table-cells text-xs"></i>
+            <span>Matriks Hak Akses Modul</span>
+        </button>
 
-            <button type="button" 
-                    @click="activeTab = 'users'" 
-                    :class="activeTab === 'users' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
-                    class="px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 whitespace-nowrap">
-                <i class="fa-solid fa-users-gear text-xs"></i>
-                <span>Manajemen Pengguna & Karyawan</span>
-                <span class="px-1.5 py-0.5 rounded-md text-[10px] font-black" :class="activeTab === 'users' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'">{{ $totalUsers }}</span>
-            </button>
+        <button type="button" 
+                @click="activeTab = 'users'" 
+                :class="activeTab === 'users' ? 'bg-primary text-white shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold'"
+                class="px-5 py-2 rounded-xl text-xs transition-all flex items-center gap-2">
+            <i class="fa-solid fa-users-gear text-xs"></i>
+            <span>Pengaturan Pengguna & Scope AS</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black" :class="activeTab === 'users' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'">
+                {{ $totalUsers }}
+            </span>
+        </button>
 
-            <button type="button" 
-                    @click="activeTab = 'roles'" 
-                    :class="activeTab === 'roles' ? 'bg-slate-900 text-white shadow-md' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'"
-                    class="px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 whitespace-nowrap">
-                <i class="fa-solid fa-tags text-xs"></i>
-                <span>Katalog Role & Scope</span>
-                <span class="px-1.5 py-0.5 rounded-md text-[10px] font-black" :class="activeTab === 'roles' ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-700'">{{ $totalRoles }}</span>
-            </button>
-        </div>
-
-        <button type="button" @click="newRoleModal = true" class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-primary hover:bg-primary-50 transition-all mr-1">
-            <i class="fa-solid fa-plus text-[10px]"></i>
-            <span>Tambah Role</span>
+        <button type="button" 
+                @click="activeTab = 'roles'" 
+                :class="activeTab === 'roles' ? 'bg-primary text-white shadow-sm font-bold' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-semibold'"
+                class="px-5 py-2 rounded-xl text-xs transition-all flex items-center gap-2">
+            <i class="fa-solid fa-id-badge text-xs"></i>
+            <span>Daftar & Detail Role</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-black" :class="activeTab === 'roles' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'">
+                {{ $totalRoles }}
+            </span>
         </button>
     </div>
 
-    <!-- TAB 1: MATRIKS HAK AKSES PER ROLE -->
+    <!-- TAB 1: MATRIKS PERIZINAN PER ROLE -->
     <div x-show="activeTab === 'matrix'" x-cloak class="space-y-4">
-        <form method="POST" action="{{ route('setting.rbac.matrix.update') }}">
+        <form action="{{ route('setting.rbac.matrix.update') }}" method="POST">
             @csrf
-
             <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-                <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-50/50">
                     <div>
                         <h3 class="text-sm font-black text-slate-900">Matriks Hak Akses Modul per Role</h3>
-                        <p class="text-[11px] text-slate-500">Centang kotak untuk memberikan izin akses modul kepada role terkait. Perubahan akan berlaku secara instan.</p>
+                        <p class="text-[11px] text-slate-500">Centang kotak untuk memberikan izin modul kepada masing-masing peran. Matriks ini berlaku umum untuk setiap pengguna yang memiliki role tersebut.</p>
                     </div>
 
-                    <div class="flex items-center gap-2.5">
-                        <button type="button" @click="newRoleModal = true" class="px-4 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold text-xs transition-all flex items-center gap-1.5">
-                            <i class="fa-solid fa-plus text-xs"></i>
-                            <span>Role Baru</span>
-                        </button>
-                        <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white font-bold text-xs shadow-md shadow-primary/25 transition-all flex items-center gap-2">
+                    <div class="flex items-center gap-2">
+                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white font-bold text-xs shadow-md shadow-primary/25 transition-all flex items-center gap-2">
                             <i class="fa-solid fa-floppy-disk text-xs"></i>
                             <span>Simpan Perubahan Matriks</span>
                         </button>
@@ -280,30 +276,14 @@
                                             <span class="font-bold text-slate-900 text-xs truncate max-w-[130px]">{{ $role->display_name }}</span>
                                             <button type="button" 
                                                     @click="openEditRole({{ json_encode($role) }})" 
-                                                    title="Edit Scope & Info Role"
+                                                    title="Edit Info Role"
                                                     class="text-slate-400 hover:text-primary p-0.5">
                                                 <i class="fa-solid fa-pen-to-square text-[10px]"></i>
                                             </button>
                                         </div>
-                                        <div class="text-[10px] text-slate-400 font-mono">({{ $role->name }})</div>
-                                        
-                                        <!-- Scope Badges -->
-                                        <div class="flex flex-col items-center gap-0.5 mt-1.5">
-                                            @if($role->handlesAllPrinciples())
-                                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Semua Prinsiple</span>
-                                            @else
-                                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200" title="{{ implode(', ', $role->getEffectivePrinciples()) }}">
-                                                    {{ count($role->getEffectivePrinciples()) }} Prinsiple
-                                                </span>
-                                            @endif
-
-                                            @if($role->coversAllAreas())
-                                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">Semua Area</span>
-                                            @else
-                                                <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-700 border border-amber-200" title="{{ implode(', ', $role->getEffectiveAreas()) }}">
-                                                    {{ count($role->getEffectiveAreas()) }} Area
-                                                </span>
-                                            @endif
+                                        <div class="mt-1 flex items-center justify-center gap-1 flex-wrap">
+                                            <code class="text-[9px] font-mono text-slate-500 bg-slate-100 px-1 py-0.2 rounded">{{ $role->name }}</code>
+                                            <span class="text-[9px] font-semibold text-slate-400">({{ $role->users()->count() }} User)</span>
                                         </div>
                                     </th>
                                 @endforeach
@@ -335,7 +315,7 @@
                                                 @endphp
 
                                                 @if($isAdminRole)
-                                                    <!-- Super Admin selalu diizinkan (Readonly checkmark) -->
+                                                    <!-- Super Admin selalu diizinkan -->
                                                     <div class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700" title="Super Admin memiliki akses penuh">
                                                         <i class="fa-solid fa-check text-xs font-black"></i>
                                                     </div>
@@ -385,7 +365,7 @@
                 </div>
 
                 <!-- Role Filter -->
-                <div class="w-full sm:w-52">
+                <div class="w-full sm:w-56">
                     <select name="role" 
                             onchange="this.form.submit()"
                             class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:bg-white focus:outline-none focus:border-primary">
@@ -423,10 +403,10 @@
 
         <!-- USERS TABLE -->
         <div class="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-            <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+            <div class="p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <div>
-                    <h3 class="text-sm font-black text-slate-900">Daftar Akun Pengguna & Karyawan</h3>
-                    <p class="text-[11px] text-slate-500">Kelola role, cakupan prinsiple/area, dan perizinan spesifik untuk setiap user.</p>
+                    <h3 class="text-sm font-black text-slate-900">Daftar Akun Pengguna & Penugasan AS</h3>
+                    <p class="text-[11px] text-slate-500">Satu role (misal: <strong>Role Akses AS</strong>) dapat digunakan oleh banyak user dengan prinsiple handle dan cover area yang berbeda-beda.</p>
                 </div>
             </div>
 
@@ -436,9 +416,10 @@
                         <tr class="bg-slate-50/80 border-b border-slate-200 text-[11px] font-black text-slate-500 uppercase tracking-wider">
                             <th class="py-3.5 px-4 w-12 text-center">ID</th>
                             <th class="py-3.5 px-4">Nama & Email Pengguna</th>
-                            <th class="py-3.5 px-4">Jabatan & Area Asal</th>
+                            <th class="py-3.5 px-4">Jabatan & Asal</th>
                             <th class="py-3.5 px-3 text-center">Role Akses</th>
-                            <th class="py-3.5 px-4">Scope Kerja (Prinsiple & Area)</th>
+                            <th class="py-3.5 px-4">Prinsiple Dihandle</th>
+                            <th class="py-3.5 px-4">Area Cover</th>
                             <th class="py-3.5 px-3 text-center">Status Login</th>
                             <th class="py-3.5 px-4 text-center w-36">Aksi</th>
                         </tr>
@@ -470,6 +451,7 @@
                                     @php
                                         $roleBadgeClasses = [
                                             'admin' => 'bg-purple-100 text-purple-800 border-purple-200',
+                                            'role_akses_as' => 'bg-indigo-100 text-indigo-800 border-indigo-200 font-black',
                                             'recruiter' => 'bg-blue-100 text-blue-800 border-blue-200',
                                             'head_hr' => 'bg-amber-100 text-amber-800 border-amber-200',
                                             'karyawan_inhouse' => 'bg-slate-100 text-slate-800 border-slate-200',
@@ -480,43 +462,78 @@
                                     <span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold border {{ $badgeCls }}">
                                         {{ $u->roleModel->display_name ?? strtoupper($u->role) }}
                                     </span>
+                                </td>
 
-                                    @if($u->customPermissions->count() > 0)
-                                        <div class="text-[9px] font-bold text-primary mt-1">
-                                            +{{ $u->customPermissions->count() }} Izin Kustom
-                                        </div>
+                                <!-- Prinsiple Dihandle Column -->
+                                <td class="py-3.5 px-4">
+                                    @if($u->isAdmin())
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <i class="fa-solid fa-crown text-[9px] text-amber-500"></i>
+                                            <span>Semua Prinsiple (Admin)</span>
+                                        </span>
+                                    @elseif($u->handlesAllPrinciples())
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                            <i class="fa-solid fa-circle-check text-[9px]"></i>
+                                            <span>Semua Prinsiple</span>
+                                        </span>
+                                    @else
+                                        @php
+                                            $uPrins = $u->getEffectivePrinciples();
+                                            $uPrinsCount = count($uPrins);
+                                        @endphp
+                                        @if($uPrinsCount === 0)
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
+                                                <i class="fa-solid fa-ban text-[9px]"></i>
+                                                <span>Belum Ditugaskan</span>
+                                            </span>
+                                        @else
+                                            <div class="space-y-0.5">
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                                    <i class="fa-solid fa-building text-[9px]"></i>
+                                                    <span>{{ $uPrinsCount }} Prinsiple</span>
+                                                </span>
+                                                <div class="text-[10px] text-slate-500 font-medium truncate max-w-[170px]" title="{{ implode(', ', $uPrins) }}">
+                                                    {{ implode(', ', array_slice($uPrins, 0, 2)) }}{{ $uPrinsCount > 2 ? ', +' . ($uPrinsCount - 2) . ' lainnya' : '' }}
+                                                </div>
+                                            </div>
+                                        @endif
                                     @endif
                                 </td>
 
+                                <!-- Area Cover Column -->
                                 <td class="py-3.5 px-4">
-                                    <div class="space-y-1">
-                                        <!-- Prinsiple Badge -->
-                                        <div class="flex items-center gap-1">
-                                            <span class="text-[10px] text-slate-400 font-semibold w-14">Prinsiple:</span>
-                                            @if($u->handlesAllPrinciples())
-                                                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Semua Prinsiple</span>
-                                            @else
-                                                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-700 border border-indigo-200" title="{{ implode(', ', $u->getEffectivePrinciples()) }}">
-                                                    {{ count($u->getEffectivePrinciples()) }} Prinsiple
+                                    @if($u->isAdmin())
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                                            <i class="fa-solid fa-crown text-[9px] text-amber-500"></i>
+                                            <span>Semua Area (Admin)</span>
+                                        </span>
+                                    @elseif($u->coversAllAreas())
+                                        <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">
+                                            <i class="fa-solid fa-circle-check text-[9px]"></i>
+                                            <span>Semua Area (Nasional)</span>
+                                        </span>
+                                    @else
+                                        @php
+                                            $uAreas = $u->getEffectiveAreas();
+                                            $uAreasCount = count($uAreas);
+                                        @endphp
+                                        @if($uAreasCount === 0)
+                                            <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">
+                                                <i class="fa-solid fa-ban text-[9px]"></i>
+                                                <span>Belum Ada Area</span>
+                                            </span>
+                                        @else
+                                            <div class="space-y-0.5">
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-lg bg-purple-50 text-purple-700 border border-purple-200">
+                                                    <i class="fa-solid fa-location-dot text-[9px]"></i>
+                                                    <span>{{ $uAreasCount }} Area</span>
                                                 </span>
-                                            @endif
-                                            @if($u->scope_override)
-                                                <span class="text-[9px] text-amber-600 font-bold bg-amber-50 px-1 rounded border border-amber-200">Kustom</span>
-                                            @endif
-                                        </div>
-
-                                        <!-- Area Badge -->
-                                        <div class="flex items-center gap-1">
-                                            <span class="text-[10px] text-slate-400 font-semibold w-14">Area:</span>
-                                            @if($u->coversAllAreas())
-                                                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-50 text-blue-700 border border-blue-200">Semua Area</span>
-                                            @else
-                                                <span class="text-[10px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700 border border-purple-200" title="{{ implode(', ', $u->getEffectiveAreas()) }}">
-                                                    {{ count($u->getEffectiveAreas()) }} Area
-                                                </span>
-                                            @endif
-                                        </div>
-                                    </div>
+                                                <div class="text-[10px] text-slate-500 font-medium truncate max-w-[170px]" title="{{ implode(', ', $uAreas) }}">
+                                                    {{ implode(', ', array_slice($uAreas, 0, 2)) }}{{ $uAreasCount > 2 ? ', +' . ($uAreasCount - 2) . ' lainnya' : '' }}
+                                                </div>
+                                            </div>
+                                        @endif
+                                    @endif
                                 </td>
 
                                 <td class="py-3.5 px-3 text-center">
@@ -553,9 +570,9 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="7" class="py-12 text-center text-slate-400">
-                                    <i class="fa-solid fa-user-slash text-3xl mb-2 block"></i>
-                                    <p class="text-xs font-semibold">Tidak ada data pengguna yang cocok dengan filter pencarian.</p>
+                                <td colspan="8" class="py-12 text-center text-slate-400">
+                                    <i class="fa-solid fa-user-slash text-3xl mb-2 text-slate-300"></i>
+                                    <p class="text-xs font-semibold">Tidak ada pengguna yang cocok dengan kriteria pencarian.</p>
                                 </td>
                             </tr>
                         @endforelse
@@ -563,22 +580,22 @@
                 </table>
             </div>
 
-            @if($users->hasPages())
-                <div class="p-4 border-t border-slate-100">
-                    {{ $users->links() }}
-                </div>
-            @endif
+            <!-- PAGINATION -->
+            <div class="p-4 border-t border-slate-100 bg-slate-50/50">
+                {{ $users->links() }}
+            </div>
         </div>
     </div>
 
-    <!-- TAB 3: KATALOG ROLE & SCOPE -->
+    <!-- TAB 3: DAFTAR & DETAIL ROLE DINAMIS -->
     <div x-show="activeTab === 'roles'" x-cloak class="space-y-4">
         <div class="flex items-center justify-between">
             <div>
-                <h3 class="text-sm font-black text-slate-900">Katalog Role & Pengaturan Scope Cakupan Kerja</h3>
-                <p class="text-[11px] text-slate-500">Daftar seluruh role pengguna berserta cakupan prinsiple dan area penempatan kerja.</p>
+                <h3 class="text-sm font-black text-slate-900">Katalog Role & Tanggung Jawab</h3>
+                <p class="text-[11px] text-slate-500">Daftar peran sistem yang tersedia. Setiap role dapat ditugaskan ke banyak pengguna dengan cakupan kerja spesifik.</p>
             </div>
-            <button type="button" @click="newRoleModal = true" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-700 text-white font-bold text-xs shadow-sm flex items-center gap-2">
+
+            <button type="button" @click="newRoleModal = true" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-700 text-white font-bold text-xs shadow-md shadow-primary/25 transition-all flex items-center gap-1.5">
                 <i class="fa-solid fa-plus text-xs"></i>
                 <span>Tambah Role Baru</span>
             </button>
@@ -588,22 +605,17 @@
             @foreach($roles as $r)
                 <div class="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-shadow">
                     <div>
-                        <div class="flex items-start justify-between gap-3 mb-3">
-                            <div class="flex items-center gap-2.5">
-                                <div class="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-lg font-black flex-shrink-0">
-                                    <i class="fa-solid fa-id-card-clip"></i>
-                                </div>
-                                <div>
-                                    <h4 class="font-black text-slate-900 text-sm">{{ $r->display_name }}</h4>
-                                    <div class="flex items-center gap-1.5 mt-0.5">
-                                        <code class="text-[10px] text-slate-400 font-mono">{{ $r->name }}</code>
-                                        @if($r->is_system)
-                                            <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-100 text-slate-600">Sistem</span>
-                                        @else
-                                            <span class="text-[9px] font-bold px-1.5 py-0.2 rounded bg-purple-50 text-purple-700">Kustom</span>
-                                        @endif
-                                    </div>
-                                </div>
+                        <div class="flex items-start justify-between gap-2 mb-3">
+                            <div>
+                                <h4 class="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+                                    <span>{{ $r->display_name }}</span>
+                                    @if($r->is_system)
+                                        <span class="px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-bold text-[9px]" title="Role Bawaan Sistem">SISTEM</span>
+                                    @else
+                                        <span class="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-700 font-bold text-[9px] border border-indigo-200" title="Role Kustom">KUSTOM</span>
+                                    @endif
+                                </h4>
+                                <code class="text-[10px] text-slate-400 font-mono">{{ $r->name }}</code>
                             </div>
 
                             <span class="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700">
@@ -615,57 +627,15 @@
                             {{ $r->description ?: 'Tidak ada deskripsi khusus untuk role ini.' }}
                         </p>
 
-                        <!-- Scope Summary -->
-                        <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100 space-y-2 mb-4">
-                            <div>
-                                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                    <i class="fa-solid fa-building text-primary text-[10px]"></i>
-                                    <span>Prinsiple Dihandle:</span>
-                                </div>
-                                @if($r->handlesAllPrinciples())
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">
-                                        Semua Prinsiple (Tanpa Batasan)
-                                    </span>
-                                @else
-                                    <div class="flex flex-wrap gap-1">
-                                        @foreach(array_slice($r->getEffectivePrinciples(), 0, 4) as $pName)
-                                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-                                                {{ $pName }}
-                                            </span>
-                                        @endforeach
-                                        @if(count($r->getEffectivePrinciples()) > 4)
-                                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-700">
-                                                +{{ count($r->getEffectivePrinciples()) - 4 }} Lainnya
-                                            </span>
-                                        @endif
-                                    </div>
-                                @endif
+                        <!-- Informative Scope Note -->
+                        <div class="bg-indigo-50/50 rounded-2xl p-3 border border-indigo-100/80 mb-4 text-[11px] text-slate-600">
+                            <div class="font-bold text-indigo-900 flex items-center gap-1.5 mb-1">
+                                <i class="fa-solid fa-users-gear text-indigo-600 text-xs"></i>
+                                <span>Cakupan Prinsiple & Area Fleksibel</span>
                             </div>
-
-                            <div class="pt-2 border-t border-slate-200/60">
-                                <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center gap-1">
-                                    <i class="fa-solid fa-location-dot text-rose-500 text-[10px]"></i>
-                                    <span>Area Cover:</span>
-                                </div>
-                                @if($r->coversAllAreas())
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-blue-100 text-blue-800">
-                                        Semua Area (Nasional)
-                                    </span>
-                                @else
-                                    <div class="flex flex-wrap gap-1">
-                                        @foreach(array_slice($r->getEffectiveAreas(), 0, 5) as $aName)
-                                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-white border border-slate-200 text-slate-700">
-                                                {{ $aName }}
-                                            </span>
-                                        @endforeach
-                                        @if(count($r->getEffectiveAreas()) > 5)
-                                            <span class="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-purple-50 text-purple-700">
-                                                +{{ count($r->getEffectiveAreas()) - 5 }} Lainnya
-                                            </span>
-                                        @endif
-                                    </div>
-                                @endif
-                            </div>
+                            <p class="text-[10px] text-slate-500 leading-normal">
+                                Role ini dapat digunakan oleh banyak user dengan tugas prinsiple & wilayah berbeda yang diatur di Tab <strong>Manajemen Pengguna</strong>.
+                            </p>
                         </div>
                     </div>
 
@@ -680,7 +650,7 @@
                                     @click="openEditRole({{ json_encode($r) }})"
                                     class="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-primary-50 text-slate-700 hover:text-primary font-bold text-[11px] transition-all flex items-center gap-1">
                                 <i class="fa-solid fa-pen-to-square text-[10px]"></i>
-                                <span>Edit Scope</span>
+                                <span>Edit Role</span>
                             </button>
 
                             @if(!$r->is_system && $r->name !== 'admin')
@@ -701,7 +671,7 @@
 
     <!-- MODAL 1: TAMBAH ROLE BARU -->
     <div x-show="newRoleModal" x-cloak class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 my-8 max-h-[90vh] flex flex-col">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 my-8 max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 flex-shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-lg font-black">
@@ -709,7 +679,7 @@
                     </div>
                     <div>
                         <h3 class="text-base font-black text-slate-900">Tambah Role Akses Baru</h3>
-                        <p class="text-xs text-slate-500">Definisikan peran baru beserta prinsiple yang dihandle dan area cover-nya.</p>
+                        <p class="text-xs text-slate-500">Definisikan peran baru (contoh: <strong>Role Akses AS</strong>) dan modul yang diizinkan.</p>
                     </div>
                 </div>
                 <button type="button" @click="newRoleModal = false" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
@@ -717,37 +687,18 @@
                 </button>
             </div>
 
-            <form action="{{ route('setting.rbac.role.store') }}" method="POST" class="overflow-y-auto pr-1 flex-1 space-y-4 text-xs" x-data="{
-                newScopePrinciple: 'all',
-                newScopeArea: 'all',
-                selectedPrinciples: [],
-                selectedAreas: [],
-                toggleAllPrinciples() {
-                    if (this.selectedPrinciples.length === allPrinciples.length) {
-                        this.selectedPrinciples = [];
-                    } else {
-                        this.selectedPrinciples = [...allPrinciples];
-                    }
-                },
-                toggleAllAreas() {
-                    if (this.selectedAreas.length === allAreas.length) {
-                        this.selectedAreas = [];
-                    } else {
-                        this.selectedAreas = [...allAreas];
-                    }
-                }
-            }">
+            <form action="{{ route('setting.rbac.role.store') }}" method="POST" class="overflow-y-auto pr-1 flex-1 space-y-4 text-xs">
                 @csrf
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Nama Tampilan Role <span class="text-rose-500">*</span></label>
-                        <input type="text" name="display_name" required placeholder="Contoh: Recruiter Area Surabaya" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary">
+                        <input type="text" name="display_name" required placeholder="Contoh: Role Akses AS" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary">
                     </div>
 
                     <div>
                         <label class="block font-bold text-slate-700 mb-1">Kode Identitas (Slug) <span class="text-slate-400 font-normal text-[11px]">(Opsional)</span></label>
-                        <input type="text" name="name" placeholder="contoh: recruiter_surabaya" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary">
+                        <input type="text" name="name" placeholder="contoh: role_akses_as" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary">
                     </div>
                 </div>
 
@@ -756,89 +707,14 @@
                     <textarea name="description" rows="2" placeholder="Jelaskan ruang lingkup atau tanggung jawab peran ini..." class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:border-primary"></textarea>
                 </div>
 
-                <!-- SCOPE 1: PENGATURAN PRINSIPLE DIHANDLE -->
-                <div class="p-4 rounded-2xl bg-indigo-50/40 border border-indigo-100 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                            <i class="fa-solid fa-building text-indigo-600"></i>
-                            <span>Prinsiple yang Dihandle</span>
-                        </div>
-                        <span class="text-[10px] text-indigo-700 font-bold" x-text="newScopePrinciple === 'all' ? 'Semua Prinsiple' : selectedPrinciples.length + ' Dipilih'"></span>
+                <!-- INFO BANNER: PRINSIPLE & AREA DIATUR PER USER -->
+                <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fa-solid fa-lightbulb text-xs"></i>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" :class="newScopePrinciple === 'all' ? 'bg-indigo-600 text-white border-indigo-600 font-bold' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
-                            <input type="radio" name="scope_principle_type" value="all" x-model="newScopePrinciple" class="sr-only">
-                            <i class="fa-solid fa-earth-americas text-xs"></i>
-                            <span>Semua Prinsiple</span>
-                        </label>
-                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" :class="newScopePrinciple === 'specific' ? 'bg-indigo-600 text-white border-indigo-600 font-bold' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
-                            <input type="radio" name="scope_principle_type" value="specific" x-model="newScopePrinciple" class="sr-only">
-                            <i class="fa-solid fa-list-check text-xs"></i>
-                            <span>Pilih Prinsiple Tertentu</span>
-                        </label>
-                    </div>
-
-                    <!-- Specific Principle Checklist -->
-                    <div x-show="newScopePrinciple === 'specific'" x-cloak class="space-y-2 pt-2 border-t border-indigo-100">
-                        <div class="flex items-center gap-2">
-                            <input type="text" x-model="searchPrincipleNew" placeholder="Cari nama prinsiple..." class="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-500">
-                            <button type="button" @click="toggleAllPrinciples()" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold text-[11px] whitespace-nowrap">
-                                <span x-text="selectedPrinciples.length === allPrinciples.length ? 'Batal Semua' : 'Pilih Semua'"></span>
-                            </button>
-                        </div>
-
-                        <div class="max-h-40 overflow-y-auto bg-white rounded-xl border border-slate-200 p-2 divide-y divide-slate-100">
-                            <template x-for="p in allPrinciples.filter(item => item.toLowerCase().includes(searchPrincipleNew.toLowerCase()))" :key="p">
-                                <label class="py-1.5 px-2 flex items-center gap-2.5 hover:bg-slate-50 rounded-lg cursor-pointer">
-                                    <input type="checkbox" name="allowed_principles[]" :value="p" x-model="selectedPrinciples" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
-                                    <span class="text-xs text-slate-800 font-medium" x-text="p"></span>
-                                </label>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SCOPE 2: PENGATURAN AREA COVER -->
-                <div class="p-4 rounded-2xl bg-blue-50/40 border border-blue-100 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                            <i class="fa-solid fa-location-dot text-blue-600"></i>
-                            <span>Area Cover Penempatan</span>
-                        </div>
-                        <span class="text-[10px] text-blue-700 font-bold" x-text="newScopeArea === 'all' ? 'Semua Area' : selectedAreas.length + ' Dipilih'"></span>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" :class="newScopeArea === 'all' ? 'bg-blue-600 text-white border-blue-600 font-bold' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
-                            <input type="radio" name="scope_area_type" value="all" x-model="newScopeArea" class="sr-only">
-                            <i class="fa-solid fa-map text-xs"></i>
-                            <span>Semua Area (Nasional)</span>
-                        </label>
-                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" :class="newScopeArea === 'specific' ? 'bg-blue-600 text-white border-blue-600 font-bold' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
-                            <input type="radio" name="scope_area_type" value="specific" x-model="newScopeArea" class="sr-only">
-                            <i class="fa-solid fa-location-crosshairs text-xs"></i>
-                            <span>Pilih Area Tertentu</span>
-                        </label>
-                    </div>
-
-                    <!-- Specific Area Checklist -->
-                    <div x-show="newScopeArea === 'specific'" x-cloak class="space-y-2 pt-2 border-t border-blue-100">
-                        <div class="flex items-center gap-2">
-                            <input type="text" x-model="searchAreaNew" placeholder="Cari nama kota/area..." class="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-blue-500">
-                            <button type="button" @click="toggleAllAreas()" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold text-[11px] whitespace-nowrap">
-                                <span x-text="selectedAreas.length === allAreas.length ? 'Batal Semua' : 'Pilih Semua'"></span>
-                            </button>
-                        </div>
-
-                        <div class="max-h-40 overflow-y-auto bg-white rounded-xl border border-slate-200 p-2 divide-y divide-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                            <template x-for="a in allAreas.filter(item => item.toLowerCase().includes(searchAreaNew.toLowerCase()))" :key="a">
-                                <label class="py-1 px-2 flex items-center gap-2 hover:bg-slate-50 rounded-lg cursor-pointer">
-                                    <input type="checkbox" name="allowed_areas[]" :value="a" x-model="selectedAreas" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
-                                    <span class="text-xs text-slate-800 font-medium" x-text="a"></span>
-                                </label>
-                            </template>
-                        </div>
+                    <div class="text-[11px] text-slate-600 leading-relaxed">
+                        <strong class="text-indigo-950 block font-bold mb-0.5">Pengaturan Scope Fleksibel per User / AS:</strong>
+                        Role ini berfungsi sebagai template hak akses fitur. Anda dapat menyettingkan <strong>Prinsiple yang Dihandle</strong> dan <strong>Area Cover</strong> yang berbeda-beda untuk masing-masing AS di tab <strong>Pengaturan Pengguna & Scope AS</strong>.
                     </div>
                 </div>
 
@@ -858,7 +734,7 @@
                                     @foreach($perms as $p)
                                         <label class="flex items-center gap-2 p-1.5 hover:bg-slate-50 rounded-lg cursor-pointer">
                                             <input type="checkbox" name="permissions[]" value="{{ $p->id }}" class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary">
-                                            <span class="text-[11px] text-slate-800 font-medium leading-tight">{{ $p->display_name }}</span>
+                                            <span class="text-xs text-slate-700 font-medium">{{ $p->display_name }}</span>
                                         </label>
                                     @endforeach
                                 </div>
@@ -872,7 +748,7 @@
                         Batal
                     </button>
                     <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white font-bold text-xs shadow-md shadow-primary/25 flex items-center gap-2">
-                        <i class="fa-solid fa-check text-xs"></i>
+                        <i class="fa-solid fa-plus text-xs"></i>
                         <span>Simpan Role Baru</span>
                     </button>
                 </div>
@@ -880,16 +756,16 @@
         </div>
     </div>
 
-    <!-- MODAL 2: EDIT ROLE & SCOPE -->
+    <!-- MODAL 2: EDIT ROLE -->
     <div x-show="editRoleModal" x-cloak class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 my-8 max-h-[90vh] flex flex-col">
+        <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 my-8 max-h-[90vh] flex flex-col">
             <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 flex-shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-lg font-black">
                         <i class="fa-solid fa-pen-to-square"></i>
                     </div>
                     <div>
-                        <h3 class="text-base font-black text-slate-900">Edit Data Role & Pengaturan Scope</h3>
+                        <h3 class="text-base font-black text-slate-900">Edit Data Role Akses</h3>
                         <p class="text-xs text-slate-500" x-text="selectedRole.display_name"></p>
                     </div>
                 </div>
@@ -919,89 +795,13 @@
                     <textarea name="description" x-model="selectedRole.description" rows="2" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:outline-none focus:border-primary"></textarea>
                 </div>
 
-                <!-- SCOPE 1: PENGATURAN PRINSIPLE DIHANDLE -->
-                <div class="p-4 rounded-2xl bg-indigo-50/40 border border-indigo-100 space-y-3" x-show="selectedRole.name !== 'admin'">
-                    <div class="flex items-center justify-between">
-                        <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                            <i class="fa-solid fa-building text-indigo-600"></i>
-                            <span>Prinsiple yang Dihandle</span>
-                        </div>
-                        <span class="text-[10px] text-indigo-700 font-bold" x-text="selectedRole.scope_principle_type === 'all' ? 'Semua Prinsiple' : selectedRole.allowed_principles.length + ' Dipilih'"></span>
+                <div class="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-start gap-3">
+                    <div class="w-7 h-7 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <i class="fa-solid fa-lightbulb text-xs"></i>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" :class="selectedRole.scope_principle_type === 'all' ? 'bg-indigo-600 text-white border-indigo-600 font-bold' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
-                            <input type="radio" name="scope_principle_type" value="all" x-model="selectedRole.scope_principle_type" class="sr-only">
-                            <i class="fa-solid fa-earth-americas text-xs"></i>
-                            <span>Semua Prinsiple</span>
-                        </label>
-                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" :class="selectedRole.scope_principle_type === 'specific' ? 'bg-indigo-600 text-white border-indigo-600 font-bold' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
-                            <input type="radio" name="scope_principle_type" value="specific" x-model="selectedRole.scope_principle_type" class="sr-only">
-                            <i class="fa-solid fa-list-check text-xs"></i>
-                            <span>Pilih Prinsiple Tertentu</span>
-                        </label>
-                    </div>
-
-                    <!-- Specific Principle Checklist -->
-                    <div x-show="selectedRole.scope_principle_type === 'specific'" x-cloak class="space-y-2 pt-2 border-t border-indigo-100">
-                        <div class="flex items-center gap-2">
-                            <input type="text" x-model="searchPrincipleEdit" placeholder="Cari nama prinsiple..." class="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-indigo-500">
-                            <button type="button" @click="selectedRole.allowed_principles = selectedRole.allowed_principles.length === allPrinciples.length ? [] : [...allPrinciples]" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold text-[11px] whitespace-nowrap">
-                                <span x-text="selectedRole.allowed_principles.length === allPrinciples.length ? 'Batal Semua' : 'Pilih Semua'"></span>
-                            </button>
-                        </div>
-
-                        <div class="max-h-40 overflow-y-auto bg-white rounded-xl border border-slate-200 p-2 divide-y divide-slate-100">
-                            <template x-for="p in allPrinciples.filter(item => item.toLowerCase().includes(searchPrincipleEdit.toLowerCase()))" :key="p">
-                                <label class="py-1.5 px-2 flex items-center gap-2.5 hover:bg-slate-50 rounded-lg cursor-pointer">
-                                    <input type="checkbox" name="allowed_principles[]" :value="p" x-model="selectedRole.allowed_principles" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
-                                    <span class="text-xs text-slate-800 font-medium" x-text="p"></span>
-                                </label>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- SCOPE 2: PENGATURAN AREA COVER -->
-                <div class="p-4 rounded-2xl bg-blue-50/40 border border-blue-100 space-y-3" x-show="selectedRole.name !== 'admin'">
-                    <div class="flex items-center justify-between">
-                        <div class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                            <i class="fa-solid fa-location-dot text-blue-600"></i>
-                            <span>Area Cover Penempatan</span>
-                        </div>
-                        <span class="text-[10px] text-blue-700 font-bold" x-text="selectedRole.scope_area_type === 'all' ? 'Semua Area' : selectedRole.allowed_areas.length + ' Dipilih'"></span>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" :class="selectedRole.scope_area_type === 'all' ? 'bg-blue-600 text-white border-blue-600 font-bold' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
-                            <input type="radio" name="scope_area_type" value="all" x-model="selectedRole.scope_area_type" class="sr-only">
-                            <i class="fa-solid fa-map text-xs"></i>
-                            <span>Semua Area (Nasional)</span>
-                        </label>
-                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" :class="selectedRole.scope_area_type === 'specific' ? 'bg-blue-600 text-white border-blue-600 font-bold' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
-                            <input type="radio" name="scope_area_type" value="specific" x-model="selectedRole.scope_area_type" class="sr-only">
-                            <i class="fa-solid fa-location-crosshairs text-xs"></i>
-                            <span>Pilih Area Tertentu</span>
-                        </label>
-                    </div>
-
-                    <!-- Specific Area Checklist -->
-                    <div x-show="selectedRole.scope_area_type === 'specific'" x-cloak class="space-y-2 pt-2 border-t border-blue-100">
-                        <div class="flex items-center gap-2">
-                            <input type="text" x-model="searchAreaEdit" placeholder="Cari nama kota/area..." class="flex-1 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-medium focus:outline-none focus:border-blue-500">
-                            <button type="button" @click="selectedRole.allowed_areas = selectedRole.allowed_areas.length === allAreas.length ? [] : [...allAreas]" class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 font-bold text-[11px] whitespace-nowrap">
-                                <span x-text="selectedRole.allowed_areas.length === allAreas.length ? 'Batal Semua' : 'Pilih Semua'"></span>
-                            </button>
-                        </div>
-
-                        <div class="max-h-40 overflow-y-auto bg-white rounded-xl border border-slate-200 p-2 divide-y divide-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-1">
-                            <template x-for="a in allAreas.filter(item => item.toLowerCase().includes(searchAreaEdit.toLowerCase()))" :key="a">
-                                <label class="py-1 px-2 flex items-center gap-2 hover:bg-slate-50 rounded-lg cursor-pointer">
-                                    <input type="checkbox" name="allowed_areas[]" :value="a" x-model="selectedRole.allowed_areas" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
-                                    <span class="text-xs text-slate-800 font-medium" x-text="a"></span>
-                                </label>
-                            </template>
-                        </div>
+                    <div class="text-[11px] text-slate-600 leading-relaxed">
+                        <strong class="text-indigo-950 block font-bold mb-0.5">Cakupan Kerja Karyawan:</strong>
+                        Prinsiple yang dihandle dan area cover dapat diatur spesifik untuk setiap pengguna di tab <strong>Pengaturan Pengguna & Scope AS</strong>.
                     </div>
                 </div>
 
@@ -1011,24 +811,24 @@
                     </button>
                     <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white font-bold text-xs shadow-md shadow-primary/25 flex items-center gap-2">
                         <i class="fa-solid fa-floppy-disk text-xs"></i>
-                        <span>Simpan Perubahan</span>
+                        <span>Simpan Perubahan Role</span>
                     </button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL 3: EDIT USER ACCESS & CUSTOM SCOPE OVERRIDE -->
+    <!-- MODAL 3: ATUR HAK AKSES & SCOPE KERJA PENGGUNA -->
     <div x-show="editUserModal" x-cloak class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 my-8 max-h-[90vh] flex flex-col">
+        <div class="bg-white rounded-3xl max-w-2xl w-full p-6 sm:p-7 shadow-2xl border border-slate-100 my-8 max-h-[92vh] flex flex-col">
             <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-4 flex-shrink-0">
                 <div class="flex items-center gap-3">
                     <div class="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center text-lg font-black">
                         <i class="fa-solid fa-user-pen"></i>
                     </div>
                     <div>
-                        <h3 class="text-base font-black text-slate-900">Atur Hak Akses & Scope Pengguna</h3>
-                        <p class="text-xs text-slate-500" x-text="selectedUser.name"></p>
+                        <h3 class="text-base font-black text-slate-900">Atur Hak Akses & Penugasan Scope Karyawan</h3>
+                        <p class="text-xs text-slate-500" x-text="selectedUser.name + ' (' + selectedUser.email + ')'"></p>
                     </div>
                 </div>
                 <button type="button" @click="editUserModal = false" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center">
@@ -1040,110 +840,137 @@
                 @csrf
                 @method('PUT')
 
+                <!-- SECTION 1: ROLE SELECTION & LOGIN STATUS -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                        <label class="block font-bold text-slate-700 mb-1">Nama Pengguna</label>
-                        <input type="text" :value="selectedUser.name" disabled class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600">
+                        <label class="block font-bold text-slate-700 mb-1">Pilih Role Akses <span class="text-rose-500">*</span></label>
+                        <select name="role" x-model="selectedUser.role" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary">
+                            @foreach($roles as $r)
+                                <option value="{{ $r->name }}">{{ $r->display_name }} ({{ $r->name }})</option>
+                            @endforeach
+                        </select>
+                        <p class="text-[10px] text-slate-400 mt-1">Menentukan menu & modul sistem yang dapat dibuka karyawan.</p>
                     </div>
 
-                    <div>
-                        <label class="block font-bold text-slate-700 mb-1">Email Pengguna</label>
-                        <input type="email" :value="selectedUser.email" disabled class="w-full px-3.5 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs font-semibold text-slate-600">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block font-bold text-slate-700 mb-1">Pilih Role Akses <span class="text-rose-500">*</span></label>
-                    <select name="role" x-model="selectedUser.role" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:bg-white focus:outline-none focus:border-primary">
-                        @foreach($roles as $r)
-                            <option value="{{ $r->name }}">{{ $r->display_name }} ({{ $r->name }})</option>
-                        @endforeach
-                    </select>
-                    <p class="text-[10px] text-slate-400 mt-1">Secara bawaan, pengguna akan mewarisi izin modul serta scope prinsiple & area dari role ini.</p>
-                </div>
-
-                <div class="p-3.5 rounded-2xl bg-slate-50 border border-slate-200">
-                    <label class="flex items-center gap-2.5 cursor-pointer">
-                        <input type="checkbox" name="is_active" value="1" :checked="selectedUser.is_active" class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary">
-                        <div>
-                            <span class="font-bold text-slate-800 text-xs block">Izinkan Login ke Portal ASYSTEM</span>
-                            <span class="text-[11px] text-slate-400">Jika dinonaktifkan, akun pengguna akan diblokir dari login ke aplikasi.</span>
-                        </div>
-                    </label>
-                </div>
-
-                <!-- PENGATURAN SCOPE OVERRIDE INDIVIDUAL -->
-                <div class="p-4 rounded-2xl bg-amber-50/50 border border-amber-200/80 space-y-3">
-                    <div class="flex items-center justify-between">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" name="scope_override" value="1" x-model="selectedUser.scope_override" class="w-4 h-4 text-amber-600 rounded border-slate-300 focus:ring-amber-500">
-                            <span class="font-black text-slate-900 text-xs">Kustomisasi Scope Khusus Pengguna Ini (Override Role)</span>
+                    <div class="flex items-center">
+                        <label class="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5 cursor-pointer w-full hover:bg-slate-100 transition-colors">
+                            <input type="checkbox" name="is_active" value="1" :checked="selectedUser.is_active" class="w-4 h-4 text-primary rounded border-slate-300 focus:ring-primary">
+                            <div>
+                                <span class="font-bold text-slate-800 text-xs block">Izinkan Login ke Portal</span>
+                                <span class="text-[10px] text-slate-400">Buka akses login untuk akun ini</span>
+                            </div>
                         </label>
                     </div>
-                    <p class="text-[11px] text-slate-500">
-                        Aktifkan jika karyawan ini menangani prinsiple atau meng-cover area yang berbeda dari pengaturan default rolenya.
-                    </p>
+                </div>
 
-                    <div x-show="selectedUser.scope_override" x-cloak class="space-y-3 pt-3 border-t border-amber-200/60">
-                        <!-- User Prinsiple Scope -->
-                        <div>
-                            <div class="font-bold text-slate-800 text-[11px] mb-1.5 flex items-center justify-between">
-                                <span>Prinsiple yang Dihandle:</span>
-                                <span class="text-[10px] text-amber-700 font-bold" x-text="selectedUser.user_scope_principle_type === 'all' ? 'Semua Prinsiple' : selectedUser.user_allowed_principles.length + ' Dipilih'"></span>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 mb-2">
-                                <label class="p-2 rounded-xl border flex items-center gap-1.5 cursor-pointer text-[11px]" :class="selectedUser.user_scope_principle_type === 'all' ? 'bg-amber-600 text-white border-amber-600 font-bold' : 'bg-white text-slate-700 border-slate-200'">
-                                    <input type="radio" name="user_scope_principle_type" value="all" x-model="selectedUser.user_scope_principle_type" class="sr-only">
-                                    <span>Semua Prinsiple</span>
-                                </label>
-                                <label class="p-2 rounded-xl border flex items-center gap-1.5 cursor-pointer text-[11px]" :class="selectedUser.user_scope_principle_type === 'specific' ? 'bg-amber-600 text-white border-amber-600 font-bold' : 'bg-white text-slate-700 border-slate-200'">
-                                    <input type="radio" name="user_scope_principle_type" value="specific" x-model="selectedUser.user_scope_principle_type" class="sr-only">
-                                    <span>Pilih Prinsiple Tertentu</span>
-                                </label>
-                            </div>
+                <!-- SECTION 2: PRINSIPLE YANG DIHANDLE -->
+                <div class="p-4 rounded-2xl bg-indigo-50/40 border border-indigo-100 space-y-3" x-show="selectedUser.role !== 'admin'">
+                    <div class="flex items-center justify-between">
+                        <div class="font-bold text-slate-900 text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-building text-indigo-600 text-sm"></i>
+                            <span>Prinsiple yang Dihandle Pengguna Ini</span>
+                        </div>
+                        <span class="text-[10px] text-indigo-700 font-bold bg-white px-2 py-0.5 rounded-full border border-indigo-200" 
+                              x-text="selectedUser.scope_principle_type === 'all' ? 'Semua Prinsiple' : selectedUser.allowed_principles.length + ' Dipilih'">
+                        </span>
+                    </div>
 
-                            <div x-show="selectedUser.user_scope_principle_type === 'specific'" class="space-y-1.5">
-                                <input type="text" x-model="searchPrincipleUser" placeholder="Cari prinsiple..." class="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px]">
-                                <div class="max-h-32 overflow-y-auto bg-white rounded-xl border border-slate-200 p-2 divide-y divide-slate-100">
-                                    <template x-for="p in allPrinciples.filter(item => item.toLowerCase().includes(searchPrincipleUser.toLowerCase()))" :key="p">
-                                        <label class="py-1 px-1.5 flex items-center gap-2 hover:bg-slate-50 rounded cursor-pointer">
-                                            <input type="checkbox" name="user_allowed_principles[]" :value="p" x-model="selectedUser.user_allowed_principles" class="w-3.5 h-3.5 text-amber-600 rounded">
-                                            <span class="text-[11px] text-slate-800" x-text="p"></span>
-                                        </label>
-                                    </template>
-                                </div>
+                    <!-- Type Radio Buttons -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" 
+                               :class="selectedUser.scope_principle_type === 'all' ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
+                            <input type="radio" name="scope_principle_type" value="all" x-model="selectedUser.scope_principle_type" class="sr-only">
+                            <i class="fa-solid fa-earth-americas text-xs"></i>
+                            <span>Semua Prinsiple (Nasional)</span>
+                        </label>
+                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" 
+                               :class="selectedUser.scope_principle_type === 'specific' ? 'bg-indigo-600 text-white border-indigo-600 font-bold shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
+                            <input type="radio" name="scope_principle_type" value="specific" x-model="selectedUser.scope_principle_type" class="sr-only">
+                            <i class="fa-solid fa-list-check text-xs"></i>
+                            <span>Pilih Prinsiple Tertentu</span>
+                        </label>
+                    </div>
+
+                    <!-- Specific Principle Checklist -->
+                    <div x-show="selectedUser.scope_principle_type === 'specific'" x-cloak class="space-y-2 pt-2 border-t border-indigo-100">
+                        <div class="flex items-center gap-2">
+                            <div class="relative flex-1">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" x-model="searchPrincipleUser" placeholder="Cari nama prinsiple (misal: Wings, Kalbe, Unilever)..." class="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-indigo-500">
                             </div>
+                            <button type="button" @click="toggleAllUserPrinciples()" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-[11px] whitespace-nowrap shadow-sm">
+                                <span x-text="selectedUser.allowed_principles.length === allPrinciples.length ? 'Batal Semua' : 'Pilih Semua'"></span>
+                            </button>
                         </div>
 
-                        <!-- User Area Scope -->
-                        <div class="pt-2 border-t border-amber-200/60">
-                            <div class="font-bold text-slate-800 text-[11px] mb-1.5 flex items-center justify-between">
-                                <span>Area Penempatan Cover:</span>
-                                <span class="text-[10px] text-amber-700 font-bold" x-text="selectedUser.user_scope_area_type === 'all' ? 'Semua Area' : selectedUser.user_allowed_areas.length + ' Dipilih'"></span>
-                            </div>
-                            <div class="grid grid-cols-2 gap-2 mb-2">
-                                <label class="p-2 rounded-xl border flex items-center gap-1.5 cursor-pointer text-[11px]" :class="selectedUser.user_scope_area_type === 'all' ? 'bg-amber-600 text-white border-amber-600 font-bold' : 'bg-white text-slate-700 border-slate-200'">
-                                    <input type="radio" name="user_scope_area_type" value="all" x-model="selectedUser.user_scope_area_type" class="sr-only">
-                                    <span>Semua Area</span>
+                        <div class="max-h-44 overflow-y-auto bg-white rounded-2xl border border-slate-200 p-2 divide-y divide-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-0.5">
+                            <template x-for="p in allPrinciples.filter(item => item.toLowerCase().includes(searchPrincipleUser.toLowerCase()))" :key="p">
+                                <label class="py-1.5 px-2 flex items-center gap-2 hover:bg-indigo-50/50 rounded-lg cursor-pointer">
+                                    <input type="checkbox" name="allowed_principles[]" :value="p" x-model="selectedUser.allowed_principles" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500">
+                                    <span class="text-xs text-slate-800 font-medium truncate" x-text="p" :title="p"></span>
                                 </label>
-                                <label class="p-2 rounded-xl border flex items-center gap-1.5 cursor-pointer text-[11px]" :class="selectedUser.user_scope_area_type === 'specific' ? 'bg-amber-600 text-white border-amber-600 font-bold' : 'bg-white text-slate-700 border-slate-200'">
-                                    <input type="radio" name="user_scope_area_type" value="specific" x-model="selectedUser.user_scope_area_type" class="sr-only">
-                                    <span>Pilih Area Tertentu</span>
-                                </label>
-                            </div>
-
-                            <div x-show="selectedUser.user_scope_area_type === 'specific'" class="space-y-1.5">
-                                <input type="text" x-model="searchAreaUser" placeholder="Cari area..." class="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[11px]">
-                                <div class="max-h-32 overflow-y-auto bg-white rounded-xl border border-slate-200 p-2 divide-y divide-slate-100 grid grid-cols-2 gap-1">
-                                    <template x-for="a in allAreas.filter(item => item.toLowerCase().includes(searchAreaUser.toLowerCase()))" :key="a">
-                                        <label class="py-1 px-1.5 flex items-center gap-2 hover:bg-slate-50 rounded cursor-pointer">
-                                            <input type="checkbox" name="user_allowed_areas[]" :value="a" x-model="selectedUser.user_allowed_areas" class="w-3.5 h-3.5 text-amber-600 rounded">
-                                            <span class="text-[11px] text-slate-800" x-text="a"></span>
-                                        </label>
-                                    </template>
-                                </div>
-                            </div>
+                            </template>
                         </div>
+                    </div>
+                </div>
+
+                <!-- SECTION 3: AREA COVER PENEMPATAN -->
+                <div class="p-4 rounded-2xl bg-blue-50/40 border border-blue-100 space-y-3" x-show="selectedUser.role !== 'admin'">
+                    <div class="flex items-center justify-between">
+                        <div class="font-bold text-slate-900 text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-location-dot text-blue-600 text-sm"></i>
+                            <span>Area Cover Penempatan Pengguna Ini</span>
+                        </div>
+                        <span class="text-[10px] text-blue-700 font-bold bg-white px-2 py-0.5 rounded-full border border-blue-200" 
+                              x-text="selectedUser.scope_area_type === 'all' ? 'Semua Area' : selectedUser.allowed_areas.length + ' Dipilih'">
+                        </span>
+                    </div>
+
+                    <!-- Type Radio Buttons -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" 
+                               :class="selectedUser.scope_area_type === 'all' ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
+                            <input type="radio" name="scope_area_type" value="all" x-model="selectedUser.scope_area_type" class="sr-only">
+                            <i class="fa-solid fa-map text-xs"></i>
+                            <span>Semua Area (Nasional)</span>
+                        </label>
+                        <label class="p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all" 
+                               :class="selectedUser.scope_area_type === 'specific' ? 'bg-blue-600 text-white border-blue-600 font-bold shadow-sm' : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'">
+                            <input type="radio" name="scope_area_type" value="specific" x-model="selectedUser.scope_area_type" class="sr-only">
+                            <i class="fa-solid fa-location-crosshairs text-xs"></i>
+                            <span>Pilih Area Tertentu</span>
+                        </label>
+                    </div>
+
+                    <!-- Specific Area Checklist -->
+                    <div x-show="selectedUser.scope_area_type === 'specific'" x-cloak class="space-y-2 pt-2 border-t border-blue-100">
+                        <div class="flex items-center gap-2">
+                            <div class="relative flex-1">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                <input type="text" x-model="searchAreaUser" placeholder="Cari nama kota/area (misal: Surabaya, Jakarta, Bandung)..." class="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium focus:outline-none focus:border-blue-500">
+                            </div>
+                            <button type="button" @click="toggleAllUserAreas()" class="px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-100 font-bold text-[11px] whitespace-nowrap shadow-sm">
+                                <span x-text="selectedUser.allowed_areas.length === allAreas.length ? 'Batal Semua' : 'Pilih Semua'"></span>
+                            </button>
+                        </div>
+
+                        <div class="max-h-44 overflow-y-auto bg-white rounded-2xl border border-slate-200 p-2 divide-y divide-slate-100 grid grid-cols-1 sm:grid-cols-2 gap-0.5">
+                            <template x-for="a in allAreas.filter(item => item.toLowerCase().includes(searchAreaUser.toLowerCase()))" :key="a">
+                                <label class="py-1 px-2 flex items-center gap-2 hover:bg-blue-50/50 rounded-lg cursor-pointer">
+                                    <input type="checkbox" name="allowed_areas[]" :value="a" x-model="selectedUser.allowed_areas" class="w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500">
+                                    <span class="text-xs text-slate-800 font-medium truncate" x-text="a" :title="a"></span>
+                                </label>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Notice if role is admin -->
+                <div x-show="selectedUser.role === 'admin'" class="p-4 rounded-2xl bg-purple-50 border border-purple-200 text-purple-800 text-xs flex items-center gap-3">
+                    <i class="fa-solid fa-crown text-amber-500 text-lg flex-shrink-0"></i>
+                    <div>
+                        <strong class="block font-bold">Role Administrator HR Terpilih</strong>
+                        <span>Akun Administrator otomatis memiliki akses tak terbatas ke semua modul, semua prinsiple, dan seluruh area penempatan.</span>
                     </div>
                 </div>
 
@@ -1153,7 +980,7 @@
                     </button>
                     <button type="submit" class="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white font-bold text-xs shadow-md shadow-primary/25 flex items-center gap-2">
                         <i class="fa-solid fa-floppy-disk text-xs"></i>
-                        <span>Simpan Perubahan Akses</span>
+                        <span>Simpan Pengaturan Akses & Scope</span>
                     </button>
                 </div>
             </form>

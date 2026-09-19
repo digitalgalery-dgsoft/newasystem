@@ -139,6 +139,9 @@ class User extends Authenticatable
         if ($this->isAdmin()) {
             return true;
         }
+        if ($this->handle_all_principles !== null) {
+            return (bool) $this->handle_all_principles;
+        }
         if ($this->scope_override) {
             return (bool) ($this->handle_all_principles ?? true);
         }
@@ -152,6 +155,9 @@ class User extends Authenticatable
     {
         if ($this->isAdmin()) {
             return true;
+        }
+        if ($this->cover_all_areas !== null) {
+            return (bool) $this->cover_all_areas;
         }
         if ($this->scope_override) {
             return (bool) ($this->cover_all_areas ?? true);
@@ -167,6 +173,10 @@ class User extends Authenticatable
         if ($this->handlesAllPrinciples()) {
             return [];
         }
+        if ($this->allowed_principles !== null) {
+            $arr = $this->allowed_principles;
+            return is_array($arr) ? array_values(array_filter($arr)) : [];
+        }
         if ($this->scope_override) {
             $arr = $this->allowed_principles;
             return is_array($arr) ? array_values(array_filter($arr)) : [];
@@ -181,6 +191,10 @@ class User extends Authenticatable
     {
         if ($this->coversAllAreas()) {
             return [];
+        }
+        if ($this->allowed_areas !== null) {
+            $arr = $this->allowed_areas;
+            return is_array($arr) ? array_values(array_filter($arr)) : [];
         }
         if ($this->scope_override) {
             $arr = $this->allowed_areas;
