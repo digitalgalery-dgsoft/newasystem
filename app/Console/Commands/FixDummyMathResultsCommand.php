@@ -157,6 +157,21 @@ class FixDummyMathResultsCommand extends Command
             $currentDuration = '00:04:54';
             $currentTesKe = max(1, intval($candidate->tes_ke ?? 1));
 
+            if (Schema::hasTable('test_results')) {
+                $cbtMath = DB::table('test_results')->where('candidate_id', $candidate->id)->where('test_type', 'math')->first();
+                if ($cbtMath) {
+                    $mDetails = is_array($cbtMath->test_details) ? $cbtMath->test_details : json_decode($cbtMath->test_details ?? '[]', true);
+                    if (!empty($mDetails['duration_formatted'])) {
+                        $currentDuration = $mDetails['duration_formatted'];
+                    } elseif (!empty($cbtMath->duration_seconds)) {
+                        $currentDuration = gmdate('H:i:s', $cbtMath->duration_seconds);
+                    }
+                    if (!empty($mDetails['tes_ke'])) {
+                        $currentTesKe = intval($mDetails['tes_ke']);
+                    }
+                }
+            }
+
             if (Schema::hasTable('tb_hasilmath')) {
                 $existingMath = DB::table('tb_hasilmath')
                     ->where('id_kandidat', $candidate->id)
