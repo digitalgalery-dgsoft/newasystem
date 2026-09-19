@@ -563,6 +563,13 @@ class EmployeeController extends Controller
 
     public function switchUser($nik)
     {
+        $currentAuthUser = Auth::user();
+
+        // Simpan data akun asli sebelum switch (jika belum ada sesi impersonasi yang aktif)
+        $impersonatorId = session('impersonator_id', $currentAuthUser?->id);
+        $impersonatorName = session('impersonator_name', $currentAuthUser?->name ?? 'Administrator');
+        $impersonatorEmail = session('impersonator_email', $currentAuthUser?->email ?? '');
+
         $employee = Employee::where('nik', $nik)->firstOrFail();
         $userRole = ($employee->tipe_karyawan === 'Inhouse') ? 'karyawan_inhouse' : 'karyawan_ratecard';
         $user = User::firstOrCreate(
@@ -586,6 +593,41 @@ class EmployeeController extends Controller
         ]);
 
         Auth::login($user);
-        return redirect()->route('interview.index')->with('success', "Berhasil beralih akun dan login sebagai <strong>{$employee->nama_karyawan}</strong> ({$employee->jabatan} &bull; Area {$employee->area}). Data kandidat kini tampil sesuai akun ini.");
+
+        // Pertahankan sesi impersonator
+        if ($impersonatorId && $impersonatorId !== $user->id) {
+            session([
+                'impersonator_id'    => $impersonatorId,
+                'impersonator_name'  => $impersonatorName,
+                'impersonator_email' => $impersonatorEmail,
+            ]);
+        }
+
+        return redirect()->route('interview.index')->with('success', "Berhasil beralih akun dan login sebagai <strong>{$employee->nama_karyawan}</strong> ({$employee->jabatan} &bull; Area {$employee->area}). Anda dapat kembali ke akun asli kapan saja melalui tombol di bagian atas atau samping.");
+    }
+
+    /**
+     * Kembali ke akses user utama / asli (Revert Switch User)
+     */
+    public function switchBack(Request $request)
+    {
+        $impersonatorId = session('impersonator_id');
+
+        if (!$impersonatorId) {
+            return redirect()->route('fitur.index')->with('info', 'Tidak ada sesi switch user yang sedang aktif.');
+        }
+
+        $originalUser = User::find($impersonatorId);
+
+        if (!$originalUser) {
+            session()->forget(['impersonator_id', 'impersonator_name', 'impersonator_email']);
+            return redirect()->route('login')->with('error', 'Akun user asli tidak ditemukan.');
+        }
+
+        // Login kembali ke akun asli
+        Auth::login($originalUser);
+        session()->forget(['impersonator_id', 'impersonator_name', 'impersonator_email']);
+
+        return redirect()->route('master.karyawan.index')->with('success', "Berhasil kembali ke akses akun utama: <strong>{$originalUser->name}</strong>.");
     }
 }

@@ -523,11 +523,52 @@
                         </button>
                     </form>
                 </div>
+
+                @if(session()->has('impersonator_id'))
+                <!-- Tombol Kembali ke User Asli (Sidebar Footer) -->
+                <div class="mt-2.5 pt-2 border-t border-amber-200" x-show="!sidebarCollapsed">
+                    <a href="{{ route('user.switch-back') }}" 
+                       class="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-extrabold shadow-sm hover:shadow transition-all"
+                       title="Kembali ke Akun Asli: {{ session('impersonator_name', 'Administrator') }}">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Kembali ke User Asli</span>
+                    </a>
+                </div>
+                <div class="mt-2 flex justify-center" x-show="sidebarCollapsed" x-cloak>
+                    <a href="{{ route('user.switch-back') }}" 
+                       class="w-9 h-9 rounded-xl bg-amber-500 hover:bg-amber-600 text-white flex items-center justify-center text-xs shadow-sm transition-all"
+                       title="Kembali ke User Asli ({{ session('impersonator_name', 'Administrator') }})">
+                        <i class="fa-solid fa-rotate-left"></i>
+                    </a>
+                </div>
+                @endif
             </div>
         </aside>
 
         <!-- Main Wrapper -->
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden">
+            
+            <!-- STICKY BANNER SWITCH USER (SIMULASI AKUN) -->
+            @if(session()->has('impersonator_id'))
+            <div class="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 text-white px-4 py-2.5 shadow-md flex items-center justify-between gap-3 z-30 text-xs font-semibold border-b border-amber-800/60">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <span class="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0 text-white animate-pulse">
+                        <i class="fa-solid fa-user-gear text-sm"></i>
+                    </span>
+                    <div class="truncate">
+                        <span class="font-bold tracking-wide uppercase text-[10px] bg-amber-950/40 px-2 py-0.5 rounded mr-1.5 border border-amber-400/30">Mode Switch User</span>
+                        <span>Anda sedang login sebagai <strong>{{ Auth::user()->name }}</strong> ({{ Auth::user()->job_title ?: (Auth::user()->role === 'admin' ? 'Administrator' : 'Karyawan') }}).</span>
+                        <span class="hidden md:inline text-amber-100/90 text-[11px] ml-1">&bull; Akun Asli: <strong>{{ session('impersonator_name', 'Administrator') }}</strong></span>
+                    </div>
+                </div>
+                <a href="{{ route('user.switch-back') }}" 
+                   class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-white text-orange-700 hover:bg-orange-50 font-extrabold text-xs shadow-sm hover:shadow transition-all flex-shrink-0">
+                    <i class="fa-solid fa-arrow-right-from-bracket rotate-180"></i>
+                    <span>Kembali ke User Asli</span>
+                </a>
+            </div>
+            @endif
+
             <!-- Topbar -->
             <header class="h-16 bg-white border-b border-slate-200 topbar-shadow flex items-center justify-between px-6 z-20">
                 <div class="flex items-center gap-3">
@@ -554,6 +595,16 @@
                 </div>
 
                 <div class="flex items-center gap-3">
+                    @if(session()->has('impersonator_id'))
+                    <!-- Tombol Kembali ke User Asli di Topbar -->
+                    <a href="{{ route('user.switch-back') }}" 
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white text-xs font-bold transition-all shadow-sm shadow-amber-500/20"
+                       title="Kembali ke Akun Utama: {{ session('impersonator_name', 'Administrator') }}">
+                        <i class="fa-solid fa-rotate-left text-xs"></i>
+                        <span class="hidden sm:inline">Kembali ke User Asli</span>
+                    </a>
+                    @endif
+
                     <!-- Quick Input Job Button -->
                     <a href="{{ route('job.input') }}" class="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary-50 text-primary text-xs font-semibold hover:bg-primary-100 transition-all border border-primary-200">
                         <i class="fa-solid fa-plus-circle"></i>

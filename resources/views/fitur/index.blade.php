@@ -206,7 +206,13 @@
                     <i class="fa-solid fa-info-circle text-primary"></i>
                     <span>Informasi profil disinkronkan secara otomatis dari database ASystem.</span>
                 </span>
-                <div class="flex items-center gap-2">
+                <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    @if(session()->has('impersonator_id'))
+                    <a href="{{ route('user.switch-back') }}" class="inline-flex items-center gap-1.5 text-white font-bold py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 transition-all shadow-sm">
+                        <i class="fa-solid fa-rotate-left text-xs"></i>
+                        <span>Kembali ke User Asli ({{ session('impersonator_name', 'Administrator') }})</span>
+                    </a>
+                    @endif
                     <a href="{{ route('profile.index') }}" class="inline-flex items-center gap-1.5 text-primary hover:text-primary-700 font-bold py-1.5 px-3 rounded-xl bg-primary-50 hover:bg-primary-100 transition-all border border-primary-200 shadow-2xs">
                         <i class="fa-solid fa-user-pen text-xs"></i>
                         <span>Edit Profil / Password</span>

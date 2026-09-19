@@ -46,6 +46,11 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/profile', [\App\Http\Controllers\UserProfileController::class, 'update'])->name('profile.update');
     Route::put('/profile/password', [\App\Http\Controllers\UserProfileController::class, 'updatePassword'])->name('profile.password');
     Route::delete('/profile/avatar', [\App\Http\Controllers\UserProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
+
+    // Switch User: Kembali ke akun user asli (Revert Impersonation)
+    Route::match(['get', 'post'], '/switch-back', [EmployeeController::class, 'switchBack'])->name('user.switch-back');
+    Route::match(['get', 'post'], '/karyawan/switch-back', [EmployeeController::class, 'switchBack']);
+    Route::match(['get', 'post'], '/master/karyawan/switch-back', [EmployeeController::class, 'switchBack']);
 });
 
 // ==========================================

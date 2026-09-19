@@ -690,7 +690,8 @@
 
                                     <!-- Switch User simulator -->
                                     <a href="{{ route('master.karyawan.switch', $emp->nik) }}" 
-                                       class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Switch User Akun">
+                                       onclick="return confirm('Beralih login dan simulasi sebagai akun {{ addslashes($emp->nama_karyawan) }}? Anda dapat kembali ke akun utama kapan saja melalui tombol di atas.');"
+                                       class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Switch User Akun (Simulasi)">
                                         <i class="ri-user-shared-line text-sm"></i>
                                     </a>
 
