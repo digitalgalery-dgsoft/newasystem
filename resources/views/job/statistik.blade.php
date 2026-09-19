@@ -19,7 +19,7 @@
                     </span>
                 </div>
                 <p class="text-xs md:text-sm text-slate-500 font-medium mt-0.5">
-                    Monitoring persebaran Job Requirement, performa rekrutmen per Area, Prinsiple, serta rincian Step Odoo ERP per Rekrutor / AS.
+                    Monitoring persebaran Job Requirement, performa pelamar per Area, Prinsiple, serta rincian Step Odoo ERP per Rekrutor / AS (Khusus Pelamar Kandidat Portal).
                 </p>
             </div>
         </div>
@@ -30,9 +30,9 @@
                 <i class="fa-solid fa-briefcase text-slate-500"></i>
                 <span>Kelola Job</span>
             </a>
-            <a href="{{ route('interview.index') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all">
-                <i class="fa-solid fa-users text-slate-500"></i>
-                <span>Data Pelamar</span>
+            <a href="{{ route('kandidatportal.index') }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 transition-all">
+                <i class="fa-solid fa-globe text-slate-500"></i>
+                <span>Kandidat Portal</span>
             </a>
             <a href="{{ route('job.statistik.export', request()->all()) }}" class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition-all shadow-sm shadow-emerald-600/20">
                 <i class="fa-solid fa-file-excel"></i>
@@ -570,11 +570,11 @@
 
                             <!-- Aksi -->
                             <td class="py-2.5 px-3.5 text-center">
-                                <a :href="'{{ route('interview.index') }}?rekruter=' + encodeURIComponent(row.user_email)" 
-                                   title="Lihat Kandidat Interview Rekrutor Ini"
+                                <a :href="'{{ route('kandidatportal.index') }}?recruiter=' + encodeURIComponent(row.user_email)" 
+                                   title="Lihat Kandidat Portal Rekrutor Ini"
                                    class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-all">
                                     <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
-                                    <span>Pelamar</span>
+                                    <span>Portal</span>
                                 </a>
                             </td>
                         </tr>

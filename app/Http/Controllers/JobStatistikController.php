@@ -178,7 +178,8 @@ class JobStatistikController extends Controller
             fputs($handle, "\xEF\xBB\xBF");
 
             // HEADER INFORMASI
-            fputcsv($handle, ['STATISTIK JOB POST & KANDIDAT - ASYSTEM ESA GROUPS']);
+            fputcsv($handle, ['STATISTIK JOB REQUIREMENT & KANDIDAT PORTAL - ASYSTEM ESA GROUPS']);
+            fputcsv($handle, ['Keterangan', 'Data pelamar khusus dari Kandidat Portal (jenis: Job Portal), kandidat interview tidak termasuk']);
             fputcsv($handle, ['Waktu Export', date('d/m/Y H:i:s')]);
             fputcsv($handle, ['Filter Region', $filters['region'] ?: 'Semua Region']);
             fputcsv($handle, ['Filter Area', $filters['area'] ?: 'Semua Area']);
@@ -250,8 +251,9 @@ class JobStatistikController extends Controller
         // 1. Fetch Job Specs
         $jobs = JobSpec::select('job_title', 'job_area', 'job_prinsiple', 'created_by')->get();
 
-        // 2. Fetch Candidates
-        $candidateQuery = Candidate::select('applied_job', 'useras', 'kategori_kandidat', 'info', 'area', 'principle', 'odoo_stage_name', 'status');
+        // 2. Fetch Candidates: HANYA kandidat dari Kandidat Portal (jenis = 'Job Portal'), kandidat interview tidak termasuk
+        $candidateQuery = Candidate::where('jenis', 'Job Portal')
+            ->select('applied_job', 'useras', 'kategori_kandidat', 'info', 'area', 'principle', 'odoo_stage_name', 'status');
         if (!empty($filters['info'])) {
             $candidateQuery->whereRaw('LOWER(TRIM(info)) = ?', [strtolower($filters['info'])]);
         }
