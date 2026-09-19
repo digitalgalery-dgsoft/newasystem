@@ -37,34 +37,34 @@
             <div class="space-y-3 text-left">
                 <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
                     <div class="flex items-center gap-2">
-                        <span class="w-6 h-6 rounded-lg bg-rose-500 text-white font-black text-xs flex items-center justify-center">D</span>
-                        <span class="font-bold text-slate-800">Dominance (Dominan)</span>
+                        <span class="w-6 h-6 rounded-lg bg-indigo-600 text-white font-black text-xs flex items-center justify-center">A</span>
+                        <span class="font-bold text-slate-800">Melankolis (Analitis, Rapi, Tekun)</span>
                     </div>
-                    <span class="text-sm font-black text-slate-900">{{ $details['counts']['D'] ?? 0 }} Poin</span>
+                    <span class="text-sm font-black text-slate-900">{{ $details['counts']['A'] ?? $details['counts']['D'] ?? 0 }} Poin</span>
                 </div>
 
                 <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
                     <div class="flex items-center gap-2">
-                        <span class="w-6 h-6 rounded-lg bg-amber-500 text-white font-black text-xs flex items-center justify-center">I</span>
-                        <span class="font-bold text-slate-800">Influence (Intensif / Ramah)</span>
+                        <span class="w-6 h-6 rounded-lg bg-amber-500 text-white font-black text-xs flex items-center justify-center">B</span>
+                        <span class="font-bold text-slate-800">Sanguinis (Populer, Ceria, Komunikatif)</span>
                     </div>
-                    <span class="text-sm font-black text-slate-900">{{ $details['counts']['I'] ?? 0 }} Poin</span>
+                    <span class="text-sm font-black text-slate-900">{{ $details['counts']['B'] ?? $details['counts']['I'] ?? 0 }} Poin</span>
                 </div>
 
                 <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
                     <div class="flex items-center gap-2">
-                        <span class="w-6 h-6 rounded-lg bg-emerald-500 text-white font-black text-xs flex items-center justify-center">S</span>
-                        <span class="font-bold text-slate-800">Steadiness (Stabil / Sabar)</span>
+                        <span class="w-6 h-6 rounded-lg bg-rose-600 text-white font-black text-xs flex items-center justify-center">C</span>
+                        <span class="font-bold text-slate-800">Koleris (Kuat, Pemimpin, Berani, Tegas)</span>
                     </div>
-                    <span class="text-sm font-black text-slate-900">{{ $details['counts']['S'] ?? 0 }} Poin</span>
+                    <span class="text-sm font-black text-slate-900">{{ $details['counts']['C'] ?? $details['counts']['S'] ?? 0 }} Poin</span>
                 </div>
 
                 <div class="flex items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
                     <div class="flex items-center gap-2">
-                        <span class="w-6 h-6 rounded-lg bg-blue-500 text-white font-black text-xs flex items-center justify-center">C</span>
-                        <span class="font-bold text-slate-800">Conscientiousness (Cermat)</span>
+                        <span class="w-6 h-6 rounded-lg bg-emerald-600 text-white font-black text-xs flex items-center justify-center">D</span>
+                        <span class="font-bold text-slate-800">Plegmatis (Damai, Tenang, Sabar, Stabil)</span>
                     </div>
-                    <span class="text-sm font-black text-slate-900">{{ $details['counts']['C'] ?? 0 }} Poin</span>
+                    <span class="text-sm font-black text-slate-900">{{ $details['counts']['D'] ?? $details['counts']['C_old'] ?? 0 }} Poin</span>
                 </div>
             </div>
 
@@ -98,14 +98,14 @@ document.addEventListener('DOMContentLoaded', function() {
     new Chart(ctx, {
         type: 'radar',
         data: {
-            labels: ['Dominan (D)', 'Intensif (I)', 'Stabil (S)', 'Cermat (C)'],
+            labels: ['Melankolis (A)', 'Sanguinis (B)', 'Koleris (C)', 'Plegmatis (D)'],
             datasets: [{
                 label: 'Skor Karakter',
                 data: [
-                    {{ $details['counts']['D'] ?? 0 }},
-                    {{ $details['counts']['I'] ?? 0 }},
-                    {{ $details['counts']['S'] ?? 0 }},
-                    {{ $details['counts']['C'] ?? 0 }}
+                    {{ $details['counts']['A'] ?? $details['counts']['D'] ?? 0 }},
+                    {{ $details['counts']['B'] ?? $details['counts']['I'] ?? 0 }},
+                    {{ $details['counts']['C'] ?? $details['counts']['S'] ?? 0 }},
+                    {{ $details['counts']['D'] ?? $details['counts']['C_old'] ?? 0 }}
                 ],
                 backgroundColor: 'rgba(15, 82, 186, 0.25)',
                 borderColor: '#0F52BA',

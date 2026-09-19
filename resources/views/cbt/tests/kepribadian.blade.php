@@ -24,8 +24,8 @@
                 <i class="fa-solid fa-brain text-[10px]"></i>
                 Tahap 1 Evaluasi Rekrutmen
             </div>
-            <h1 class="text-xl font-black text-slate-900 tracking-tight">Tes Kepribadian (DISC Assessment)</h1>
-            <p class="text-xs text-slate-500">Pilih satu pernyataan yang paling menggambarkan kecenderungan karakter diri Anda.</p>
+            <h1 class="text-xl font-black text-slate-900 tracking-tight">Tes Kepribadian (Profil Karakter DISC)</h1>
+            <p class="text-xs text-slate-500">Pilih salah satu kata/sifat yang paling menggambarkan kecenderungan karakter diri Anda.</p>
         </div>
 
         <div class="flex items-center gap-3 self-end sm:self-auto">
@@ -64,7 +64,7 @@
                                 </span>
                                 <div>
                                     <h3 class="text-sm font-bold text-slate-800">{{ $q['prompt'] }}</h3>
-                                    <p class="text-[11px] text-slate-400">Pilih salah satu dari 4 pilihan di bawah ini:</p>
+                                    <p class="text-[11px] text-slate-400">{{ $q['instruction'] ?? 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:' }}</p>
                                 </div>
                             </div>
 

@@ -371,22 +371,26 @@ class CbtController extends Controller
             }
         }
 
-        // Tentukan Tipe Dominan (D, I, S, atau C)
+        // Tentukan Tipe Dominan (A: Melankolis, B: Sanguinis, C: Koleris, D: Plegmatis)
         arsort($results);
         $dominantCode = array_key_first($results);
         $traitMap = [
-            'a' => 'Dominance (D) - Tegas, Berani & Berorientasi Hasil',
-            'b' => 'Influence (I) - Ramah, Antusias & Komunikatif',
-            'c' => 'Steadiness (S) - Tenang, Sabar & Kerjasama Tim',
-            'd' => 'Conscientiousness (C) - Teliti, Analitis & Sistematis'
+            'a' => 'Melankolis - Berbakat, Rapi & Analitis',
+            'b' => 'Sanguinis - Ramah, Antusias & Komunikatif',
+            'c' => 'Koleris - Tegas, Berani & Berorientasi Hasil',
+            'd' => 'Plegmatis - Tenang, Damai & Sabar'
         ];
 
         $details = [
             'counts' => [
-                'D' => $results['a'] ?? 0,
-                'I' => $results['b'] ?? 0,
-                'S' => $results['c'] ?? 0,
-                'C' => $results['d'] ?? 0,
+                'A' => $results['a'] ?? 0,
+                'B' => $results['b'] ?? 0,
+                'C' => $results['c'] ?? 0,
+                'D' => $results['d'] ?? 0,
+                'D_disc' => $results['c'] ?? 0, // Koleris
+                'I_disc' => $results['b'] ?? 0, // Sanguinis
+                'S_disc' => $results['d'] ?? 0, // Plegmatis
+                'C_disc' => $results['a'] ?? 0, // Melankolis
             ],
             'dominant_code' => strtoupper($dominantCode),
             'dominant_trait' => $traitMap[$dominantCode] ?? 'Seimbang',
@@ -394,7 +398,7 @@ class CbtController extends Controller
             'answers' => $answers,
         ];
 
-        // Simpan ke TestResult
+        // 1. Simpan ke TestResult
         TestResult::updateOrCreate(
             ['candidate_id' => $candidate->id, 'test_type' => 'psychology'],
             [
@@ -404,8 +408,49 @@ class CbtController extends Controller
             ]
         );
 
+        // 2. Simpan butir 40 jawaban ke tb_hasilpsikotes jika tabel ada
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_hasilpsikotes')) {
+            try {
+                \Illuminate\Support\Facades\DB::table('tb_hasilpsikotes')
+                    ->where('id_kandidat', $candidate->id)
+                    ->delete();
+
+                $psikoRows = [];
+                for ($i = 1; $i <= 40; $i++) {
+                    $ans = $answers['q' . $i] ?? 'b';
+                    $psikoRows[] = [
+                        'id_kandidat' => $candidate->id,
+                        'id_soal' => $i,
+                        'jawaban' => strtolower($ans),
+                        'waktu_pengerjaan' => $formattedDuration,
+                        'created_at' => now(),
+                    ];
+                }
+                \Illuminate\Support\Facades\DB::table('tb_hasilpsikotes')->insert($psikoRows);
+            } catch (\Throwable $e) {
+                // Abaikan jika terjadi kendala pada tabel legacy
+            }
+        }
+
+        // 3. Update kandidat
         $candidate->tes_kepribadian = $formattedDuration;
         $candidate->saveQuietly();
+
+        // 4. Update tabel legacy tb_kandidat jika ada
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+            \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                ->where('id', $candidate->id)
+                ->orWhere(function ($q) use ($candidate) {
+                    if (!empty($candidate->nik)) {
+                        $q->where('no_ktp', $candidate->nik);
+                    }
+                })
+                ->update([
+                    'tes_kepribadian' => $formattedDuration,
+                    'updated_at' => now(),
+                ]);
+        }
+
         $this->syncTestAcrossCandidates($candidate, 'psychology', $formattedDuration, $details);
 
         $this->logActivity($candidate, 'Selesai Mengerjakan Tes Kepribadian (' . $formattedDuration . ')', $request);
@@ -690,6 +735,29 @@ class CbtController extends Controller
         foreach ($otherCandidates as $other) {
             if ($testType === 'psychology') {
                 $other->tes_kepribadian = $duration;
+                if (\Illuminate\Support\Facades\Schema::hasTable('tb_hasilpsikotes') && !empty($details['answers'])) {
+                    try {
+                        \Illuminate\Support\Facades\DB::table('tb_hasilpsikotes')
+                            ->where('id_kandidat', $other->id)
+                            ->delete();
+
+                        $otherAnswers = $details['answers'];
+                        $otherRows = [];
+                        for ($i = 1; $i <= 40; $i++) {
+                            $ans = $otherAnswers['q' . $i] ?? 'b';
+                            $otherRows[] = [
+                                'id_kandidat' => $other->id,
+                                'id_soal' => $i,
+                                'jawaban' => strtolower($ans),
+                                'waktu_pengerjaan' => $duration ?? '00:04:20',
+                                'created_at' => now(),
+                            ];
+                        }
+                        \Illuminate\Support\Facades\DB::table('tb_hasilpsikotes')->insert($otherRows);
+                    } catch (\Throwable $e) {
+                        // Abaikan kegagalan replikasi
+                    }
+                }
             } elseif ($testType === 'math') {
                 $other->tes_matematika = $duration;
                 $other->tes_ke = $details['tes_ke'] ?? 1;

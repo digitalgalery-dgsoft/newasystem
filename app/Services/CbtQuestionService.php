@@ -5,207 +5,363 @@ namespace App\Services;
 class CbtQuestionService
 {
     /**
-     * Mengembalikan 24 Butir Soal Tes Kepribadian DISC Standar ESA Groups CBT.
-     * Masing-masing opsi:
-     * A = Dominan (D) -> Tegas, Berani, Berorientasi Hasil, Memimpin
-     * B = Intensif/Influencing (I) -> Ramah, Antusias, Komunikatif, Persuasif
-     * C = Stabil/Steadiness (S) -> Sabar, Pendengar Baik, Setia, Mendukung Tim
-     * D = Cermat/Conscientiousness (C) -> Teliti, Rapi, Analitis, Taat Aturan
+     * Mengembalikan 40 Butir Soal Tes Kepribadian Master Sistem Lama (tb_kepribadian).
+     * Florence Littauer Personality Profile (DISC/Temperamen):
+     * A = Melankolis (Analitis, Teratur, Rapi, Taat Aturan)
+     * B = Sanguinis (Ramah, Antusias, Komunikatif, Ceria)
+     * C = Koleris (Tegas, Berani, Berorientasi Target & Hasil, Memimpin)
+     * D = Plegmatis (Tenang, Sabar, Rukun, Pendengar Baik)
      */
     public static function getPersonalityQuestions(): array
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('tb_kepribadian')) {
+                $dbQuestions = \Illuminate\Support\Facades\DB::table('tb_kepribadian')->orderBy('id')->get();
+                if ($dbQuestions->isNotEmpty()) {
+                    return $dbQuestions->map(function ($q) {
+                        return [
+                            'id' => intval($q->id),
+                            'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                            'a' => trim($q->pilihan_a ?? ''),
+                            'b' => trim($q->pilihan_b ?? ''),
+                            'c' => trim($q->pilihan_c ?? ''),
+                            'd' => trim($q->pilihan_d ?? ''),
+                        ];
+                    })->toArray();
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fallback ke array default jika query gagal
+        }
+
+        return self::getDefaultLegacyPersonalityQuestions();
+    }
+
+    /**
+     * Fallback 40 butir soal tes kepribadian master sistem lama ESA Groups (tb_kepribadian)
+     */
+    public static function getDefaultLegacyPersonalityQuestions(): array
     {
         return [
             [
                 'id' => 1,
-                'prompt' => 'Saya adalah pribadi yang...',
-                'a' => 'Bersemangat, berani mengambil risiko, dan suka tantangan baru.',
-                'b' => 'Mudah bergaul, ramah, dan senang berada di tengah banyak orang.',
-                'c' => 'Tenang, sabar, dan lebih suka suasana yang damai serta teratur.',
-                'd' => 'Teliti, menyukai detail, dan selalu berusaha melakukan hal dengan benar.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Logis',
+                'b' => 'Antusias',
+                'c' => 'Berani',
+                'd' => 'Mudah Menyesuaikan Diri',
             ],
             [
                 'id' => 2,
-                'prompt' => 'Ketika menghadapi suatu masalah, saya cenderung...',
-                'a' => 'Mengambil keputusan cepat dan langsung fokus pada solusi konkret.',
-                'b' => 'Mendiskusikannya secara terbuka dan memotivasi rekan kerja.',
-                'c' => 'Mendengarkan saran semua pihak dan menjaga keharmonisan tim.',
-                'd' => 'Menganalisis data, fakta, dan akar penyebab secara mendalam.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Tuntas',
+                'b' => 'Ceria',
+                'c' => 'Menyukai Logika dan Fakta',
+                'd' => 'Tenang, Tidak Mudah Terusik',
             ],
             [
                 'id' => 3,
-                'prompt' => 'Dalam lingkungan kerja, orang lain melihat saya sebagai sosok yang...',
-                'a' => 'Tegas, independen, dan berorientasi pada pencapaian target.',
-                'b' => 'Ceria, antusias, komunikatif, dan membawa energi positif.',
-                'c' => 'Dapat diandalkan, loyal, penuh pengertian, dan tidak banyak menuntut.',
-                'd' => 'Sistematis, terstruktur, disiplin, dan standar kerjanya tinggi.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Rela Berkorban',
+                'b' => 'Mudah Bergaul',
+                'c' => 'Teguh Pendirian',
+                'd' => 'Mudah Menerima',
             ],
             [
                 'id' => 4,
-                'prompt' => 'Sikap saya terhadap perubahan atau hal-hal baru adalah...',
-                'a' => 'Melihatnya sebagai kesempatan besar untuk maju dan memimpin.',
-                'b' => 'Sangat bersemangat dan tidak sabar ingin segera mencobanya.',
-                'c' => 'Membutuhkan waktu adaptasi namun tetap berusaha mendukung kelancaran tim.',
-                'd' => 'Memeriksa prosedur, risiko, dan memastikan langkah-langkahnya jelas.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Toleran',
+                'b' => 'Mempesona',
+                'c' => 'Suka Bersaing',
+                'd' => 'Emosi Terkontrol',
             ],
             [
                 'id' => 5,
-                'prompt' => 'Gaya komunikasi yang paling mencerminkan diri saya adalah...',
-                'a' => 'Langsung ke pokok persoalan (to the point) tanpa bertele-tele.',
-                'b' => 'Ekspresif, persuasif, dan senang bercerita atau berinteraksi.',
-                'c' => 'Santun, penuh empati, dan menjadi pendengar yang baik.',
-                'd' => 'Akurat, formal, berbasis fakta, dan penuh pertimbangan.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Menghargai',
+                'b' => 'Menyenangkan Orang Lain',
+                'c' => 'Gesit Dalam Segala Situasi',
+                'd' => 'Menahan Diri',
             ],
             [
                 'id' => 6,
-                'prompt' => 'Ketika bekerja di dalam tim, peran yang paling saya nikmati adalah...',
-                'a' => 'Menjadi pemimpin penggerak yang mengarahkan pencapaian hasil.',
-                'b' => 'Membangun semangat kekeluargaan dan mempromosikan ide-ide kreatif.',
-                'c' => 'Mendukung pelaksanaan tugas di balik layar dengan konsisten.',
-                'd' => 'Memastikan kualitas pekerjaan sesuai standar mutu dan bebas kesalahan.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Sensitif Terhadap Orang Lain',
+                'b' => 'Penuh Gairah Hidup',
+                'c' => 'Mandiri',
+                'd' => 'Mudah Puas',
             ],
             [
                 'id' => 7,
-                'prompt' => 'Hal yang paling membuat saya bersemangat dalam bekerja adalah...',
-                'a' => 'Meraih kemenangan, prestasi nyata, dan mengatasi rintangan sulit.',
-                'b' => 'Apresiasi sosial, pengakuan, dan hubungan kerja yang akrab.',
-                'c' => 'Kestabilan, rasa aman, dan kerjasama yang solid tanpa konflik.',
-                'd' => 'Pekerjaan yang rapi, sempurna, dan terselesaikan secara efisien.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Perencana',
+                'b' => 'Mendorong Orang Lain',
+                'c' => 'Berpikir Positif',
+                'd' => 'Penyabar',
             ],
             [
                 'id' => 8,
-                'prompt' => 'Jika terjadi silang pendapat atau perselisihan, saya akan...',
-                'a' => 'Mempertahankan argumen saya dengan tegas jika saya yakin itu benar.',
-                'b' => 'Mencari jalan kompromi santai agar suasana tidak menjadi tegang.',
-                'c' => 'Mengalah atau meredam situasi demi menjaga hubungan baik antar rekan.',
-                'd' => 'Menunjukkan data valid atau SOP untuk menyelesaikan perdebatan.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Terjadwal',
+                'b' => 'Impulsif, Tidak Suka Pikir Panjang',
+                'c' => 'Penuh Keyakinan',
+                'd' => 'Pendiam',
             ],
             [
                 'id' => 9,
-                'prompt' => 'Saya paling tidak nyaman apabila berada dalam situasi...',
-                'a' => 'Diperlakukan lambat, tidak berdaya, atau dikendalikan orang lain.',
-                'b' => 'Ditolak secara sosial, diabaikan, atau bekerja dalam isolasi.',
-                'c' => 'Perubahan mendadak yang tidak menentu dan penuh perselisihan.',
-                'd' => 'Pekerjaan yang ceroboh, tidak teratur, atau tanpa aturan jelas.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Teratur',
+                'b' => 'Optimis',
+                'c' => 'Berbicara Terang-terangan',
+                'd' => 'Menerima Apa Saja',
             ],
             [
                 'id' => 10,
-                'prompt' => 'Dalam menyelesaikan tugas harian, prioritas utama saya adalah...',
-                'a' => 'Kecepatan dan ketercapaian target kuantitas.',
-                'b' => 'Interaksi yang menyenangkan dan hasil yang membanggakan bersama.',
-                'c' => 'Ketekunan dan konsistensi hingga semua pekerjaan tuntas.',
-                'd' => 'Ketepatan, presisi perhitungan, dan kualitas dokumen yang prima.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Konsisten',
+                'b' => 'Humoris',
+                'c' => 'Suka Mendominasi',
+                'd' => 'Merespon Apa Saja',
             ],
             [
                 'id' => 11,
-                'prompt' => 'Ketika menerima kritik dari atasan atau rekan kerja, reaksi saya...',
-                'a' => 'Menerimanya sebagai tantangan untuk membuktikan kemampuan lebih.',
-                'b' => 'Mungkin sempat sedih sebentar, tapi segera bangkit dengan senyuman.',
-                'c' => 'Merenungkannya dalam hati dan memperbaikinya dengan tenang.',
-                'd' => 'Mengevaluasi apakah kritik tersebut objektif dan didukung bukti nyata.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Runtut',
+                'b' => 'Menyenangkan Sebagai Teman',
+                'c' => 'Bersedia Mengambil Resiko',
+                'd' => 'Penuh Strategi, Perasa dan Sabar',
             ],
             [
                 'id' => 12,
-                'prompt' => 'Di mata teman-teman terdekat, saya dikenal sebagai orang yang...',
-                'a' => 'Pantang menyerah, kuat pendirian, dan percaya diri tinggi.',
-                'b' => 'Humoris, luwes, mudah mencairkan suasana, dan berjiwa sosial.',
-                'c' => 'Setia kawan, jujur, pengertian, dan selalu bersedia menolong.',
-                'd' => 'Kritis, bijaksana, tertata rapi, dan dapat dipercaya dalam hal rahasia.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Menyukai Seni',
+                'b' => 'Bersemangat',
+                'c' => 'Percaya Diri',
+                'd' => 'Seimbang dan Konsisten',
             ],
             [
                 'id' => 13,
-                'prompt' => 'Pola kerja yang paling cocok dengan gaya saya adalah...',
-                'a' => 'Memiliki wewenang mandiri dan ruang mengambil inisiatif.',
-                'b' => 'Dinamis, banyak berinteraksi dengan orang/klien, tidak monoton.',
-                'c' => 'Rutinitas yang jelas, teratur, dan lingkungan kerja yang kondusif.',
-                'd' => 'Instruksi yang spesifik, target kualitas terukur, dan lingkungan tenang.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Menyukai Kesempurnaan',
+                'b' => 'Memberi Inspirasi',
+                'c' => 'Dapat Bekerja Sendiri',
+                'd' => 'Bertahan Tidak Menyakiti Hati Orang Lain',
             ],
             [
                 'id' => 14,
-                'prompt' => 'Dalam merencanakan sesuatu, saya biasanya...',
-                'a' => 'Menetapkan sasaran utama dan langsung bertindak mengeksekusinya.',
-                'b' => 'Membuat konsep kreatif dan mengajak orang lain bergabung.',
-                'c' => 'Memikirkan kesiapan rekan tim dan langkah-langkah yang nyaman.',
-                'd' => 'Menyusun checklist terperinci, jadwal teratur, dan antisipasi kendala.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Suka Menginstropeksi',
+                'b' => 'Menyatakan Perasaan Terang-terangan',
+                'c' => 'Mudah Mengambil Keputusan',
+                'd' => 'Sarkastis',
             ],
             [
                 'id' => 15,
-                'prompt' => 'Kelebihan utama yang paling menonjol dari diri saya adalah...',
-                'a' => 'Keberanian bersikap dan kecepatan mengambil inisiatif.',
-                'b' => 'Kemampuan mempengaruhi dan memotivasi orang di sekitar saya.',
-                'c' => 'Kesabaran tinggi dan komitmen menjaga keutuhan tim.',
-                'd' => 'Ketelitian memeriksa hal-hal kecil yang sering terlewat orang lain.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Memiliki Apresiasi Musik',
+                'b' => 'Mudah Membaur',
+                'c' => 'Memimpin Orang Lain',
+                'd' => 'Mendamaikan Pertikaian',
             ],
             [
                 'id' => 16,
-                'prompt' => 'Hal yang paling saya hindari saat beraktivitas adalah...',
-                'a' => 'Membuang-buang waktu dengan pembicaraan yang tidak produktif.',
-                'b' => 'Kehilangan antusiasme dan suasana kerja yang dingin/kaku.',
-                'c' => 'Konflik terbuka, teriakan, atau ketegangan antar individu.',
-                'd' => 'Melakukan kesalahan fatal akibat tergesa-gesa tanpa perhitungan.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Cepat Tanggap',
+                'b' => 'Suka Bicara',
+                'c' => 'Berpendirian Teguh',
+                'd' => 'Toleran',
             ],
             [
                 'id' => 17,
-                'prompt' => 'Dalam hal mematuhi peraturan dan instruksi kerja...',
-                'a' => 'Saya mematuhinya, namun fleksibel jika ada jalan pintas yang lebih cepat.',
-                'b' => 'Saya mengikutinya selama tidak membatasi kreativitas dan interaksi.',
-                'c' => 'Saya selalu mematuhi instruksi atasan demi kelancaran operasional.',
-                'd' => 'Saya sangat patuh pada SOP baku karena aturan menjaga keselamatan kerja.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Loyal',
+                'b' => 'Penuh Semangat',
+                'c' => 'Mengarahkan Orang Lain',
+                'd' => 'Senang Mendengarkan',
             ],
             [
                 'id' => 18,
-                'prompt' => 'Saat memimpin suatu proyek atau aktivitas bersama, saya...',
-                'a' => 'Mendelegasikan tugas dengan tegas dan menuntut hasil maksimal.',
-                'b' => 'Memberi inspirasi, menyemangati tim, dan merayakan tiap capaian.',
-                'c' => 'Mendampingi rekan yang kesulitan dan memastikan tidak ada yang tertinggal.',
-                'd' => 'Membuat matriks tugas, mengawasi kepatuhan, dan meneliti laporan berkala.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Suka Membuat Grafik dan Daftar Tugas',
+                'b' => 'Dicintai',
+                'c' => 'Dapat Memimpin',
+                'd' => 'Jarang Iri Hati',
             ],
             [
                 'id' => 19,
-                'prompt' => 'Ketika menghadapi tekanan batas waktu (deadline) yang ketat...',
-                'a' => 'Adrenalin saya meningkat dan saya terpacu untuk menyelesaikannya lebih cepat.',
-                'b' => 'Saya mengajak tim saling menguatkan agar tetap santai namun fokus.',
-                'c' => 'Saya tetap tenang, fokus bekerja langkah demi langkah tanpa panik.',
-                'd' => 'Saya memprioritaskan tugas terpenting secara berurutan dan terorganisir.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Perfeksionis',
+                'b' => 'Populer',
+                'c' => 'Produktif',
+                'd' => 'Terbuka',
             ],
             [
                 'id' => 20,
-                'prompt' => 'Dalam percakapan sehari-hari, saya cenderung lebih sering...',
-                'a' => 'Menyampaikan instruksi, pendapat tegas, atau gagasan utama.',
-                'b' => 'Menceritakan pengalaman, memuji, atau melontarkan lelucon segar.',
-                'c' => 'Mendengarkan keluh kesah teman dan memberikan dukungan moril.',
-                'd' => 'Menanyakan detail teknis, kebenaran informasi, atau fakta pendukung.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Memiliki Batasan Dalam Berperilaku',
+                'b' => 'Bergejolak Dengan Semangat Hidup',
+                'c' => 'Tidak Kenal Takut',
+                'd' => 'Stabil, Tidak Mudah terpengaruh Situasi',
             ],
             [
                 'id' => 21,
-                'prompt' => 'Prinsip hidup yang paling mendekati pandangan saya adalah...',
-                'a' => '"Jika kamu ingin sesuatu terlaksana, lakukan sekarang juga dengan berani."',
-                'b' => '"Hidup itu indah bila dinikmati bersama teman dan saling menginspirasi."',
-                'c' => '"Kebaikan, ketulusan, dan kesetiaan adalah fondasi kedamaian."',
-                'd' => '"Kebenaran, ketertiban, dan disiplin adalah kunci keberhasilan sejati."'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Pemalu',
+                'b' => 'Suka Pamer',
+                'c' => 'Suka Memerintah',
+                'd' => 'Tanpa Ekspresi',
             ],
             [
                 'id' => 22,
-                'prompt' => 'Ketika membeli barang atau memilih suatu layanan, saya lebih memperhatikan...',
-                'a' => 'Fungsi utama, prestise, dan seberapa cepat barang itu bisa saya dapatkan.',
-                'b' => 'Daya tarik visual, rekomendasi teman, dan kesan tren terkini.',
-                'c' => 'Kepercayaan terhadap penjual, kenyamanan penggunaan, dan keamanan.',
-                'd' => 'Spesifikasi detail, perbandingan harga, keaslian, dan ulasan teknis.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Sulit Memaafkan',
+                'b' => 'Kurang Teratur',
+                'c' => 'Tidak Sensitif',
+                'd' => 'Tidak Antusias',
             ],
             [
                 'id' => 23,
-                'prompt' => 'Bagi saya, keberhasilan suatu organisasi paling ditentukan oleh...',
-                'a' => 'Ketegasan pemimpin dan keberanian mengejar target pasar agresif.',
-                'b' => 'Kekompakan budaya kerja yang ceria dan komunikasi pelanggan yang hebat.',
-                'c' => 'Loyalitas karyawan, keharmonisan lingkungan, dan rasa saling percaya.',
-                'd' => 'Sistem manajemen mutu yang rapi, audit transparan, dan SOP ketat.'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Pendendam',
+                'b' => 'Suka Bercerita Berulang-ulang',
+                'c' => 'Melawan Cara Orang Lain',
+                'd' => 'Tidak Suka Terlibat Dalam Masalah Pelik',
             ],
             [
                 'id' => 24,
-                'prompt' => 'Secara umum, kata sifat yang paling tepat menggambarkan karakter saya adalah...',
-                'a' => 'Pemberani, Kompetitif, Penentu, Berorientasi Hasil (Dominan).',
-                'b' => 'Antusias, Ramah, Percaya Diri, Komunikatif (Intensif / Influencing).',
-                'c' => 'Penyabar, Setia, Rukun, Pendukung Terpercaya (Stabil / Steadiness).',
-                'd' => 'Teliti, Analitis, Sistematis, Tertata Rapi (Cermat / Conscientiousness).'
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Cerewet',
+                'b' => 'Mudah Lupa',
+                'c' => 'Blak-blakan',
+                'd' => 'Penakut',
+            ],
+            [
+                'id' => 25,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Sulit Percaya',
+                'b' => 'Lebih Banyak Bicara Daripada Mendengarkan',
+                'c' => 'Tidak Sabar',
+                'd' => 'Sulit Memutuskan',
+            ],
+            [
+                'id' => 26,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Tidak Populer',
+                'b' => 'Mudah Berubah-ubah Emosinya',
+                'c' => 'Kurang Memberikan Kasih Sayang',
+                'd' => 'Tidak Tertarik dengan Kelompok',
+            ],
+            [
+                'id' => 27,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Sulit Dipuaskan',
+                'b' => 'Tidak Konsisten',
+                'c' => 'Keras Kepala',
+                'd' => 'Ragu-ragu',
+            ],
+            [
+                'id' => 28,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Pesimis',
+                'b' => 'Membiarkan Orang Lain Bertindak Sesukanya',
+                'c' => 'Memiliki Harga Diri Tinggi',
+                'd' => 'Dingin',
+            ],
+            [
+                'id' => 29,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Mudah Merasa Terasing',
+                'b' => 'Mudah Marah',
+                'c' => 'Suka Berdebat',
+                'd' => 'Tidak Punya Tujuan',
+            ],
+            [
+                'id' => 30,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Suka Melihat Sisi Buruk dari Pergaulan',
+                'b' => 'Naif',
+                'c' => 'Nekat',
+                'd' => 'Masa Bodoh Terhadap Lingkungan',
+            ],
+            [
+                'id' => 31,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Menarik Diri Dari Pergaulan',
+                'b' => 'Suka Dipuji',
+                'c' => 'Workaholik',
+                'd' => 'Mudah Resah',
+            ],
+            [
+                'id' => 32,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Terlalu Perasa',
+                'b' => 'Mendominasi Pembicaraan',
+                'c' => 'Mudah Menyinggung Perasaan Orang',
+                'd' => 'Tidak Suka Konflik',
+            ],
+            [
+                'id' => 33,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Mudah Tertekan',
+                'b' => 'Tidak Rapi',
+                'c' => 'Memaksa Mengambil Kontrol',
+                'd' => 'Kurang Yakin',
+            ],
+            [
+                'id' => 34,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Tertutup',
+                'b' => 'Bertindak Tidak Berdasarkan Logika',
+                'c' => 'Tidak Toleran',
+                'd' => 'Tidak Pedulian',
+            ],
+            [
+                'id' => 35,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Moody',
+                'b' => 'Berantakan',
+                'c' => 'Mempengaruhi Orang Lain dengan Lihai',
+                'd' => 'Bicaranya Pelan Kalau Didesak',
+            ],
+            [
+                'id' => 36,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Tidak Mudah Percaya',
+                'b' => 'Suka Menjadi Pusat Perhatian',
+                'c' => 'Tidak Mudah Dibujuk',
+                'd' => 'Lambat / Lelet',
+            ],
+            [
+                'id' => 37,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Penyendiri',
+                'b' => 'Jika Berbicara / Tertawa Sangat Keras',
+                'c' => 'Memperlihatkan Kekuatan Saya',
+                'd' => 'Malas',
+            ],
+            [
+                'id' => 38,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Mudah Curiga',
+                'b' => 'Sulit Berkonsentrasi',
+                'c' => 'Sering Marah',
+                'd' => 'Tidak Termotivasi Untuk Bekerja',
+            ],
+            [
+                'id' => 39,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Suka Membalas Dendam',
+                'b' => 'Mudah Bosan',
+                'c' => 'Tergesa-gesa',
+                'd' => 'Menolak Dilibatkan',
+            ],
+            [
+                'id' => 40,
+                'prompt' => 'Pilih salah satu kata/sifat yang paling menggambarkan diri Anda:',
+                'a' => 'Suka Mengkritik',
+                'b' => 'Mudah Berubah Pemikirannya',
+                'c' => 'Cerdik dan Lihai',
+                'd' => 'Mudah Mengalah',
             ],
         ];
     }

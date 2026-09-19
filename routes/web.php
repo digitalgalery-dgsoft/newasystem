@@ -62,6 +62,9 @@ Route::middleware(['admin'])->prefix('master')->name('master.')->group(function 
     Route::put('/math/{id}', [\App\Http\Controllers\MathQuestionController::class, 'update'])->name('math.update');
     Route::post('/math/{id}/toggle', [\App\Http\Controllers\MathQuestionController::class, 'toggleStatus'])->name('math.toggle');
     Route::delete('/math/{id}', [\App\Http\Controllers\MathQuestionController::class, 'destroy'])->name('math.destroy');
+    // Master Soal Kepribadian (DISC)
+    Route::get('/personality', [\App\Http\Controllers\PersonalityQuestionController::class, 'index'])->name('personality.index');
+    Route::put('/personality/{id}', [\App\Http\Controllers\PersonalityQuestionController::class, 'update'])->name('personality.update');
 });
 
 // ==========================================
