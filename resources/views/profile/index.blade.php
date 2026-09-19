@@ -32,19 +32,6 @@
         </div>
     </div>
 
-    <!-- NOTIFIKASI SUKSES / ERROR -->
-    @if(session('success'))
-        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-3 shadow-sm">
-            <div class="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 text-sm shadow">
-                <i class="fa-solid fa-check"></i>
-            </div>
-            <div class="flex-1">
-                <div class="font-bold">Berhasil!</div>
-                <div>{{ session('success') }}</div>
-            </div>
-        </div>
-    @endif
-
     @if(isset($errors) && $errors->any())
         <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm font-semibold flex items-start gap-3 shadow-sm">
             <div class="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center flex-shrink-0 text-sm shadow mt-0.5">

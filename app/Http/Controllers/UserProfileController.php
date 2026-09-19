@@ -28,7 +28,9 @@ class UserProfileController extends Controller
         if (!empty($user->phone)) $completeness += 25;
         if (!empty($user->avatar) || ($employee && !empty($employee->foto))) $completeness += 25;
 
-        return view('profile.index', compact('user', 'employee', 'completeness'));
+        $errors = session('errors') ?: new \Illuminate\Support\ViewErrorBag();
+
+        return view('profile.index', compact('user', 'employee', 'completeness', 'errors'));
     }
 
     /**
