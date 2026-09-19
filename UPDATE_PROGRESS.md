@@ -777,12 +777,23 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
      - Seluruh data kandidat lama (1,81+ juta jawaban di `tb_hasilpsikotes`) diproteksi 100% dan tidak mengalami perubahan sedikitpun.
      - Pasca-eksekusi di Server 3, sebanyak 75 kandidat CBT berhasil disinkronisasi ke profil Sanguinis, status lolos psikotes (`isPsikotestFailed = false`), dan Tab 7 User Prinsiple langsung terbuka tanpa kendala.
 
+### 41. 🛠️ Pemulihan Route `master.prinsiple.destroy` yang Hilang di Master Prinsiple (19 September 2026)
+- **Akar Masalah**:
+  - Saat penambahan rute modul master soal matematika sebelumnya, baris definisi rute `Route::delete('/prinsiple/{id}', [PrincipleController::class, 'destroy'])->name('prinsiple.destroy');` pada [routes/web.php](file:///d:/ASystem/newasystem/routes/web.php) secara tidak sengaja terhapus/tertimpa.
+  - Akibatnya, saat pengguna membuka halaman Master Prinsiple (`/master/prinsiple`), view [resources/views/master/prinsiple/index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/prinsiple/index.blade.php) pada baris 292 mengalami error `RouteNotFoundException: Route [master.prinsiple.destroy] not defined`.
+- **Solusi & Verifikasi**:
+  - Menambahkan kembali rute `master.prinsiple.destroy` pada grup route master di [routes/web.php](file:///d:/ASystem/newasystem/routes/web.php).
+  - Berhasil dideploy ke Server 3 Production dan cache bootstrap dibersihkan (`php artisan optimize:clear`).
+  - Halaman `https://new.asystem.co.id/master/prinsiple` terbukti berhasil me-render 150.866 bytes HTML dengan sempurna tanpa exception.
+
 ---
 
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `e2978e6` | fix: restore missing master.prinsiple.destroy route in routes/web.php |
+| `671adbc` | docs: document Milestone 40 personality test alignment and master personality admin in UPDATE_PROGRESS.md |
 | `b4b8017` | fix(personality): remove non-existent updated_at column from legacy tb_kandidat update |
 | `8ebb502` | feat(personality): align CBT personality test with 40 questions tb_kepribadian, add master personality admin, and fix dummy candidate results to Koleris/Sanguinis |
 | `8548484` | fix(math): enhance duration preservation from test_results in FixDummyMathResultsCommand |
