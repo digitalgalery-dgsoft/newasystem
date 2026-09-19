@@ -172,10 +172,12 @@ class OdooRecruitmentSyncService
         // Tandai timestamp sinkronisasi untuk kandidat yang belum cocok di Odoo
         $remainingNiks = array_keys($nikMap);
         if (!empty($remainingNiks)) {
-            Candidate::whereIn('nik', $remainingNiks)
-                ->where('jenis', 'Job Portal')
-                ->whereNull('odoo_synced_at')
-                ->update(['odoo_synced_at' => now()]);
+            foreach (array_chunk($remainingNiks, 400) as $chunkRemaining) {
+                Candidate::whereIn('nik', $chunkRemaining)
+                    ->where('jenis', 'Job Portal')
+                    ->whereNull('odoo_synced_at')
+                    ->update(['odoo_synced_at' => now()]);
+            }
         }
 
         // Jalankan aturan Auto-Archive 14 Hari untuk kandidat yang tidak ada update
