@@ -189,6 +189,11 @@ class KandidatPortalController extends Controller
             $scopeTitle = 'Kandidat Milik Anda (' . $displayUserName . ')';
         }
 
+        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
+        if ($user) {
+            $user->applyRoleScopeToCandidates($baseQuery);
+        }
+
         // Top Statistics & Tab Badges Counters (sinkron 100% dengan filter user aktif)
         $stats = (clone $baseQuery)->selectRaw("
             COUNT(*) as total,
@@ -777,6 +782,11 @@ class KandidatPortalController extends Controller
                     $q->whereRaw('1 = 0');
                 }
             });
+        }
+
+        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
+        if ($user) {
+            $user->applyRoleScopeToCandidates($baseQuery);
         }
 
         // Filter Status Kandidat

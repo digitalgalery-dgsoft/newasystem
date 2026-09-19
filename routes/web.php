@@ -292,6 +292,9 @@ Route::get('/odoo_setting.php', function() { return redirect()->route('odoo.sett
 Route::middleware(['admin'])->prefix('setting/rbac')->name('setting.rbac.')->group(function () {
     Route::get('/', [\App\Http\Controllers\RbacController::class, 'index'])->name('index');
     Route::post('/matrix', [\App\Http\Controllers\RbacController::class, 'updateRoleMatrix'])->name('matrix.update');
+    Route::post('/roles', [\App\Http\Controllers\RbacController::class, 'storeRole'])->name('role.store');
+    Route::put('/roles/{id}', [\App\Http\Controllers\RbacController::class, 'updateRole'])->name('role.update');
+    Route::delete('/roles/{id}', [\App\Http\Controllers\RbacController::class, 'destroyRole'])->name('role.destroy');
     Route::put('/user/{id}', [\App\Http\Controllers\RbacController::class, 'updateUserAccess'])->name('user.update');
     Route::post('/user/{id}/reset-password', [\App\Http\Controllers\RbacController::class, 'resetUserPassword'])->name('user.reset-password');
 });

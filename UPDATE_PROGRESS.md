@@ -820,6 +820,35 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
      - Rute `PUT /setting/rbac/user/{id}` (`RbacController@updateUserAccess`): Perubahan role, status aktif, dan custom overrides.
      - Rute `POST /setting/rbac/user/{id}/reset-password` (`RbacController@resetUserPassword`): Reset password aman dan cepat.
 
+### 43. 🛡️ Role Dinamis (CRUD), Pengaturan Scope Prinsiple Dihandle & Area Cover, serta Penyaringan Data Berdasarkan Role (19 September 2026)
+- **Role Dinamis (Tambah, Edit, Hapus Role secara Dinamis)**:
+  - Administrator dapat menambahkan role baru kapan saja melalui modal **"Tambah Role Baru"** di dashboard RBAC.
+  - Setiap role dapat dikustomisasi kode slug, nama tampilan, deskripsi, dan inisialisasi perizinan modul.
+  - Kolom pada Matriks Hak Akses (`Tab 1`) dan kartu pada Katalog Role (`Tab 3`) otomatis beradaptasi secara dinamis menampilkan seluruh role yang ada di database.
+  - Opsi edit scope dan hapus role kustom dilengkapi proteksi sistem (role bawaan `is_system` dan role yang sedang aktif digunakan pengguna tidak dapat dihapus sembarangan).
+- **Pengaturan Scope Prinsiple Dihandle & Area Cover pada Role & User**:
+  - **Migrasi Skema Database (`2026_09_19_170000_add_scopes_to_roles_and_users_tables.php`)**:
+    - Tabel `roles`: Menambahkan kolom `handle_all_principles`, `allowed_principles` (JSON), `cover_all_areas`, dan `allowed_areas` (JSON).
+    - Tabel `users`: Menambahkan kolom `scope_override`, `handle_all_principles`, `allowed_principles` (JSON), `cover_all_areas`, dan `allowed_areas` (JSON).
+  - **Dua Tingkat Otorisasi Cakupan Kerja**:
+    1. *Tingkat Role (Default Scope)*: Administrator dapat mengatur apakah suatu role menangani *"Semua Prinsiple"* / *"Pilih Prinsiple Tertentu"* (dari 126+ master prinsiple) dan meng-cover *"Semua Area"* / *"Pilih Area Tertentu"* (dari 50+ area kerja nasional).
+    2. *Tingkat User (Granular Override)*: Pada modal edit pengguna, administrator dapat mencentang *"Kustomisasi Scope Khusus Pengguna Ini"* untuk menetapkan cakupan prinsiple dan area yang spesifik bagi satu orang karyawan/pengguna tanpa mengubah role globalnya.
+- **Penyaringan Otomatis Tampilan Data Berdasarkan Role Pengguna (Data Scoping)**:
+  - **Master Karyawan ([EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php))**:
+    - Data karyawan di tabel otomatis dibatasi hanya menampilkan karyawan dengan prinsiple dan area yang diizinkan untuk user tersebut.
+    - Pilihan dropdown filter Prinsiple dan Area pada halaman web diselaraskan agar hanya memuat opsi yang boleh diakses.
+    - 4 Kartu metrik statistik dihitung secara presisi mengikuti cakupan kerja pengguna.
+  - **Kandidat Interview ([InterviewController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php))**:
+    - Query kandidat aktif, kandidat area, kandidat selesai (Done), dan arsip otomatis terfilter sesuai prinsiple dan area pengguna.
+  - **Kandidat Inhouse ([InterviewInhouseController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewInhouseController.php))**:
+    - Query dan metrik kandidat inhouse otomatis disaring sesuai scope prinsiple dan area kerja pengguna.
+  - **Job Portal / Talent Pool ([KandidatPortalController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/KandidatPortalController.php))**:
+    - Tampilan pelamar job portal dan export data ke Excel (.xlsx) otomatis dibatasi sesuai hak akses prinsiple & area role.
+  - **AI Ranking ([AiRankingController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/AiRankingController.php))**:
+    - Leaderboard dan peringkat kandidat AI otomatis difilter berdasarkan scope prinsiple dan area pengguna yang login.
+  - **Proteksi Super Administrator**:
+    - Administrator utama (`admin`) selalu memiliki bypass penuh (`handlesAllPrinciples() = true`, `coversAllAreas() = true`) sehingga tetap memiliki pengawasan nasional terhadap seluruh data sistem.
+
 ---
 
 ## 📜 Riwayat Commit Terkini (Git Log)

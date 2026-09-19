@@ -83,6 +83,11 @@ class InterviewInhouseController extends Controller
                   });
             });
 
+        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
+        if ($user) {
+            $user->applyRoleScopeToCandidates($baseQuery);
+        }
+
         // Hitung Statistik
         $totalInhouse = (clone $baseQuery)->count();
         $countBaru = (clone $baseQuery)->where(function ($q) {

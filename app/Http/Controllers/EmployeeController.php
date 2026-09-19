@@ -89,6 +89,12 @@ class EmployeeController extends Controller
             $query->where('entity', $entity);
         }
 
+        // Penerapan Scope Hak Akses Role / User (Prinsiple & Area Cover)
+        $currentUser = Auth::user();
+        if ($currentUser) {
+            $currentUser->applyRoleScopeToEmployees($query);
+        }
+
         // Sort order: default diurutkan berdasarkan join date (tanggal_join) terbaru
         $sortBy = $request->input('sort_by', 'tanggal_join');
         $sortDir = strtolower($request->input('sort_dir', 'desc')) === 'asc' ? 'asc' : 'desc';
@@ -101,13 +107,18 @@ class EmployeeController extends Controller
 
         $employees = $query->paginate(10)->withQueryString();
 
-        // Metric Statistics (Global overview)
+        // Metric Statistics (Disesuaikan dengan Scope Role User Aktif)
+        $statBase = Employee::query();
+        if ($currentUser) {
+            $currentUser->applyRoleScopeToEmployees($statBase);
+        }
+
         $stats = [
-            'total' => Employee::count(),
-            'aktif' => Employee::where('status', 'Aktiv')->count(),
-            'resign' => Employee::where('status', 'Resign')->count(),
-            'inhouse' => Employee::where('tipe_karyawan', 'Inhouse')->count(),
-            'ratecard' => Employee::where('tipe_karyawan', 'RateCard')->count(),
+            'total' => (clone $statBase)->count(),
+            'aktif' => (clone $statBase)->where('status', 'Aktiv')->count(),
+            'resign' => (clone $statBase)->where('status', 'Resign')->count(),
+            'inhouse' => (clone $statBase)->where('tipe_karyawan', 'Inhouse')->count(),
+            'ratecard' => (clone $statBase)->where('tipe_karyawan', 'RateCard')->count(),
         ];
 
         // Dropdown options (Distinct, exclude BUDGET, sorted naturally)
@@ -131,8 +142,23 @@ class EmployeeController extends Controller
             ->sort(SORT_NATURAL | SORT_FLAG_CASE)
             ->values()
             ->map(fn($n) => (object)['name' => $n]);
+
+        if ($currentUser && !$currentUser->handlesAllPrinciples()) {
+            $allowedP = array_map('strtolower', array_map('trim', $currentUser->getEffectivePrinciples()));
+            $distinctPrinciples = $distinctPrinciples->filter(function($p) use ($allowedP) {
+                return in_array(strtolower(trim($p->name)), $allowedP, true);
+            })->values();
+        }
+
         $distinctJabatan = Employee::select('jabatan')->distinct()->whereNotNull('jabatan')->orderBy('jabatan')->pluck('jabatan');
         $distinctArea = Employee::select('area')->distinct()->whereNotNull('area')->orderBy('area')->pluck('area');
+
+        if ($currentUser && !$currentUser->coversAllAreas()) {
+            $allowedA = array_map('strtolower', array_map('trim', $currentUser->getEffectiveAreas()));
+            $distinctArea = $distinctArea->filter(function($a) use ($allowedA) {
+                return in_array(strtolower(trim($a)), $allowedA, true);
+            })->values();
+        }
         
         // Pimpinan suggestions for datalist
         $existingPimpinan = Employee::whereNotNull('pimpinan')

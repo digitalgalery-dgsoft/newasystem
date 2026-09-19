@@ -280,6 +280,11 @@ class InterviewController extends Controller
             });
         }
 
+        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
+        if ($user) {
+            $user->applyRoleScopeToCandidates($myCandidatesQuery);
+        }
+
         if ($searchMy) {
             $myCandidatesQuery->where(function ($q) use ($searchMy) {
                 $q->where('full_name', 'like', "%{$searchMy}%")
@@ -335,6 +340,11 @@ class InterviewController extends Controller
                         $q->whereNotIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers)->orWhereNull('useras');
                     }
                 });
+
+            // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
+            if ($user) {
+                $user->applyRoleScopeToCandidates($areaCandidatesQuery);
+            }
 
             if ($searchArea) {
                 $areaCandidatesQuery->where(function ($q) use ($searchArea) {
@@ -963,6 +973,11 @@ class InterviewController extends Controller
             });
         }
 
+        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
+        if ($user) {
+            $user->applyRoleScopeToCandidates($query);
+        }
+
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
@@ -1023,6 +1038,11 @@ class InterviewController extends Controller
                     $q->whereRaw('1 = 0');
                 }
             });
+        }
+
+        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
+        if ($user) {
+            $user->applyRoleScopeToCandidates($query);
         }
 
         if ($search) {

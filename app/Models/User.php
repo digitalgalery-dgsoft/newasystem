@@ -28,6 +28,11 @@ class User extends Authenticatable
         'job_title',
         'signature_path',
         'is_active',
+        'scope_override',
+        'handle_all_principles',
+        'allowed_principles',
+        'cover_all_areas',
+        'allowed_areas',
     ];
 
     /**
@@ -51,6 +56,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'is_active' => 'boolean',
+            'scope_override' => 'boolean',
+            'handle_all_principles' => 'boolean',
+            'allowed_principles' => 'array',
+            'cover_all_areas' => 'boolean',
+            'allowed_areas' => 'array',
         ];
     }
 
@@ -119,6 +129,157 @@ class User extends Authenticatable
         }
 
         return false;
+    }
+
+    /**
+     * Cek apakah user berhak mengakses semua prinsiple
+     */
+    public function handlesAllPrinciples(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+        if ($this->scope_override) {
+            return (bool) ($this->handle_all_principles ?? true);
+        }
+        return $this->roleModel ? $this->roleModel->handlesAllPrinciples() : true;
+    }
+
+    /**
+     * Cek apakah user berhak meng-cover semua area
+     */
+    public function coversAllAreas(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+        if ($this->scope_override) {
+            return (bool) ($this->cover_all_areas ?? true);
+        }
+        return $this->roleModel ? $this->roleModel->coversAllAreas() : true;
+    }
+
+    /**
+     * Ambil daftar prinsiple efektif yang dihandle user ini
+     */
+    public function getEffectivePrinciples(): array
+    {
+        if ($this->handlesAllPrinciples()) {
+            return [];
+        }
+        if ($this->scope_override) {
+            $arr = $this->allowed_principles;
+            return is_array($arr) ? array_values(array_filter($arr)) : [];
+        }
+        return $this->roleModel ? $this->roleModel->getEffectivePrinciples() : [];
+    }
+
+    /**
+     * Ambil daftar area efektif yang dicover user ini
+     */
+    public function getEffectiveAreas(): array
+    {
+        if ($this->coversAllAreas()) {
+            return [];
+        }
+        if ($this->scope_override) {
+            $arr = $this->allowed_areas;
+            return is_array($arr) ? array_values(array_filter($arr)) : [];
+        }
+        return $this->roleModel ? $this->roleModel->getEffectiveAreas() : [];
+    }
+
+    /**
+     * Cek apakah user dapat mengakses prinsiple tertentu
+     */
+    public function canAccessPrinciple(?string $principleName): bool
+    {
+        if ($this->handlesAllPrinciples()) {
+            return true;
+        }
+        if (empty($principleName)) {
+            return true;
+        }
+        $effective = array_map('strtolower', array_map('trim', $this->getEffectivePrinciples()));
+        return in_array(strtolower(trim($principleName)), $effective, true);
+    }
+
+    /**
+     * Cek apakah user dapat mengakses area tertentu
+     */
+    public function canAccessArea(?string $areaName): bool
+    {
+        if ($this->coversAllAreas()) {
+            return true;
+        }
+        if (empty($areaName)) {
+            return true;
+        }
+        $effective = array_map('strtolower', array_map('trim', $this->getEffectiveAreas()));
+        return in_array(strtolower(trim($areaName)), $effective, true);
+    }
+
+    /**
+     * Terapkan scope filter role/user ke query Employee
+     */
+    public function applyRoleScopeToEmployees($query)
+    {
+        if ($this->isAdmin()) {
+            return $query;
+        }
+
+        if (!$this->handlesAllPrinciples()) {
+            $principles = $this->getEffectivePrinciples();
+            if (empty($principles)) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('prinsiple', $principles);
+            }
+        }
+
+        if (!$this->coversAllAreas()) {
+            $areas = $this->getEffectiveAreas();
+            if (empty($areas)) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('area', $areas);
+            }
+        }
+
+        return $query;
+    }
+
+    /**
+     * Terapkan scope filter role/user ke query Candidate
+     */
+    public function applyRoleScopeToCandidates($query)
+    {
+        if ($this->isAdmin()) {
+            return $query;
+        }
+
+        if (!$this->handlesAllPrinciples()) {
+            $principles = $this->getEffectivePrinciples();
+            if (empty($principles)) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->where(function ($q) use ($principles) {
+                    $q->whereIn('principle', $principles)
+                      ->orWhereIn('idprinsiple', $principles);
+                });
+            }
+        }
+
+        if (!$this->coversAllAreas()) {
+            $areas = $this->getEffectiveAreas();
+            if (empty($areas)) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereIn('area', $areas);
+            }
+        }
+
+        return $query;
     }
 
     public function getSignatureUrlAttribute(): ?string

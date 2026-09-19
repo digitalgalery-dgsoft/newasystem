@@ -23,6 +23,11 @@ class AiRankingController extends Controller
             ->whereNotNull('ai_score')
             ->where('ai_score', '>', 0);
 
+        $currentUser = auth()->user();
+        if ($currentUser) {
+            $currentUser->applyRoleScopeToCandidates($baseQuery);
+        }
+
         // List semua jabatan unik yang sudah dianalisis AI
         $availableJobs = Candidate::whereNotNull('ai_score')
             ->where('ai_score', '>', 0)
