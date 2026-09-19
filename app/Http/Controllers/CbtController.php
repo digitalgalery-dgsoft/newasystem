@@ -465,7 +465,31 @@ class CbtController extends Controller
             $userAns = isset($userAnswers[$qId]) ? trim($userAnswers[$qId]) : '';
             $correctAns = trim($qData['correct_answer']);
 
-            $isCorrect = (strtolower($userAns) === strtolower($correctAns));
+            $isCorrect = false;
+
+            // 1. Direct case-insensitive match
+            if (strtolower($userAns) === strtolower($correctAns)) {
+                $isCorrect = true;
+            }
+
+            // 2. Alphanumeric normalization (e.g. 170.000 vs 170000, Rp 170.000 vs 170000)
+            if (!$isCorrect) {
+                $normUser = preg_replace('/[^0-9a-zA-Z]/', '', strtolower($userAns));
+                $normKey = preg_replace('/[^0-9a-zA-Z]/', '', strtolower($correctAns));
+                if ($normUser !== '' && $normUser === $normKey) {
+                    $isCorrect = true;
+                }
+            }
+
+            // 3. Decimal, comma, space, and percentage normalization (e.g. 71.43% vs 71.43, 8,4 vs 8.4 or 8, 4)
+            if (!$isCorrect) {
+                $cleanUser = trim(str_replace([' ', '%', '.'], ['', '', ','], strtolower($userAns)));
+                $cleanKey = trim(str_replace([' ', '%', '.'], ['', '', ','], strtolower($correctAns)));
+                if ($cleanUser !== '' && $cleanUser === $cleanKey) {
+                    $isCorrect = true;
+                }
+            }
+
             if ($isCorrect) {
                 $correctCount++;
             }

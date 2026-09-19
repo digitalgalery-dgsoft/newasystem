@@ -56,7 +56,12 @@ Route::middleware(['admin'])->prefix('master')->name('master.')->group(function 
     Route::post('/prinsiple/import-official', [PrincipleController::class, 'reimportOfficial'])->name('prinsiple.reimport');
     Route::put('/prinsiple/{id}', [PrincipleController::class, 'update'])->name('prinsiple.update');
     Route::get('/prinsiple/{id}/toggle', [PrincipleController::class, 'toggleStatus'])->name('prinsiple.toggle');
-    Route::delete('/prinsiple/{id}', [PrincipleController::class, 'destroy'])->name('prinsiple.destroy');
+    // Master Soal Matematika
+    Route::get('/math', [\App\Http\Controllers\MathQuestionController::class, 'index'])->name('math.index');
+    Route::post('/math', [\App\Http\Controllers\MathQuestionController::class, 'store'])->name('math.store');
+    Route::put('/math/{id}', [\App\Http\Controllers\MathQuestionController::class, 'update'])->name('math.update');
+    Route::post('/math/{id}/toggle', [\App\Http\Controllers\MathQuestionController::class, 'toggleStatus'])->name('math.toggle');
+    Route::delete('/math/{id}', [\App\Http\Controllers\MathQuestionController::class, 'destroy'])->name('math.destroy');
 });
 
 // ==========================================

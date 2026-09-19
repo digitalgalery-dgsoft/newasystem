@@ -212,116 +212,143 @@ class CbtQuestionService
 
     /**
      * Mengembalikan Bank Soal Matematika Standar CBT Recruitment ESA Groups (10 Menit).
-     * Terdiri dari soal perhitungan aritmetika, persentase, margin, logika angka, dan soal cerita kerja.
+     * Membaca langsung dari Master Soal tb_math yang aktif.
      */
     public static function getMathQuestions(): array
+    {
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('tb_math')) {
+                $dbQuestions = \App\Models\MathQuestion::active()->orderBy('id')->get();
+                if ($dbQuestions->isNotEmpty()) {
+                    return $dbQuestions->map(function ($q) {
+                        return [
+                            'id' => $q->id,
+                            'question_text' => $q->question_text,
+                            'question_type' => $q->question_type,
+                            'choices' => $q->parsed_choices,
+                            'correct_answer' => $q->correct_answer,
+                            'explanation' => '',
+                        ];
+                    })->toArray();
+                }
+            }
+        } catch (\Throwable $e) {
+            // Fallback ke array default jika query gagal
+        }
+
+        return self::getDefaultLegacyMathQuestions();
+    }
+
+    /**
+     * Fallback 10 butir soal matematika master sistem lama ESA Groups (tb_math)
+     */
+    public static function getDefaultLegacyMathQuestions(): array
     {
         return [
             [
                 'id' => 1,
-                'question_text' => 'Sebuah toko memberikan diskon 25% untuk sebuah produk yang berharga normal Rp 200.000. Berapakah harga produk tersebut setelah didiskon?',
-                'question_type' => 'multiple_choice',
-                'choices' => [
-                    'a' => 'Rp 140.000',
-                    'b' => 'Rp 150.000',
-                    'c' => 'Rp 160.000',
-                    'd' => 'Rp 175.000'
-                ],
-                'correct_answer' => 'b',
-                'explanation' => 'Diskon = 25% x 200.000 = 50.000. Harga akhir = 200.000 - 50.000 = 150.000.'
+                'question_text' => 'Ani membeli Lampu Philips 50 Watt Seharga Rp. 200,000,- di C4 Buaran, dan di All C4 Sedang ada Promo Diskon 15% Untuk Pembelian Lampu Philips. Berapa Rupiah Yang Harus Dibayar Ani?',
+                'question_type' => 'fill_in_the_blank',
+                'choices' => null,
+                'correct_answer' => '170000',
+                'explanation' => 'Diskon = 15% x 200.000 = 30.000. Harus dibayar = 200.000 - 30.000 = 170.000.'
             ],
             [
                 'id' => 2,
-                'question_text' => 'Jika 5 orang promotor dapat menyelesaikan penataan display toko dalam waktu 6 jam, berapa jam yang dibutuhkan jika pekerjaan tersebut dikerjakan oleh 10 orang promotor?',
+                'question_text' => 'Yani Membeli 2 Buah Bedak Loreal Seharga Rp. 300,000,- di Matahari Departemen Store Pejaten dan Sedang Ada Promo Untuk Pembelian Kedua Diskon 35%. Berapa Rupiah Yang Harus Dibayar Yani?',
                 'question_type' => 'fill_in_the_blank',
                 'choices' => null,
-                'correct_answer' => '3',
-                'explanation' => 'Perbandingan berbalik nilai: (5 x 6) / 10 = 30 / 10 = 3 jam.'
+                'correct_answer' => '495000',
+                'explanation' => 'Barang 1 = 300.000. Barang 2 diskon 35% = 300.000 - 105.000 = 195.000. Total = 495.000.'
             ],
             [
                 'id' => 3,
-                'question_text' => 'Seorang sales berhasil menjual 120 unit produk dalam 4 hari. Dengan rasio penjualan yang sama, berapakah total produk yang dapat terjual dalam waktu 14 hari?',
-                'question_type' => 'multiple_choice',
-                'choices' => [
-                    'a' => '420 unit',
-                    'b' => '400 unit',
-                    'c' => '360 unit',
-                    'd' => '480 unit'
-                ],
-                'correct_answer' => 'a',
-                'explanation' => 'Per hari = 120 / 4 = 30 unit. Dalam 14 hari = 14 x 30 = 420 unit.'
+                'question_text' => 'SPG Dancow di C4 Cempaka Mas Mempunyai Target Sebanyak Rp. 7,000,000,- dan Baru Mencapai Target Sebanyak Rp. 5,000,000,-. Sudah Berapa Persen Pencapaian SPG Tersebut',
+                'question_type' => 'fill_in_the_blank',
+                'choices' => null,
+                'correct_answer' => '71.43%',
+                'explanation' => '(5.000.000 / 7.000.000) x 100% = 71.43%.'
             ],
             [
                 'id' => 4,
-                'question_text' => 'Perhatikan deret angka berikut: 4, 8, 16, 32, 64, ... Berapakah angka berikutnya?',
-                'question_type' => 'fill_in_the_blank',
-                'choices' => null,
-                'correct_answer' => '128',
-                'explanation' => 'Pola deret dikalikan 2: 64 x 2 = 128.'
+                'question_text' => 'Bagas Membeli Wafer TimTam 200Gr Seharga Rp. 5,250,- sebanyak 15 Bungkus di Lotte Kelapa Gading dan Sedang Ada Promo Diskon 15%. Berapa Rupiah Yang Harus Dibayar Bagas?',
+                'question_type' => 'multiple_choice',
+                'choices' => [
+                    'A' => '66,937',
+                    'B' => '67,250',
+                    'C' => '64,500',
+                    'D' => '69,500',
+                    'E' => '70,500'
+                ],
+                'correct_answer' => 'A',
+                'explanation' => '15 x 5.250 = 78.750. Diskon 15% = 11.812,5. Bayar = 66.937,5 (dibulatkan 66.937).'
             ],
             [
                 'id' => 5,
-                'question_text' => 'Sebuah produk dibeli dengan harga modal Rp 80.000 dan dijual dengan mengambil keuntungan (margin) sebesar 20% dari harga modal. Berapakah harga jual produk tersebut?',
+                'question_text' => 'Putri Membeli Boneka Rp. 50,000,- Kemudian Boneka Itu Dijual kembali dengan Harga Rp. 80,000. Berapa persen Keuntungan Putri?',
                 'question_type' => 'multiple_choice',
                 'choices' => [
-                    'a' => 'Rp 92.000',
-                    'b' => 'Rp 96.000',
-                    'c' => 'Rp 100.000',
-                    'd' => 'Rp 104.000'
+                    'A' => '30%',
+                    'B' => '40%',
+                    'C' => '50%',
+                    'D' => '60%',
+                    'E' => '70%'
                 ],
-                'correct_answer' => 'b',
-                'explanation' => 'Keuntungan = 20% x 80.000 = 16.000. Harga jual = 80.000 + 16.000 = 96.000.'
+                'correct_answer' => 'D',
+                'explanation' => 'Untung = 80.000 - 50.000 = 30.000. Persen = (30.000 / 50.000) x 100% = 60%.'
             ],
             [
                 'id' => 6,
-                'question_text' => 'Hitunglah nilai operasi hitung berikut: 150 + 25 x 4 - 80 = ... (Ketik angka saja)',
+                'question_text' => 'Lanjutkan perhitungan berikut 24, 20, 16, 12, ......, .......',
                 'question_type' => 'fill_in_the_blank',
                 'choices' => null,
-                'correct_answer' => '170',
-                'explanation' => 'Perkalian didahulukan: 25 x 4 = 100. Maka 150 + 100 - 80 = 250 - 80 = 170.'
+                'correct_answer' => '8,4',
+                'explanation' => 'Pola deret berkurang 4: 12 - 4 = 8, 8 - 4 = 4.'
             ],
             [
                 'id' => 7,
-                'question_text' => 'Perhatikan deret angka berikut: 3, 7, 12, 18, 25, ... Angka berapakah yang melengkapi deret tersebut?',
+                'question_text' => 'Ibu mempunyai uang sebesar Rp. 30,000,- uang itu dibelikan lauk pauk Rp. 12,000,- Sayuran Rp. 5,000,- dan Minyak Goreng Rp. 4,000,-. Berapa Sisa uang Ibu?',
                 'question_type' => 'multiple_choice',
                 'choices' => [
-                    'a' => '31',
-                    'b' => '32',
-                    'c' => '33',
-                    'd' => '35'
+                    'A' => '10,000',
+                    'B' => '9,000',
+                    'C' => '8,000',
+                    'D' => '7,000',
+                    'E' => '6,000'
                 ],
-                'correct_answer' => 'c',
-                'explanation' => 'Selisih bertambah 1: +4, +5, +6, +7, maka berikutnya +8: 25 + 8 = 33.'
+                'correct_answer' => 'B',
+                'explanation' => 'Total belanja = 12.000 + 5.000 + 4.000 = 21.000. Sisa = 30.000 - 21.000 = 9.000.'
             ],
             [
                 'id' => 8,
-                'question_text' => 'Dari 200 pelamar kerja, sebanyak 40 orang dinyatakan lulus seleksi tahap pertama. Berapakah persentase kelulusan pelamar tersebut? (Ketik angka saja, contoh: 20)',
-                'question_type' => 'fill_in_the_blank',
-                'choices' => null,
-                'correct_answer' => '20',
-                'explanation' => '(40 / 200) x 100% = 20%.'
+                'question_text' => 'Angga mempunyai uang sebesar Rp. 4,500,000,- dan ia berniat membeli sebuah handicam seharga Rp. 2,500,000,- sebelum diskon, harga handycam tersebut adalah 20% setelah itu Angga juga membelanjakan uangnya untuk keperluan lain sebesar Rp. 1,500,000,-. Berapa sisa uang Angga Saat Ini?',
+                'question_type' => 'multiple_choice',
+                'choices' => [
+                    'A' => '1,000,000',
+                    'B' => '1,200,000',
+                    'C' => '1,300,000',
+                    'D' => '1,400,000',
+                    'E' => '1,500,000'
+                ],
+                'correct_answer' => 'A',
+                'explanation' => 'Harga handicam setelah diskon 20% = 2.000.000. Total belanja = 2.000.000 + 1.500.000 = 3.500.000. Sisa = 4.500.000 - 3.500.000 = 1.000.000.'
             ],
             [
                 'id' => 9,
-                'question_text' => 'Seorang kurir logistik menempuh jarak 180 km dengan kecepatan rata-rata 60 km/jam. Jika ia berangkat pukul 08.00 WIB, pada pukul berapakah ia akan tiba di tujuan?',
-                'question_type' => 'multiple_choice',
-                'choices' => [
-                    'a' => 'Pukul 10.30 WIB',
-                    'b' => 'Pukul 11.00 WIB',
-                    'c' => 'Pukul 11.30 WIB',
-                    'd' => 'Pukul 12.00 WIB'
-                ],
-                'correct_answer' => 'b',
-                'explanation' => 'Waktu tempuh = 180 / 60 = 3 jam. 08.00 + 3 jam = 11.00 WIB.'
+                'question_text' => 'Sinta membeli 2 pcs pelembab Loreal seharga Rp. 80,000,- untuk satu pelembab dan di MDS Pejaten sedang ada promosi untuk pembelian kedua diskon 75%. Berapa Rupiah yang harus dibayar santi?',
+                'question_type' => 'fill_in_the_blank',
+                'choices' => null,
+                'correct_answer' => '100000',
+                'explanation' => 'Pcs 1 = 80.000. Pcs 2 diskon 75% = 20.000. Total = 100.000.'
             ],
             [
                 'id' => 10,
-                'question_text' => 'Sebuah karton kemasan berisi 24 kaleng minuman. Jika sebuah minimarket memesan 15 karton, berapa total kaleng minuman yang diterima? (Ketik angka saja)',
+                'question_text' => 'SPG Arnots di C4 KJL mempunyai target sebanyak Rp. 12,000,000,- dan baru mencapai target sebanyak Rp. 5,000,000,-. Sudah berapa persen pencapaian SPG tersebut?',
                 'question_type' => 'fill_in_the_blank',
                 'choices' => null,
-                'correct_answer' => '360',
-                'explanation' => '24 x 15 = 360 kaleng.'
-            ]
+                'correct_answer' => '41.67%',
+                'explanation' => '(5.000.000 / 12.000.000) x 100% = 41.67%.'
+            ],
         ];
     }
 }

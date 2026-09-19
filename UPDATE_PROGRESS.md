@@ -682,6 +682,34 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   6. **Penambahan Tautan Fallback Legacy ([routes/web.php](file:///d:/ASystem/newasystem/routes/web.php))**:
      - Menambahkan rute pengalihan `/awalmath`, `/awalmath.php`, `/soal.php`, `/soaltes.php`, `/soalpsikotes.php`, dan `/soalkomputer.php` langsung menuju rute ujian CBT modern.
 
+### 38. 🧮 Penyelarasan Soal CBT Matematika dengan Master Soal Sistem Lama & Modul Master Soal Matematika Admin (19 September 2026)
+- **Akar Masalah**:
+  - Pada implementasi awal CBT modern, butir soal matematika yang diujikan kepada kandidat bersumber dari data statis dummy baru di `CbtQuestionService` (seperti soal diskon 25%, deret 4, 8, 16.. dsb).
+  - Namun di sisi dashboard rekruter / AS ([CandidateEvaluationDataService.php](file:///d:/ASystem/newasystem/app/Services/CandidateEvaluationDataService.php)) dan PDF evaluasi, hasil jawaban kandidat dievaluasi terhadap tabel warisan `tb_math` (soal resmi sistem lama: Lampu Philips Buaran, Bedak Loreal Pejaten, SPG Dancow, TimTam, Boneka Putri, Deret 24.. dst).
+  - Akibatnya, jawaban yang diinput kandidat di CBT (misal 'b', 12, 'a', 128) dibandingkan dengan kunci jawaban `tb_math` (170000, 495000, 71.43%, A) sehingga seluruh 10 soal dinyatakan salah (Nilai 0% Grade D).
+- **Solusi & Implementasi Menyeluruh**:
+  1. **Migrasi Penambahan Status Aktif & Timestamp (`2026_09_19_140000_add_is_active_to_tb_math_table.php`)**:
+     - Menambahkan kolom `is_active` (boolean, default 1) dan `updated_at` (datetime) pada tabel `tb_math`.
+     - Memastikan seluruh 10 butir soal asli berstatus aktif secara default.
+  2. **Model Eloquent [MathQuestion.php](file:///d:/ASystem/newasystem/app/Models/MathQuestion.php)**:
+     - Memetakan tabel `tb_math` secara dinamis, accessor `parsed_choices` untuk parsing opsi pilihan ganda A s/d E, dan scope `active()`.
+  3. **Penyelarasan Soal CBT Matematika ([CbtQuestionService.php](file:///d:/ASystem/newasystem/app/Services/CbtQuestionService.php) & [matematika.blade.php](file:///d:/ASystem/newasystem/resources/views/cbt/tests/matematika.blade.php))**:
+     - Fungsi `getMathQuestions()` kini memuat langsung soal aktif dari database `tb_math` (dengan fallback 10 butir soal resmi sistem lama).
+     - Antarmuka ujian CBT menampilkan butir soal persis sesuai jenisnya:
+       - **Pilihan Ganda**: Menampilkan opsi radio pilihan A, B, C, D, E dan mengirim nilai huruf kapital ('A', 'B', 'C', 'D', 'E').
+       - **Isian Singkat / Angka**: Menampilkan input teks/angka presisi dengan petunjuk penulisan.
+  4. **Toleransi Normalisasi Multi-Stage Pengecekan Jawaban ([CbtController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CbtController.php) & [CandidateEvaluationDataService.php](file:///d:/ASystem/newasystem/app/Services/CandidateEvaluationDataService.php))**:
+     - Menerapkan 3 lapis normalisasi jawaban cerdas:
+       1. *Direct case-insensitive match* (huruf/teks langsung).
+       2. *Alphanumeric & separator normalization* (misal: kandidat mengetik `170.000` atau `Rp 170000` tetap cocok dengan kunci `170000`).
+       3. *Decimal, comma, space, and percentage normalization* (misal: `71.43%` vs `71.43` atau `71,43%`, serta deret `8, 4` vs `8,4` atau `8.4`).
+  5. **Modul Master Soal Matematika Admin ([MathQuestionController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/MathQuestionController.php) & [master/math/index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/math/index.blade.php))**:
+     - Disediakan menu **"Soal Matematika"** di sidebar Master Data (terproteksi hak akses admin).
+     - Menampilkan 4 kartu ringkasan metrik: Total Bank Soal, Soal Aktif di CBT, Pilihan Ganda, dan Isian Singkat.
+     - Filter pencarian teks soal dan filter dropdown tipe soal serta status aktif.
+     - Tabel interaktif menampilkan ID, Tipe Soal, Pertanyaan, Pilihan A-E, Kunci Jawaban, Toggle Status Aktif langsung, tombol Edit Modal, dan Hapus (dengan proteksi integritas jika ada riwayat pengerjaan kandidat).
+     - Modal Tambah dan Edit Soal dengan input dinamis menyesuaikan tipe pilihan ganda vs isian singkat.
+
 ---
 
 ## 📜 Riwayat Commit Terkini (Git Log)

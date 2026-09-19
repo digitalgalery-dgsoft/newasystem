@@ -148,9 +148,31 @@ class CandidateEvaluationDataService
                 foreach ($rawMath as $mRow) {
                     $candAns = trim($mRow->jawaban ?? '');
                     $keyAns = trim($mRow->correct_answer ?? '');
-                    $cleanCand = str_replace([' ', '.', ','], ['', '', '.'], strtolower($candAns));
-                    $cleanKey = str_replace([' ', '.', ','], ['', '', '.'], strtolower($keyAns));
-                    $isCorrect = ($cleanCand === $cleanKey) || (strtolower($candAns) === strtolower($keyAns));
+
+                    $isCorrect = false;
+
+                    // 1. Direct case-insensitive match
+                    if (strtolower($candAns) === strtolower($keyAns)) {
+                        $isCorrect = true;
+                    }
+
+                    // 2. Alphanumeric normalization (e.g. 170.000 vs 170000, Rp 170.000 vs 170000)
+                    if (!$isCorrect) {
+                        $normCand = preg_replace('/[^0-9a-zA-Z]/', '', strtolower($candAns));
+                        $normKey = preg_replace('/[^0-9a-zA-Z]/', '', strtolower($keyAns));
+                        if ($normCand !== '' && $normCand === $normKey) {
+                            $isCorrect = true;
+                        }
+                    }
+
+                    // 3. Decimal, comma, space, and percentage normalization (e.g. 71.43% vs 71.43, 8,4 vs 8.4 or 8, 4)
+                    if (!$isCorrect) {
+                        $cleanCand = trim(str_replace([' ', '%', '.'], ['', '', ','], strtolower($candAns)));
+                        $cleanKey = trim(str_replace([' ', '%', '.'], ['', '', ','], strtolower($keyAns)));
+                        if ($cleanCand !== '' && $cleanCand === $cleanKey) {
+                            $isCorrect = true;
+                        }
+                    }
 
                     if ($isCorrect) {
                         $mathCorrectCount++;

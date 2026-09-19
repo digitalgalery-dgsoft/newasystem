@@ -73,7 +73,7 @@
                         </div>
                     </div>
 
-                    @if($q['question_type'] === 'multiple_choice')
+                    @if($q['question_type'] === 'multiple_choice' && !empty($q['choices']))
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs mt-3">
                             @foreach($q['choices'] as $key => $choice)
                                 <div>
