@@ -554,8 +554,16 @@ class JobStatistikController extends Controller
         // Urutkan Tabel 3 berdasarkan total pelamar terbanyak
         uasort($statsDetail, fn($a, $b) => $b['total_pelamar'] <=> $a['total_pelamar']);
 
-        // Urutkan Tabel 4 berdasarkan total kandidat terbanyak
-        uasort($statsOdooRecruiter, fn($a, $b) => $b['total'] <=> $a['total']);
+        // Urutkan Tabel 4 berdasarkan peringkat jumlah JOINED terbanyak, lalu pkwt, lalu total
+        uasort($statsOdooRecruiter, function ($a, $b) {
+            if ($b['joined'] !== $a['joined']) {
+                return $b['joined'] <=> $a['joined'];
+            }
+            if ($b['pkwt'] !== $a['pkwt']) {
+                return $b['pkwt'] <=> $a['pkwt'];
+            }
+            return $b['total'] <=> $a['total'];
+        });
 
         // Hitung total job post
         $totalJobPosts = 0;

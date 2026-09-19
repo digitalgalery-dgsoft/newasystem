@@ -460,9 +460,12 @@
                         <span class="text-[10px] bg-indigo-800 text-indigo-200 font-extrabold px-2 py-0.5 rounded border border-indigo-700">
                             ERP Integration
                         </span>
+                        <span class="text-[10px] bg-emerald-500/30 text-emerald-300 font-bold px-2 py-0.5 rounded border border-emerald-400/30">
+                            <i class="fa-solid fa-arrow-down-wide-short text-[9px]"></i> Rank Joined
+                        </span>
                     </div>
                     <p class="text-[11px] text-indigo-200/80 mt-0.5">
-                        Rekapitulasi progres kandidat di masing-masing tahapan pipeline Odoo Recruitment (Data Pelamar, Interview, Principal, E-Learning, PKWT, Joined, Belum di Odoo).
+                        Rekapitulasi progres kandidat di masing-masing tahapan pipeline Odoo Recruitment (Diurutkan berdasarkan peringkat jumlah Joined terbanyak).
                     </p>
                 </div>
             </div>
@@ -497,7 +500,12 @@
                         <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-purple-50 text-purple-800">3. Principal</th>
                         <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-amber-50 text-amber-800">4. E-Learning</th>
                         <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-teal-50 text-teal-800">5. PKWT</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-emerald-50 text-emerald-800">6. Joined</th>
+                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-emerald-100 text-emerald-900 font-black border-b-2 border-emerald-500">
+                            <div class="flex items-center justify-center gap-1">
+                                <span>6. Joined</span>
+                                <i class="fa-solid fa-arrow-down-wide-short text-[10px] text-emerald-700"></i>
+                            </div>
+                        </th>
                         <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-rose-50 text-rose-800">Belum di Odoo</th>
                         <th class="py-3 px-3.5 border-b border-slate-200 text-center">Aksi</th>
                     </tr>
