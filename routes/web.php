@@ -190,6 +190,8 @@ Route::get('/inputjob/{id}/toggle', [JobController::class, 'toggleStatus'])->nam
 Route::get('/kandidatportal', [KandidatPortalController::class, 'index'])->name('kandidatportal.index');
 Route::get('/kandidat-portal', fn() => redirect()->route('kandidatportal.index'));
 Route::get('/kandidatportal/export', [KandidatPortalController::class, 'exportExcel'])->name('kandidatportal.export');
+Route::post('/kandidatportal/sync-odoo', [KandidatPortalController::class, 'syncOdooRecruitment'])->name('kandidatportal.sync_odoo');
+Route::post('/kandidatportal/{id}/sync-single-odoo', [KandidatPortalController::class, 'syncSingleOdoo'])->name('kandidatportal.sync_single_odoo');
 Route::any('/deploy-webhook', function(\Illuminate\Http\Request $request) {
     $token = $request->query('token') ?? $request->input('token');
     if ($token !== 'dgsoft_rahasia_123') {

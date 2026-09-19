@@ -38,6 +38,10 @@
                 <i class="fa-solid fa-file-excel"></i>
                 <span>Export Data Excel</span>
             </button>
+            <button @click="openSyncOdooModal = true" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 transition-all shadow-sm shadow-purple-600/20">
+                <i class="fa-solid fa-arrows-rotate"></i>
+                <span>Sync Step Odoo</span>
+            </button>
         </div>
     </div>
 
@@ -138,6 +142,20 @@
                         <option value="Red" {{ $kategori === 'Red' ? 'selected' : '' }}>🔴 Red (&lt; 60%)</option>
                     </select>
 
+                    <!-- Filter Step Odoo -->
+                    <select name="odoo_stage" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 outline-none">
+                        <option value="">Semua Step Odoo</option>
+                        <option value="matched" {{ ($odooStage ?? '') === 'matched' ? 'selected' : '' }}>⚡ Terdaftar di Odoo</option>
+                        <option value="none" {{ ($odooStage ?? '') === 'none' ? 'selected' : '' }}>⚪ Belum di Odoo</option>
+                        @if(!empty($distinctOdooStages) && count($distinctOdooStages) > 0)
+                            <optgroup label="Tahapan Spesifik:">
+                                @foreach($distinctOdooStages as $stg)
+                                    <option value="{{ $stg }}" {{ ($odooStage ?? '') === $stg ? 'selected' : '' }}>{{ $stg }}</option>
+                                @endforeach
+                            </optgroup>
+                        @endif
+                    </select>
+
                     <!-- Tanggal Dari -->
                     <input type="date" 
                            name="start" 
@@ -157,7 +175,7 @@
                         <input type="text" 
                                name="q" 
                                value="{{ $search }}" 
-                               placeholder="Cari nama, NIK, posisi..." 
+                               placeholder="Cari nama, NIK, posisi, step..." 
                                class="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">
                         <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                     </div>
@@ -166,7 +184,7 @@
                         <i class="fa-solid fa-filter mr-1"></i> Filter
                     </button>
 
-                    @if($kategori || $start || $end || $search || ($isAdmin && !empty($filterRecruiter)))
+                    @if($kategori || !empty($odooStage) || $start || $end || $search || ($isAdmin && !empty($filterRecruiter)))
                     <a href="{{ route('kandidatportal.index', ['tab' => $tab]) }}" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all">
                         Reset
                     </a>
@@ -244,6 +262,7 @@
                         <th>Pendidikan</th>
                         <th>Posisi Dilamar</th>
                         <th>Area</th>
+                        <th class="text-center">Step Odoo</th>
                         <th class="text-center">AI Match</th>
                         <th class="text-center">Kategori</th>
                         <th class="text-center">CV</th>
@@ -337,6 +356,28 @@
                                 <i class="fa-solid fa-location-dot text-[9px]"></i>
                                 {{ $cand->area ?? 'JAKARTA' }}
                             </span>
+                        </td>
+
+                        <!-- Step Odoo -->
+                        <td class="text-center">
+                            @php
+                                $odooBadge = $cand->odoo_badge_info;
+                            @endphp
+                            @if($cand->odoo_stage_name)
+                                <div class="inline-flex flex-col items-center gap-0.5">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border {{ $odooBadge['class'] }}" title="Tahapan di Odoo ERP: {{ $cand->odoo_stage_name }} ({{ $cand->odoo_entity ?? 'Odoo' }})">
+                                        <i class="{{ $odooBadge['icon'] }} text-[9px]"></i>
+                                        <span>{{ $cand->odoo_stage_name }}</span>
+                                    </span>
+                                    @if($cand->odoo_entity)
+                                        <span class="text-[9px] font-extrabold text-slate-400">
+                                            {{ $cand->odoo_entity }}
+                                        </span>
+                                    @endif
+                                </div>
+                            @else
+                                <span class="text-[10px] text-slate-400 italic">Belum di Odoo</span>
+                            @endif
                         </td>
 
                         <!-- AI Score -->
@@ -596,6 +637,108 @@
         </div>
     </div>
 
+    <!-- MODAL SYNC STATUS ODOO -->
+    <div x-show="openSyncOdooModal" 
+         x-cloak 
+         class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        
+        <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full p-6 border border-slate-200 space-y-4"
+             @click.away="!isSyncingOdoo && (openSyncOdooModal = false)">
+            
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-extrabold text-slate-900">Sinkronisasi Rekrutmen Odoo ERP</h4>
+                        <p class="text-[11px] text-slate-500">Pencocokan NIK & Pembaruan Tahapan Seleksi Otomatis</p>
+                    </div>
+                </div>
+                <button type="button" :disabled="isSyncingOdoo" @click="openSyncOdooModal = false" class="text-slate-400 hover:text-slate-600 text-base p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <!-- Description / Rules -->
+            <div class="space-y-2.5 text-xs text-slate-600">
+                <div class="p-3 bg-purple-50/70 border border-purple-200 rounded-xl space-y-1.5 text-purple-900">
+                    <div class="font-bold flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-info text-purple-600"></i>
+                        <span>Aturan Sinkronisasi Otomatis:</span>
+                    </div>
+                    <ul class="list-disc pl-4 space-y-1 text-[11px] leading-relaxed text-purple-800">
+                        <li><b>First/Second Interview & Tahap Seleksi</b> &rarr; Kandidat dialihkan ke tab <b>Interview</b>.</li>
+                        <li><b>Joined</b> &rarr; Kandidat dialihkan ke tab <b>Terima</b>.</li>
+                        <li><b>Kandidat > 14 Hari Tanpa Update</b> (masih di step Baru) &rarr; Otomatis dialihkan ke tab <b>Arsip</b>.</li>
+                        <li>Pencocokan dilakukan otomatis lintas 5 entitas aktif (AMK, AKP, ATK, ABO, ATB).</li>
+                    </ul>
+                </div>
+
+                <!-- Result Card (shown when finished) -->
+                <div x-show="syncResult" x-cloak class="p-3 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2 text-emerald-900">
+                    <div class="font-bold flex items-center gap-1.5 text-xs">
+                        <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                        <span>Hasil Sinkronisasi Terkini:</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2 text-[11px]">
+                        <div class="bg-white p-2 rounded-lg border border-emerald-100">
+                            <span class="text-slate-500 block">Total Diperiksa</span>
+                            <b class="text-slate-800 text-sm" x-text="syncResult ? syncResult.total_checked : 0"></b>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-emerald-100">
+                            <span class="text-slate-500 block">Cocok di Odoo</span>
+                            <b class="text-purple-700 text-sm" x-text="syncResult ? syncResult.matched : 0"></b>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-emerald-100">
+                            <span class="text-slate-500 block">Pindah ke Interview</span>
+                            <b class="text-indigo-600 text-sm" x-text="syncResult ? syncResult.moved_interview : 0"></b>
+                        </div>
+                        <div class="bg-white p-2 rounded-lg border border-emerald-100">
+                            <span class="text-slate-500 block">Pindah ke Terima</span>
+                            <b class="text-emerald-600 text-sm" x-text="syncResult ? syncResult.moved_terima : 0"></b>
+                        </div>
+                        <div class="col-span-2 bg-white p-2 rounded-lg border border-emerald-100 flex items-center justify-between">
+                            <span class="text-slate-500">Auto-Arsip (> 14 Hari):</span>
+                            <b class="text-rose-600 text-sm" x-text="syncResult ? syncResult.auto_archived : 0"></b>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading State -->
+                <div x-show="isSyncingOdoo" class="py-6 text-center space-y-2">
+                    <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-purple-500 border-t-transparent"></div>
+                    <div class="text-xs font-bold text-slate-700">Sedang mencocokkan NIK ke Odoo ERP...</div>
+                    <div class="text-[11px] text-slate-400">Harap tunggu sebentar, sistem sedang memeriksa ribuan data pelamar.</div>
+                </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button type="button" :disabled="isSyncingOdoo" @click="openSyncOdooModal = false" class="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all">
+                    Tutup
+                </button>
+                <template x-if="!syncResult">
+                    <button type="button" :disabled="isSyncingOdoo" @click="runOdooSync()" class="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold transition-all shadow-md shadow-purple-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50">
+                        <i class="fa-solid fa-play"></i>
+                        <span>Mulai Sinkronisasi Sekarang</span>
+                    </button>
+                </template>
+                <template x-if="syncResult">
+                    <button type="button" @click="window.location.reload()" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20 flex items-center gap-1.5 cursor-pointer">
+                        <i class="fa-solid fa-rotate-right"></i>
+                        <span>Muat Ulang Halaman</span>
+                    </button>
+                </template>
+            </div>
+        </div>
+    </div>
+
 </div>
 @endsection
 
@@ -605,6 +748,10 @@
         return {
             resetModalOpen: false,
             openExportModal: false,
+            openSyncOdooModal: false,
+            isSyncingOdoo: false,
+            syncResult: null,
+
             resetCandidateId: '',
             resetCandidateName: '',
             resetCandidateBirth: '',
@@ -616,6 +763,28 @@
                 this.resetCandidateBirth = birthDateFmt || 'Belum diisi';
                 this.resetCandidatePlain = plainPwd || 'ddmmyyyy';
                 this.resetModalOpen = true;
+            },
+
+            async runOdooSync() {
+                this.isSyncingOdoo = true;
+                this.syncResult = null;
+                try {
+                    const res = await fetch('{{ route('kandidatportal.sync_odoo') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify({ limit: 1500 })
+                    });
+                    const data = await res.json();
+                    this.syncResult = data;
+                } catch (e) {
+                    alert('Gagal menjalankan sinkronisasi Odoo: ' + e.message);
+                } finally {
+                    this.isSyncingOdoo = false;
+                }
             },
 
             sendWhatsAppMessage(phone, name, job, area) {

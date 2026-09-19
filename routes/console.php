@@ -26,4 +26,10 @@ Schedule::command('ai:cron-analyzer --limit=3')
     ->withoutOverlapping()
     ->runInBackground();
 
+// 4. Cron Job: Sync Tahapan Kandidat Portal dengan Odoo Recruitment & Auto-Archive > 14 hari
+Schedule::command('odoo:sync-portal-stages --limit=500 --silent')
+    ->hourly()
+    ->withoutOverlapping()
+    ->runInBackground();
+
 

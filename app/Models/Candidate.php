@@ -19,6 +19,8 @@ class Candidate extends Model
         'expected_salary' => 'decimal:2',
         'last_salary' => 'decimal:2',
         'tes_ke' => 'integer',
+        'odoo_synced_at' => 'datetime',
+        'odoo_applicant_data' => 'array',
     ];
 
     protected static function booted()
@@ -573,5 +575,88 @@ class Candidate extends Model
     public function getUserPrinsipleOptionsAttribute()
     {
         return \App\Http\Controllers\InterviewController::getUserPrinsipleOptions($this);
+    }
+
+    public function hasOdooRecruitment(): bool
+    {
+        return !empty($this->odoo_applicant_id) || !empty($this->odoo_stage_name);
+    }
+
+    public function getOdooBadgeInfoAttribute(): array
+    {
+        $stage = trim($this->odoo_stage_name ?? '');
+        if (empty($stage)) {
+            return [
+                'label' => 'Belum di Odoo',
+                'class' => 'bg-slate-100 text-slate-500 border-slate-200',
+                'icon'  => 'fa-regular fa-clock',
+                'stage' => null,
+            ];
+        }
+
+        $lower = strtolower($stage);
+        if (str_contains($lower, 'joined')) {
+            return [
+                'label' => 'Joined',
+                'class' => 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold',
+                'icon'  => 'fa-solid fa-circle-check',
+                'stage' => $stage,
+            ];
+        }
+        if (str_contains($lower, 'pkwt')) {
+            return [
+                'label' => $stage,
+                'class' => 'bg-amber-50 text-amber-800 border-amber-300 font-bold',
+                'icon'  => 'fa-solid fa-file-signature',
+                'stage' => $stage,
+            ];
+        }
+        if (str_contains($lower, 'learning') || str_contains($lower, 'elearning')) {
+            return [
+                'label' => 'E-Learning',
+                'class' => 'bg-teal-50 text-teal-700 border-teal-300 font-bold',
+                'icon'  => 'fa-solid fa-graduation-cap',
+                'stage' => $stage,
+            ];
+        }
+        if (str_contains($lower, 'principal')) {
+            return [
+                'label' => 'Principal',
+                'class' => 'bg-sky-50 text-sky-700 border-sky-300 font-bold',
+                'icon'  => 'fa-solid fa-building-user',
+                'stage' => $stage,
+            ];
+        }
+        if (str_contains($lower, 'interview')) {
+            return [
+                'label' => $stage,
+                'class' => 'bg-purple-50 text-purple-700 border-purple-300 font-bold',
+                'icon'  => 'fa-solid fa-user-tie',
+                'stage' => $stage,
+            ];
+        }
+        if (str_contains($lower, 'pelamar') || str_contains($lower, 'initial') || str_contains($lower, 'kualifikasi')) {
+            return [
+                'label' => 'Data Pelamar',
+                'class' => 'bg-blue-50 text-blue-700 border-blue-200 font-medium',
+                'icon'  => 'fa-solid fa-inbox',
+                'stage' => $stage,
+            ];
+        }
+        if (str_contains($lower, 'refuse') || str_contains($lower, 'tolak') || str_contains($lower, 'arsip')) {
+            return [
+                'label' => 'Ditolak / Arsip',
+                'class' => 'bg-rose-50 text-rose-700 border-rose-200 font-medium',
+                'icon'  => 'fa-solid fa-ban',
+                'stage' => $stage,
+            ];
+        }
+
+        return [
+            'label' => $stage,
+            'class' => 'bg-indigo-50 text-indigo-700 border-indigo-200 font-medium',
+            'icon'  => 'fa-solid fa-arrow-right-to-bracket',
+            'stage' => $stage,
+        ];
     }
 }

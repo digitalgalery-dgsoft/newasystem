@@ -10,6 +10,7 @@ use App\Models\Principle;
 use App\Models\InterviewAssessment;
 use App\Models\WorkExperience;
 use App\Services\AiAnalyzerService;
+use App\Services\OdooRecruitmentSyncService;
 use Illuminate\Support\Facades\DB;
 
 use Carbon\Carbon;
@@ -125,6 +126,7 @@ class KandidatPortalController extends Controller
         $end = $request->query('end');
         $search = $request->query('q') ?? $request->query('search');
         $filterRecruiter = $request->query('recruiter');
+        $odooStage = $request->query('odoo_stage');
 
         $user = $this->getCurrentUser();
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
@@ -257,6 +259,17 @@ class KandidatPortalController extends Controller
             $tableQuery->where('kategori_kandidat', $kategori);
         }
 
+        // Filter Step Odoo
+        if (!empty($odooStage)) {
+            if ($odooStage === 'none') {
+                $tableQuery->whereNull('odoo_stage_name');
+            } elseif ($odooStage === 'matched') {
+                $tableQuery->whereNotNull('odoo_stage_name');
+            } else {
+                $tableQuery->where('odoo_stage_name', $odooStage);
+            }
+        }
+
         // Filter Rentang Tanggal
         $parseDate = function ($d) {
             if (empty($d)) return null;
@@ -288,7 +301,8 @@ class KandidatPortalController extends Controller
                 $q->where('full_name', 'like', "%{$search}%")
                   ->orWhere('nik', 'like', "%{$search}%")
                   ->orWhere('applied_job', 'like', "%{$search}%")
-                  ->orWhere('area', 'like', "%{$search}%");
+                  ->orWhere('area', 'like', "%{$search}%")
+                  ->orWhere('odoo_stage_name', 'like', "%{$search}%");
             });
         }
 
@@ -301,10 +315,19 @@ class KandidatPortalController extends Controller
             ->orderBy('area')
             ->pluck('area');
 
+        $distinctOdooStages = Candidate::where('jenis', 'Job Portal')
+            ->whereNotNull('odoo_stage_name')
+            ->where('odoo_stage_name', '!=', '')
+            ->distinct()
+            ->orderBy('odoo_stage_name')
+            ->pluck('odoo_stage_name');
+
         return view('kandidatportal.index', compact(
             'candidates',
             'tab',
             'kategori',
+            'odooStage',
+            'distinctOdooStages',
             'start',
             'end',
             'search',
@@ -1015,5 +1038,47 @@ class KandidatPortalController extends Controller
             'Expires' => '0',
             'Pragma' => 'public',
         ])->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Sinkronisasi massal data kandidat portal dengan Odoo Recruitment ERP
+     */
+    public function syncOdooRecruitment(Request $request, OdooRecruitmentSyncService $syncService)
+    {
+        $limit = (int)($request->input('limit', 1000));
+        $includeArchived = $request->boolean('all', false);
+
+        $result = $syncService->syncAllCandidates(null, $limit, $includeArchived);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($result);
+        }
+
+        $msg = "Sinkronisasi Odoo berhasil! {$result['matched']} pelamar cocok di Odoo ({$result['moved_interview']} ke Interview, {$result['moved_terima']} ke Terima, {$result['moved_arsip']} ke Arsip). ";
+        if ($result['auto_archived'] > 0) {
+            $msg .= "{$result['auto_archived']} kandidat > 14 hari tanpa update otomatis dipindahkan ke Arsip.";
+        }
+
+        return redirect()->back()->with('success', $msg);
+    }
+
+    /**
+     * Sinkronisasi status Odoo untuk 1 kandidat spesifik
+     */
+    public function syncSingleOdoo(Request $request, $id, OdooRecruitmentSyncService $syncService)
+    {
+        $candidate = Candidate::findOrFail($id);
+        $result = $syncService->syncSingleCandidate($candidate);
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($result);
+        }
+
+        if ($result['found'] ?? false) {
+            $msg = "Status Odoo berhasil diperbarui: [{$result['entity']}] {$result['odoo_stage']}. Status kandidat saat ini: {$result['status_kandidat']}.";
+            return redirect()->back()->with('success', $msg);
+        }
+
+        return redirect()->back()->with('warning', $result['message'] ?? 'NIK kandidat tidak ditemukan di Odoo.');
     }
 }
