@@ -265,8 +265,16 @@ Route::middleware(['admin'])->group(function () {
     Route::post('/ai-settings', [AiSettingController::class, 'update'])->name('aisetting.update');
     Route::post('/ai-settings/test-gemini', [AiSettingController::class, 'testGemini'])->name('aisetting.test_gemini');
     Route::post('/ai-settings/test-wa', [AiSettingController::class, 'testWa'])->name('aisetting.test_wa');
+    Route::post('/ai-settings/remove-expired-key', [AiSettingController::class, 'removeExpiredKey'])->name('aisetting.remove_expired_key');
 });
 Route::get('/ai_settings.php', function() { return redirect()->route('aisetting.index'); });
+Route::get('/cron_ai_analyzer.php', function() {
+    require public_path('cron_ai_analyzer.php');
+});
+Route::get('/v3/cron_ai_analyzer.php', function() {
+    require public_path('cron_ai_analyzer.php');
+});
+
 
 // ==============================================================
 // FITUR PORTAL LOWONGAN KERJA, DETAIL & APPLY (v3/job.php, job_detail.php, job_apply.php)

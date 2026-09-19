@@ -1,0 +1,795 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\AiSetting;
+use App\Models\Candidate;
+use App\Models\JobSpec;
+use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+
+class AiAnalyzerService
+{
+    /**
+     * Waktu jeda (cooldown) untuk API Key Gemini yang terkena limit per-menit (RPM / TPM).
+     * Sesuai instruksi user: 2 menit (120 detik).
+     */
+    const GEMINI_RATE_LIMIT_COOLDOWN_SECONDS = 120;
+
+    /**
+     * Waktu jeda untuk API Key Gemini yang terkena limit kuota harian (RPD).
+     */
+    const GEMINI_DAILY_LIMIT_COOLDOWN_SECONDS = 3600;
+
+    /**
+     * Jalankan analisis CV kandidat secara menyeluruh.
+     */
+    public function analyzeCandidate(Candidate $candidate, ?callable $logCallback = null): array
+    {
+        $log = function (string $msg, string $level = 'info') use ($logCallback) {
+            $this->writeLog($msg, $level);
+            if ($logCallback) {
+                $logCallback($msg, $level);
+            }
+        };
+
+        $id = $candidate->id;
+        $candidateName = $candidate->full_name ?? "Candidate #$id";
+
+        // 1. Validasi berkas CV
+        if (!$candidate->hasCv()) {
+            $errorMsg = 'File CV tidak ditemukan atau kandidat belum mengunggah CV.';
+            $candidate->update([
+                'ai_cv_analysis' => json_encode(['error' => $errorMsg, 'status' => 'no_cv', 'failed_at' => now()->toDateTimeString()]),
+                'ai_score' => null,
+                'kategori_kandidat' => null,
+            ]);
+            $log("WARNING: Candidate #$id ($candidateName) tidak memiliki berkas CV yang valid.", 'warning');
+            return ['success' => false, 'message' => $errorMsg, 'error_type' => 'no_cv'];
+        }
+
+        $log("PROCESSING: Memulai analisis CV untuk #$id - $candidateName (Posisi: " . ($candidate->applied_job ?? '-') . ")...");
+
+        // 2. Ambil berkas CV (lokal / remote) dan konversi ke base64
+        $fileData = $this->loadCvFile($candidate);
+        if (!$fileData) {
+            $errorMsg = 'Berkas CV tidak dapat dibaca dari server penyimpanan.';
+            $candidate->update([
+                'ai_cv_analysis' => json_encode(['error' => $errorMsg, 'status' => 'file_error', 'failed_at' => now()->toDateTimeString()]),
+            ]);
+            $log("ERROR: Gagal membaca isi berkas CV untuk candidate #$id.", 'error');
+            return ['success' => false, 'message' => $errorMsg, 'error_type' => 'file_error'];
+        }
+
+        $base64File = $fileData['base64'];
+        $mimeType = $fileData['mime'];
+
+        // 3. Bangun Job Specs Text
+        $jobSpecsText = $this->buildJobSpecsText($candidate->applied_job);
+
+        // 4. Bangun Biodata Input Text
+        $biodataText = $this->buildBiodataText($candidate);
+
+        // 5. Bangun Full Prompt
+        $prompt = $this->buildPrompt($candidate, $jobSpecsText, $biodataText);
+
+        // 6. Ambil Pengaturan AI
+        $aiSetting = AiSetting::first();
+        if (!$aiSetting) {
+            $errorMsg = 'Pengaturan AI (AiSetting) belum dikonfigurasi di sistem.';
+            $log("ERROR: $errorMsg", 'error');
+            return ['success' => false, 'message' => $errorMsg, 'error_type' => 'config_error'];
+        }
+
+        // Ambil User AS Setting jika ada (untuk Sumopod / WA)
+        $userSettings = $this->getUserAsSetting($candidate);
+
+        $aiResult = false;
+        $usedModel = 'none';
+        $usedProvider = 'none';
+        $allGeminiRateLimited = true;
+        $geminiAttemptedCount = 0;
+
+        // =========================================================================
+        // METODE 1: GOOGLE GEMINI API KEY POOL DENGAN ROTASI PINTAR & JEDA 2 MENIT
+        // =========================================================================
+        $geminiKeys = $aiSetting->keys_list;
+        $geminiModel = $aiSetting->gemini_model ?: 'gemini-2.5-flash';
+
+        foreach ($geminiKeys as $index => $key) {
+            $keyIndex = $index + 1;
+            $cacheKey = 'gemini_cooldown_' . md5($key);
+
+            // Periksa apakah key sedang dalam masa jeda limit (cooldown)
+            if (Cache::has($cacheKey)) {
+                $cooldownInfo = Cache::get($cacheKey);
+                $until = is_array($cooldownInfo) ? ($cooldownInfo['until'] ?? 'segera') : 'segera';
+                $log("INFO: [Gemini Key #$keyIndex] Dilewati karena sedang jeda limit sampai $until.");
+                continue;
+            }
+
+            $geminiAttemptedCount++;
+            $log("INFO: Mencoba Gemini API [Key #$keyIndex] (model: $geminiModel)...");
+
+            $callRes = $this->callGemini($key, $geminiModel, $prompt, $mimeType, $base64File, $keyIndex);
+
+            if ($callRes['success']) {
+                $aiResult = $callRes['text'];
+                $usedModel = $geminiModel;
+                $usedProvider = "Gemini (Key #$keyIndex)";
+                $allGeminiRateLimited = false;
+                $log("SUCCESS: Gemini API [Key #$keyIndex] berhasil merespons.");
+                break; // Berhasil, keluar dari loop Gemini
+            }
+
+            // Jika Gagal: Periksa apakah karena Rate Limit (429) atau Error Lain (Invalid/Expired)
+            if ($callRes['http_code'] === 429) {
+                // Rate limit (RPM / TPM atau kuota harian)
+                $isDaily = str_contains(strtolower($callRes['error_msg']), 'daily') || 
+                           str_contains(strtolower($callRes['error_msg']), 'perday') ||
+                           str_contains(strtolower($callRes['error_msg']), 'quota exceeded for quota metric');
+
+                $cooldownSeconds = $isDaily 
+                    ? self::GEMINI_DAILY_LIMIT_COOLDOWN_SECONDS 
+                    : self::GEMINI_RATE_LIMIT_COOLDOWN_SECONDS; // 2 Menit
+
+                $cooldownUntil = now()->addSeconds($cooldownSeconds)->translatedFormat('H:i:s') . ' WIB';
+
+                Cache::put($cacheKey, [
+                    'reason' => $isDaily ? 'Daily Quota Exceeded' : 'Rate Limit Exceeded (HTTP 429)',
+                    'until' => $cooldownUntil,
+                    'seconds' => $cooldownSeconds,
+                ], $cooldownSeconds);
+
+                $log("WARNING: [Gemini Key #$keyIndex] Terkena HTTP 429 Limit. Diistirahatkan selama " . ($cooldownSeconds / 60) . " menit (sampai $cooldownUntil).", 'warning');
+            } else {
+                // Error BUKAN karena rate limit (misal HTTP 400 API_KEY_INVALID, HTTP 403 PERMISSION_DENIED / key deleted)
+                // Sesuai instruksi: Masukkan ke list token expired di halaman setting agar admin bisa mengganti!
+                $allGeminiRateLimited = false;
+                $errorReason = "HTTP " . $callRes['http_code'] . ": " . ($callRes['error_msg'] ?: 'Key Invalid / Expired');
+                
+                $aiSetting->markKeyExpired($key, $errorReason);
+                $log("ERROR: [Gemini Key #$keyIndex] BUKAN LIMIT melainkan error permanen ($errorReason). Key dimasukkan ke List Token Expired!", 'error');
+            }
+        }
+
+        // =========================================================================
+        // METODE 2: FALLBACK KE SUMOPOD API (JIKA SEMUA GEMINI KEY LIMIT / GAGAL)
+        // =========================================================================
+        if (!$aiResult) {
+            $sumopodKey = !empty($userSettings['sumopod_key']) 
+                ? $userSettings['sumopod_key'] 
+                : ($aiSetting->sumopod_key ?? '');
+            
+            $sumopodModel = !empty($userSettings['sumopod_model']) 
+                ? $userSettings['sumopod_model'] 
+                : ($aiSetting->sumopod_model ?: 'gpt-4o-mini');
+
+            if (!empty($sumopodKey)) {
+                $sumopodCacheKey = 'sumopod_cooldown_' . md5($sumopodKey);
+                if (Cache::has($sumopodCacheKey)) {
+                    $log("WARNING: Sumopod Key juga sedang dalam masa cooldown limit.", 'warning');
+                } else {
+                    $log("INFO: Semua Gemini Key limit/cooldown. Beralih ke Sumopod Fallback API (model: $sumopodModel)...");
+                    $sumoRes = $this->callSumopod($sumopodKey, $sumopodModel, $prompt, $base64File, $mimeType);
+
+                    if ($sumoRes['success']) {
+                        $aiResult = $sumoRes['text'];
+                        $usedModel = $sumopodModel;
+                        $usedProvider = 'Sumopod';
+                        $log("SUCCESS: Sumopod API Fallback berhasil merespons.");
+                    } else {
+                        // Jika sumopod limit / 401
+                        if ($sumoRes['http_code'] === 429 || $sumoRes['http_code'] === 401) {
+                            Cache::put($sumopodCacheKey, true, 300); // 5 menit cooldown
+                        }
+                        $log("ERROR: Sumopod API juga gagal (HTTP " . $sumoRes['http_code'] . "): " . $sumoRes['error_msg'], 'error');
+                    }
+                }
+            } else {
+                $log("WARNING: Seluruh Gemini Key sedang limit dan tidak ada Sumopod Key yang tersedia.", 'warning');
+            }
+        }
+
+        // =========================================================================
+        // JIKA SEMUA PROVIDER AI GAGAL / LIMIT: SIMPAN STATUS TERTUNDA & BERI KETERANGAN
+        // =========================================================================
+        if (!$aiResult) {
+            $failureDetail = "Semua API Key Gemini sedang dalam masa jeda limit (2 menit) atau kuota habis, dan Sumopod fallback tidak dapat diakses.";
+            $errorData = [
+                'error' => 'Limit token AI tercapai (Gemini & Sumopod). Analisis tertunda dan dapat diulang kembali saat kuota tersedia.',
+                'status' => 'rate_limited',
+                'failed_at' => now()->toDateTimeString(),
+                'detail' => $failureDetail,
+            ];
+
+            $candidate->update([
+                'ai_cv_analysis' => json_encode($errorData),
+            ]);
+
+            // Dual sync ke tb_kandidat jika ada
+            if (Schema::hasTable('tb_kandidat')) {
+                DB::table('tb_kandidat')->where('id', $candidate->id)->orWhere('no_ktp', $candidate->nik)->update([
+                    'ai_cv_analysis' => json_encode($errorData),
+                ]);
+            }
+
+            $log("ERROR: Gagal memproses AI untuk kandidat #$id (Seluruh API Key Gemini & Sumopod Limit/Error).", 'error');
+
+            return [
+                'success' => false,
+                'message' => 'Seluruh API Key AI (Gemini & Sumopod) saat ini sedang mencapai limit.',
+                'error_type' => 'rate_limited',
+                'detail' => $failureDetail
+            ];
+        }
+
+        // =========================================================================
+        // EKSTRAKSI HASIL JSON DAN SIMPAN KE DATABASE
+        // =========================================================================
+        $cleanJson = $this->extractCleanJson($aiResult);
+        $decoded = json_decode($cleanJson, true);
+
+        if (!$decoded || !isset($decoded['evaluation_match_score'])) {
+            $log("ERROR: Response dari AI bukan format JSON evaluasi yang valid.", 'error');
+            return ['success' => false, 'message' => 'Format response AI tidak valid', 'raw' => $aiResult];
+        }
+
+        $aiScore = intval($decoded['evaluation_match_score']);
+        $aiScore = max(0, min(100, $aiScore)); // Clamp between 0 - 100
+
+        // Tentukan Kategori Kandidat Sesuai Skema
+        if ($aiScore < 60) {
+            $kategoriKandidat = 'Red';
+        } elseif ($aiScore < 85) {
+            $kategoriKandidat = 'Yellow';
+        } else {
+            $kategoriKandidat = 'Green';
+        }
+
+        // Auto-generate password dari tanggal lahir (dmY) seperti di legacy
+        $hashedPassword = null;
+        if (!empty($candidate->birth_date)) {
+            $rawPass = Carbon::parse($candidate->birth_date)->format('dmY');
+            $hashedPassword = password_hash($rawPass, PASSWORD_DEFAULT);
+        }
+
+        // Simpan ke Candidates Model
+        $candidateData = [
+            'ai_score' => $aiScore,
+            'kategori_kandidat' => $kategoriKandidat,
+            'ai_cv_analysis' => $cleanJson,
+        ];
+        if (!empty($hashedPassword) && empty($candidate->password)) {
+            $candidateData['password'] = $hashedPassword;
+        }
+        $candidate->update($candidateData);
+
+        // Dual-sync ke legacy tb_kandidat
+        if (Schema::hasTable('tb_kandidat')) {
+            $tbData = [
+                'ai_score' => $aiScore,
+                'kategori_kandidat' => $kategoriKandidat,
+                'ai_cv_analysis' => $cleanJson,
+                'waktukirim' => now()->toDateTimeString(),
+            ];
+            if (!empty($hashedPassword)) {
+                $tbData['password'] = $hashedPassword;
+            }
+            DB::table('tb_kandidat')->where('id', $candidate->id)->orWhere('no_ktp', $candidate->nik)->update($tbData);
+        }
+
+        $log("SUCCESS: Analisis selesai untuk #$id ($candidateName) via $usedProvider ($usedModel). Match Score: $aiScore ($kategoriKandidat).");
+
+        // =========================================================================
+        // NOTIFIKASI WHATSAPP OTOMATIS JIKA SKOR >= 85
+        // =========================================================================
+        if ($aiScore >= 85) {
+            $this->sendWhatsAppNotification($candidate, $aiSetting, $userSettings, $aiScore, $log);
+        }
+
+        return [
+            'success' => true,
+            'score' => $aiScore,
+            'category' => $kategoriKandidat,
+            'model' => $usedModel,
+            'provider' => $usedProvider,
+            'data' => $decoded
+        ];
+    }
+
+    /**
+     * Hit Google Gemini API via cURL
+     */
+    protected function callGemini(string $apiKey, string $model, string $prompt, string $mimeType, string $base64File, int $keyIndex): array
+    {
+        $url = "https://generativelanguage.googleapis.com/v1beta/models/" . trim($model) . ":generateContent?key=" . trim($apiKey);
+
+        $payload = [
+            "contents" => [
+                [
+                    "parts" => [
+                        ["text" => $prompt],
+                        [
+                            "inline_data" => [
+                                "mime_type" => $mimeType,
+                                "data" => $base64File
+                            ]
+                        ]
+                    ]
+                ]
+            ],
+            "generationConfig" => [
+                "temperature" => 0.2,
+                "topP" => 0.8,
+            ]
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 40);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        curl_close($ch);
+
+        if ($httpCode === 200 && !empty($result)) {
+            $json = json_decode($result, true);
+            if (isset($json['candidates'][0]['content']['parts'][0]['text'])) {
+                return [
+                    'success' => true,
+                    'text' => $json['candidates'][0]['content']['parts'][0]['text'],
+                    'http_code' => 200,
+                    'error_msg' => null
+                ];
+            }
+        }
+
+        $errorMsg = 'Unknown error';
+        if (!empty($result)) {
+            $respArr = json_decode($result, true);
+            $errorMsg = $respArr['error']['message'] ?? substr($result, 0, 150);
+        } elseif (!empty($curlErr)) {
+            $errorMsg = "cURL Error: $curlErr";
+        }
+
+        return [
+            'success' => false,
+            'text' => null,
+            'http_code' => $httpCode,
+            'error_msg' => $errorMsg
+        ];
+    }
+
+    /**
+     * Hit Sumopod / OpenAI compatible API via cURL
+     */
+    protected function callSumopod(string $apiKey, string $model, string $prompt, string $base64File, string $mimeType): array
+    {
+        $url = "https://ai.sumopod.com/v1/chat/completions";
+
+        $messages = [
+            [
+                "role" => "user",
+                "content" => [
+                    ["type" => "text", "text" => $prompt]
+                ]
+            ]
+        ];
+
+        if (str_contains($mimeType, 'image')) {
+            $messages[0]['content'][] = [
+                "type" => "image_url",
+                "image_url" => ["url" => "data:$mimeType;base64,$base64File"]
+            ];
+        } else {
+            $messages[0]['content'][0]['text'] .= "\n\n(Catatan: Berkas adalah format PDF. Mohon analisis berdasarkan kualifikasi posisi dan inputan data kandidat di atas sedapatnya.)";
+        }
+
+        $data = [
+            "model" => $model ?: 'gpt-4o-mini',
+            "messages" => $messages,
+            "temperature" => 0.2
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . trim($apiKey)
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 40);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        curl_close($ch);
+
+        if ($httpCode === 200 && !empty($result)) {
+            $json = json_decode($result, true);
+            if (isset($json['choices'][0]['message']['content'])) {
+                return [
+                    'success' => true,
+                    'text' => $json['choices'][0]['message']['content'],
+                    'http_code' => 200,
+                    'error_msg' => null
+                ];
+            }
+        }
+
+        $errorMsg = 'Unknown error';
+        if (!empty($result)) {
+            $respArr = json_decode($result, true);
+            $errorMsg = $respArr['error']['message'] ?? substr($result, 0, 150);
+        } elseif (!empty($curlErr)) {
+            $errorMsg = "cURL Error: $curlErr";
+        }
+
+        return [
+            'success' => false,
+            'text' => null,
+            'http_code' => $httpCode,
+            'error_msg' => $errorMsg
+        ];
+    }
+
+    /**
+     * Memuat file CV kandidat dan mengonversi ke base64
+     */
+    protected function loadCvFile(Candidate $candidate): ?array
+    {
+        $cvFile = trim($candidate->cv_path ?? '');
+        if (empty($cvFile) || $cvFile === '-') {
+            return null;
+        }
+
+        $baseName = basename($cvFile);
+        $fileExt = strtolower(pathinfo($baseName, PATHINFO_EXTENSION));
+
+        $mimeType = 'application/pdf';
+        if (in_array($fileExt, ['jpg', 'jpeg'])) {
+            $mimeType = 'image/jpeg';
+        } elseif ($fileExt === 'png') {
+            $mimeType = 'image/png';
+        }
+
+        $content = null;
+
+        // 1. Cek direktori lokal
+        $localPaths = [
+            public_path('lampiran/' . $baseName),
+            public_path('storage/' . $baseName),
+            public_path($cvFile),
+            'd:/ASystem/interview/lampiran/' . $baseName,
+            'd:/ASystem/v3/lampiran/' . $baseName,
+        ];
+
+        foreach ($localPaths as $lp) {
+            if (file_exists($lp) && is_file($lp) && filesize($lp) > 0) {
+                $content = file_get_contents($lp);
+                break;
+            }
+        }
+
+        // 2. Jika tidak ada di lokal, download via remote URL
+        if (!$content) {
+            $remoteUrls = [
+                'https://asystem.co.id/interview/lampiran/' . rawurlencode($baseName),
+                'https://new.asystem.co.id/lampiran/' . rawurlencode($baseName),
+            ];
+
+            foreach ($remoteUrls as $ru) {
+                $content = $this->downloadUrlContent($ru);
+                if (!empty($content)) {
+                    // Simpan salinan lokal ke public/lampiran agar subsequent run cepat
+                    @file_put_contents(public_path('lampiran/' . $baseName), $content);
+                    break;
+                }
+            }
+        }
+
+        if (empty($content)) {
+            return null;
+        }
+
+        return [
+            'base64' => base64_encode($content),
+            'mime' => $mimeType,
+            'size' => strlen($content),
+        ];
+    }
+
+    /**
+     * Download content from remote URL via cURL
+     */
+    protected function downloadUrlContent(string $url): ?string
+    {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        $data = curl_exec($ch);
+        $code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        return ($code === 200 && !empty($data)) ? $data : null;
+    }
+
+    /**
+     * Ambil Spesifikasi Pekerjaan dari JobSpec
+     */
+    protected function buildJobSpecsText(?string $appliedJob): string
+    {
+        if (empty($appliedJob)) {
+            return "Persyaratan Pekerjaan:\n- Belum ditentukan";
+        }
+
+        $job = JobSpec::whereRaw('LOWER(TRIM(job_title)) = ?', [strtolower(trim($appliedJob))])
+            ->where('status', 'active')
+            ->first();
+
+        if (!$job) {
+            $job = JobSpec::whereRaw('LOWER(TRIM(job_title)) LIKE ?', ['%' . strtolower(trim($appliedJob)) . '%'])->first();
+        }
+
+        if ($job) {
+            $text = "Persyaratan Pekerjaan ({$job->job_title}):\n" .
+                    "- Pendidikan & Kualifikasi: " . ($job->job_quals ?? '-') . "\n" .
+                    "- Keterampilan (Skills): " . ($job->job_skills ?? '-') . "\n" .
+                    "- Pengalaman: " . ($job->job_exp ?? '-') . "\n" .
+                    "- Deskripsi Pekerjaan: " . ($job->job_desc ?? '-');
+            if (!empty(trim(strip_tags($job->additional_info ?? '')))) {
+                $text .= "\n- Informasi Tambahan: " . strip_tags($job->additional_info);
+            }
+            return $text;
+        }
+
+        return "Persyaratan Pekerjaan:\n- Posisi: $appliedJob\n- Kualifikasi: Menyesuaikan standar umum untuk posisi $appliedJob";
+    }
+
+    /**
+     * Ambil Biodata Inputan Kandidat
+     */
+    protected function buildBiodataText(Candidate $candidate): string
+    {
+        return "Data Form Inputan Kandidat:\n" .
+               "- NIK: " . ($candidate->nik ?? '-') . "\n" .
+               "- Nama Lengkap: " . ($candidate->full_name ?? '-') . "\n" .
+               "- Tanggal Lahir: " . ($candidate->birth_date ? Carbon::parse($candidate->birth_date)->format('d F Y') : '-') . "\n" .
+               "- Tinggi/Berat Badan: " . ($candidate->height ?? '-') . " cm / " . ($candidate->weight ?? '-') . " kg\n" .
+               "- Alamat KTP: " . ($candidate->address_ktp ?? '-') . "\n" .
+               "- Alamat Domisili: " . ($candidate->address_domicile ?? '-') . "\n" .
+               "- Kota Domisili: " . ($candidate->city_domicile ?? '-') . "\n" .
+               "- Provinsi Domisili: " . ($candidate->province_domicile ?? '-') . "\n" .
+               "- Kota Penempatan (Tujuan): " . ($candidate->area ?? '-') . "\n" .
+               "- Pendidikan: " . ($candidate->education ?? '-') . "\n" .
+               "- Motivasi: " . ($candidate->work_motivation ?? '-') . "\n" .
+               "- Kelebihan: " . ($candidate->strengths ?? '-');
+    }
+
+    /**
+     * Bangun Prompt Evaluasi AI Sesuai Standar Legacy Sistem
+     */
+    protected function buildPrompt(Candidate $candidate, string $jobSpecsText, string $biodataText): string
+    {
+        $currentDate = now()->translatedFormat('d F Y');
+
+        return "Anda adalah AI CV Analyzer Profesional. INFO PENTING: Hari ini adalah tanggal " . $currentDate . " (semua tahun sebelum atau sama dengan tahun ini adalah masa lalu/sekarang, bukan masa depan). Tugas Anda adalah menganalisis CV kandidat ini untuk posisi: " . ($candidate->applied_job ?? 'Karyawan') . ".\n\n" .
+               $jobSpecsText . "\n\n" .
+               $biodataText . "\n\n" .
+               "Tolong baca teks atau gambar CV yang saya berikan dan evaluasi kecocokannya dengan Persyaratan Pekerjaan di atas. Selain itu, Anda HARUS mencocokkan data pada file CV dengan Data Form Inputan Kandidat di atas. Khusus untuk Kota Penempatan (Tujuan), mohon cocokkan dengan Kota/Provinsi Domisili yang diinputkan kandidat atau domisili di CV. Jika jaraknya sangat jauh (beda kota/provinsi/pulau) dan kandidat tidak mencantumkan keterangan bersedia ditempatkan di mana saja pada CV/Kelebihan/Motivasi, jadikan ini pertimbangan dalam evaluasi. Hasilkan output JSON murni tanpa markdown ```json.
+Struktur dan keys (berbahasa inggris) persis seperti ini:
+{
+  \"evaluation_match_score\": 85,
+  \"candidate_biodata\": {\"name\": \"...\", \"contact\": \"...\", \"education\": \"...\"},
+  \"core_strengths\": [\"strength 1\", \"strength 2\"],
+  \"weaknesses\": [\"weakness 1\", \"weakness 2\"],
+  \"psychological_traits\": {\"personality\": [\"trait1\", \"trait2\"], \"work_style\": \"...\", \"cultural_fit\": \"...\"},
+  \"work_history\": [\"history 1\", \"history 2\"],
+  \"core_skills\": [\"skill 1\", \"skill 2\"],
+  \"data_discrepancy\": \"Tuliskan 'Tidak ada perbedaan' jika data inputan cocok dengan CV. Jika berbeda, jelaskan detail perbedaannya secara lengkap dan tegas (misal: 'Nama di form Budi, di CV Andi').\",
+  \"recommendation\": \"SANGAT DIREKOMENDASIKAN. [alasan...]\"
+}
+Catatan:
+- evaluation_match_score adalah angka 0-100, mencerminkan seberapa cocok CV kandidat dengan spesifikasi pekerjaan yang diminta. Jika sangat tidak cocok (misal: posisi IT tapi CV kecantikan), berikan skor rendah.
+- Kurangi evaluation_match_score secara signifikan jika terdapat ketidaksesuaian/manipulasi (data_discrepancy) yang fatal (seperti nama beda, dll).
+- Isi value dalam bahasa Indonesia yang formal dan profesional.
+- Pastikan response hanya berupa string JSON valid tanpa tambahan teks lain.";
+    }
+
+    /**
+     * Ambil pengaturan AI / WA user spesifik (tb_ai_setting_user)
+     */
+    protected function getUserAsSetting(Candidate $candidate): array
+    {
+        $userAs = trim($candidate->useras ?? '');
+        if (empty($userAs) || strtolower($userAs) === 'publik') {
+            return [];
+        }
+
+        $userEmail = '';
+        if (Schema::hasTable('tb_karyawan')) {
+            $kary = DB::table('tb_karyawan')
+                ->whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower($userAs)])
+                ->first();
+            if ($kary && !empty($kary->email)) {
+                $userEmail = $kary->email;
+            }
+        }
+
+        if (empty($userEmail)) {
+            return [];
+        }
+
+        if (Schema::hasTable('tb_ai_setting_user')) {
+            $userSet = DB::table('tb_ai_setting_user')
+                ->whereRaw('LOWER(TRIM(email)) = ?', [strtolower($userEmail)])
+                ->first();
+            if ($userSet) {
+                return (array) $userSet;
+            }
+        }
+
+        return [];
+    }
+
+    /**
+     * Kirim Notifikasi WhatsApp Otomatis (Mengikuti Logic Legacy)
+     */
+    protected function sendWhatsAppNotification(Candidate $candidate, AiSetting $aiSetting, array $userSettings, int $aiScore, callable $log): void
+    {
+        $waApiKey = trim($aiSetting->wa_api_key ?? '');
+        if (empty($waApiKey)) {
+            $log("WARNING: WA API Key kosong di AI Settings. Notifikasi WA dilewati.", 'warning');
+            return;
+        }
+
+        // Tentukan device: User vs Pusat
+        $waUsePusat = isset($userSettings['wa_use_pusat']) ? (int) $userSettings['wa_use_pusat'] : 1;
+        $deviceUser = trim($userSettings['wa_device'] ?? '');
+        $deviceGlobal = trim($aiSetting->wa_device ?? '');
+
+        $senderDevice = ($waUsePusat === 1 || empty($deviceUser)) ? $deviceGlobal : $deviceUser;
+        if (empty($senderDevice)) {
+            $log("WARNING: Device WhatsApp pengirim tidak ditemukan.", 'warning');
+            return;
+        }
+
+        $template = !empty($userSettings['wa_template']) ? $userSettings['wa_template'] : ($aiSetting->wa_template ?? '');
+        if (empty($template)) {
+            $log("WARNING: Template WhatsApp kosong.", 'warning');
+            return;
+        }
+
+        $targetPhone = $candidate->whatsapp ?: $candidate->phone;
+        if (empty($targetPhone)) {
+            $log("WARNING: Nomor telepon / WA kandidat kosong.", 'warning');
+            return;
+        }
+
+        // Ganti token teks dinamis
+        $msg = $template;
+        $msg = str_replace('{nama}', $candidate->full_name ?? '', $msg);
+        $msg = str_replace('{jabatan}', $candidate->applied_job ?? '', $msg);
+        $msg = str_replace('{score}', (string) $aiScore, $msg);
+        $msg = str_replace('{area}', $candidate->area ?? '', $msg);
+        $msg = str_replace('{no_ktp}', $candidate->nik ?? '', $msg);
+
+        // Dynamic Dates (H+1 s/d H+7)
+        $hariIndo = [1 => 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+        $bulanIndo = [1 => 'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+
+        for ($i = 1; $i <= 7; $i++) {
+            $ts = strtotime("+$i days");
+            $strIndo = $hariIndo[date('N', $ts)] . ', ' . date('d', $ts) . ' ' . $bulanIndo[date('n', $ts)] . ' ' . date('Y', $ts);
+            $msg = str_replace("{h$i}", $strIndo, $msg);
+        }
+        $ts1 = strtotime('+1 day');
+        $ts2 = strtotime('+2 days');
+        $msg = str_replace('{besok}', $hariIndo[date('N', $ts1)] . ', ' . date('d', $ts1) . ' ' . $bulanIndo[date('n', $ts1)] . ' ' . date('Y', $ts1), $msg);
+        $msg = str_replace('{lusa}', $hariIndo[date('N', $ts2)] . ', ' . date('d', $ts2) . ' ' . $bulanIndo[date('n', $ts2)] . ' ' . date('Y', $ts2), $msg);
+
+        // Bersihkan nomor telepon
+        $cleanPhone = preg_replace('/[^0-9]/', '', $targetPhone);
+        if (str_starts_with($cleanPhone, '0')) {
+            $cleanPhone = '62' . substr($cleanPhone, 1);
+        }
+
+        $log("INFO: Mengirim notifikasi WA ke $cleanPhone via device $senderDevice...");
+
+        $res = $this->callWaFlow($waApiKey, $senderDevice, $cleanPhone, $msg);
+        if ($res) {
+            $candidate->update(['status_wa' => 'Terkirim']);
+            if (Schema::hasTable('tb_kandidat')) {
+                DB::table('tb_kandidat')->where('id', $candidate->id)->orWhere('no_ktp', $candidate->nik)->update(['status_wa' => 'Terkirim']);
+            }
+            $log("SUCCESS: WhatsApp berhasil dikirim ke $cleanPhone.");
+        } else {
+            $candidate->update(['status_wa' => 'Gagal']);
+            if (Schema::hasTable('tb_kandidat')) {
+                DB::table('tb_kandidat')->where('id', $candidate->id)->orWhere('no_ktp', $candidate->nik)->update(['status_wa' => 'Gagal']);
+            }
+            $log("ERROR: Gagal mengirim WhatsApp ke $cleanPhone (API error atau device offline).", 'error');
+        }
+    }
+
+    /**
+     * Hit WaFlow Gateway
+     */
+    protected function callWaFlow(string $apiKey, string $sender, string $number, string $message): bool
+    {
+        $url = "https://waflow.biz.id/send-message";
+        $data = [
+            "api_key" => trim($apiKey),
+            "sender"  => trim($sender),
+            "number"  => trim($number),
+            "message" => $message,
+            "full"    => 1
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15);
+
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        if ($httpCode !== 200 || $result === false) {
+            return false;
+        }
+
+        $resp = json_decode($result, true);
+        if (!$resp) {
+            return false;
+        }
+
+        $status = $resp['status'] ?? null;
+        return ($status === true || $status === 'success' || $status === 1);
+    }
+
+    /**
+     * Ekstrak JSON murni dari text balasan AI
+     */
+    protected function extractCleanJson(string $text): string
+    {
+        $start = strpos($text, '{');
+        $end = strrpos($text, '}');
+        if ($start !== false && $end !== false && $end > $start) {
+            return trim(substr($text, $start, $end - $start + 1));
+        }
+        return trim($text);
+    }
+
+    /**
+     * Tulis log ke storage/logs/cron_ai.log
+     */
+    protected function writeLog(string $message, string $level = 'info'): void
+    {
+        $logFile = storage_path('logs/cron_ai.log');
+        $timestamp = date('Y-m-d H:i:s');
+        $logLine = "[$timestamp] [$level] $message\n";
+        @file_put_contents($logFile, $logLine, FILE_APPEND);
+    }
+}

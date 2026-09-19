@@ -1043,7 +1043,7 @@
                 </div>
             </div>
 
-            @if(!empty($aiData))
+            @if(!empty($aiData) && empty($aiData['error']) && !empty($candidate->ai_score))
             <!-- Section 1: Radial Gauge Match & Candidate Biodata -->
             <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
                 <!-- Match Gauge Box -->
@@ -1269,6 +1269,41 @@
                 <p class="text-xs text-slate-800 leading-relaxed font-medium">
                     {!! nl2br(e($aiData['recommendation'] ?? ($aiData['ai_verdict'] ?? 'Kandidat memiliki rekam jejak kerja yang relevan dan kualifikasi yang sesuai untuk tahapan rekrutmen.'))) !!}
                 </p>
+            </div>
+
+            @elseif(!empty($aiData['error']) || ($candidate->hasCv() && empty($candidate->ai_score) && !empty($candidate->ai_cv_analysis)))
+            <!-- Rate Limit / Error State untuk Account Supervisor (AS) -->
+            <div class="bg-gradient-to-br from-amber-50 to-orange-50/50 border-2 border-amber-300/80 rounded-2xl p-6 sm:p-8 space-y-4 text-center shadow-sm">
+                <div class="w-14 h-14 rounded-2xl bg-amber-100 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto text-2xl shadow-inner">
+                    <i class="fa-solid fa-hourglass-half"></i>
+                </div>
+                <div class="max-w-xl mx-auto space-y-2">
+                    <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-amber-200/70 text-amber-900">
+                        <i class="fa-solid fa-triangle-exclamation text-amber-700"></i>
+                        <span>Analisis AI Tertunda / Token AI Limit</span>
+                    </div>
+                    <h4 class="text-base font-extrabold text-slate-900">Antrean Analisa AI Sedang Menunggu Ketersediaan Token</h4>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        {{ $aiData['error'] ?? 'Proses evaluasi CV kandidat ini tertunda karena seluruh API Key AI (Gemini / Sumopod) saat ini sedang mencapai limit kuota.' }}
+                    </p>
+                    @if(!empty($aiData['detail']))
+                    <p class="text-[11px] text-amber-900 bg-amber-100/70 p-3 rounded-xl font-mono text-left border border-amber-200">
+                        <i class="fa-solid fa-circle-info mr-1 text-amber-600"></i> {{ $aiData['detail'] }}
+                    </p>
+                    @endif
+                    <p class="text-[11px] text-slate-400">
+                        * Cron sistem di latar belakang akan mencoba memproses kembali secara berkala setiap menit. Account Supervisor (AS) juga dapat menekan tombol di bawah untuk mengulang analisa secara langsung saat kuota sudah pulih.
+                    </p>
+                </div>
+                <div class="pt-2 flex items-center justify-center gap-3">
+                    <form action="{{ route('kandidatportal.analyze_cv', $candidate->id) }}" method="POST">
+                        @csrf
+                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-md shadow-amber-600/20 inline-flex items-center gap-2">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                            <span>Analisa Ulang CV Sekarang</span>
+                        </button>
+                    </form>
+                </div>
             </div>
 
             @else

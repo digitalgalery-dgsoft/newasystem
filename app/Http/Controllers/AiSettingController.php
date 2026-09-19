@@ -63,15 +63,34 @@ class AiSettingController extends Controller
             ? AiSettingUser::orderBy('area')->orderBy('email')->get() 
             : collect();
 
+        $expiredKeys = $setting->expired_keys_list;
+
         return view('aisetting.index', compact(
             'setting',
             'totalAnalyzed',
             'totalHighMatch',
             'activeKeysCount',
+            'expiredKeys',
             'areaSettings',
             'userSettings'
         ));
     }
+
+    /**
+     * Hapus API Key dari List Expired / Invalid
+     */
+    public function removeExpiredKey(Request $request)
+    {
+        $key = trim($request->input('key') ?? '');
+        if (!empty($key)) {
+            $setting = AiSetting::firstOrCreate(['id' => 1]);
+            $setting->removeExpiredKey($key);
+            return redirect()->route('aisetting.index')->with('success', 'Token expired berhasil dihapus dari daftar.');
+        }
+
+        return redirect()->route('aisetting.index')->with('error', 'Kunci token tidak valid.');
+    }
+
 
     /**
      * Simpan Pembaruan Pengaturan AI & WA Global (Admin)

@@ -134,6 +134,52 @@
                     </div>
                 </div>
 
+                <!-- 1.1 List Token Gemini Expired / Error (Bukan Limit Sementara) -->
+                @if(!empty($expiredKeys) && count($expiredKeys) > 0)
+                <div class="bg-rose-50/70 rounded-2xl border border-rose-200 shadow-xs p-5 space-y-3">
+                    <div class="flex items-center justify-between pb-2.5 border-b border-rose-200/80">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-xl bg-rose-100 text-rose-600 flex items-center justify-center text-sm font-bold">
+                                <i class="fa-solid fa-triangle-exclamation"></i>
+                            </div>
+                            <div>
+                                <h4 class="text-xs font-bold text-rose-900">List Token Gemini Expired / Error ({{ count($expiredKeys) }})</h4>
+                                <p class="text-[11px] text-rose-600">Token berikut mengalami error permanen (bukan limit sementara) dan dinonaktifkan otomatis agar tidak mengganggu antrean.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                        @foreach($expiredKeys as $exp)
+                        @php
+                            $expKey = is_array($exp) ? ($exp['key'] ?? '') : $exp;
+                            $expErr = is_array($exp) ? ($exp['error'] ?? 'API Key Invalid / Expired') : 'API Key Invalid';
+                            $expDate = is_array($exp) ? ($exp['detected_at'] ?? '') : '';
+                            $maskedKey = strlen($expKey) > 16 ? substr($expKey, 0, 8) . '...' . substr($expKey, -6) : $expKey;
+                        @endphp
+                        <div class="bg-white rounded-xl p-3 border border-rose-200/80 flex items-center justify-between gap-3 text-xs">
+                            <div class="min-w-0 flex-1 space-y-0.5">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="font-mono font-bold text-slate-800 text-[11px]">{{ $maskedKey }}</span>
+                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-700 uppercase">Nonaktif</span>
+                                    @if(!empty($expDate))
+                                    <span class="text-[10px] text-slate-400">{{ $expDate }}</span>
+                                    @endif
+                                </div>
+                                <p class="text-[11px] text-rose-600 truncate font-mono" title="{{ $expErr }}">
+                                    <i class="fa-solid fa-circle-xmark mr-1"></i>{{ $expErr }}
+                                </p>
+                            </div>
+                            <button type="button" onclick="deleteExpiredKey('{{ $expKey }}')" class="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-700 text-[11px] font-bold border border-rose-200 transition-all shrink-0 flex items-center gap-1">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                                <span>Hapus</span>
+                            </button>
+                        </div>
+                        @endforeach
+                    </div>
+                </div>
+                @endif
+
                 <!-- 2. Fallback AI Provider (Sumopod / OpenAI) -->
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
                     <div class="flex items-center gap-2.5 pb-3 border-b border-slate-100">
@@ -466,5 +512,29 @@ function testWaModal() {
         }
     });
 }
+
+function deleteExpiredKey(key) {
+    Swal.fire({
+        title: 'Hapus Token Expired?',
+        text: 'Token ini akan dihapus dari daftar expired. Jika sudah diperbaiki di Google Cloud, Anda dapat mendaftarkannya kembali.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('expiredKeyInput').value = key;
+            document.getElementById('deleteExpiredKeyForm').submit();
+        }
+    });
+}
 </script>
+
+<form id="deleteExpiredKeyForm" action="{{ route('aisetting.remove_expired_key') }}" method="POST" class="hidden">
+    @csrf
+    <input type="hidden" name="key" id="expiredKeyInput">
+</form>
 @endsection
+

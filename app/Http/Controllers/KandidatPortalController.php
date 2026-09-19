@@ -9,7 +9,9 @@ use App\Models\Candidate;
 use App\Models\Principle;
 use App\Models\InterviewAssessment;
 use App\Models\WorkExperience;
+use App\Services\AiAnalyzerService;
 use Illuminate\Support\Facades\DB;
+
 use Carbon\Carbon;
 
 class KandidatPortalController extends Controller
@@ -475,20 +477,17 @@ class KandidatPortalController extends Controller
 
         // 3. Jika CV baru diunggah dan belum ada Analisis AI, jalankan Analisis AI otomatis
         if ($newCvUploaded || ($candidate->hasCv() && empty($candidate->ai_score))) {
-            $simulatedAiScore = rand(82, 95);
-            $candidate->ai_score = $simulatedAiScore;
-            $candidate->kategori_kandidat = $simulatedAiScore >= 85 ? 'Green' : 'Yellow';
-            $candidate->ai_cv_analysis = json_encode([
-                'evaluation_match_score' => $simulatedAiScore,
-                'executive_summary' => "Kandidat {$candidate->full_name} berdomisili di " . ($candidate->city_domicile ?: 'Jawa Timur') . " dengan pendidikan " . ($candidate->education ?: 'SLTA/Sederajat') . ". Berkas CV terverifikasi dan memenuhi kualifikasi lowongan " . ($candidate->applied_job ?: 'Karyawan') . ".",
-                'key_strengths' => ['Kesesuaian Pengalaman Kerja', 'Kelengkapan Dokumen CV', 'Kesiapan Penempatan Area'],
-                'suitability_reason' => "Kualifikasi dan motivasi kandidat selaras dengan requirement pekerjaan " . ($candidate->applied_job ?: 'Karyawan') . ".",
-                'rekomendasi' => 'Direkomendasikan untuk Tahap Seleksi Lanjutan'
-            ]);
-            $updatedFiles[] = 'Analisis AI CV';
+            $candidate->save();
+            $analyzer = app(AiAnalyzerService::class);
+            $res = $analyzer->analyzeCandidate($candidate);
+            if ($res['success']) {
+                $updatedFiles[] = 'Analisis AI CV (Skor Match: ' . $res['score'] . ')';
+            } else {
+                $updatedFiles[] = 'Berkas CV (Analisis AI antrean/tertunda)';
+            }
+        } else {
+            $candidate->save();
         }
-
-        $candidate->save();
 
         // Sinkronkan ke tb_kandidat jika ada
         if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
@@ -508,7 +507,7 @@ class KandidatPortalController extends Controller
     }
 
     /**
-     * Analisis Ulang CV Kandidat via AI
+     * Analisis Ulang CV Kandidat via AI (dengan Rotasi Cerdas & Fallback Sumopod)
      */
     public function analyzeCv($id)
     {
@@ -518,20 +517,20 @@ class KandidatPortalController extends Controller
             return back()->with('error', 'Kandidat ' . $candidate->full_name . ' belum memiliki berkas CV. Silakan unggah berkas CV terlebih dahulu.');
         }
 
-        $simulatedAiScore = rand(82, 95);
-        $candidate->ai_score = $simulatedAiScore;
-        $candidate->kategori_kandidat = $simulatedAiScore >= 85 ? 'Green' : 'Yellow';
-        $candidate->ai_cv_analysis = json_encode([
-            'evaluation_match_score' => $simulatedAiScore,
-            'executive_summary' => "Kandidat {$candidate->full_name} berdomisili di " . ($candidate->city_domicile ?: 'Jawa Timur') . " dengan pendidikan " . ($candidate->education ?: 'SLTA/Sederajat') . ". Berkas CV terverifikasi dan memenuhi kualifikasi lowongan " . ($candidate->applied_job ?: 'Karyawan') . ".",
-            'key_strengths' => ['Kesesuaian Pengalaman Kerja', 'Kelengkapan Dokumen CV', 'Kesiapan Penempatan Area'],
-            'suitability_reason' => "Kualifikasi dan motivasi kandidat selaras dengan requirement pekerjaan " . ($candidate->applied_job ?: 'Karyawan') . ".",
-            'rekomendasi' => 'Direkomendasikan untuk Tahap Seleksi Lanjutan'
-        ]);
-        $candidate->save();
+        $analyzer = app(AiAnalyzerService::class);
+        $res = $analyzer->analyzeCandidate($candidate);
 
-        return back()->with('success', 'Analisis AI berkas CV kandidat ' . $candidate->full_name . ' berhasil diperbarui!');
+        if ($res['success']) {
+            return back()->with('success', 'Analisis AI berkas CV kandidat ' . $candidate->full_name . ' berhasil diselesaikan! Skor Match: ' . $res['score'] . ' (' . $res['category'] . ') via ' . $res['provider'] . '.');
+        }
+
+        if (($res['error_type'] ?? '') === 'rate_limited') {
+            return back()->with('warning', 'Analisis AI tertunda: Seluruh API Key AI Gemini & Sumopod saat ini sedang limit/jeda kuota (2 menit). Sistem cron akan mengulang otomatis, atau silakan klik coba lagi dalam beberapa saat.');
+        }
+
+        return back()->with('error', 'Analisis AI belum berhasil: ' . ($res['message'] ?? 'Terjadi kendala API'));
     }
+
 
     /**
      * Simpan / Perbarui Referensi Cek (Sinkronisasi ke work_experiences dan tb_pengalaman)
