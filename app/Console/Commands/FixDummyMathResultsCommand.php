@@ -69,8 +69,6 @@ class FixDummyMathResultsCommand extends Command
                         $q->where('id_soal', 6)->where('jawaban', '170');
                     })->orWhere(function ($q) {
                         $q->where('id_soal', 10)->where('jawaban', '360');
-                    })->orWhere(function ($q) {
-                        $q->where('id_soal', 8)->where('jawaban', '20');
                     });
                 })
                 ->pluck('id_kandidat')
@@ -80,13 +78,12 @@ class FixDummyMathResultsCommand extends Command
             $detectedCandidateIds = array_merge($detectedCandidateIds, $dummyRows);
         }
 
-        // Deteksi dari test_results dengan soal deret dummy
+        // Deteksi dari test_results dengan soal deret dummy unik
         if (Schema::hasTable('test_results')) {
             $dummyTestResults = DB::table('test_results')
                 ->where('test_type', 'math')
                 ->where(function ($q) {
                     $q->where('test_details', 'LIKE', '%4, 8, 16, 32, 64%')
-                      ->orWhere('test_details', 'LIKE', '%Sebuah toko memberikan diskon 25%%')
                       ->orWhere('test_details', 'LIKE', '%150 + 25 x 4 - 80%');
                 })
                 ->pluck('candidate_id')
@@ -137,13 +134,22 @@ class FixDummyMathResultsCommand extends Command
             }
 
             $evalBefore = $evalService->getEvaluationData($candidate);
+            $mathAnswers = DB::table('tb_hasilmath')->where('id_kandidat', $candidate->id)->pluck('jawaban', 'id_soal')->toArray();
+
             $this->line("---------------------------------------------------------------");
             $this->line("Kandidat: [ID: {$candidate->id}] {$candidate->full_name} (NIK: {$candidate->nik})");
             $this->line("  Posisi: {$candidate->applied_job}");
             $this->line("  Status Saat Ini -> Grade: {$evalBefore['mathGrade']} | Skor: {$evalBefore['mathScorePercent']}% | Benar: {$evalBefore['mathCorrectCount']}/10");
+            $this->line("  Jawaban: " . json_encode($mathAnswers));
+
+            // Lewati jika kandidat sudah memiliki nilai A atau B (sudah sesuai)
+            if ($evalBefore['mathScorePercent'] >= 70) {
+                $this->comment("  [LEWATI] Kandidat sudah memiliki Nilai {$evalBefore['mathGrade']} ({$evalBefore['mathScorePercent']}%). Tidak diubah agar data yang sudah sesuai tetap aman.");
+                continue;
+            }
 
             if ($isDryRun) {
-                $this->comment("  [DRY-RUN] Akan disinkronkan ke: Grade B | Skor: 70% | Benar: 7/10");
+                $this->warn("  [DRY-RUN AKAN DIUBAH] -> Akan disinkronkan ke Grade B (70%, 7 Benar, 3 Salah)");
                 continue;
             }
 
