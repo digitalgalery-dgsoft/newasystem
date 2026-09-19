@@ -862,8 +862,118 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 - **Isolasi & Pemfilteran Data Otomatis**:
   - Setiap kali AS login ke sistem, query data pada modul Karyawan, Kandidat Talent Pool, Interview Inhouse, dan AI Ranking otomatis terfilter sesuai cakupan prinsiple dan area yang ditugaskan khusus untuk akun tersebut.
   - Administrator HR (`admin`) tetap memiliki akses tak terbatas (unrestricted) ke seluruh modul, prinsiple, dan area nasional.
-- **Tampilan Tabel Pengguna Transparan**:
-  - Tabel menyajikan kolom terpisah untuk *Role Akses*, *Prinsiple Dihandle* (dengan badge jumlah dan daftar preview nama prinsiple), serta *Area Cover* (dengan badge jumlah dan preview wilayah).
+### 15. 👤 Pendaftaran Karyawan Langsung & Shortcut Akses RBAC dari Master Karyawan
+- **Modal Pendaftaran Akun Cepat**:
+  - Pada halaman Pengaturan Akses & Role (`/roles`), ditambahkan modal *"Daftarkan Akun User Baru"*.
+  - Dilengkapi fitur live auto-complete dari data NIK, nama, dan email karyawan aktif di database `employees`.
+  - Admin dapat langsung menetapkan Role dan cakupan Prinsiple & Area saat pembuatan akun baru.
+- **Shortcut Akses di Master Karyawan**:
+  - Ditambahkan tombol cepat *"Atur Akses & Role"* di baris aksi tabel Master Karyawan untuk memudahkan konfigurasi RBAC tanpa harus berpindah modul secara manual.
+
+---
+
+### 16. ⚙️ Manajemen Profil Pengguna (Edit Akun Karyawan & Sinkronisasi Master)
+- **Halaman Edit Profil Pengguna (`/profile`)**:
+  - Pengguna dan karyawan dapat memperbarui data akun mereka sendiri, meliputi: Nama Lengkap, Email, Nomor WhatsApp / Handphone, dan Kata Sandi baru dengan konfirmasi.
+  - Fitur unggah Foto Profil interaktif dengan preview gambar langsung.
+- **Sinkronisasi Dua Arah ke Master Data**:
+  - Setiap perubahan data kontak (email & no HP) pada profil akun otomatis tersinkronisasi ke tabel `employees` dan riwayat master terkait agar data kepegawaian selalu mutakhir.
+
+---
+
+### 17. 📁 Manajemen Berkas & Lampiran Kandidat (Foto, CV, Fallback Server, & XLSX Link)
+- **Modal Media Kandidat Interaktif (`/candidate/{id}/media`)**:
+  - Menampilkan preview foto profil kandidat dan berkas CV (PDF/dokumen) dalam modal yang responsif.
+- **Sistem Fallback Deteksi Berkas Multi-Server**:
+  - Menghindari berkas *broken* dengan memeriksa berkas secara berurutan di direktori lokal storage Laravel, folder publik sistem lama (`asystem.co.id`), server statis `appsend.my.id`, dan `new.asystem.co.id`.
+- **Generator Tautan Berkas pada Export Excel**:
+  - Berkas export Excel Kandidat Job Portal kini dilengkapi kolom tautan langsung yang valid menuju berkas CV asli serta dokumen PDF hasil analisis AI.
+
+---
+
+### 18. 🤖 Optimasi Engine AI CV Analyzer (Rotasi Kunci Pintar, Anti-Stall, & Error Handling)
+- **Rotasi Pintar Multi-Kunci Google Gemini API**:
+  - Mendukung hingga 19+ API Key Gemini dengan sistem fallback otomatis ketika salah satu kunci mencapai batas kuota rate-limit (*HTTP 429*).
+  - Periode cooldown otomatis selama 2 menit untuk token yang limit sebelum dicoba kembali.
+- **Penanganan Anti-Stall Berkas CV**:
+  - Kandidat dengan berkas CV yang rusak, hilang, atau tidak dapat dibaca otomatis ditandai dengan status `file_error`.
+  - Mencegah proses cron terhenti (*hanging/stalling*) pada kandidat bermasalah dan memastikan antrean terus bergerak lancar.
+- **Analisis AI Komprehensif saat Melamar Mandiri**:
+  - Kandidat yang melamar lowongan melalui portal publik (`/job/{id}/apply`) otomatis langsung dianalisis CV-nya secara komprehensif menggunakan Gemini AI dan nilainya langsung masuk ke Talent Pool.
+
+---
+
+### 19. 🔄 Integrasi Status Tahapan Rekrutmen Odoo ERP Berdasarkan NIK & Auto-Archive
+- **Pemadanan Kandidat dengan Odoo ERP (`hr.applicant`)**:
+  - Mencocokkan data kandidat di ASystem dengan database rekrutmen Odoo ERP berdasarkan Nomor Induk Kependudukan (NIK).
+  - Menampilkan badge tahapan seleksi resmi Odoo: *Data Pelamar*, *Interview*, *Principal*, *E-Learning*, *PKWT*, dan *Joined*.
+- **Tampilan Metrik Ringkas Tahapan Odoo**:
+  - Ditambahkan deretan kartu statistik compact Step Odoo pada halaman Kandidat Job Portal dan Kandidat Interview.
+- **Tarik Data Kandidat dari Odoo berdasarkan NIK**:
+  - Modal sinkronisasi dilengkapi kemampuan menarik data pelamar yang tercatat di Odoo langsung ke ASystem jika data belum ada di database lokal.
+- **Pembersihan & Auto-Archive Otomatis**:
+  - Kandidat portal yang tidak menunjukkan perkembangan tahapan selama lebih dari 14 hari secara otomatis dipindahkan ke status Arsip untuk menjaga database tetap bersih dan relevan.
+
+---
+
+### 20. 📊 Modul Eksekutif Statistik Job & Pelamar (`/job-stats`) & Export Multi-Sheet XLSX
+- **Dashboard Statistik Lowongan & Rekrutmen Eksekutif**:
+  - Menampilkan ringkasan total lowongan, total pelamar portal, pelamar yang diproses di Odoo, hingga kandidat yang berhasil *Joined*.
+  - Tabel rincian pelamar per lowongan pekerjaan dengan breakdown lengkap tahapan seleksi Odoo ERP.
+  - Perankingan otomatis berdasarkan performa perekrutan (*Highest Joined Candidates*).
+- **Filter Ketat Khusus Kandidat Portal**:
+  - Data statistik difilter secara ketat hanya menghitung pelamar dari Job Portal (`jenis = 'Job Portal'`), mengecualikan kandidat database interview legacy.
+- **Resolusi Data Rekruter Inhouse**:
+  - Nama dan posisi rekruter yang menangani lowongan ditarik langsung dari master data karyawan inhouse dan diformat rapi dalam Title Case.
+- **Export Laporan Eksekutif Excel Multi-Sheet (`.xlsx`)**:
+  - Menggantikan format CSV sederhana dengan berkas Excel XLSX profesional:
+    - **Sheet 1**: Ringkasan Metrik KPI & Tabel Performa Lowongan dengan header Navy Blue dan format tabel korporat.
+    - **Sheet 2**: Detail Seluruh Pelamar beserta lowongan, area, skor AI, dan status tahapan Odoo.
+
+---
+
+### 21. 🔄 Fitur Switch User & Revert User Account (Kembali ke Akun Asli)
+- **Kemudahan Impersonasi untuk Supervisi**:
+  - Administrator dapat beralih akun (*Switch User*) untuk melihat sistem persis seperti yang dilihat oleh pengguna atau rekruter tertentu.
+- **Tombol Kembali ke Akun Asli (Revert Switch User)**:
+  - Menyediakan tombol pemulih akun asli yang selalu terlihat di berbagai tempat:
+    - **Sticky Amber Bar**: Pita peringatan berwarna kuning keemasan di bagian paling atas layar yang selalu menempel saat impersonasi berlangsung.
+    - **Topbar Navigation**: Tombol cepat di sebelah info profil.
+    - **Menu Profil Pengguna**: Opsi *"Kembali ke Akun Asli"* di dropdown menu akun.
+  - Memastikan administrator dapat kembali ke akun aslinya secara instan tanpa perlu logout dan mengetikkan kredensial kembali.
+
+---
+
+### 22. 🎯 Penyempurnaan Scope All-Principle & All-Area pada Kandidat Portal & Interview
+- **Koreksi Logika Otorisasi Scope Global**:
+  - Memperbaiki penanganan akun pengguna yang dikonfigurasi dengan cakupan *All Prinsiple* (`all_principles = 1` atau array kosong) dan *All Area* (`all_areas = 1` atau array kosong).
+  - Sebelumnya, akun dengan izin nasional ini sempat memicu filter kosong pada Kandidat Portal & Kandidat Interview.
+  - Logika query disempurnakan di [User.php](file:///d:/ASystem/newasystem/app/Models/User.php), [KandidatPortalController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/KandidatPortalController.php), dan [InterviewController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php) sehingga data pelamar tampil lengkap secara nasional.
+
+---
+
+### 23. ⏰ Standarisasi Zona Waktu Sistem & Kandidat ke Asia/Jakarta (WIB)
+- **Konfigurasi Timezone Laravel**:
+  - Mengubah konfigurasi zona waktu aplikasi pada [config/app.php](file:///d:/ASystem/newasystem/config/app.php) dari default `UTC` menjadi `'Asia/Jakarta'`.
+- **Akurasi Waktu Pendaftaran Pelamar**:
+  - Memastikan `created_at` pada saat kandidat mendaftar tersimpan dan ditampilkan menggunakan Waktu Indonesia Barat (WIB), bukan waktu server UTC.
+  - Menyelaraskan seluruh tampilan tanggal pendaftaran di tabel, modal, dan export laporan.
+
+---
+
+### 24. ⚡ Live Running Text Marquee AI CV Analyzer & Pacing Otomatis 1 Kandidat per 30 Detik (Job Portal Only)
+- **Komponen Running Text Marquee Dinamis**:
+  - Menampilkan banner live ticker glassmorphic modern di bagian atas halaman Kandidat Job Portal.
+  - **Pulsing Indicator**: Badge menyala `● PROSES AI` (Emerald) saat menganalisis dan `● AI STANDBY` (Amber) saat jeda antrean.
+  - **Running Text Berjalan**: Menampilkan nama kandidat yang sedang dianalisis, lowongan, area, kecepatan, sisa antrean, kandidat berikutnya, dan skor kandidat terakhir yang selesai.
+  - **Fitur Pause on Hover**: Teks berhenti bergerak secara halus saat kursor mouse diarahkan ke area ticker agar mudah dibaca.
+  - **Auto-Poll Alpine.js**: Status diperbarui setiap 5 detik di latar belakang melalui endpoint `GET /kandidatportal/ai-live-status` tanpa reload halaman.
+- **Pacing Otomatis: 1 Kandidat per 30 Detik (1 Menit 2 Kandidat)**:
+  - Dikonfigurasi pada command [app/Console/Commands/CronAiAnalyzerCommand.php](file:///d:/ASystem/newasystem/app/Console/Commands/CronAiAnalyzerCommand.php) dan dijadwalkan per menit di [routes/console.php](file:///d:/ASystem/newasystem/routes/console.php).
+  - Setiap eksekusi memproses 2 kandidat secara teratur dengan jeda istirahat dinamis hingga tepat 30 detik per kandidat.
+- **Filter Ketat Khusus Kandidat Job Portal**:
+  - Antrean dan pemrosesan AI dibatasi hanya untuk pelamar **Job Portal (`jenis = 'Job Portal'`)**, mengeluarkan data walk-in dan import lama.
+  - Jumlah antrean pada teks berjalan sinkron 100% dengan kartu statistik **BELUM DIANALISA** di dashboard.
 
 ---
 
@@ -871,6 +981,29 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `ef18db8` | fix(ai-analyzer): restrict AI analysis queue and runner strictly to Job Portal candidates |
+| `3995c51` | fix(console): register app/Console/Commands in bootstrap/app.php |
+| `bbf580a` | feat(ai-analyzer): implement live running text ticker for AI CV processing and set pace to 1 candidate per 30 seconds |
+| `c111042` | fix(timezone): configure default timezone to Asia/Jakarta and align candidate timestamps to WIB |
+| `6dc7a35` | fix(rbac): allow all-principle and all-area scoped accounts to view candidate portal and interview data |
+| `a6a430b` | feat(auth): implement revert switch user feature with sticky banner and navigation buttons |
+| `48db3ec` | feat(job-stats): upgrade export from CSV to executive styled multi-sheet XLSX format |
+| `6733c70` | fix(job-stats): resolve recruiter positions strictly from inhouse list with title case names |
+| `6f91668` | feat(job-stats): rank Odoo recruitment step table by highest joined candidates count |
+| `78cd94a` | fix(job-stats): filter candidate data strictly to Kandidat Portal (jenis = Job Portal) and exclude interview candidates |
+| `5bc5985` | feat(job): implement job & candidate statistics page with Odoo recruitment step breakdown and export |
+| `a1483df` | feat(odoo): add NIK-based candidate pull from Odoo ERP and update import modal instructions |
+| `09b3c73` | feat: add compact Step Odoo statistic cards and apply Step Odoo sync and badges to Kandidat Interview |
+| `dc41d92` | fix: Chunk remainingNiks to 400 items to prevent SQLite too many variables error |
+| `5a241d5` | feat: Integrasi pencocokan tahapan rekrutmen Odoo ERP dengan Kandidat Portal berdasarkan NIK dan auto-archive 14 hari |
+| `6b2c16e` | fix: lewati kandidat dengan file_error agar antrean cron tidak macet |
+| `be0142e` | fix: gunakan analisis AI komprehensif saat apply dan perbaiki mapping hasil evaluasi CV pada detail kandidat |
+| `23ff3e2` | feat: tambahkan skrip cron_ai_analyzer dengan rotasi pintar, jeda limit 2 menit, list token expired, dan fallback sumopod |
+| `67aac3c` | Fix candidate photo and CV upload, intelligent fallback links in XLSX export, and restrict AI analysis to candidates with CV |
+| `3175ec9` | fix: optimasi rendering notifikasi dan error bag pada halaman profile |
+| `7305e0b` | feat: tambahkan fitur edit profile user / karyawan (email, no hp/wa, password, foto profile dan sinkronisasi data master) |
+| `c1cc1f5` | feat(rbac): add direct employee registration & role assignment modal and Master Karyawan RBAC shortcut |
+| `e35b31e` | docs: document decoupled RBAC and multi-user AS scoping architecture |
 | `dc98162` | refactor(rbac): decouple principle and area scoping from roles to individual user configuration (1 Role Akses AS untuk banyak user) |
 | `e2978e6` | fix: restore missing master.prinsiple.destroy route in routes/web.php |
 | `671adbc` | docs: document Milestone 40 personality test alignment and master personality admin in UPDATE_PROGRESS.md |
