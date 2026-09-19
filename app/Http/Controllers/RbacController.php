@@ -294,6 +294,68 @@ class RbacController extends Controller
     }
 
     /**
+     * Daftarkan akun pengguna baru (misal dari Karyawan / AS)
+     */
+    public function storeUser(Request $request)
+    {
+        $request->validate([
+            'name' => 'required|string|max:150',
+            'email' => 'required|email|max:150|unique:users,email',
+            'password' => 'nullable|string|min:6',
+            'role' => 'required|string|exists:roles,name',
+            'job_title' => 'nullable|string|max:100',
+            'area' => 'nullable|string|max:100',
+            'scope_principle_type' => 'nullable|string|in:all,specific',
+            'scope_area_type' => 'nullable|string|in:all,specific',
+            'allowed_principles' => 'nullable|array',
+            'allowed_areas' => 'nullable|array',
+        ]);
+
+        $handleAllPrinciples = ($request->input('scope_principle_type', 'all') === 'all');
+        $coverAllAreas = ($request->input('scope_area_type', 'all') === 'all');
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => strtolower(trim($request->email)),
+            'password' => Hash::make($request->password ?: 'password123'),
+            'role' => $request->role,
+            'job_title' => $request->job_title ?: 'Karyawan',
+            'area' => $request->area ?: 'Semua Area',
+            'is_active' => true,
+            'scope_override' => true,
+            'handle_all_principles' => $handleAllPrinciples,
+            'allowed_principles' => $handleAllPrinciples ? null : array_values(array_filter((array) $request->input('allowed_principles', []))),
+            'cover_all_areas' => $coverAllAreas,
+            'allowed_areas' => $coverAllAreas ? null : array_values(array_filter((array) $request->input('allowed_areas', []))),
+        ]);
+
+        return redirect()->route('setting.rbac.index', ['tab' => 'users', 'search' => $user->email])
+            ->with('success', "Akun pengguna untuk '{$user->name}' berhasil dibuat dengan role '{$user->role}'!");
+    }
+
+    /**
+     * API pencarian karyawan untuk autocomplete saat menambah pengguna
+     */
+    public function searchEmployees(Request $request)
+    {
+        $q = trim($request->query('q', ''));
+        if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $employees = Employee::where(function($query) use ($q) {
+                $query->where('nama_karyawan', 'like', "%{$q}%")
+                      ->orWhere('email', 'like', "%{$q}%")
+                      ->orWhere('nik', 'like', "%{$q}%");
+            })
+            ->select('id', 'nik', 'nama_karyawan', 'email', 'jabatan', 'area', 'prinsiple')
+            ->limit(15)
+            ->get();
+
+        return response()->json($employees);
+    }
+
+    /**
      * Reset password cepat untuk user / karyawan
      */
     public function resetUserPassword(Request $request, $id)

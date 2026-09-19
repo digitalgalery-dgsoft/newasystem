@@ -693,6 +693,12 @@
                                        class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Switch User Akun">
                                         <i class="ri-user-shared-line text-sm"></i>
                                     </a>
+
+                                    <!-- Shortcut Atur Role Akses (RBAC) & Scope -->
+                                    <a href="{{ route('setting.rbac.index', ['tab' => 'users', 'search' => $emp->email ?: $emp->nama_karyawan]) }}" 
+                                       class="w-7 h-7 rounded-lg bg-indigo-50 text-indigo-700 hover:bg-indigo-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Atur Role Akses & Scope AS (RBAC)">
+                                        <i class="fa-solid fa-user-shield text-[11px]"></i>
+                                    </a>
                                 </div>
                             </td>
                         </tr>

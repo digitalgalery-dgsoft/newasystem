@@ -91,11 +91,16 @@ class AuthController extends Controller
                     ]
                 );
 
-                // Update password on user record
+                // Update password and info without overwriting custom RBAC role (e.g. role_akses_as, admin, recruiter)
+                $existingRole = $user->role;
+                $assignedRole = (!empty($existingRole) && !in_array($existingRole, ['karyawan_inhouse', 'karyawan_ratecard'], true))
+                    ? $existingRole
+                    : ($existingRole ?: $userRole);
+
                 $user->update([
                     'name' => $employee->nama_karyawan,
                     'password' => Hash::make($inputPassword),
-                    'role' => $userRole,
+                    'role' => $assignedRole,
                     'is_active' => true,
                 ]);
 

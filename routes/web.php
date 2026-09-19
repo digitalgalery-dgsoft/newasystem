@@ -295,8 +295,10 @@ Route::middleware(['admin'])->prefix('setting/rbac')->name('setting.rbac.')->gro
     Route::post('/roles', [\App\Http\Controllers\RbacController::class, 'storeRole'])->name('role.store');
     Route::put('/roles/{id}', [\App\Http\Controllers\RbacController::class, 'updateRole'])->name('role.update');
     Route::delete('/roles/{id}', [\App\Http\Controllers\RbacController::class, 'destroyRole'])->name('role.destroy');
+    Route::post('/user', [\App\Http\Controllers\RbacController::class, 'storeUser'])->name('user.store');
     Route::put('/user/{id}', [\App\Http\Controllers\RbacController::class, 'updateUserAccess'])->name('user.update');
     Route::post('/user/{id}/reset-password', [\App\Http\Controllers\RbacController::class, 'resetUserPassword'])->name('user.reset-password');
+    Route::get('/search-employees', [\App\Http\Controllers\RbacController::class, 'searchEmployees'])->name('search-employees');
 });
 // Shortcut aliases
 Route::get('/rbac', function() { return redirect()->route('setting.rbac.index'); })->name('rbac.index');
