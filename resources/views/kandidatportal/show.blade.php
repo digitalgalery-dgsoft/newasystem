@@ -15,15 +15,21 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">{{ $candidate->full_name }}</h1>
-                        <span class="badge-pill {{ $candidate->ai_badge_class }}">
-                            <i class="fa-solid fa-bolt text-[9px]"></i> AI Match: {{ $candidate->ai_score ?? 0 }}%
-                        </span>
-                        @if($candidate->kategori_kandidat === 'Green')
-                            <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">🟢 Green</span>
-                        @elseif($candidate->kategori_kandidat === 'Yellow')
-                            <span class="badge-pill bg-amber-50 text-amber-700 border-amber-200">🟡 Yellow</span>
-                        @elseif($candidate->kategori_kandidat === 'Red')
-                            <span class="badge-pill bg-rose-50 text-rose-700 border-rose-200">🔴 Red</span>
+                        @if($candidate->hasCv() && !empty($candidate->ai_score))
+                            <span class="badge-pill {{ $candidate->ai_badge_class }}">
+                                <i class="fa-solid fa-bolt text-[9px]"></i> AI Match: {{ $candidate->ai_score }}%
+                            </span>
+                            @if($candidate->kategori_kandidat === 'Green')
+                                <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">🟢 Green</span>
+                            @elseif($candidate->kategori_kandidat === 'Yellow')
+                                <span class="badge-pill bg-amber-50 text-amber-700 border-amber-200">🟡 Yellow</span>
+                            @elseif($candidate->kategori_kandidat === 'Red')
+                                <span class="badge-pill bg-rose-50 text-rose-700 border-rose-200">🔴 Red</span>
+                            @endif
+                        @else
+                            <span class="badge-pill bg-slate-100 text-slate-500 border-slate-200">
+                                <i class="fa-regular fa-file-pdf text-[9px] mr-0.5"></i> Belum Ada CV
+                            </span>
                         @endif
                     </div>
                     <p class="text-xs text-slate-500 font-medium mt-0.5">
@@ -210,31 +216,35 @@
                 
                 <!-- 1. FOTO RESMI PELAMAR (3x4) -->
                 <div class="w-36 p-2 rounded-xl bg-white border border-slate-200/90 shadow-2xs hover:border-primary-400 hover:shadow-md transition-all flex flex-col items-center justify-between group cursor-pointer"
-                     onclick="openCandidateMedia('image', '{{ $candidate->photo_url }}', 'Foto Resmi: {{ addslashes($candidate->full_name) }}')"
-                     title="Klik untuk melihat preview foto">
+                     onclick="{{ $candidate->photo_path ? "openCandidateMedia('image', '{$candidate->photo_url}', 'Foto Resmi: " . addslashes($candidate->full_name) . "')" : "openUploadModal()" }}"
+                     title="{{ $candidate->photo_path ? 'Klik untuk melihat preview foto' : 'Klik untuk mengunggah pasfoto' }}">
                     <div class="relative w-32 h-40 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex flex-col items-center justify-center shadow-inner">
                         @if($candidate->photo_path)
                             <img id="photoPreview" src="{{ $candidate->photo_url }}" alt="Foto {{ $candidate->full_name }}" class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($candidate->full_name) }}&background=0F52BA&color=fff&size=256';">
+                            <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-semibold transition-opacity gap-1 backdrop-blur-[1px]">
+                                <i class="fa-solid fa-magnifying-glass-plus text-base"></i>
+                                <span class="text-[10px] font-bold tracking-wider uppercase">Preview</span>
+                            </div>
                         @else
-                            <div id="photoPlaceholder" class="flex flex-col items-center text-slate-400 p-2">
+                            <div id="photoPlaceholder" class="flex flex-col items-center text-slate-400 p-2 text-center group-hover:text-primary transition-colors">
                                 <i class="fa-solid fa-camera text-2xl mb-1 text-slate-300 group-hover:text-primary transition-colors"></i>
                                 <span class="text-[11px] font-bold">Pasfoto 3x4</span>
-                                <span class="text-[9px] text-slate-400 mt-0.5">JPG / PNG</span>
+                                <span class="text-[9px] text-primary font-semibold mt-1 bg-primary/10 px-2 py-0.5 rounded-md">
+                                    <i class="fa-solid fa-plus text-[8px]"></i> Unggah
+                                </span>
                             </div>
                         @endif
-                        <div class="absolute inset-0 bg-slate-900/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs font-semibold transition-opacity gap-1 backdrop-blur-[1px]">
-                            <i class="fa-solid fa-magnifying-glass-plus text-base"></i>
-                            <span class="text-[10px] font-bold tracking-wider uppercase">Preview</span>
-                        </div>
                     </div>
                     <div class="mt-2 text-center">
                         <span class="text-[11px] font-bold text-slate-700 block leading-tight">Foto Resmi Pelamar</span>
-                        <span class="text-[9px] text-slate-400 block mt-0.5">Ukuran 3x4 • Klik Preview</span>
+                        <span class="text-[9px] {{ $candidate->photo_path ? 'text-slate-400' : 'text-amber-600 font-semibold' }} block mt-0.5">
+                            {{ $candidate->photo_path ? 'Ukuran 3x4 • Terunggah' : 'Belum Diunggah' }}
+                        </span>
                     </div>
                 </div>
 
                 <!-- 2. LAMPIRAN BERKAS CV -->
-                @if($candidate->cv_path)
+                @if($candidate->hasCv())
                     <div class="w-36 p-2 rounded-xl bg-white border border-slate-200/90 shadow-2xs hover:border-emerald-500 hover:shadow-md transition-all flex flex-col items-center justify-between group cursor-pointer"
                          onclick="openCandidateMedia('{{ $isCvImage ? 'image' : 'pdf' }}', '{{ $cvUrl }}', 'Lampiran CV: {{ addslashes($candidate->full_name) }}')"
                          title="Klik untuk membuka preview CV">
@@ -263,20 +273,33 @@
                         </div>
                     </div>
                 @else
-                    <div class="w-36 p-2 rounded-xl bg-white/70 border border-dashed border-slate-300 opacity-80 flex flex-col items-center justify-between text-center cursor-not-allowed"
-                         onclick="alert('Kandidat ini belum mengunggah berkas lampiran CV.')"
-                         title="Belum ada lampiran CV">
-                        <div class="w-32 h-40 rounded-lg bg-slate-50 border border-slate-100 flex flex-col items-center justify-center p-2 text-slate-400">
-                            <i class="fa-regular fa-file-pdf text-2xl mb-1.5 text-slate-300"></i>
-                            <span class="text-[11px] font-bold text-slate-500">Belum Ada CV</span>
-                            <span class="text-[9px] text-slate-400 mt-0.5">Tidak terlampir</span>
+                    <div class="w-36 p-2 rounded-xl bg-white border border-dashed border-amber-300 hover:border-amber-500 hover:bg-amber-50/30 transition-all flex flex-col items-center justify-between text-center cursor-pointer group"
+                         onclick="openUploadModal()"
+                         title="Klik untuk mengunggah berkas CV kandidat">
+                        <div class="w-32 h-40 rounded-lg bg-amber-50/50 border border-amber-200/60 flex flex-col items-center justify-center p-2 text-amber-700">
+                            <i class="fa-regular fa-file-pdf text-2xl mb-1.5 text-amber-500 group-hover:scale-110 transition-transform"></i>
+                            <span class="text-[11px] font-bold text-amber-900">Belum Ada CV</span>
+                            <span class="text-[9px] text-amber-700 mt-1 bg-amber-200/70 px-2 py-0.5 rounded-md font-bold">
+                                <i class="fa-solid fa-cloud-arrow-up text-[8px]"></i> Unggah CV
+                            </span>
                         </div>
                         <div class="mt-2 text-center">
-                            <span class="text-[11px] font-bold text-slate-400 block leading-tight">Lampiran Berkas CV</span>
-                            <span class="text-[9px] text-slate-400 block mt-0.5">Belum Diunggah</span>
+                            <span class="text-[11px] font-bold text-slate-600 block leading-tight">Lampiran Berkas CV</span>
+                            <span class="text-[9px] text-amber-600 font-semibold block mt-0.5">Klik untuk Upload</span>
                         </div>
                     </div>
                 @endif
+
+                <!-- 3. KELOLA / UPLOAD BERKAS BUTTON -->
+                <div class="w-32 p-2 rounded-xl bg-slate-50 border border-slate-200 hover:border-primary/50 hover:bg-blue-50/50 transition-all flex flex-col items-center justify-center text-center cursor-pointer group"
+                     onclick="openUploadModal()"
+                     title="Klik untuk mengunggah atau mengganti berkas pasfoto dan CV">
+                    <div class="w-12 h-12 rounded-2xl bg-white border border-slate-200 flex items-center justify-center text-primary group-hover:scale-110 shadow-xs transition-transform mb-2">
+                        <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                    </div>
+                    <span class="text-[11px] font-bold text-slate-800 block leading-tight">Kelola Berkas</span>
+                    <span class="text-[9px] text-slate-500 block mt-0.5">Unggah Foto & CV</span>
+                </div>
 
             </div>
 
@@ -997,16 +1020,26 @@
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap">
-                    <!-- Download PDF Button (Sesuai Skrip Aslinya!) -->
-                    <a href="{{ route('kandidatportal.cetak-ai', $candidate->id) }}" target="_blank" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-sm shadow-rose-600/20 flex items-center gap-2">
-                        <i class="fa-solid fa-file-pdf text-sm"></i>
-                        <span>Download PDF</span>
-                    </a>
+                    @if($candidate->hasCv() && !empty($candidate->ai_score))
+                        <!-- Download PDF Button (Sesuai Skrip Aslinya!) -->
+                        <a href="{{ route('kandidatportal.cetak-ai', $candidate->id) }}" target="_blank" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-sm shadow-rose-600/20 flex items-center gap-2">
+                            <i class="fa-solid fa-file-pdf text-sm"></i>
+                            <span>Download PDF</span>
+                        </a>
 
-                    <button type="button" @click="alert('Memulai evaluasi ulang berkas CV kandidat...')" class="px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-1.5">
-                        <i class="fa-solid fa-arrows-rotate text-primary"></i>
-                        <span>Analisis Ulang CV</span>
-                    </button>
+                        <form action="{{ route('kandidatportal.analyze_cv', $candidate->id) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-arrows-rotate text-primary"></i>
+                                <span>Analisis Ulang CV</span>
+                            </button>
+                        </form>
+                    @else
+                        <button type="button" onclick="openUploadModal()" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up"></i>
+                            <span>Unggah CV Kandidat</span>
+                        </button>
+                    @endif
                 </div>
             </div>
 
@@ -1241,19 +1274,29 @@
             @else
             <!-- Empty State -->
             <div class="bg-slate-50 border border-slate-200 rounded-2xl p-10 text-center space-y-4">
-                <div class="w-16 h-16 rounded-3xl bg-indigo-100 text-indigo-600 flex items-center justify-center mx-auto text-2xl shadow-inner">
-                    <i class="fa-solid fa-robot"></i>
+                <div class="w-16 h-16 rounded-3xl {{ $candidate->hasCv() ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-100 text-amber-600' }} flex items-center justify-center mx-auto text-2xl shadow-inner">
+                    <i class="fa-solid {{ $candidate->hasCv() ? 'fa-robot' : 'fa-file-circle-exclamation' }}"></i>
                 </div>
                 <div>
-                    <h4 class="text-base font-bold text-slate-800">Belum Ada Analisa AI</h4>
+                    <h4 class="text-base font-bold text-slate-800">{{ $candidate->hasCv() ? 'Belum Ada Analisa AI' : 'Berkas CV Belum Diunggah' }}</h4>
                     <p class="text-xs text-slate-500 max-w-md mx-auto mt-1">
-                        Berkas CV kandidat belum dianalisis secara otomatis oleh AI CV Analyzer. Klik tombol di bawah untuk memulai analisa kecocokan kualifikasi.
+                        {{ $candidate->hasCv() ? 'Berkas CV kandidat belum dianalisis secara otomatis oleh AI CV Analyzer. Klik tombol di bawah untuk memulai analisa kecocokan kualifikasi.' : 'Analisis AI dan kalkulasi skor hanya dijalankan jika kandidat memiliki berkas Curriculum Vitae (CV) yang sah. Silakan unggah berkas CV terlebih dahulu.' }}
                     </p>
                 </div>
-                <button type="button" @click="alert('Memulai analisa AI CV...')" class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-md shadow-primary-500/20 inline-flex items-center gap-2">
-                    <i class="fa-solid fa-wand-magic-sparkles"></i>
-                    <span>Analisa CV Sekarang</span>
-                </button>
+                @if($candidate->hasCv())
+                    <form action="{{ route('kandidatportal.analyze_cv', $candidate->id) }}" method="POST" class="inline-block">
+                        @csrf
+                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-md shadow-primary-500/20 inline-flex items-center gap-2">
+                            <i class="fa-solid fa-wand-magic-sparkles"></i>
+                            <span>Analisa CV Sekarang</span>
+                        </button>
+                    </form>
+                @else
+                    <button type="button" onclick="openUploadModal()" class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-md shadow-primary-500/20 inline-flex items-center gap-2">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                        <span>Unggah Berkas CV Sekarang</span>
+                    </button>
+                @endif
             </div>
             @endif
         </div>
@@ -1817,5 +1860,95 @@
             }
         }
     }
+
+    // --- MODAL UPLOAD FOTO & CV HANDLERS ---
+    function openUploadModal() {
+        const modal = document.getElementById('uploadAttachmentsModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeUploadModal() {
+        const modal = document.getElementById('uploadAttachmentsModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+    }
+
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeUploadModal();
+        }
+    });
 </script>
+
+<!-- MODAL UPLOAD ATTACHMENTS (FOTO & CV) -->
+<div id="uploadAttachmentsModal" class="hidden fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100 space-y-5 animate-in fade-in zoom-in duration-200">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2.5">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center text-lg">
+                    <i class="fa-solid fa-file-arrow-up"></i>
+                </div>
+                <div>
+                    <h3 class="text-sm font-black text-slate-900">Kelola / Unggah Berkas Kandidat</h3>
+                    <p class="text-[11px] text-slate-500">{{ $candidate->full_name }} (NIK: {{ $candidate->nik }})</p>
+                </div>
+            </div>
+            <button type="button" onclick="closeUploadModal()" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors">
+                <i class="fa-solid fa-xmark text-xs"></i>
+            </button>
+        </div>
+
+        <form action="{{ route('kandidatportal.attachments.update', $candidate->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+            @csrf
+            
+            <!-- Pasfoto Upload -->
+            <div class="space-y-1.5">
+                <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-camera text-primary text-xs"></i>
+                    <span>Pasfoto Profil (3x4)</span>
+                </label>
+                <div class="flex items-center gap-3">
+                    @if($candidate->photo_path)
+                        <img src="{{ $candidate->photo_url }}" alt="Current Photo" class="w-10 h-10 rounded-lg object-cover border border-slate-200 shrink-0">
+                    @endif
+                    <input type="file" name="foto_profil" accept="image/*" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-primary/10 file:text-primary hover:file:bg-primary/20 cursor-pointer">
+                </div>
+                <span class="text-[10px] text-slate-400 block">Format: JPG, JPEG, PNG, atau WEBP. Maks 5MB.</span>
+            </div>
+
+            <!-- CV Upload -->
+            <div class="space-y-1.5 pt-2 border-t border-slate-100">
+                <label class="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <i class="fa-solid fa-file-pdf text-rose-500 text-xs"></i>
+                    <span>Berkas Curriculum Vitae (CV)</span>
+                </label>
+                @if($candidate->hasCv())
+                    <div class="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-600">
+                        <i class="fa-solid fa-check text-emerald-600"></i>
+                        <span class="truncate font-semibold">{{ basename($candidate->cv_path) }}</span>
+                    </div>
+                @endif
+                <input type="file" name="file_cv" accept=".pdf,.jpg,.jpeg,.png" class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-xl file:border-0 file:text-xs file:font-bold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100 cursor-pointer">
+                <span class="text-[10px] text-slate-400 block">Format: PDF, JPG, atau PNG. Maks 10MB. Mengunggah CV baru akan otomatis memicu kalkulasi Analisis AI.</span>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeUploadModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-xs transition-colors">
+                    Batal
+                </button>
+                <button type="submit" class="px-5 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-check"></i>
+                    <span>Simpan & Proses Berkas</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
 @endsection

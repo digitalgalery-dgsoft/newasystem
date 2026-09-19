@@ -342,29 +342,30 @@
                         <!-- AI Score -->
                         <td class="text-center">
                             @php
-                                $score = intval($cand->ai_score ?? 0);
+                                $hasCv = $cand->hasCv();
+                                $score = ($hasCv && $cand->ai_score !== null) ? intval($cand->ai_score) : 0;
                             @endphp
-                            @if($score > 0)
+                            @if($hasCv && $score > 0)
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-extrabold border {{ $cand->ai_badge_class }}">
                                     <i class="fa-solid fa-bolt text-[9px]"></i>
                                     {{ $score }}%
                                 </span>
                             @else
-                                <span class="text-[10px] text-slate-400 italic">Pending</span>
+                                <span class="text-[10px] text-slate-400 italic">-</span>
                             @endif
                         </td>
 
                         <!-- Kategori AI -->
                         <td class="text-center">
-                            @if($cand->kategori_kandidat === 'Green')
+                            @if($hasCv && $cand->kategori_kandidat === 'Green')
                                 <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Green
                                 </span>
-                            @elseif($cand->kategori_kandidat === 'Yellow')
+                            @elseif($hasCv && $cand->kategori_kandidat === 'Yellow')
                                 <span class="badge-pill bg-amber-50 text-amber-700 border-amber-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Yellow
                                 </span>
-                            @elseif($cand->kategori_kandidat === 'Red')
+                            @elseif($hasCv && $cand->kategori_kandidat === 'Red')
                                 <span class="badge-pill bg-rose-50 text-rose-700 border-rose-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Red
                                 </span>

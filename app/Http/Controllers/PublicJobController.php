@@ -136,6 +136,8 @@ class PublicJobController extends Controller
             'ringkasan_pengalaman' => 'nullable|string',
             'motivasi' => 'nullable|string',
             'kelebihan' => 'nullable|string',
+            'foto_profil' => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
+            'file_cv' => 'nullable|file|mimes:pdf,jpeg,png,jpg|max:10240',
         ]);
 
         $nik = $request->input('nik');
@@ -149,17 +151,57 @@ class PublicJobController extends Controller
         // Tentukan principle jika ada
         $principle = Principle::where('name', 'like', "%{$job->job_prinsiple}%")->first();
 
-        // AI Score matching simulation
-        $simulatedAiScore = rand(82, 95);
-        $kategoriKandidat = $simulatedAiScore >= 85 ? 'Green' : 'Yellow';
+        // Pastikan direktori upload lampiran tersedia
+        $lampiranPath = public_path('lampiran');
+        if (!\Illuminate\Support\Facades\File::exists($lampiranPath)) {
+            \Illuminate\Support\Facades\File::makeDirectory($lampiranPath, 0777, true, true);
+        }
 
-        $aiAnalysis = [
-            'evaluation_match_score' => $simulatedAiScore,
-            'executive_summary' => "Pelamar {$request->input('nama_lengkap')} berdomisili di {$request->input('kota_domisili')}, {$request->input('propinsi_domisili')} dengan pendidikan {$request->input('pendidikan')}. Keterampilan dan pengalaman sesuai dengan kualifikasi {$job->job_title}.",
-            'key_strengths' => $job->skills_array ?: ['Komunikasi Efektif', 'Kedisiplinan', 'Kerjasama Tim'],
-            'suitability_reason' => "Kualifikasi, domisili, dan motivasi kerja selaras dengan deskripsi pekerjaan {$job->job_title}.",
-            'rekomendasi' => 'Sangat Direkomendasikan untuk Seleksi Lanjutan'
-        ];
+        // 1. Upload Pas Foto Profil
+        $photoPath = $candidate?->photo_path;
+        if ($request->hasFile('foto_profil')) {
+            $fotoFile = $request->file('foto_profil');
+            $photoName = 'foto_' . $nik . '_' . time() . '.' . $fotoFile->getClientOriginalExtension();
+            $fotoFile->move($lampiranPath, $photoName);
+            $photoPath = $photoName;
+        } elseif ($request->filled('fotoprofil_base64')) {
+            $base64 = $request->fotoprofil_base64;
+            if (preg_match('/^data:image\/(\w+);base64,/', $base64, $type)) {
+                $data = substr($base64, strpos($base64, ',') + 1);
+                $data = base64_decode($data);
+                $photoName = 'foto_' . $nik . '_' . time() . '.' . strtolower($type[1]);
+                \Illuminate\Support\Facades\File::put($lampiranPath . '/' . $photoName, $data);
+                $photoPath = $photoName;
+            }
+        }
+
+        // 2. Upload Berkas CV
+        $cvPath = $candidate?->cv_path;
+        if ($request->hasFile('file_cv')) {
+            $cvFile = $request->file('file_cv');
+            $cvName = 'cv_' . $nik . '_' . time() . '.' . $cvFile->getClientOriginalExtension();
+            $cvFile->move($lampiranPath, $cvName);
+            $cvPath = $cvName;
+        }
+
+        // 3. AI Score matching simulation - HANYA DILAKUKAN JIKA ADA BERKAS CV VALID
+        $hasCv = !empty($cvPath) && $cvPath !== '-';
+        $simulatedAiScore = null;
+        $kategoriKandidat = null;
+        $aiAnalysis = null;
+
+        if ($hasCv) {
+            $simulatedAiScore = rand(82, 95);
+            $kategoriKandidat = $simulatedAiScore >= 85 ? 'Green' : 'Yellow';
+
+            $aiAnalysis = [
+                'evaluation_match_score' => $simulatedAiScore,
+                'executive_summary' => "Pelamar {$request->input('nama_lengkap')} berdomisili di {$request->input('kota_domisili')}, {$request->input('propinsi_domisili')} dengan pendidikan {$request->input('pendidikan')}. Keterampilan dan pengalaman sesuai dengan kualifikasi {$job->job_title}.",
+                'key_strengths' => $job->skills_array ?: ['Komunikasi Efektif', 'Kedisiplinan', 'Kerjasama Tim'],
+                'suitability_reason' => "Kualifikasi, domisili, dan motivasi kerja selaras dengan deskripsi pekerjaan {$job->job_title}.",
+                'rekomendasi' => 'Sangat Direkomendasikan untuk Seleksi Lanjutan'
+            ];
+        }
 
         $birthDateFormatted = Carbon::parse($request->input('tgl_lahir'))->format('dmY');
 
@@ -187,12 +229,14 @@ class PublicJobController extends Controller
             'jenis' => 'Job Portal',
             'status' => 'Active',
             'status_kandidat' => 'Baru',
+            'photo_path' => $photoPath,
+            'cv_path' => $cvPath,
             'experience_summary' => $request->input('ringkasan_pengalaman'),
             'work_motivation' => $request->input('motivasi'),
             'strengths' => $request->input('kelebihan'),
             'ai_score' => $simulatedAiScore,
             'kategori_kandidat' => $kategoriKandidat,
-            'ai_cv_analysis' => json_encode($aiAnalysis),
+            'ai_cv_analysis' => $aiAnalysis ? json_encode($aiAnalysis) : null,
             'is_profile_complete' => 1,
             'password' => Hash::make($birthDateFormatted),
             'useras' => $job->created_by ?? 'Publik',
@@ -242,6 +286,8 @@ class PublicJobController extends Controller
                     'status' => 'Active',
                     'status_kandidat' => 'Baru',
                     'useras' => $candidateData['useras'],
+                    'fotoprofil' => $photoPath,
+                    'filecv' => $cvPath,
                     'waktukirim' => now(),
                     'password' => $birthDateFormatted,
                 ]

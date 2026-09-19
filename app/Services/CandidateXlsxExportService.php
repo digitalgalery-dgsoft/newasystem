@@ -438,35 +438,41 @@ class CandidateXlsxExportService
             $photoName = '-';
             if (!empty($photoFile) && $photoFile !== '-') {
                 $photoName = basename($photoFile);
-                $photoUrl = 'https://asystem.co.id/interview/lampiran/' . $photoName;
+                $photoUrl = self::resolveLampiranUrl($photoFile, $baseUrl);
             }
 
             // File CV
             $cvFile = trim((string)$c->cv_path);
             $cvUrl = null;
             $cvName = '-';
+            $hasCv = false;
             if (!empty($cvFile) && $cvFile !== '-') {
                 $cvName = basename($cvFile);
-                $cvUrl = 'https://asystem.co.id/interview/lampiran/' . $cvName;
+                $cvUrl = self::resolveLampiranUrl($cvFile, $baseUrl);
+                $hasCv = true;
             }
 
-            // Link PDF Hasil Analisis AI (Production Server URL)
-            $pdfUrl = $baseUrl . '/kandidatportal/' . $c->id . '/cetak-ai';
+            // AI Analisis: HANYA DITAMPILKAN JIKA KANDIDAT MEMILIKI BERKAS CV VALID
+            $hasAiAnalysis = $hasCv && ($c->ai_score !== null && $c->ai_score > 0);
+            $pdfUrl = $hasAiAnalysis ? ($baseUrl . '/kandidatportal/' . $c->id . '/cetak-ai') : null;
 
             $statusKandidat = !empty($c->status_kandidat) ? trim($c->status_kandidat) : 'Baru';
 
             // Kategori AI & Style
-            $kategori = !empty($c->kategori_kandidat) ? trim($c->kategori_kandidat) : 'Pending';
+            $kategori = '-';
             $sKategori = $sCenter;
-            if (strcasecmp($kategori, 'Green') === 0) {
-                $sKategori = $isZebra ? 13 : 12;
-            } elseif (strcasecmp($kategori, 'Yellow') === 0) {
-                $sKategori = $isZebra ? 15 : 14;
-            } elseif (strcasecmp($kategori, 'Red') === 0) {
-                $sKategori = $isZebra ? 17 : 16;
+            if ($hasAiAnalysis && !empty($c->kategori_kandidat)) {
+                $kategori = trim($c->kategori_kandidat);
+                if (strcasecmp($kategori, 'Green') === 0) {
+                    $sKategori = $isZebra ? 13 : 12;
+                } elseif (strcasecmp($kategori, 'Yellow') === 0) {
+                    $sKategori = $isZebra ? 15 : 14;
+                } elseif (strcasecmp($kategori, 'Red') === 0) {
+                    $sKategori = $isZebra ? 17 : 16;
+                }
             }
 
-            $aiScore = ($c->ai_score !== null && $c->ai_score > 0) ? $c->ai_score . '%' : 'Pending';
+            $aiScore = $hasAiAnalysis ? ($c->ai_score . '%') : '-';
 
             // Determine row height
             $rowHeight = (mb_strlen($expSummary) > 60 || mb_strlen($alamatDom) > 50) ? 38 : 24;
@@ -476,7 +482,7 @@ class CandidateXlsxExportService
             $xml .= '<c r="A' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . $no . '</t></is></c>';
             // B: Tanggal
             $xml .= '<c r="B' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($tglDaftar) . '</t></is></c>';
-            // C: No. KTP
+            // C: NIK
             $xml .= '<c r="C' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($nik) . '</t></is></c>';
             // D: Nama Kandidat
             $xml .= '<c r="D' . $rowNum . '" t="inlineStr" s="' . $sLeft . '"><is><t>' . self::xmlEscape($nama) . '</t></is></c>';
@@ -529,8 +535,12 @@ class CandidateXlsxExportService
                 $xml .= '<c r="W' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>-</t></is></c>';
             }
 
-            // X: CV Analisa AI (Hyperlink ke Server Production PDF)
-            $xml .= '<c r="X' . $rowNum . '" s="' . $sLink . '"><f>' . self::xmlEscape('HYPERLINK("' . $pdfUrl . '", "CV Analisa AI")') . '</f><v>CV Analisa AI</v></c>';
+            // X: CV Analisa AI (Hyperlink ke Server Production PDF HANYA JIKA ADA CV & ANALISIS AI)
+            if ($hasAiAnalysis && $pdfUrl) {
+                $xml .= '<c r="X' . $rowNum . '" s="' . $sLink . '"><f>' . self::xmlEscape('HYPERLINK("' . $pdfUrl . '", "CV Analisa AI")') . '</f><v>CV Analisa AI</v></c>';
+            } else {
+                $xml .= '<c r="X' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>-</t></is></c>';
+            }
 
             // Y: Status Kandidat
             $xml .= '<c r="Y' . $rowNum . '" t="inlineStr" s="' . $sCenter . '"><is><t>' . self::xmlEscape($statusKandidat) . '</t></is></c>';
@@ -560,5 +570,33 @@ class CandidateXlsxExportService
             return '';
         }
         return htmlspecialchars($str, ENT_XML1, 'UTF-8');
+    }
+
+    /**
+     * Resolusi URL Berkas Lampiran (Foto & CV) dengan fallback cerdas:
+     * 1. Jika ada di lokal / new.asystem.co.id (public/lampiran) -> gunakan URL server baru
+     * 2. Jika tidak ada di lokal (merupakan data lama hasil impor) -> fallback ke server lama (asystem.co.id/interview/lampiran)
+     */
+    public static function resolveLampiranUrl(?string $file, string $baseUrl): ?string
+    {
+        if (empty($file) || trim($file) === '-') {
+            return null;
+        }
+        $file = trim($file);
+        $baseName = basename($file);
+
+        // 1. Cek apakah berkas ada di server lokal (new.asystem.co.id)
+        if (file_exists(public_path('lampiran/' . $baseName))) {
+            return rtrim($baseUrl, '/') . '/lampiran/' . rawurlencode($baseName);
+        }
+        if (file_exists(public_path('storage/' . $baseName))) {
+            return rtrim($baseUrl, '/') . '/storage/' . rawurlencode($baseName);
+        }
+        if (file_exists(public_path($file))) {
+            return rtrim($baseUrl, '/') . '/' . ltrim($file, '/');
+        }
+
+        // 2. Fallback ke server lama jika berkas berada di server lama (data impor legacy)
+        return 'https://asystem.co.id/interview/lampiran/' . rawurlencode($baseName);
     }
 }

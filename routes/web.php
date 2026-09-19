@@ -219,6 +219,17 @@ Route::get('/cetak_ai_result.php', function(\Illuminate\Http\Request $request) {
 Route::post('/kandidatportal/{id}/alihkan', [KandidatPortalController::class, 'alihkanAS'])->name('kandidatportal.alihkan');
 Route::post('/kandidatportal/{id}/ganti-area', [KandidatPortalController::class, 'gantiArea'])->name('kandidatportal.ganti_area');
 Route::post('/kandidatportal/{id}/arsipkan', [KandidatPortalController::class, 'arsipkan'])->name('kandidatportal.arsipkan');
+Route::post('/kandidatportal/{id}/attachments', [KandidatPortalController::class, 'uploadAttachments'])->name('kandidatportal.attachments.update');
+Route::post('/kandidatportal/{id}/analyze-cv', [KandidatPortalController::class, 'analyzeCv'])->name('kandidatportal.analyze_cv');
+
+// Route Fallback Berkas Lampiran (Serve local file if exists, otherwise redirect to legacy server)
+Route::get('/lampiran/{filename}', function ($filename) {
+    $path = public_path('lampiran/' . $filename);
+    if (file_exists($path)) {
+        return response()->file($path);
+    }
+    return redirect('https://asystem.co.id/interview/lampiran/' . rawurlencode($filename), 302);
+})->where('filename', '.*');
 
 // ==============================================================
 // FITUR KANDIDAT INHOUSE (v3/interviewinhouse.php & hasilinhouse.php)

@@ -145,22 +145,48 @@ class Candidate extends Model
         return $this->user_display_name;
     }
 
-    public static function getLampiranUrl(?string $file): ?string
+    public static function getLampiranUrl(?string $file, ?string $customBaseUrl = null): ?string
     {
-        if (empty($file)) {
+        if (empty($file) || trim($file) === '-') {
             return null;
         }
-        $baseName = basename(trim($file));
+        $file = trim($file);
+        $baseName = basename($file);
+
+        // Resolusi baseUrl yang handal (termasuk saat dipanggil dari CLI)
+        $baseUrl = $customBaseUrl;
+        if (empty($baseUrl)) {
+            if (app()->runningInConsole()) {
+                $baseUrl = 'https://new.asystem.co.id';
+            } else {
+                try {
+                    $baseUrl = request()->getSchemeAndHttpHost();
+                } catch (\Throwable $e) {
+                    $baseUrl = 'https://new.asystem.co.id';
+                }
+                if (empty($baseUrl) || str_contains($baseUrl, 'localhost') || str_contains($baseUrl, '127.0.0.1')) {
+                    $baseUrl = 'https://new.asystem.co.id';
+                }
+            }
+        }
+        $baseUrl = rtrim($baseUrl, '/');
+
         if (file_exists(public_path('lampiran/' . $baseName))) {
-            return asset('lampiran/' . $baseName);
+            return $baseUrl . '/lampiran/' . rawurlencode($baseName);
         }
         if (file_exists(public_path('storage/' . $baseName))) {
-            return asset('storage/' . $baseName);
+            return $baseUrl . '/storage/' . rawurlencode($baseName);
         }
         if (file_exists(public_path($file))) {
-            return asset($file);
+            return $baseUrl . '/' . ltrim($file, '/');
         }
-        return 'https://asystem.co.id/interview/lampiran/' . $baseName;
+        return 'https://asystem.co.id/interview/lampiran/' . rawurlencode($baseName);
+    }
+
+    public function hasCv(): bool
+    {
+        $cv = trim($this->cv_path ?? '');
+        return !empty($cv) && $cv !== '-';
     }
 
     public function getPhotoUrlAttribute(): string
@@ -379,6 +405,9 @@ class Candidate extends Model
 
     public function getAiDataAttribute(): array
     {
+        if (!$this->hasCv()) {
+            return [];
+        }
         if (!empty($this->ai_cv_analysis)) {
             $data = json_decode($this->ai_cv_analysis, true);
             if (!is_array($data) && is_string($this->ai_cv_analysis)) {
@@ -394,7 +423,10 @@ class Candidate extends Model
 
     public function getAiScoreColorHexAttribute(): string
     {
-        $score = intval($this->ai_score ?? 0);
+        if (!$this->hasCv() || empty($this->ai_score)) {
+            return '#94a3b8'; // slate-400
+        }
+        $score = intval($this->ai_score);
         if ($score >= 85) return '#059669'; // emerald-600
         if ($score >= 60) return '#d97706'; // amber-600
         return '#e11d48'; // rose-600
@@ -402,7 +434,10 @@ class Candidate extends Model
 
     public function getAiBadgeClassAttribute(): string
     {
-        $score = intval($this->ai_score ?? 0);
+        if (!$this->hasCv() || empty($this->ai_score)) {
+            return 'bg-slate-50 text-slate-500 border-slate-200';
+        }
+        $score = intval($this->ai_score);
         if ($score >= 85) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
         if ($score >= 60) return 'bg-amber-50 text-amber-700 border-amber-200';
         return 'bg-rose-50 text-rose-700 border-rose-200';
