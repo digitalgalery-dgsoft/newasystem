@@ -46,7 +46,7 @@
         <div class="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
             <div class="flex items-start sm:items-center gap-5">
                 <div class="relative flex-shrink-0">
-                    <img src="https://ui-avatars.com/api/?name={{ urlencode($userName) }}&background={{ $avatarColor }}&color=fff&size=128&bold=true" 
+                    <img src="{{ $currentUser ? $currentUser->avatar_url : "https://ui-avatars.com/api/?name=" . urlencode($userName) . "&background=" . $avatarColor . "&color=fff&size=128&bold=true" }}" 
                          alt="{{ $userName }}" 
                          class="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl border-2 border-white/20 shadow-lg object-cover ring-4 ring-white/10">
                     <span class="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-[10px]" title="Aktif Online">
@@ -62,6 +62,10 @@
                             <i class="fa-solid {{ $isAdmin ? 'fa-shield-halved' : 'fa-id-badge' }} mr-1"></i>
                             {{ $roleLabel }}
                         </span>
+                        <a href="{{ route('profile.index') }}" class="px-2.5 py-0.5 rounded-full text-[11px] font-bold tracking-wide bg-amber-400/20 hover:bg-amber-400/30 text-amber-200 border border-amber-300/30 transition-all flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-pen text-[10px]"></i>
+                            <span>Edit Profil</span>
+                        </a>
                     </div>
                     <h1 class="text-2xl sm:text-3xl font-black tracking-tight text-white">
                         {{ $userName }}
@@ -202,13 +206,19 @@
                     <i class="fa-solid fa-info-circle text-primary"></i>
                     <span>Informasi profil disinkronkan secara otomatis dari database ASystem.</span>
                 </span>
-                <form method="POST" action="{{ route('logout') }}" class="inline m-0">
-                    @csrf
-                    <button type="submit" class="inline-flex items-center gap-1.5 text-rose-600 hover:text-rose-700 font-semibold py-1 px-2 rounded-lg hover:bg-rose-50 transition-all">
-                        <i class="fa-solid fa-power-off"></i>
-                        <span>Keluar Akun (Logout)</span>
-                    </button>
-                </form>
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('profile.index') }}" class="inline-flex items-center gap-1.5 text-primary hover:text-primary-700 font-bold py-1.5 px-3 rounded-xl bg-primary-50 hover:bg-primary-100 transition-all border border-primary-200 shadow-2xs">
+                        <i class="fa-solid fa-user-pen text-xs"></i>
+                        <span>Edit Profil / Password</span>
+                    </a>
+                    <form method="POST" action="{{ route('logout') }}" class="inline m-0">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-1.5 text-rose-600 hover:text-rose-700 font-semibold py-1.5 px-3 rounded-xl hover:bg-rose-50 transition-all">
+                            <i class="fa-solid fa-power-off text-xs"></i>
+                            <span>Keluar (Logout)</span>
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
 

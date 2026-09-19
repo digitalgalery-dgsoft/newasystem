@@ -27,6 +27,7 @@ class User extends Authenticatable
         'phone',
         'job_title',
         'signature_path',
+        'avatar',
         'is_active',
         'scope_override',
         'handle_all_principles',
@@ -359,5 +360,57 @@ class User extends Authenticatable
 
         return \Illuminate\Support\Facades\Storage::disk('public')->exists($this->signature_path) ||
             file_exists(public_path($this->signature_path));
+    }
+
+    /**
+     * Mendapatkan data Employee terkait berdasarkan email
+     */
+    public function getLinkedEmployeeAttribute(): ?Employee
+    {
+        if (empty($this->email)) {
+            return null;
+        }
+        return Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($this->email))])->first();
+    }
+
+    /**
+     * URL Foto Avatar Pengguna dengan fallback cerdas
+     */
+    public function getAvatarUrlAttribute(): string
+    {
+        if (!empty($this->avatar)) {
+            $avatarClean = ltrim($this->avatar, '/\\');
+            if (file_exists(public_path($avatarClean))) {
+                return asset($avatarClean);
+            }
+            if (file_exists(public_path('uploads/avatars/' . basename($avatarClean)))) {
+                return asset('uploads/avatars/' . basename($avatarClean));
+            }
+            if (\Illuminate\Support\Facades\Storage::disk('public')->exists($avatarClean)) {
+                return asset('storage/' . $avatarClean);
+            }
+        }
+
+        // Cek jika akun terhubung ke data Employee yang memiliki foto
+        $emp = $this->linked_employee;
+        if ($emp && !empty($emp->foto)) {
+            $fotoClean = ltrim($emp->foto, '/\\');
+            if (file_exists(public_path($fotoClean))) {
+                return asset($fotoClean);
+            }
+            if (file_exists(public_path('lampiran/' . basename($fotoClean)))) {
+                return asset('lampiran/' . basename($fotoClean));
+            }
+        }
+
+        // Fallback ke UI Avatars dinamis sesuai role
+        $color = match ($this->role) {
+            'admin' => '0F52BA',
+            'karyawan_inhouse' => '059669',
+            'karyawan_ratecard' => 'D97706',
+            default => '4F46E5'
+        };
+
+        return 'https://ui-avatars.com/api/?name=' . urlencode($this->name ?? 'User') . "&background={$color}&color=fff&size=256&bold=true";
     }
 }

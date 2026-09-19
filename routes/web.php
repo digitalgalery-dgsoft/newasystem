@@ -38,6 +38,16 @@ Route::get('/login.php', function () { return redirect()->route('login'); });
 Route::get('/fitur', [FeatureController::class, 'index'])->name('fitur.index');
 
 // ==========================================
+// MANAJEMEN PROFIL PENGGUNA / KARYAWAN
+// ==========================================
+Route::middleware(['auth'])->group(function () {
+    Route::get('/profile', [\App\Http\Controllers\UserProfileController::class, 'index'])->name('profile.index');
+    Route::put('/profile', [\App\Http\Controllers\UserProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password', [\App\Http\Controllers\UserProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::delete('/profile/avatar', [\App\Http\Controllers\UserProfileController::class, 'destroyAvatar'])->name('profile.avatar.destroy');
+});
+
+// ==========================================
 // MASTER DATA: KARYAWAN & PRINSIPLE
 // ==========================================
 Route::middleware(['admin'])->prefix('master')->name('master.')->group(function () {

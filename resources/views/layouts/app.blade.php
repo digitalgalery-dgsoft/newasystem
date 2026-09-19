@@ -473,23 +473,23 @@
                         'head_hr' => 'Head of HR',
                         default => ucfirst(str_replace('_', ' ', $userRole))
                     };
-                    $avatarColor = match($userRole) {
-                        'admin' => '0F52BA',
-                        'karyawan_inhouse' => '059669',
-                        'karyawan_ratecard' => 'D97706',
-                        default => '6366F1'
-                    };
+                    $userAvatarUrl = $currentUser ? $currentUser->avatar_url : "https://ui-avatars.com/api/?name=" . urlencode($userName) . "&background=0F52BA&color=fff";
                 @endphp
                 <!-- Expanded User Profile -->
-                <div class="flex items-center gap-2.5 p-2 rounded-xl bg-white border border-slate-200 shadow-sm" x-show="!sidebarCollapsed">
-                    <img src="https://ui-avatars.com/api/?name={{ urlencode($userName) }}&background={{ $avatarColor }}&color=fff" alt="User Avatar" class="w-9 h-9 rounded-lg border border-slate-100 flex-shrink-0">
-                    <div class="flex-1 min-w-0">
-                        <div class="text-xs font-bold text-slate-900 truncate">{{ $userName }}</div>
-                        <div class="text-[10px] text-slate-500 font-medium truncate flex items-center gap-1">
-                            <span class="inline-block w-1.5 h-1.5 rounded-full {{ $userRole === 'admin' ? 'bg-blue-500' : ($userRole === 'karyawan_inhouse' ? 'bg-emerald-500' : 'bg-amber-500') }}"></span>
-                            <span>{{ $roleLabel }}</span>
+                <div class="flex items-center gap-2 p-2 rounded-xl bg-white border border-slate-200 shadow-sm hover:border-primary-300 transition-all group" x-show="!sidebarCollapsed">
+                    <a href="{{ route('profile.index') }}" class="flex items-center gap-2.5 flex-1 min-w-0" title="Klik untuk Buka Profil & Edit Data">
+                        <img src="{{ $userAvatarUrl }}" alt="{{ $userName }}" class="w-9 h-9 rounded-lg border border-slate-100 flex-shrink-0 object-cover">
+                        <div class="flex-1 min-w-0">
+                            <div class="text-xs font-bold text-slate-900 group-hover:text-primary transition-colors truncate">{{ $userName }}</div>
+                            <div class="text-[10px] text-slate-500 font-medium truncate flex items-center gap-1">
+                                <span class="inline-block w-1.5 h-1.5 rounded-full {{ $userRole === 'admin' ? 'bg-blue-500' : ($userRole === 'karyawan_inhouse' ? 'bg-emerald-500' : 'bg-amber-500') }}"></span>
+                                <span>{{ $roleLabel }}</span>
+                            </div>
                         </div>
-                    </div>
+                    </a>
+                    <a href="{{ route('profile.index') }}" title="Edit Profil Saya" class="text-slate-400 hover:text-primary hover:bg-primary-50 p-1.5 rounded-lg transition-all">
+                        <i class="fa-solid fa-user-pen text-xs"></i>
+                    </a>
                     <form method="POST" action="{{ route('logout') }}" class="inline m-0 p-0">
                         @csrf
                         <button type="submit" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all">
@@ -499,7 +499,9 @@
                 </div>
                 <!-- Collapsed User Profile -->
                 <div class="flex flex-col items-center gap-2 p-1" x-show="sidebarCollapsed" x-cloak>
-                    <img src="https://ui-avatars.com/api/?name={{ urlencode($userName) }}&background={{ $avatarColor }}&color=fff" alt="User Avatar" title="{{ $userName }} ({{ $roleLabel }})" class="w-9 h-9 rounded-lg border border-slate-200 shadow-sm">
+                    <a href="{{ route('profile.index') }}" title="Profil {{ $userName }} ({{ $roleLabel }})">
+                        <img src="{{ $userAvatarUrl }}" alt="{{ $userName }}" class="w-9 h-9 rounded-lg border border-slate-200 shadow-sm object-cover hover:ring-2 hover:ring-primary transition-all">
+                    </a>
                     <form method="POST" action="{{ route('logout') }}" class="inline m-0 p-0">
                         @csrf
                         <button type="submit" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 hover:bg-rose-50 p-1.5 rounded-lg transition-all">
@@ -560,11 +562,16 @@
 
                     <!-- Topbar Profile -->
                     <div class="flex items-center gap-2 pl-2">
-                        <img src="https://ui-avatars.com/api/?name={{ urlencode($userName) }}&background={{ $avatarColor }}&color=fff" alt="User" class="w-8 h-8 rounded-lg border border-slate-200">
-                        <div class="hidden md:block text-left">
-                            <div class="text-xs font-bold text-slate-800 leading-none">{{ $userName }}</div>
-                            <div class="text-[10px] text-slate-500 leading-none mt-1 font-medium">{{ $roleLabel }}</div>
-                        </div>
+                        <a href="{{ route('profile.index') }}" class="flex items-center gap-2 hover:opacity-90 group transition-all" title="Klik untuk Buka Profil Akun">
+                            <img src="{{ $userAvatarUrl }}" alt="{{ $userName }}" class="w-8 h-8 rounded-lg border border-slate-200 object-cover group-hover:ring-2 group-hover:ring-primary/40 transition-all">
+                            <div class="hidden md:block text-left">
+                                <div class="text-xs font-bold text-slate-800 group-hover:text-primary transition-colors leading-none">{{ $userName }}</div>
+                                <div class="text-[10px] text-slate-500 leading-none mt-1 font-medium">{{ $roleLabel }}</div>
+                            </div>
+                        </a>
+                        <a href="{{ route('profile.index') }}" title="Edit Profil Saya" class="text-slate-400 hover:text-primary p-1.5 rounded-md hover:bg-slate-100 transition-all">
+                            <i class="fa-solid fa-user-gear text-xs"></i>
+                        </a>
                         <form method="POST" action="{{ route('logout') }}" class="inline m-0 p-0 ml-1">
                             @csrf
                             <button type="submit" title="Keluar / Logout" class="text-slate-400 hover:text-rose-600 p-1.5 rounded-md hover:bg-slate-100 transition-all">
