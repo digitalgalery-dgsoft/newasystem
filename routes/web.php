@@ -16,6 +16,7 @@ use App\Http\Controllers\AiSettingController;
 use App\Http\Controllers\PublicJobController;
 use App\Http\Controllers\CbtController;
 use App\Http\Controllers\CandidateImportController;
+use App\Http\Controllers\JobStatistikController;
 
 // ==========================================
 // HALAMAN AWAL WEB & LANDING PAGE (v3/index.php)
@@ -189,6 +190,18 @@ Route::get('/inputjob', [JobController::class, 'index'])->name('job.input');
 Route::post('/inputjob', [JobController::class, 'store'])->name('job.store');
 Route::delete('/inputjob/{id}', [JobController::class, 'destroy'])->name('job.destroy');
 Route::get('/inputjob/{id}/toggle', [JobController::class, 'toggleStatus'])->name('job.toggle');
+
+// ==============================================================
+// FITUR JOB STATISTIK (v3/job_stats.php & export_job_stats.php)
+// ==============================================================
+Route::get('/job/statistik', [JobStatistikController::class, 'index'])->name('job.statistik');
+Route::get('/job/statistik/export', [JobStatistikController::class, 'export'])->name('job.statistik.export');
+Route::get('/job_stats.php', function(\Illuminate\Http\Request $request) {
+    return redirect()->route('job.statistik', $request->all());
+});
+Route::get('/export_job_stats.php', function(\Illuminate\Http\Request $request) {
+    return redirect()->route('job.statistik.export', $request->all());
+});
 
 // ==============================================================
 // FITUR KANDIDAT JOB PORTAL (v3/kandidatportal.php & hasilportal.php)

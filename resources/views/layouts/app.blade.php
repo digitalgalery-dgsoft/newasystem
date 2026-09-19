@@ -365,6 +365,20 @@
                                     </span>
                                 </a>
 
+                                <!-- Statistik Job & Kandidat -->
+                                <a href="{{ route('job.statistik') }}" 
+                                   title="Statistik Job & Kandidat"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('job.statistik*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                    <i class="fa-solid fa-chart-pie text-[11px] w-4 text-center"></i>
+                                    <span>Statistik Job & Kandidat</span>
+                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('job.statistik*') ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700' }}">
+                                        STAT
+                                    </span>
+                                    @if(request()->routeIs('job.statistik*'))
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
+                                    @endif
+                                </a>
+
                                 <!-- 3. Kandidat Portal -->
                                 <a href="{{ route('kandidatportal.index') }}" 
                                    title="Kandidat Portal"
