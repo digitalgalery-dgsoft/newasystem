@@ -52,6 +52,12 @@
                 <i class="fa-solid fa-file-excel text-emerald-600"></i>
                 <span>Export Data</span>
             </a>
+
+            <!-- 5. Sync Step Odoo Button -->
+            <button onclick="openSyncOdooModal()" type="button" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-800 border border-purple-200 text-xs font-bold transition-all shadow-sm cursor-pointer" title="Sinkronisasi Status Tahapan Seleksi Kandidat dengan Odoo ERP">
+                <i class="fa-solid fa-arrows-rotate text-purple-600"></i>
+                <span>Sync Step Odoo</span>
+            </button>
         </div>
     </div>
 
@@ -126,6 +132,142 @@
         </div>
     </div>
 
+    <!-- COMPACT STATS MINI-CARDS: STEP ODOO ERP -->
+    @if(isset($odooStats))
+    <div class="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm">
+        <div class="flex items-center justify-between gap-2 mb-2.5">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">
+                    <i class="fa-solid fa-arrows-split-up-and-left"></i>
+                </div>
+                <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Tahapan Rekrutmen Odoo ERP</h3>
+                <span class="text-[10px] font-semibold text-slate-400 hidden sm:inline">&bull; Klik card untuk filter cepat per tahapan kandidat interview</span>
+            </div>
+            @if(!empty($odooStage))
+                <a href="{{ route('interview.index', request()->except('odoo_stage')) }}" class="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg transition-colors shadow-xs">
+                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                    <span>Reset Filter Step</span>
+                </a>
+            @endif
+        </div>
+        
+        <!-- Grid 8 Mini Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+            <!-- 1. Semua di Odoo -->
+            <a href="{{ route('interview.index', array_merge(request()->except(['page_my', 'page_area']), ['odoo_stage' => ($odooStage === 'matched' ? '' : 'matched')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'matched' ? 'bg-purple-50/80 border-purple-400 ring-2 ring-purple-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-purple-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'matched' ? 'text-purple-700' : 'text-slate-500' }}">Semua Odoo</span>
+                    <span class="w-5 h-5 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-bolt"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'matched' ? 'text-purple-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['total_odoo'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 2. Data Pelamar -->
+            <a href="{{ route('interview.index', array_merge(request()->except(['page_my', 'page_area']), ['odoo_stage' => ($odooStage === 'Data Pelamar' ? '' : 'Data Pelamar')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'Data Pelamar' ? 'bg-blue-50/80 border-blue-400 ring-2 ring-blue-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-blue-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'Data Pelamar' ? 'text-blue-700' : 'text-slate-500' }}">Data Pelamar</span>
+                    <span class="w-5 h-5 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-file-lines"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'Data Pelamar' ? 'text-blue-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['data_pelamar'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 3. Interview -->
+            <a href="{{ route('interview.index', array_merge(request()->except(['page_my', 'page_area']), ['odoo_stage' => ($odooStage === 'interview' ? '' : 'interview')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'interview' ? 'bg-indigo-50/80 border-indigo-400 ring-2 ring-indigo-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-indigo-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'interview' ? 'text-indigo-700' : 'text-slate-500' }}">Interview</span>
+                    <span class="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'interview' ? 'text-indigo-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['interview'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 4. Principal -->
+            <a href="{{ route('interview.index', array_merge(request()->except(['page_my', 'page_area']), ['odoo_stage' => ($odooStage === 'Principal' ? '' : 'Principal')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'Principal' ? 'bg-violet-50/80 border-violet-400 ring-2 ring-violet-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-violet-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'Principal' ? 'text-violet-700' : 'text-slate-500' }}">Principal</span>
+                    <span class="w-5 h-5 rounded-md bg-violet-100 text-violet-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'Principal' ? 'text-violet-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['principal'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 5. E-Learning -->
+            <a href="{{ route('interview.index', array_merge(request()->except(['page_my', 'page_area']), ['odoo_stage' => ($odooStage === 'elearning' ? '' : 'elearning')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'elearning' ? 'bg-sky-50/80 border-sky-400 ring-2 ring-sky-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-sky-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'elearning' ? 'text-sky-700' : 'text-slate-500' }}">E-Learning</span>
+                    <span class="w-5 h-5 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'elearning' ? 'text-sky-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['elearning'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 6. PKWT -->
+            <a href="{{ route('interview.index', array_merge(request()->except(['page_my', 'page_area']), ['odoo_stage' => ($odooStage === 'pkwt' ? '' : 'pkwt')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'pkwt' ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-amber-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'pkwt' ? 'text-amber-700' : 'text-slate-500' }}">PKWT</span>
+                    <span class="w-5 h-5 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-file-signature"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'pkwt' ? 'text-amber-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['pkwt'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 7. Joined -->
+            <a href="{{ route('interview.index', array_merge(request()->except(['page_my', 'page_area']), ['odoo_stage' => ($odooStage === 'Joined' ? '' : 'Joined')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'Joined' ? 'bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-emerald-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'Joined' ? 'text-emerald-700' : 'text-slate-500' }}">Joined</span>
+                    <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'Joined' ? 'text-emerald-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['joined'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 8. Belum di Odoo -->
+            <a href="{{ route('interview.index', array_merge(request()->except(['page_my', 'page_area']), ['odoo_stage' => ($odooStage === 'none' ? '' : 'none')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'none' ? 'bg-slate-200 border-slate-400 ring-2 ring-slate-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'none' ? 'text-slate-800' : 'text-slate-500' }}">Belum di Odoo</span>
+                    <span class="w-5 h-5 rounded-md bg-slate-200 text-slate-600 flex items-center justify-center text-[10px]">
+                        <i class="fa-regular fa-clock"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'none' ? 'text-slate-900' : 'text-slate-600' }} mt-1">
+                    {{ number_format($odooStats['belum_odoo'] ?? 0) }}
+                </div>
+            </a>
+        </div>
+    </div>
+    @endif
+
     <!-- 3. TABLE 1: DATA KANDIDAT MILIK REKRUTOR -->
     <div class="table-card">
         <!-- Table Header & Search Bar (Clean Flex Layout - NO OVERLAPPING) -->
@@ -173,6 +315,24 @@
                     @if($filterUser)
                         <input type="hidden" name="filter_user" value="{{ $filterUser }}">
                     @endif
+
+                    <!-- Filter Step Odoo -->
+                    <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                        <i class="fa-solid fa-arrows-split-up-and-left text-purple-600 text-xs"></i>
+                        <select name="odoo_stage" onchange="this.form.submit()" class="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer">
+                            <option value="">Semua Step Odoo</option>
+                            <option value="matched" {{ ($odooStage ?? '') === 'matched' ? 'selected' : '' }}>⚡ Terdaftar di Odoo</option>
+                            <option value="none" {{ ($odooStage ?? '') === 'none' ? 'selected' : '' }}>⚪ Belum di Odoo</option>
+                            @if(!empty($distinctOdooStages) && count($distinctOdooStages) > 0)
+                                <optgroup label="Tahapan Spesifik:">
+                                    @foreach($distinctOdooStages as $stg)
+                                        <option value="{{ $stg }}" {{ ($odooStage ?? '') === $stg ? 'selected' : '' }}>{{ $stg }}</option>
+                                    @endforeach
+                                </optgroup>
+                            @endif
+                        </select>
+                    </div>
+
                     <div class="relative w-full sm:w-64">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                         <input type="text" name="search_my" value="{{ request('search_my') }}" placeholder="Cari nama, NIK, jabatan..." 
@@ -181,7 +341,7 @@
                     <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-700 shadow-sm flex-shrink-0">
                         Cari
                     </button>
-                    @if(request('search_my') || $filterUser)
+                    @if(request('search_my') || $filterUser || !empty($odooStage))
                         <a href="{{ route('interview.index') }}" class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200">
                             Reset
                         </a>
@@ -202,6 +362,7 @@
                         <th>TGL. LAHIR & USIA</th>
                         <th>PENDIDIKAN</th>
                         <th>PRINSIPLE & JABATAN</th>
+                        <th class="text-center">STEP ODOO</th>
                         <th class="text-center">PSIKOTES</th>
                         <th class="text-center">MATH</th>
                         <th class="text-center">COMPUTER</th>
@@ -281,6 +442,28 @@
                                 <div class="text-[11px] text-primary font-semibold mt-0.5">{{ $candidate->applied_job ?? '-' }}</div>
                             </td>
 
+                            <!-- STEP ODOO -->
+                            <td class="text-center">
+                                @php
+                                    $odooBadge = $candidate->odoo_badge_info;
+                                @endphp
+                                @if($candidate->odoo_stage_name)
+                                    <div class="inline-flex flex-col items-center gap-0.5">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border {{ $odooBadge['class'] }}" title="Tahapan di Odoo ERP: {{ $candidate->odoo_stage_name }} ({{ $candidate->odoo_entity ?? 'Odoo' }})">
+                                            <i class="{{ $odooBadge['icon'] }} text-[9px]"></i>
+                                            <span>{{ $candidate->odoo_stage_name }}</span>
+                                        </span>
+                                        @if($candidate->odoo_entity)
+                                            <span class="text-[9px] font-extrabold text-purple-600 bg-purple-50 px-1 rounded border border-purple-100">
+                                                {{ $candidate->odoo_entity }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="text-[10px] text-slate-400 italic">Belum di Odoo</span>
+                                @endif
+                            </td>
+
                             <!-- PSIKOTES (DISC) -->
                             <td class="text-center">
                                 @if($candidate->is_psikotes_done)
@@ -355,7 +538,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="text-center py-12">
+                            <td colspan="13" class="text-center py-12">
                                 <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3 text-lg">
                                     <i class="fa-solid fa-inbox"></i>
                                 </div>
@@ -374,7 +557,7 @@
                 Menampilkan halaman <span class="font-bold text-slate-800">{{ $myCandidates->currentPage() }}</span> dari <span class="font-bold text-slate-800">{{ $myCandidates->lastPage() }}</span>
             </div>
             <div>
-                {{ $myCandidates->appends(['search_my' => $searchMy])->links() }}
+                {{ $myCandidates->appends(request()->query())->links() }}
             </div>
         </div>
     </div>
@@ -417,6 +600,7 @@
                         <th>TGL. LAHIR & USIA</th>
                         <th>PENDIDIKAN</th>
                         <th>PRINSIPLE & JABATAN</th>
+                        <th class="text-center">STEP ODOO</th>
                         <th class="text-center">PSIKOTES</th>
                         <th class="text-center">MATH</th>
                         <th class="text-center">COMPUTER</th>
@@ -458,6 +642,28 @@
                             <td>
                                 <div class="font-bold text-xs text-slate-900">{{ strtoupper($candidate->principle->name ?? '-') }}</div>
                                 <div class="text-[11px] text-primary">{{ $candidate->applied_job ?? '-' }}</div>
+                            </td>
+
+                            <!-- STEP ODOO -->
+                            <td class="text-center">
+                                @php
+                                    $areaOdooBadge = $candidate->odoo_badge_info;
+                                @endphp
+                                @if($candidate->odoo_stage_name)
+                                    <div class="inline-flex flex-col items-center gap-0.5">
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] border {{ $areaOdooBadge['class'] }}" title="Tahapan di Odoo ERP: {{ $candidate->odoo_stage_name }} ({{ $candidate->odoo_entity ?? 'Odoo' }})">
+                                            <i class="{{ $areaOdooBadge['icon'] }} text-[9px]"></i>
+                                            <span>{{ $candidate->odoo_stage_name }}</span>
+                                        </span>
+                                        @if($candidate->odoo_entity)
+                                            <span class="text-[9px] font-extrabold text-purple-600 bg-purple-50 px-1 rounded border border-purple-100">
+                                                {{ $candidate->odoo_entity }}
+                                            </span>
+                                        @endif
+                                    </div>
+                                @else
+                                    <span class="text-[10px] text-slate-400 italic">Belum di Odoo</span>
+                                @endif
                             </td>
                             @php
                                 $areaPsikotes = $candidate->psikotes_score;
@@ -502,7 +708,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="text-center py-8 text-xs text-slate-400">
+                            <td colspan="13" class="text-center py-8 text-xs text-slate-400">
                                 Belum ada kandidat lain di area {{ strtoupper($user->area ?? 'JAKARTA') }}.
                             </td>
                         </tr>
@@ -513,6 +719,61 @@
     </div>
     @endif
 
+<!-- ========================================================================= -->
+<!-- MODAL SYNC STEP ODOO ERP                                                  -->
+<!-- ========================================================================= -->
+<div id="syncOdooModal" class="fixed inset-0 z-50 hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 transition-all duration-200" onclick="if(event.target === this) closeSyncOdooModal()">
+    <div class="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 relative animate-scale-up" onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between border-b border-slate-200 pb-3.5 mb-4">
+            <h4 class="text-base font-extrabold text-slate-900 flex items-center gap-2.5">
+                <div class="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center text-sm font-bold">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </div>
+                <span>Sinkronisasi Tahapan Odoo ERP</span>
+            </h4>
+            <button onclick="closeSyncOdooModal()" type="button" class="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 transition-all">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form action="{{ route('interview.sync_odoo') }}" method="POST" class="space-y-4">
+            @csrf
+            <div class="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200/80 text-purple-900 text-xs leading-relaxed space-y-1.5">
+                <div class="font-bold flex items-center gap-1.5 text-purple-950">
+                    <i class="fa-solid fa-circle-info text-purple-600"></i>
+                    <span>Informasi Pencocokan Tahapan</span>
+                </div>
+                <p>
+                    Sistem akan mencocokkan nomor KTP/NIK kandidat interview dengan data pelamar di <b>Odoo ERP (hr.applicant)</b> pada entitas aktif (AMK, AKP, ATK, ATB, dll.).
+                </p>
+                <ul class="list-disc list-inside space-y-0.5 text-[11px] text-purple-800 pt-1">
+                    <li>Kandidat tahap interview di Odoo akan otomatis diperbarui status dan stepnya.</li>
+                    <li>Kandidat yang sudah <b>Joined</b> di Odoo akan disinkronkan ke tahap Terima.</li>
+                </ul>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">Maksimal Kandidat yang Diproses:</label>
+                <select name="limit" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-300 focus:ring-2 focus:ring-purple-500 bg-white font-semibold text-slate-800">
+                    <option value="500">500 Kandidat (Cepat - Rekomendasi)</option>
+                    <option value="1000" selected>1.000 Kandidat (Standar)</option>
+                    <option value="2000">2.000 Kandidat</option>
+                    <option value="5000">5.000 Kandidat (Batch Besar)</option>
+                </select>
+                <p class="text-[10px] text-slate-400 mt-1">Kandidat diurutkan dari yang belum pernah dicek atau paling lama tidak disinkronkan.</p>
+            </div>
+
+            <div class="pt-3 border-t border-slate-200 flex items-center justify-end gap-2">
+                <button type="button" onclick="closeSyncOdooModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-colors">
+                    Batal
+                </button>
+                <button type="submit" class="inline-flex items-center gap-2 px-5 py-2 rounded-xl text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 shadow-md shadow-purple-600/20 transition-all">
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                    <span>Mulai Sinkronisasi Sekarang</span>
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <!-- ========================================================================= -->
@@ -1148,6 +1409,23 @@
         window.location.href = "{{ route('interview.index') }}";
     }
 
+    // Modal Sync Odoo
+    function openSyncOdooModal() {
+        const modal = document.getElementById('syncOdooModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+    }
+
+    function closeSyncOdooModal() {
+        const modal = document.getElementById('syncOdooModal');
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+    }
+
     // Auto open modal jika URL mengandung ?open_import=1
     document.addEventListener('DOMContentLoaded', function() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -1169,6 +1447,7 @@
             closeTutorialModal();
             closeEditPrincipleModal();
             closeImportCandidateModal();
+            closeSyncOdooModal();
         }
     });
 </script>

@@ -16,7 +16,7 @@ class OdooRecruitmentSyncService
      * @param int $limit Maksimal kandidat yang diproses (0 = tanpa limit)
      * @param bool $includeArchived Apakah memeriksa kandidat yang sudah diarsipkan
      */
-    public function syncAllCandidates(?callable $progressCallback = null, int $limit = 1000, bool $includeArchived = false): array
+    public function syncAllCandidates(?callable $progressCallback = null, int $limit = 1000, bool $includeArchived = false, string $scope = 'all'): array
     {
         $log = function(string $type, string $message, array $meta = []) use ($progressCallback) {
             if ($progressCallback && is_callable($progressCallback)) {
@@ -24,7 +24,8 @@ class OdooRecruitmentSyncService
             }
         };
 
-        $log('info', 'Memulai sinkronisasi tahapan rekrutmen Odoo ERP dengan Kandidat Portal...');
+        $scopeLabel = $scope === 'interview' ? 'Kandidat Interview (Inhouse)' : ($scope === 'portal' ? 'Kandidat Job Portal' : 'Semua Kandidat (Portal & Interview)');
+        $log('info', "Memulai sinkronisasi tahapan rekrutmen Odoo ERP dengan {$scopeLabel}...");
 
         $activeEntities = OdooEntity::where('is_active', true)->get();
         if ($activeEntities->isEmpty()) {
@@ -36,17 +37,24 @@ class OdooRecruitmentSyncService
             ];
         }
 
-        // Ambil kandidat portal yang memiliki NIK
-        $query = Candidate::where('jenis', 'Job Portal')
-            ->whereNotNull('nik')
+        // Ambil kandidat yang memiliki NIK
+        $query = Candidate::whereNotNull('nik')
             ->where('nik', '!=', '')
             ->whereRaw('LENGTH(TRIM(nik)) >= 10');
+
+        if ($scope === 'portal') {
+            $query->where('jenis', 'Job Portal');
+        } elseif ($scope === 'interview') {
+            $query->where(function ($q) {
+                $q->whereNull('jenis')->orWhere('jenis', '');
+            });
+        }
 
         if (!$includeArchived) {
             $query->where(function ($q) {
                 $q->whereNull('status_kandidat')
                   ->orWhereNotIn('status_kandidat', ['Arsip']);
-            });
+            })->whereNotIn('status', ['Arsip', 'archived']);
         }
 
         // Urutkan yang belum pernah disinkronkan atau paling lama disinkronkan
@@ -55,7 +63,7 @@ class OdooRecruitmentSyncService
             ->get();
 
         $totalCandidates = $candidates->count();
-        $log('info', "Ditemukan {$totalCandidates} kandidat portal untuk dicocokkan ke Odoo.");
+        $log('info', "Ditemukan {$totalCandidates} {$scopeLabel} untuk dicocokkan ke Odoo.");
 
         if ($totalCandidates === 0) {
             // Jalankan auto-archive meskipun tidak ada kandidat yang perlu dicocokkan
@@ -173,15 +181,24 @@ class OdooRecruitmentSyncService
         $remainingNiks = array_keys($nikMap);
         if (!empty($remainingNiks)) {
             foreach (array_chunk($remainingNiks, 400) as $chunkRemaining) {
-                Candidate::whereIn('nik', $chunkRemaining)
-                    ->where('jenis', 'Job Portal')
-                    ->whereNull('odoo_synced_at')
-                    ->update(['odoo_synced_at' => now()]);
+                $remQuery = Candidate::whereIn('nik', $chunkRemaining)
+                    ->whereNull('odoo_synced_at');
+                if ($scope === 'portal') {
+                    $remQuery->where('jenis', 'Job Portal');
+                } elseif ($scope === 'interview') {
+                    $remQuery->where(function ($q) {
+                        $q->whereNull('jenis')->orWhere('jenis', '');
+                    });
+                }
+                $remQuery->update(['odoo_synced_at' => now()]);
             }
         }
 
-        // Jalankan aturan Auto-Archive 14 Hari untuk kandidat yang tidak ada update
-        $autoArchivedCount = $this->runAutoArchiveRule($log);
+        // Jalankan aturan Auto-Archive 14 Hari untuk kandidat Job Portal yang tidak ada update
+        $autoArchivedCount = 0;
+        if ($scope === 'portal' || $scope === 'all') {
+            $autoArchivedCount = $this->runAutoArchiveRule($log);
+        }
 
         $log('success', "Sinkronisasi selesai! Total Cocok di Odoo: {$matchedCount}, Pindah Interview: {$movedInterviewCount}, Pindah Terima: {$movedTerimaCount}, Auto-Arsip (>14 hari): {$autoArchivedCount}");
 

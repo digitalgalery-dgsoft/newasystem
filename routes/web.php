@@ -92,6 +92,8 @@ Route::post('/interview/{id}/archive', [InterviewController::class, 'archive'])-
 Route::post('/interview/{id}/edit-principle', [InterviewController::class, 'editPrinciple'])->name('interview.editPrinciple');
 Route::post('/interview/{id}/ganti-area', [InterviewController::class, 'gantiArea'])->name('interview.ganti-area');
 Route::post('/interview/{id}/alihkan', [InterviewController::class, 'alihkanAS'])->name('interview.alihkan');
+Route::post('/interview/sync-odoo', [InterviewController::class, 'syncOdoo'])->name('interview.sync_odoo');
+Route::post('/interview/{id}/sync-single-odoo', [InterviewController::class, 'syncSingleOdoo'])->name('interview.sync_single_odoo');
 
 // Submodule Pages
 Route::get('/walkinterview', [InterviewController::class, 'walkInterview'])->name('interview.walk');

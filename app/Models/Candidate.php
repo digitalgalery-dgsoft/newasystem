@@ -268,7 +268,6 @@ class Candidate extends Model
         return 'https://asystem.co.id/v3/approval/' . rawurlencode($baseName);
     }
 
-
     public function getApplicantsNameAttribute()
     {
         return $this->full_name;

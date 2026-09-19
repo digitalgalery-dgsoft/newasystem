@@ -51,6 +51,15 @@
                 <span>Alihkan ke AS</span>
             </button>
 
+            <!-- Cek Status Odoo -->
+            <form action="{{ route('interview.sync_single_odoo', $candidate->id) }}" method="POST" class="inline">
+                @csrf
+                <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 shadow-sm transition-all" title="Cek Status Seleksi di Odoo ERP">
+                    <i class="fa-solid fa-arrows-rotate text-purple-600"></i>
+                    <span>Cek Status Odoo</span>
+                </button>
+            </form>
+
             <!-- Ganti Area -->
             <button @click="gantiAreaModalOpen = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 shadow-sm transition-all">
                 <i class="fa-solid fa-location-dot text-amber-600"></i>
@@ -80,6 +89,53 @@
                 </a>
             @endif
         </div>
+    </div>
+
+    <!-- STATUS REKRUTMEN ODOO ERP BANNER -->
+    @php $odooBadge = $candidate->odoo_badge_info; @endphp
+    <div class="bg-gradient-to-r {{ $candidate->odoo_stage_name ? 'from-purple-50 via-indigo-50 to-blue-50 border-purple-200' : 'from-slate-50 to-slate-100 border-slate-200' }} border rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl {{ $candidate->odoo_stage_name ? 'bg-purple-600 text-white shadow-md shadow-purple-600/20' : 'bg-slate-200 text-slate-500' }} flex items-center justify-center text-lg font-bold flex-shrink-0">
+                <i class="fa-solid fa-arrows-split-up-and-left"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Status Rekrutmen Odoo ERP:</span>
+                    @if($candidate->odoo_stage_name)
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-black border {{ $odooBadge['class'] }}">
+                            <i class="{{ $odooBadge['icon'] }}"></i>
+                            <span>{{ $candidate->odoo_stage_name }}</span>
+                        </span>
+                        @if($candidate->odoo_entity)
+                            <span class="px-2 py-0.5 rounded-md bg-purple-100 text-purple-800 text-[10px] font-extrabold border border-purple-200">
+                                {{ $candidate->odoo_entity }}
+                            </span>
+                        @endif
+                    @else
+                        <span class="px-2.5 py-0.5 rounded-lg bg-slate-200 text-slate-600 text-xs font-semibold">
+                            Belum Terdaftar di Odoo
+                        </span>
+                    @endif
+                </div>
+                <div class="text-[11px] text-slate-500 mt-1 flex items-center gap-3 flex-wrap">
+                    @if($candidate->odoo_applicant_id)
+                        <span><i class="fa-solid fa-hashtag text-slate-400"></i> Applicant ID: <b>#{{ $candidate->odoo_applicant_id }}</b></span>
+                    @endif
+                    @if($candidate->odoo_synced_at)
+                        <span><i class="fa-regular fa-clock text-slate-400"></i> Terakhir Dicek: <b>{{ $candidate->odoo_synced_at->diffForHumans() }}</b> ({{ $candidate->odoo_synced_at->format('d/m/Y H:i') }})</span>
+                    @endif
+                    <span><i class="fa-solid fa-id-badge text-slate-400"></i> NIK: <b class="font-mono">{{ $candidate->nik }}</b></span>
+                </div>
+            </div>
+        </div>
+
+        <form action="{{ route('interview.sync_single_odoo', $candidate->id) }}" method="POST">
+            @csrf
+            <button type="submit" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-purple-700 bg-white hover:bg-purple-50 border border-purple-200 shadow-sm transition-all whitespace-nowrap">
+                <i class="fa-solid fa-arrows-rotate text-purple-600"></i>
+                <span>Cek Status Terkini</span>
+            </button>
+        </form>
     </div>
 
     <!-- PROFIL KANDIDAT CARD (11 DATA POINTS + FOTO DROPZONE - Identik dengan Detail Kandidat Portal) -->

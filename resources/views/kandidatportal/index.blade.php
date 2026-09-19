@@ -98,6 +98,142 @@
         </div>
     </div>
 
+    <!-- COMPACT STATS MINI-CARDS: STEP ODOO ERP -->
+    @if(isset($odooStats))
+    <div class="bg-white border border-slate-200 rounded-2xl p-3 sm:p-4 shadow-sm">
+        <div class="flex items-center justify-between gap-2 mb-2.5">
+            <div class="flex items-center gap-2">
+                <div class="w-6 h-6 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold">
+                    <i class="fa-solid fa-arrows-split-up-and-left"></i>
+                </div>
+                <h3 class="text-xs font-extrabold text-slate-900 uppercase tracking-wider">Tahapan Rekrutmen Odoo ERP</h3>
+                <span class="text-[10px] font-semibold text-slate-400 hidden sm:inline">&bull; Klik card untuk filter cepat per tahapan</span>
+            </div>
+            @if(!empty($odooStage))
+                <a href="{{ route('kandidatportal.index', request()->except('odoo_stage')) }}" class="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 px-2.5 py-1 rounded-lg transition-colors shadow-xs">
+                    <i class="fa-solid fa-xmark text-[10px]"></i>
+                    <span>Reset Filter Step</span>
+                </a>
+            @endif
+        </div>
+        
+        <!-- Grid 8 Mini Cards -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2">
+            <!-- 1. Semua di Odoo -->
+            <a href="{{ route('kandidatportal.index', array_merge(request()->except('page'), ['odoo_stage' => ($odooStage === 'matched' ? '' : 'matched')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'matched' ? 'bg-purple-50/80 border-purple-400 ring-2 ring-purple-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-purple-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'matched' ? 'text-purple-700' : 'text-slate-500' }}">Semua Odoo</span>
+                    <span class="w-5 h-5 rounded-md bg-purple-100 text-purple-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-bolt"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'matched' ? 'text-purple-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['total_odoo'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 2. Data Pelamar -->
+            <a href="{{ route('kandidatportal.index', array_merge(request()->except('page'), ['odoo_stage' => ($odooStage === 'Data Pelamar' ? '' : 'Data Pelamar')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'Data Pelamar' ? 'bg-blue-50/80 border-blue-400 ring-2 ring-blue-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-blue-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'Data Pelamar' ? 'text-blue-700' : 'text-slate-500' }}">Data Pelamar</span>
+                    <span class="w-5 h-5 rounded-md bg-blue-100 text-blue-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-file-lines"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'Data Pelamar' ? 'text-blue-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['data_pelamar'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 3. Interview -->
+            <a href="{{ route('kandidatportal.index', array_merge(request()->except('page'), ['odoo_stage' => ($odooStage === 'interview' ? '' : 'interview')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'interview' ? 'bg-indigo-50/80 border-indigo-400 ring-2 ring-indigo-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-indigo-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'interview' ? 'text-indigo-700' : 'text-slate-500' }}">Interview</span>
+                    <span class="w-5 h-5 rounded-md bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-user-tie"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'interview' ? 'text-indigo-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['interview'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 4. Principal -->
+            <a href="{{ route('kandidatportal.index', array_merge(request()->except('page'), ['odoo_stage' => ($odooStage === 'Principal' ? '' : 'Principal')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'Principal' ? 'bg-violet-50/80 border-violet-400 ring-2 ring-violet-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-violet-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'Principal' ? 'text-violet-700' : 'text-slate-500' }}">Principal</span>
+                    <span class="w-5 h-5 rounded-md bg-violet-100 text-violet-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-user-shield"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'Principal' ? 'text-violet-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['principal'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 5. E-Learning -->
+            <a href="{{ route('kandidatportal.index', array_merge(request()->except('page'), ['odoo_stage' => ($odooStage === 'elearning' ? '' : 'elearning')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'elearning' ? 'bg-sky-50/80 border-sky-400 ring-2 ring-sky-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-sky-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'elearning' ? 'text-sky-700' : 'text-slate-500' }}">E-Learning</span>
+                    <span class="w-5 h-5 rounded-md bg-sky-100 text-sky-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-graduation-cap"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'elearning' ? 'text-sky-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['elearning'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 6. PKWT -->
+            <a href="{{ route('kandidatportal.index', array_merge(request()->except('page'), ['odoo_stage' => ($odooStage === 'pkwt' ? '' : 'pkwt')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'pkwt' ? 'bg-amber-50/80 border-amber-400 ring-2 ring-amber-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-amber-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'pkwt' ? 'text-amber-700' : 'text-slate-500' }}">PKWT</span>
+                    <span class="w-5 h-5 rounded-md bg-amber-100 text-amber-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-file-signature"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'pkwt' ? 'text-amber-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['pkwt'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 7. Joined -->
+            <a href="{{ route('kandidatportal.index', array_merge(request()->except('page'), ['odoo_stage' => ($odooStage === 'Joined' ? '' : 'Joined')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'Joined' ? 'bg-emerald-50/80 border-emerald-400 ring-2 ring-emerald-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-emerald-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'Joined' ? 'text-emerald-700' : 'text-slate-500' }}">Joined</span>
+                    <span class="w-5 h-5 rounded-md bg-emerald-100 text-emerald-700 flex items-center justify-center text-[10px]">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'Joined' ? 'text-emerald-800' : 'text-slate-900' }} mt-1">
+                    {{ number_format($odooStats['joined'] ?? 0) }}
+                </div>
+            </a>
+
+            <!-- 8. Belum di Odoo -->
+            <a href="{{ route('kandidatportal.index', array_merge(request()->except('page'), ['odoo_stage' => ($odooStage === 'none' ? '' : 'none')])) }}" 
+               class="p-2 sm:p-2.5 rounded-xl border transition-all duration-150 flex flex-col justify-between {{ $odooStage === 'none' ? 'bg-slate-200 border-slate-400 ring-2 ring-slate-400/50 shadow-xs' : 'bg-slate-50/70 hover:bg-white border-slate-200 hover:border-slate-300 hover:shadow-xs' }}">
+                <div class="flex items-center justify-between gap-1">
+                    <span class="text-[10px] font-bold uppercase tracking-wider {{ $odooStage === 'none' ? 'text-slate-800' : 'text-slate-500' }}">Belum di Odoo</span>
+                    <span class="w-5 h-5 rounded-md bg-slate-200 text-slate-600 flex items-center justify-center text-[10px]">
+                        <i class="fa-regular fa-clock"></i>
+                    </span>
+                </div>
+                <div class="text-base sm:text-lg font-black {{ $odooStage === 'none' ? 'text-slate-900' : 'text-slate-600' }} mt-1">
+                    {{ number_format($odooStats['belum_odoo'] ?? 0) }}
+                </div>
+            </a>
+        </div>
+    </div>
+    @endif
+
     <!-- MAIN TABLE CONTAINER CARD -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
         

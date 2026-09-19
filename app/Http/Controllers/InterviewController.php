@@ -10,6 +10,7 @@ use App\Models\Employee;
 use App\Models\InterviewAssessment;
 use App\Models\WorkExperience;
 use App\Models\TestResult;
+use App\Services\OdooRecruitmentSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -285,6 +286,60 @@ class InterviewController extends Controller
             $user->applyRoleScopeToCandidates($myCandidatesQuery);
         }
 
+        $odooStage = $request->query('odoo_stage');
+
+        // Hitung Statistik Ringkas Step Odoo ERP
+        $odooBaseQuery = clone $myCandidatesQuery;
+        $odooStatsRaw = (clone $odooBaseQuery)->selectRaw("
+            SUM(CASE WHEN odoo_stage_name = 'Data Pelamar' THEN 1 ELSE 0 END) as data_pelamar,
+            SUM(CASE WHEN odoo_stage_name LIKE '%Interview%' THEN 1 ELSE 0 END) as interview,
+            SUM(CASE WHEN odoo_stage_name = 'Principal' THEN 1 ELSE 0 END) as principal,
+            SUM(CASE WHEN odoo_stage_name LIKE '%Learning%' THEN 1 ELSE 0 END) as elearning,
+            SUM(CASE WHEN odoo_stage_name LIKE '%PKWT%' THEN 1 ELSE 0 END) as pkwt,
+            SUM(CASE WHEN odoo_stage_name = 'Joined' THEN 1 ELSE 0 END) as joined,
+            SUM(CASE WHEN odoo_stage_name IS NULL OR odoo_stage_name = '' THEN 1 ELSE 0 END) as belum_odoo,
+            SUM(CASE WHEN odoo_stage_name IS NOT NULL AND odoo_stage_name != '' THEN 1 ELSE 0 END) as total_odoo
+        ")->first();
+
+        $odooStats = [
+            'data_pelamar' => (int) ($odooStatsRaw->data_pelamar ?? 0),
+            'interview'    => (int) ($odooStatsRaw->interview ?? 0),
+            'principal'    => (int) ($odooStatsRaw->principal ?? 0),
+            'elearning'    => (int) ($odooStatsRaw->elearning ?? 0),
+            'pkwt'         => (int) ($odooStatsRaw->pkwt ?? 0),
+            'joined'       => (int) ($odooStatsRaw->joined ?? 0),
+            'belum_odoo'   => (int) ($odooStatsRaw->belum_odoo ?? 0),
+            'total_odoo'   => (int) ($odooStatsRaw->total_odoo ?? 0),
+        ];
+
+        $distinctOdooStages = (clone $odooBaseQuery)
+            ->whereNotNull('odoo_stage_name')
+            ->where('odoo_stage_name', '!=', '')
+            ->distinct()
+            ->pluck('odoo_stage_name')
+            ->sort()
+            ->values()
+            ->all();
+
+        // Terapkan Filter Step Odoo pada Query 1 (Data Kandidat Saya / Terpilih)
+        if (!empty($odooStage)) {
+            if ($odooStage === 'none') {
+                $myCandidatesQuery->where(function($q) {
+                    $q->whereNull('odoo_stage_name')->orWhere('odoo_stage_name', '');
+                });
+            } elseif ($odooStage === 'matched') {
+                $myCandidatesQuery->whereNotNull('odoo_stage_name')->where('odoo_stage_name', '!=', '');
+            } elseif ($odooStage === 'interview') {
+                $myCandidatesQuery->where('odoo_stage_name', 'like', '%Interview%');
+            } elseif ($odooStage === 'elearning') {
+                $myCandidatesQuery->where('odoo_stage_name', 'like', '%Learning%');
+            } elseif ($odooStage === 'pkwt') {
+                $myCandidatesQuery->where('odoo_stage_name', 'like', '%PKWT%');
+            } else {
+                $myCandidatesQuery->where('odoo_stage_name', $odooStage);
+            }
+        }
+
         if ($searchMy) {
             $myCandidatesQuery->where(function ($q) use ($searchMy) {
                 $q->where('full_name', 'like', "%{$searchMy}%")
@@ -346,6 +401,25 @@ class InterviewController extends Controller
                 $user->applyRoleScopeToCandidates($areaCandidatesQuery);
             }
 
+            // Terapkan Filter Step Odoo pada Area Candidates
+            if (!empty($odooStage)) {
+                if ($odooStage === 'none') {
+                    $areaCandidatesQuery->where(function($q) {
+                        $q->whereNull('odoo_stage_name')->orWhere('odoo_stage_name', '');
+                    });
+                } elseif ($odooStage === 'matched') {
+                    $areaCandidatesQuery->whereNotNull('odoo_stage_name')->where('odoo_stage_name', '!=', '');
+                } elseif ($odooStage === 'interview') {
+                    $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Interview%');
+                } elseif ($odooStage === 'elearning') {
+                    $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Learning%');
+                } elseif ($odooStage === 'pkwt') {
+                    $areaCandidatesQuery->where('odoo_stage_name', 'like', '%PKWT%');
+                } else {
+                    $areaCandidatesQuery->where('odoo_stage_name', $odooStage);
+                }
+            }
+
             if ($searchArea) {
                 $areaCandidatesQuery->where(function ($q) use ($searchArea) {
                     $q->where('full_name', 'like', "%{$searchArea}%")
@@ -380,8 +454,44 @@ class InterviewController extends Controller
             'displayRecruiterArea',
             'statTotal',
             'statProfileComplete',
-            'statTestDone'
+            'statTestDone',
+            'odooStats',
+            'distinctOdooStages',
+            'odooStage'
         ));
+    }
+
+    /**
+     * Sinkronisasi Tahapan Rekrutmen Odoo untuk Seluruh Kandidat Interview
+     */
+    public function syncOdoo(Request $request, OdooRecruitmentSyncService $syncService)
+    {
+        $limit = (int) $request->input('limit', 1000);
+        $result = $syncService->syncAllCandidates(null, $limit, false, 'interview');
+
+        if ($result['success']) {
+            $msg = "Sinkronisasi Odoo Kandidat Interview selesai! {$result['matched']} kandidat cocok di Odoo ({$result['moved_interview']} tahap Interview, {$result['moved_terima']} tahap Terima/Joined).";
+            return back()->with('success', $msg);
+        }
+
+        return back()->with('error', 'Sinkronisasi Odoo gagal: ' . ($result['message'] ?? 'Error tidak diketahui'));
+    }
+
+    /**
+     * Sinkronisasi Tahapan Rekrutmen Odoo untuk 1 Kandidat Interview Spesifik
+     */
+    public function syncSingleOdoo(Request $request, $id, OdooRecruitmentSyncService $syncService)
+    {
+        $candidate = Candidate::findOrFail($id);
+        $result = $syncService->syncSingleCandidate($candidate);
+
+        if ($result['success']) {
+            $stageName = $result['stage_name'] ?? 'Belum terdaftar di Odoo';
+            $entity = $result['entity'] ?? '-';
+            return back()->with('success', "Status Odoo {$candidate->full_name} diperbarui: {$stageName} (Entitas: {$entity})");
+        }
+
+        return back()->with('error', 'Pengecekan Odoo gagal: ' . ($result['message'] ?? 'Data tidak ditemukan di Odoo'));
     }
 
     /**

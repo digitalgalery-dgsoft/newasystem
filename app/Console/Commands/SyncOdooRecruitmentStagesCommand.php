@@ -14,6 +14,7 @@ class SyncOdooRecruitmentStagesCommand extends Command
      */
     protected $signature = 'odoo:sync-portal-stages 
                             {--limit=1000 : Batas jumlah kandidat yang diproses per eksekusi} 
+                            {--scope=all : Lingkup kandidat: all, portal, atau interview} 
                             {--all : Sertakan juga kandidat yang sudah berstatus arsip} 
                             {--silent : Jalankan tanpa output verbose}';
 
@@ -22,7 +23,7 @@ class SyncOdooRecruitmentStagesCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Sinkronisasi status tahapan seleksi kandidat portal dengan Odoo Recruitment (hr.applicant) berdasarkan NIK dan auto-archive kandidat tidak aktif > 14 hari';
+    protected $description = 'Sinkronisasi status tahapan seleksi kandidat portal & interview dengan Odoo Recruitment (hr.applicant) berdasarkan NIK dan auto-archive kandidat tidak aktif > 14 hari';
 
     /**
      * Execute the console command.
@@ -30,15 +31,16 @@ class SyncOdooRecruitmentStagesCommand extends Command
     public function handle(OdooRecruitmentSyncService $syncService): int
     {
         $limit = (int)$this->option('limit');
+        $scope = strtolower($this->option('scope') ?: 'all');
         $includeArchived = (bool)$this->option('all');
         $isSilent = (bool)$this->option('silent');
 
         if (!$isSilent) {
             $this->info("================================================================================");
-            $this->info("🚀 SINKRONISASI TAHAPAN KANDIDAT PORTAL DENGAN ODOO RECRUITMENT");
+            $this->info("🚀 SINKRONISASI TAHAPAN KANDIDAT DENGAN ODOO RECRUITMENT [Scope: " . strtoupper($scope) . "]");
             $this->info("📌 Mencocokkan NIK ke hr.applicant Odoo (AMK, AKP, ATK, ABO, ATB)");
             $this->info("📌 Tahapan Interview -> Status Interview, Joined -> Status Terima");
-            $this->info("📌 Kandidat > 14 hari tanpa pembaruan -> Otomatis Pindah ke Arsip");
+            $this->info("📌 Kandidat Portal > 14 hari tanpa pembaruan -> Otomatis Pindah ke Arsip");
             $this->info("📅 Waktu Eksekusi: " . date('Y-m-d H:i:s T'));
             $this->info("================================================================================");
         }
@@ -70,7 +72,7 @@ class SyncOdooRecruitmentStagesCommand extends Command
             }
         };
 
-        $result = $syncService->syncAllCandidates($progressCallback, $limit, $includeArchived);
+        $result = $syncService->syncAllCandidates($progressCallback, $limit, $includeArchived, $scope);
 
         if (!$isSilent) {
             $this->newLine();

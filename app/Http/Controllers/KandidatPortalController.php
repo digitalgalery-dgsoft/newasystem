@@ -219,6 +219,29 @@ class KandidatPortalController extends Controller
         $countTerima = (int) ($stats->count_terima ?? 0);
         $countArsip = (int) ($stats->count_arsip ?? 0);
 
+        // Statistik Ringkas Step Odoo
+        $odooStatsRaw = (clone $baseQuery)->selectRaw("
+            SUM(CASE WHEN odoo_stage_name = 'Data Pelamar' THEN 1 ELSE 0 END) as data_pelamar,
+            SUM(CASE WHEN odoo_stage_name LIKE '%Interview%' THEN 1 ELSE 0 END) as interview,
+            SUM(CASE WHEN odoo_stage_name = 'Principal' THEN 1 ELSE 0 END) as principal,
+            SUM(CASE WHEN odoo_stage_name LIKE '%Learning%' THEN 1 ELSE 0 END) as elearning,
+            SUM(CASE WHEN odoo_stage_name LIKE '%PKWT%' THEN 1 ELSE 0 END) as pkwt,
+            SUM(CASE WHEN odoo_stage_name = 'Joined' THEN 1 ELSE 0 END) as joined,
+            SUM(CASE WHEN odoo_stage_name IS NULL OR odoo_stage_name = '' THEN 1 ELSE 0 END) as belum_odoo,
+            SUM(CASE WHEN odoo_stage_name IS NOT NULL AND odoo_stage_name != '' THEN 1 ELSE 0 END) as total_odoo
+        ")->first();
+
+        $odooStats = [
+            'data_pelamar' => (int) ($odooStatsRaw->data_pelamar ?? 0),
+            'interview'    => (int) ($odooStatsRaw->interview ?? 0),
+            'principal'    => (int) ($odooStatsRaw->principal ?? 0),
+            'elearning'    => (int) ($odooStatsRaw->elearning ?? 0),
+            'pkwt'         => (int) ($odooStatsRaw->pkwt ?? 0),
+            'joined'       => (int) ($odooStatsRaw->joined ?? 0),
+            'belum_odoo'   => (int) ($odooStatsRaw->belum_odoo ?? 0),
+            'total_odoo'   => (int) ($odooStatsRaw->total_odoo ?? 0),
+        ];
+
         // Filter Table Query based on active tab
         $tableQuery = clone $baseQuery;
 
@@ -262,9 +285,17 @@ class KandidatPortalController extends Controller
         // Filter Step Odoo
         if (!empty($odooStage)) {
             if ($odooStage === 'none') {
-                $tableQuery->whereNull('odoo_stage_name');
+                $tableQuery->where(function($q) {
+                    $q->whereNull('odoo_stage_name')->orWhere('odoo_stage_name', '');
+                });
             } elseif ($odooStage === 'matched') {
-                $tableQuery->whereNotNull('odoo_stage_name');
+                $tableQuery->whereNotNull('odoo_stage_name')->where('odoo_stage_name', '!=', '');
+            } elseif ($odooStage === 'interview') {
+                $tableQuery->where('odoo_stage_name', 'like', '%Interview%');
+            } elseif ($odooStage === 'elearning') {
+                $tableQuery->where('odoo_stage_name', 'like', '%Learning%');
+            } elseif ($odooStage === 'pkwt') {
+                $tableQuery->where('odoo_stage_name', 'like', '%PKWT%');
             } else {
                 $tableQuery->where('odoo_stage_name', $odooStage);
             }
@@ -344,7 +375,8 @@ class KandidatPortalController extends Controller
             'countBaru',
             'countInterview',
             'countTerima',
-            'countArsip'
+            'countArsip',
+            'odooStats'
         ));
     }
 
