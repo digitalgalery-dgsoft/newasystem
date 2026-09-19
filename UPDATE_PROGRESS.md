@@ -650,10 +650,45 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 37. 🔄 Penyempurnaan Tombol Send Remidi: Reset Nilai Matematika ke NULL, Icon Silang Merah, Dynamic Increment Tes Ke (Tes Ke-2 dst.), & Re-Test Mandiri CBT (19 September 2026)
+- **Akar Masalah**:
+  - Pada implementasi sebelumnya, penekanan tombol *"Send Remidi"* hanya menghapus record `test_results` (math) lokal namun **tidak mereset** kolom `candidates.tes_matematika` dan `tb_kandidat.tes_matematika` ke `NULL`.
+  - Akibatnya, accessor `$candidate->is_math_done` tetap bernilai `true` (icon centang hijau tetap aktif), dashboard CBT kandidat (`/cbt/dashboard`) tetap terkunci berstatus *"Selesai"*, dan nomor tes (`tes_ke`) tidak bertambah/tetap di Tes Ke - 1.
+- **Solusi & Penyempurnaan Menyeluruh**:
+  1. **Migrasi Penambahan Kolom `tes_ke` (`2026_09_19_120000_add_tes_ke_to_candidates_table.php`)**:
+     - Menambahkan kolom `tes_ke` (integer, default 1) pada tabel `candidates` dan melakukan backfilling sinkronisasi otomatis dari `tb_kandidat.tes_ke`.
+  2. **Eksekusi Penekanan Tombol Send Remidi ([InterviewController::setRemidi](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php))**:
+     - Menaikkan nomor percobaan tes: `$nextTesKe = max(1, intval($candidate->tes_ke ?? 1)) + 1` (misal dari 1 menjadi 2, 2 menjadi 3, dst).
+     - Mengosongkan data tes matematika: `$candidate->tes_matematika = null`, `tes_ke = $nextTesKe`.
+     - Mengosongkan approval prinsiple lama: `$candidate->idprinsiple = null`, `ttd_prinsiple = null`, `status_approval = null` (selaras query legacy `UPDATE tb_kandidat SET tes_matematika=NULL, idprinsiple='' WHERE id='$idkandidat'`).
+     - Menyinkronkan ke tabel warisan `tb_kandidat` dan seluruh record kandidat dengan NIK yang sama.
+     - Menghapus hasil `TestResult` (math) lama agar portal CBT membuka kembali akses tes matematika secara bersih.
+     - Mengubah redirect dari hardcoded `interview.show` menjadi `redirect()->back()` sehingga posisi recruiter di [kandidatportal](file:///d:/ASystem/newasystem/resources/views/kandidatportal/show.blade.php) maupun [interviewinhouse](file:///d:/ASystem/newasystem/resources/views/interviewinhouse/show.blade.php) tetap terjaga.
+  3. **Penyesuaian Model [Candidate.php](file:///d:/ASystem/newasystem/app/Models/Candidate.php)**:
+     - Accessor `is_math_done` dipertegas: jika `tes_matematika` kosong/NULL atau `00:00:00`, dipastikan mengembalikan `false`.
+     - Tabel daftar kandidat ([interview/index.blade.php](file:///d:/ASystem/newasystem/resources/views/interview/index.blade.php) & [interviewinhouse/index.blade.php](file:///d:/ASystem/newasystem/resources/views/interviewinhouse/index.blade.php)) seketika berubah menampilkan **Silang Merah** (`fa-xmark text-rose-500`) saat remidi diset.
+  4. **Pengerjaan Ulang Mandiri CBT ([CbtController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CbtController.php))**:
+     - Saat kandidat login ke CBT, kartu Tes Matematika berubah menjadi **"Belum Dikerjakan"** dengan tombol aktif **"Mulai Tes Sekarang"**.
+     - Saat tes matematika disubmit (`submitMatematika`):
+       - Menyimpan jawaban dan waktu pengerjaan ke `TestResult` dengan rincian `tes_ke = $currentTesKe`.
+       - Menyimpan 10 butir jawaban ke tabel legacy `tb_hasilmath` lengkap dengan `tes_ke = $currentTesKe`.
+       - Mengisi kembali `candidates.tes_matematika = $formattedDuration` dan menyinkronkan ke `tb_kandidat`.
+       - Kolom status di dashboard rekruter seketika kembali menjadi **Centang Hijau** (`fa-check text-emerald-600`).
+  5. **Layanan Evaluasi & Tampilan Tab Tes Matematika ([CandidateEvaluationDataService.php](file:///d:/ASystem/newasystem/app/Services/CandidateEvaluationDataService.php) & Blade Views)**:
+     - Jika `tes_matematika` NULL (remidi aktif): `$hasMath = false`, `$mathDuration = '-'`, dan `$mathTesKe = $candidate->tes_ke` (menampilkan nomor tes berikutnya).
+     - Menampilkan kartu status khusus: *"Status Remidi Aktif (Tes Ke - X)"* pada tab detail kandidat saat ujian belum diulang.
+     - Jika sudah dikerjakan, kueri `tb_hasilmath` secara presisi menyaring `where('tes_ke', $targetTesKe)` sehingga rincian jawaban yang dievaluasi 100% adalah hasil dari tes ke-X tersebut.
+     - Tab 7 User Prinsiple secara otomatis berstatus **Disabled** selama remidi belum diselesaikan atau jika nilai ujian remidi masih di bawah grade B.
+  6. **Penambahan Tautan Fallback Legacy ([routes/web.php](file:///d:/ASystem/newasystem/routes/web.php))**:
+     - Menambahkan rute pengalihan `/awalmath`, `/awalmath.php`, `/soal.php`, `/soaltes.php`, `/soalpsikotes.php`, dan `/soalkomputer.php` langsung menuju rute ujian CBT modern.
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `792e05d` | fix: Reset tes matematika ke null, ubah icon jadi silang merah, dan naikkan tes_ke saat Send Remidi |
 | `0c9307a` | feat: Sesuaikan 27 kolom export dengan format sistem lama, link PDF AI ke domain production new.asystem.co.id, dan label CV Analisa AI |
 | `c920766` | fix: Perbaiki filter export kandidat portal untuk admin, parsing tanggal rentang, dan default semua status |
 | `f2e1425` | feat: Fitur export data kandidat job portal ke file XLSX profesional dengan filter area, jenis kelamin, ringkasan pengalaman, dan link PDF AI |
