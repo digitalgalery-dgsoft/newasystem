@@ -716,6 +716,8 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `c3eab2a` | feat(math): sinkronisasi soal CBT dengan master soal lama tb_math dan buat modul master soal matematika admin |
+| `9030270` | docs: update git commit hash for deploy fix in UPDATE_PROGRESS.md |
 | `dc328fd` | fix: Guard exec with function_exists and add multiple fallback runners in deploy.php and AiPdfService |
 | `792e05d` | fix: Reset tes matematika ke null, ubah icon jadi silang merah, dan naikkan tes_ke saat Send Remidi |
 | `0c9307a` | feat: Sesuaikan 27 kolom export dengan format sistem lama, link PDF AI ke domain production new.asystem.co.id, dan label CV Analisa AI |
