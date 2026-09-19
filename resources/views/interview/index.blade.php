@@ -293,8 +293,8 @@
             </div>
 
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
-                <!-- Dropdown Filter Rekruter (Untuk Admin) -->
-                @if(Auth::check() && (Auth::user()->isAdmin() || Auth::user()->role === 'admin'))
+                <!-- Dropdown Filter Rekruter (Untuk Admin & User All Scope) -->
+                @if(!empty($isAdmin) || !empty($canViewAllRecruiters) || (Auth::check() && (Auth::user()->isAdmin() || Auth::user()->role === 'admin')))
                 <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-1.5 flex-shrink-0">
                     @if(request('search_my'))
                         <input type="hidden" name="search_my" value="{{ request('search_my') }}">
@@ -302,8 +302,8 @@
                     <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
                         <i class="fa-solid fa-user-gear text-primary text-xs"></i>
                         <select name="filter_user" onchange="this.form.submit()" class="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer">
-                            <option value="my" {{ (empty($filterUser) || $filterUser === 'my') ? 'selected' : '' }}>👤 Data Saya ({{ $user->name }})</option>
-                            <option value="all" {{ $filterUser === 'all' ? 'selected' : '' }}>🌐 Semua Rekruter (Nasional)</option>
+                            <option value="all" {{ ($filterUser === 'all' || empty($filterUser)) ? 'selected' : '' }}>🌐 Semua Rekruter (Nasional)</option>
+                            <option value="my" {{ $filterUser === 'my' ? 'selected' : '' }}>👤 Data Saya ({{ $user->name }})</option>
                             <optgroup label="Pilih Rekruter Tertentu:">
                                 @foreach($allRecruiters as $rec)
                                     <option value="{{ $rec->useras }}" {{ $filterUser === $rec->useras ? 'selected' : '' }}>
@@ -568,7 +568,7 @@
         </div>
     </div>
 
-    @if(!$isAdmin || (!empty($filterUser) && $filterUser !== 'all'))
+    @if((empty($isAdmin) && empty($canViewAllRecruiters)) || (!empty($filterUser) && $filterUser !== 'all'))
     <!-- 4. TABLE 2: DATA KANDIDAT REKAN SE-AREA -->
     <div class="table-card">
         <div class="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">

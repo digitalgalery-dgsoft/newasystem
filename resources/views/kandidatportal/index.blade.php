@@ -255,11 +255,11 @@
                 <form action="{{ route('kandidatportal.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
                     <input type="hidden" name="tab" value="{{ $tab }}">
 
-                    @if(!empty($isAdmin) && !empty($allRecruiters) && count($allRecruiters) > 0)
-                    <!-- Filter Rekruter (Khusus Administrator) -->
+                    @if((!empty($isAdmin) || !empty($canViewAllRecruiters)) && !empty($allRecruiters) && count($allRecruiters) > 0)
+                    <!-- Filter Rekruter (Administrator & User All Scope) -->
                     <select name="recruiter" onchange="this.form.submit()" class="px-2.5 py-1.5 rounded-xl border border-blue-200 text-xs font-bold text-blue-900 bg-blue-50/80 focus:ring-2 focus:ring-primary outline-none">
-                        <option value="my" {{ ($filterRecruiter === 'my' || empty($filterRecruiter)) ? 'selected' : '' }}>👤 Data Saya ({{ auth()->user()->name ?? 'Admin' }})</option>
-                        <option value="all" {{ $filterRecruiter === 'all' ? 'selected' : '' }}>🌐 Semua Rekruter (Nasional)</option>
+                        <option value="all" {{ ($filterRecruiter === 'all' || empty($filterRecruiter)) ? 'selected' : '' }}>🌐 Semua Rekruter (Nasional)</option>
+                        <option value="my" {{ $filterRecruiter === 'my' ? 'selected' : '' }}>👤 Data Saya ({{ auth()->user()->name ?? 'User' }})</option>
                         <optgroup label="Pilih Rekruter Spesifik:">
                             @foreach($allRecruiters as $r)
                                 <option value="{{ $r->useras }}" {{ $filterRecruiter === $r->useras ? 'selected' : '' }}>

@@ -130,17 +130,23 @@ class KandidatPortalController extends Controller
 
         $user = $this->getCurrentUser();
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
+        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
         $userIdentifiers = $this->resolveUserIdentifiers($user);
 
-        // Ambil daftar seluruh rekruter dari data kandidat portal (khusus untuk selector filter admin)
+        // Ambil daftar seluruh rekruter dari data kandidat portal (khusus untuk selector filter admin / user berhak semua scope)
         $allRecruiters = [];
-        if ($isAdmin) {
-            $allRecruiters = DB::table('candidates')
+        if ($canViewAllRecruiters) {
+            $recQuery = DB::table('candidates')
                 ->select('useras', DB::raw('count(*) as total'))
                 ->where('jenis', 'Job Portal')
                 ->whereNotNull('useras')
-                ->where('useras', '!=', '')
-                ->groupBy('useras')
+                ->where('useras', '!=', '');
+
+            if ($user && !$isAdmin) {
+                $user->applyRoleScopeToCandidates($recQuery);
+            }
+
+            $allRecruiters = $recQuery->groupBy('useras')
                 ->orderByDesc('total')
                 ->get();
 
@@ -162,17 +168,29 @@ class KandidatPortalController extends Controller
         $displayUserName = $user ? $user->name : 'User';
         $scopeTitle = 'Kandidat Milik Anda (' . $displayUserName . ')';
 
-        if ($isAdmin) {
+        if ($canViewAllRecruiters) {
             if (!empty($filterRecruiter) && $filterRecruiter !== 'all' && $filterRecruiter !== 'my') {
-                // Admin memfilter rekruter terpilih
+                // Admin / All-scope memfilter rekruter terpilih
                 $baseQuery->where(function ($q) use ($filterRecruiter) {
                     $q->where('useras', $filterRecruiter)
                       ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterRecruiter))]);
                 });
                 $displayUserName = $filterRecruiter;
                 $scopeTitle = 'Rekruter: ' . $filterRecruiter;
+            } elseif ($filterRecruiter === 'my') {
+                $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) {
+                            $q->orWhere('recruiter_id', $user->id);
+                        }
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    }
+                });
+                $scopeTitle = 'Kandidat Milik Anda (' . $displayUserName . ')';
             } else {
-                // Default Admin: Seluruh Lowongan (Nasional)
+                // Default Admin / All-Scope: Seluruh Lowongan (Nasional)
                 $displayUserName = 'Semua Rekruter (Nasional)';
                 $scopeTitle = 'Seluruh Lowongan (Nasional)';
             }
@@ -366,6 +384,7 @@ class KandidatPortalController extends Controller
             'displayUserName',
             'scopeTitle',
             'isAdmin',
+            'canViewAllRecruiters',
             'allRecruiters',
             'distinctAreas',
             'totalPelamar',
@@ -914,19 +933,31 @@ class KandidatPortalController extends Controller
 
         $user = $this->getCurrentUser();
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
+        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
         $userIdentifiers = $this->resolveUserIdentifiers($user);
 
         $baseQuery = Candidate::where('jenis', 'Job Portal');
 
-        if ($isAdmin) {
+        if ($canViewAllRecruiters) {
             if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
-                // Admin memfilter rekruter terpilih
+                // Admin / All-scope memfilter rekruter terpilih
                 $baseQuery->where(function ($q) use ($filterRecruiter) {
                     $q->where('useras', $filterRecruiter)
                       ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterRecruiter))]);
                 });
+            } elseif ($filterRecruiter === 'my') {
+                $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) {
+                            $q->orWhere('recruiter_id', $user->id);
+                        }
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    }
+                });
             }
-            // Jika $filterRecruiter bernilai 'all', 'my', atau kosong -> Admin mengexport semua lowongan (Nasional)
+            // Jika $filterRecruiter bernilai 'all' atau kosong -> Export semua kandidat sesuai scope
         } else {
             // User biasa / AS / Rekruter: Hanya kandidat miliknya
             $baseQuery->where(function ($q) use ($user, $userIdentifiers) {

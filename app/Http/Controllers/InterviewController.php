@@ -243,12 +243,13 @@ class InterviewController extends Controller
             });
 
         $isAdmin = $user->isAdmin() || $user->role === 'admin';
+        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
         $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
         $displayRecruiterName = $user->name;
         $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
         $displayRecruiterArea = $user->area ?? 'JAKARTA';
 
-        if ($isAdmin) {
+        if ($canViewAllRecruiters) {
             if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
                 // Filter rekruter terpilih dari selector
                 $myCandidatesQuery->where(function ($q) use ($filterUser) {
@@ -259,10 +260,24 @@ class InterviewController extends Controller
                 $displayRecruiterName = $foundRec ? $foundRec->display_name : $filterUser;
                 $displayRecruiterArea = $foundRec ? ($foundRec->area ?: 'INDONESIA') : 'INDONESIA';
                 $displayRecruiterTitle = 'REKRUTER TERPILIH';
+            } elseif ($filterUser === 'my') {
+                $myCandidatesQuery->where(function ($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) {
+                            $q->orWhere('recruiter_id', $user->id);
+                        }
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    }
+                });
+                $displayRecruiterName = $user->name;
+                $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
+                $displayRecruiterArea = $user->area ?? 'JAKARTA';
             } else {
-                // Default Admin: Tampilkan semua data kandidat nasional
+                // Default Admin / All-Scope: Tampilkan semua data kandidat nasional
                 $displayRecruiterName = 'Semua Rekruter (Nasional)';
-                $displayRecruiterTitle = 'SUPER ADMIN - All';
+                $displayRecruiterTitle = $isAdmin ? 'SUPER ADMIN - All' : 'ALL PRINCIPLE & AREA';
                 $displayRecruiterArea = 'NASIONAL';
             }
         } else {
@@ -374,8 +389,8 @@ class InterviewController extends Controller
             return $c;
         });
 
-        // Query 2: Data Kandidat Area (Hanya dieksekusi jika bukan admin yang sedang melihat view nasional)
-        if ($isAdmin && (empty($filterUser) || $filterUser === 'all')) {
+        // Query 2: Data Kandidat Area (Hanya dieksekusi jika bukan admin / user all scope yang sedang melihat view nasional)
+        if (($isAdmin || $canViewAllRecruiters) && (empty($filterUser) || $filterUser === 'all')) {
             $areaCandidates = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15, 1, ['path' => $request->url(), 'pageName' => 'page_area']);
         } else {
             $areaCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
@@ -442,6 +457,7 @@ class InterviewController extends Controller
             'user',
             'salam',
             'isAdmin',
+            'canViewAllRecruiters',
             'myCandidates',
             'areaCandidates',
             'principles',
@@ -1052,22 +1068,36 @@ class InterviewController extends Controller
               });
         };
 
-        $allRecruiters = $this->buildRecruitersSummary(DB::table('candidates')->where($baseCondition));
+        $recQuery = DB::table('candidates')->where($baseCondition);
+        if ($user && !$isAdmin) {
+            $user->applyRoleScopeToCandidates($recQuery);
+        }
+        $allRecruiters = $this->buildRecruitersSummary($recQuery);
 
         $query = Candidate::with(['principle', 'recruiter', 'testResults'])
             ->where($baseCondition);
 
         $isAdmin = $user->isAdmin() || $user->role === 'admin';
+        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
         $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
 
-        if ($isAdmin) {
+        if ($canViewAllRecruiters) {
             if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
                 $query->where(function($q) use ($filterUser) {
                     $q->where('useras', $filterUser)
                       ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
                 });
+            } elseif ($filterUser === 'my') {
+                $query->where(function($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    }
+                });
             }
-            // Default Admin: Tampilkan semua data kandidat selesai nasional
+            // Default Admin / All-Scope: Tampilkan semua data kandidat selesai sesuai scope
         } else {
             $query->where(function($q) use ($user, $userIdentifiers) {
                 if (!empty($userIdentifiers)) {
@@ -1098,7 +1128,7 @@ class InterviewController extends Controller
         $candidates = $query->orderBy('id', 'desc')->paginate(20);
         self::attachInhouseEmployeeNames($candidates);
 
-        return view('interview.done', compact('candidates', 'user', 'search', 'allRecruiters', 'filterUser', 'isAdmin'));
+        return view('interview.done', compact('candidates', 'user', 'search', 'allRecruiters', 'filterUser', 'isAdmin', 'canViewAllRecruiters'));
     }
 
     /**
@@ -1119,22 +1149,36 @@ class InterviewController extends Controller
             });
         };
 
-        $allRecruiters = $this->buildRecruitersSummary(DB::table('candidates')->where($baseCondition));
+        $recQuery = DB::table('candidates')->where($baseCondition);
+        if ($user && !$isAdmin) {
+            $user->applyRoleScopeToCandidates($recQuery);
+        }
+        $allRecruiters = $this->buildRecruitersSummary($recQuery);
 
         $query = Candidate::with(['principle', 'recruiter', 'testResults'])
             ->where($baseCondition);
 
         $isAdmin = $user->isAdmin() || $user->role === 'admin';
+        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
         $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
 
-        if ($isAdmin) {
+        if ($canViewAllRecruiters) {
             if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
                 $query->where(function($q) use ($filterUser) {
                     $q->where('useras', $filterUser)
                       ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
                 });
+            } elseif ($filterUser === 'my') {
+                $query->where(function($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    }
+                });
             }
-            // Default Admin: Tampilkan semua data kandidat arsip nasional
+            // Default Admin / All-Scope: Tampilkan semua data kandidat arsip sesuai scope
         } else {
             $query->where(function($q) use ($user, $userIdentifiers) {
                 if (!empty($userIdentifiers)) {
@@ -1165,7 +1209,7 @@ class InterviewController extends Controller
         $candidates = $query->orderBy('id', 'desc')->paginate(20);
         self::attachInhouseEmployeeNames($candidates);
 
-        return view('interview.arsip', compact('candidates', 'user', 'search', 'allRecruiters', 'filterUser', 'isAdmin'));
+        return view('interview.arsip', compact('candidates', 'user', 'search', 'allRecruiters', 'filterUser', 'isAdmin', 'canViewAllRecruiters'));
     }
     /**
      * Download / Stream Document Lengkap dalam format PDF (Replikasi printall.php)
