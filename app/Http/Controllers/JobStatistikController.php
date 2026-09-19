@@ -98,37 +98,84 @@ class JobStatistikController extends Controller
 
     /**
      * Data Master Karyawan Map (email / name -> formatted display name).
+     * HANYA dari list karyawan inhouse ESA Groups dan tabel users internal.
+     * Penulisan nama diseragamkan dengan format Title Case (huruf awal kapital).
      */
     private function getEmployeeMaps(): array
     {
-        $employees = Employee::select('email', 'nama_karyawan', 'jabatan', 'area')->get();
+        $inhousePrinciples = [
+            'PT ARINA MULTI KARYA',
+            'PT ALVA KARYA PERKASA',
+            'PT ANUGRAH TALENTA BERKARYA',
+            'PT ANUGRAH TERPERCAYA KERJA',
+            'PT ABADI BERKAT ODELIA',
+        ];
+
         $emailMap = [];
         $rawNameMap = [];
 
-        foreach ($employees as $emp) {
-            $eMail = strtolower(trim((string)$emp->email));
-            $rawName = trim((string)$emp->nama_karyawan);
-            $jab = trim((string)$emp->jabatan);
-            $display = $rawName;
+        // 1. Prioritas Utama: Tabel Users (Akun Resmi Sistem: Rekrutmen, AS, Admin, Inhouse)
+        $users = \App\Models\User::select('email', 'name', 'job_title', 'area')->get();
+        foreach ($users as $u) {
+            $eMail = strtolower(trim((string)$u->email));
+            $rawName = trim((string)$u->name);
+            $cleanName = ucwords(strtolower($rawName));
+            $jab = trim((string)$u->job_title);
+            $area = trim((string)$u->area);
+
+            $display = $cleanName;
             if (!empty($jab)) {
                 $display .= " ({$jab})";
             }
 
+            $info = [
+                'name'          => $cleanName,
+                'email'         => $eMail,
+                'jabatan'       => $jab,
+                'display'       => $display,
+                'area'          => $area,
+                'canonical_key' => !empty($eMail) ? $eMail : strtolower($cleanName),
+            ];
+
             if (!empty($eMail)) {
-                $emailMap[$eMail] = [
-                    'name'    => $rawName,
-                    'jabatan' => $jab,
-                    'display' => $display,
-                    'area'    => $emp->area,
-                ];
+                $emailMap[$eMail] = $info;
             }
-            if (!empty($rawName)) {
-                $rawNameMap[strtolower($rawName)] = [
-                    'name'    => $rawName,
-                    'jabatan' => $jab,
-                    'display' => $display,
-                    'area'    => $emp->area,
-                ];
+            if (!empty($cleanName)) {
+                $rawNameMap[strtolower($cleanName)] = $info;
+            }
+        }
+
+        // 2. Prioritas Kedua: Tabel Employees KHUSUS INHOUSE ESA GROUPS SAJA
+        $inhouseEmployees = Employee::whereIn('prinsiple', $inhousePrinciples)
+            ->select('email', 'nama_karyawan', 'jabatan', 'area')
+            ->get();
+
+        foreach ($inhouseEmployees as $emp) {
+            $eMail = strtolower(trim((string)$emp->email));
+            $rawName = trim((string)$emp->nama_karyawan);
+            $cleanName = ucwords(strtolower($rawName));
+            $jab = trim((string)$emp->jabatan);
+            $area = trim((string)$emp->area);
+
+            $display = $cleanName;
+            if (!empty($jab)) {
+                $display .= " ({$jab})";
+            }
+
+            $info = [
+                'name'          => $cleanName,
+                'email'         => $eMail,
+                'jabatan'       => $jab,
+                'display'       => $display,
+                'area'          => $area,
+                'canonical_key' => !empty($eMail) ? $eMail : strtolower($cleanName),
+            ];
+
+            if (!empty($eMail) && !isset($emailMap[$eMail])) {
+                $emailMap[$eMail] = $info;
+            }
+            if (!empty($cleanName) && !isset($rawNameMap[strtolower($cleanName)])) {
+                $rawNameMap[strtolower($cleanName)] = $info;
             }
         }
 
@@ -395,21 +442,46 @@ class JobStatistikController extends Controller
             $cPrinciple = trim((string)$rawPrin) ?: '-';
             $cRegion = self::resolveRegion($cArea);
 
-            // Resolusi nama rekruter kandidat
-            $recruiterDisplay = $useras;
-            if (isset($emailMap[$userasLower])) {
+            // Resolusi nama rekruter kandidat: cek berdasarkan email dulu, lalu inhouse name map
+            $recruiterDisplay = null;
+            $matchedCanonicalKey = null;
+            $matchedEmail = null;
+
+            if (!empty($userasLower) && isset($emailMap[$userasLower])) {
                 $recruiterDisplay = $emailMap[$userasLower]['display'];
+                $matchedCanonicalKey = $emailMap[$userasLower]['canonical_key'];
+                $matchedEmail = $emailMap[$userasLower]['email'];
                 if ($cArea === '-' && !empty($emailMap[$userasLower]['area'])) {
                     $cArea = $emailMap[$userasLower]['area'];
                     $cRegion = self::resolveRegion($cArea);
                 }
-            } elseif (isset($rawNameMap[$userasLower])) {
+            } elseif (!empty($userasLower) && isset($rawNameMap[$userasLower])) {
                 $recruiterDisplay = $rawNameMap[$userasLower]['display'];
+                $matchedCanonicalKey = $rawNameMap[$userasLower]['canonical_key'];
+                $matchedEmail = $rawNameMap[$userasLower]['email'];
+                if ($cArea === '-' && !empty($rawNameMap[$userasLower]['area'])) {
+                    $cArea = $rawNameMap[$userasLower]['area'];
+                    $cRegion = self::resolveRegion($cArea);
+                }
+            } else {
+                // Penulisan Nama dibuat seragam hanya huruf awal yang kapital
+                if (str_contains($useras, '@')) {
+                    $prefix = explode('@', $useras)[0];
+                    $clean = ucwords(strtolower(trim(preg_replace('/[0-9_.-]+/', ' ', $prefix))));
+                    $recruiterDisplay = $clean ?: $useras;
+                } else {
+                    $recruiterDisplay = ucwords(strtolower($useras));
+                }
+                $matchedCanonicalKey = $userasLower;
+                $matchedEmail = $useras;
             }
 
             // Dropdown list
-            if (!empty($useras) && !isset($listUsers[$userasLower])) {
-                $listUsers[$userasLower] = $recruiterDisplay;
+            if (!empty($useras)) {
+                $userKey = !empty($matchedEmail) ? strtolower($matchedEmail) : $userasLower;
+                if (!isset($listUsers[$userKey])) {
+                    $listUsers[$userKey] = $recruiterDisplay;
+                }
             }
             if ($cArea !== '-' && !in_array($cArea, $listAreas)) {
                 $listAreas[] = $cArea;
@@ -419,7 +491,7 @@ class JobStatistikController extends Controller
             if (!empty($filters['region']) && strtolower($cRegion) !== strtolower($filters['region'])) continue;
             if (!empty($filters['area']) && strtolower($cArea) !== strtolower($filters['area'])) continue;
             if (!empty($filters['prinsiple']) && strtolower($cPrinciple) !== strtolower($filters['prinsiple'])) continue;
-            if (!empty($filters['user']) && $userasLower !== strtolower($filters['user']) && strtolower($recruiterDisplay) !== strtolower($filters['user'])) continue;
+            if (!empty($filters['user']) && $userasLower !== strtolower($filters['user']) && strtolower($recruiterDisplay) !== strtolower($filters['user']) && strtolower($matchedEmail ?? '') !== strtolower($filters['user'])) continue;
 
             $totalPelamarCount++;
             $kat = strtolower(trim((string)$c->kategori_kandidat));
@@ -500,10 +572,10 @@ class JobStatistikController extends Controller
             }
 
             // Update Table 4: Rekap Step Odoo per Rekrutor
-            $recKey = !empty($userasLower) ? $userasLower : 'unassigned';
+            $recKey = !empty($matchedCanonicalKey) ? $matchedCanonicalKey : (!empty($userasLower) ? $userasLower : 'unassigned');
             if (!isset($statsOdooRecruiter[$recKey])) {
                 $statsOdooRecruiter[$recKey] = [
-                    'user_email'    => $useras ?: 'Tidak Terdata',
+                    'user_email'    => !empty($matchedEmail) ? $matchedEmail : ($useras ?: 'Tidak Terdata'),
                     'user_display'  => !empty($useras) ? $recruiterDisplay : 'Belum Ditugaskan / Walkin Bebas',
                     'region'        => $matchedRegion,
                     'area'          => $matchedArea,
