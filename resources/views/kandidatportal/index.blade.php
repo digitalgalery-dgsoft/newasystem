@@ -413,10 +413,10 @@
                         <!-- Tgl Daftar -->
                         <td>
                             <div class="font-semibold text-slate-800 text-[11px]">
-                                {{ $cand->created_at ? $cand->created_at->format('d M Y') : '-' }}
+                                {{ $cand->created_at ? $cand->created_at->timezone('Asia/Jakarta')->format('d M Y') : '-' }}
                             </div>
                             <div class="text-[10px] text-slate-400">
-                                {{ $cand->created_at ? $cand->created_at->format('H:i') : '' }} WIB
+                                {{ $cand->created_at ? $cand->created_at->timezone('Asia/Jakarta')->format('H:i') : '' }} WIB
                             </div>
                         </td>
 
