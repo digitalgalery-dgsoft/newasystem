@@ -22,12 +22,14 @@ class AiPdfService
         $cliScript = __DIR__ . '/cli_ai_pdf.php';
 
         $cmd = 'php ' . escapeshellarg($cliScript) . ' ' . intval($candidate->id) . ' ' . escapeshellarg($tempFile);
-        exec($cmd, $output, $returnVar);
+        if (function_exists('exec')) {
+            @exec($cmd, $output, $returnVar);
 
-        if ($returnVar === 0 && file_exists($tempFile) && filesize($tempFile) > 0) {
-            $pdfContent = file_get_contents($tempFile);
-            @unlink($tempFile);
-            return $pdfContent;
+            if (isset($returnVar) && $returnVar === 0 && file_exists($tempFile) && filesize($tempFile) > 0) {
+                $pdfContent = file_get_contents($tempFile);
+                @unlink($tempFile);
+                return $pdfContent;
+            }
         }
 
         // Direct rendering

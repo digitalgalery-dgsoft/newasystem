@@ -31,11 +31,38 @@ $commands = [
     "cd {$baseDir} && php artisan optimize:clear 2>&1",
 ];
 
+function runShellCmd($cmd) {
+    if (function_exists('exec')) {
+        $out = [];
+        @exec($cmd, $out);
+        return implode("\n", $out);
+    } elseif (function_exists('shell_exec')) {
+        return (string)@shell_exec($cmd);
+    } elseif (function_exists('system')) {
+        ob_start();
+        @system($cmd);
+        return ob_get_clean();
+    } elseif (function_exists('passthru')) {
+        ob_start();
+        @passthru($cmd);
+        return ob_get_clean();
+    } elseif (function_exists('proc_open')) {
+        $proc = @proc_open($cmd, [1 => ['pipe', 'w'], 2 => ['pipe', 'w']], $pipes);
+        if (is_resource($proc)) {
+            $out = stream_get_contents($pipes[1]);
+            fclose($pipes[1]);
+            fclose($pipes[2]);
+            proc_close($proc);
+            return $out;
+        }
+    }
+    return "[ERROR] Tidak ada fungsi eksekusi shell yang diizinkan (disable_functions). Gunakan runner SSH production.";
+}
+
 foreach ($commands as $cmd) {
     echo ">> {$cmd}\n";
-    $out = [];
-    exec($cmd, $out);
-    echo implode("\n", $out) . "\n\n";
+    $output = runShellCmd($cmd);
+    echo $output . "\n\n";
 }
 
 echo "=== DEPLOYMENT COMPLETED SUCCESSFULLY ===\n";
