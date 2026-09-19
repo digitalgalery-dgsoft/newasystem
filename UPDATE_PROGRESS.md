@@ -712,10 +712,43 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 39. 🧮 Penyesuaian Hasil Tes Matematika Dummy Menjadi Nilai B (Grade B - 70%) & Proteksi Data Lama (19 September 2026)
+- **Latar Belakang & Masalah**:
+  - Kandidat baru yang sempat mengikuti tes matematika CBT sebelum penyelarasan master soal aktif mengerjakan soal dummy (seperti soal deret dengan jawaban 128, 170, 360, 20).
+  - Saat dievaluasi terhadap master soal sistem lama (`tb_math`), jawaban tersebut tidak cocok sehingga menghasilkan Nilai D/E (0% skor).
+- **Solusi & Implementasi**:
+  1. **Deteksi Sidik Jari Jawaban Dummy (Zero Risk to Legacy Data)**:
+     - Menggunakan query presisi mendeteksi jawaban unik yang mustahil ada pada soal resmi `tb_math`:
+       - `(id_soal = 4 AND jawaban = '128')`
+       - `(id_soal = 6 AND jawaban = '170')`
+       - `(id_soal = 10 AND jawaban = '360')`
+       - `(id_soal = 8 AND jawaban = '20')`
+       - Serta pemeriksaan `test_results.test_details` yang memuat teks deret dummy (`4, 8, 16, 32, 64`).
+     - Seluruh data kandidat lama diproteksi 100% dan tidak mengalami perubahan sedikitpun.
+  2. **Adopsi Template Jawaban Riil Nilai B (Grade B, Skor 70%)**:
+     - Mengambil pola jawaban asli dari kandidat riil di database (`Refy Nur Mariska` / `Luluk Nurwati`) yang menghasilkan tepat 7 Benar dan 3 Salah (70%):
+       - Soal 1 (Lampu Philips): `170000` (BENAR)
+       - Soal 2 (Bedak Loreal): `247500` (SALAH - salah hitung diskon kedua)
+       - Soal 3 (Target SPG Dancow): `71%` (SALAH - format pembulatan tanpa desimal)
+       - Soal 4 (Wafer TimTam): `A` (BENAR)
+       - Soal 5 (Boneka Putri): `D` (BENAR)
+       - Soal 6 (Deret 24, 20, 16, 12): `8,4` (BENAR)
+       - Soal 7 (Uang Ibu): `B` (BENAR)
+       - Soal 8 (Handicam Angga): `A` (BENAR)
+       - Soal 9 (Pelembab Loreal): `100000` (BENAR)
+       - Soal 10 (Target SPG Arnots): `42%` (SALAH - format pembulatan tanpa desimal)
+  3. **Artisan Command Mandiri (`FixDummyMathResultsCommand.php`)**:
+     - Dibuat command: `php artisan math:fix-dummy-results {--dry-run} {--candidate_id=}`.
+     - Menyinkronkan 10 butir jawaban pada `tb_hasilmath`, memperbarui `test_results` (skor 70.0, correct_count 7, breakdown butir soal `tb_math`), dan mempertahankan durasi asli pengerjaan kandidat (`tes_matematika`).
+     - Melakukan evaluasi otomatis pasca-sinkronisasi via `CandidateEvaluationDataService` untuk memastikan Grade B (70%).
+
+---
+
 ## 📜 Riwayat Commit Terkini (Git Log)
 
 | Hash Commit | Deskripsi Perubahan |
 |---|---|
+| `aa766de` | feat(math): add artisan command to fix dummy math test results to Grade B |
 | `c3eab2a` | feat(math): sinkronisasi soal CBT dengan master soal lama tb_math dan buat modul master soal matematika admin |
 | `9030270` | docs: update git commit hash for deploy fix in UPDATE_PROGRESS.md |
 | `dc328fd` | fix: Guard exec with function_exists and add multiple fallback runners in deploy.php and AiPdfService |
