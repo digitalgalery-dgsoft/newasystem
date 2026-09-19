@@ -849,12 +849,29 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   - **Proteksi Super Administrator**:
     - Administrator utama (`admin`) selalu memiliki bypass penuh (`handlesAllPrinciples() = true`, `coversAllAreas() = true`) sehingga tetap memiliki pengawasan nasional terhadap seluruh data sistem.
 
+### 14. 🛡️ Hak Akses Pengguna, Role Dinamis (RBAC), & Multi-User Scoping AS
+- **Pemisahan Definisi Role vs Penugasan Scope Karyawan**:
+  - **1 Role Akses untuk Banyak Pengguna (contoh: `Role Akses AS`)**:
+    - Definisi Role murni berfungsi sebagai template otorisasi hak akses menu & fitur (Talent Pool, AI Ranking, Export, Master Data).
+    - Modal pembuatan/pengubahan Role ("Tambah Role Baru") difokuskan pada nama peran, kode slug, deskripsi, dan inisialisasi izin modul tanpa mengunci prinsiple atau wilayah.
+  - **Pengaturan Scope Prinsiple & Area Fleksibel per Akun Karyawan**:
+    - Di tab **Pengaturan Pengguna & Scope AS**, Administrator dapat memilih role yang sama (misal: `Role Akses AS`) untuk puluhan user AS yang berbeda.
+    - Pada modal yang sama (**Atur Akses Pengguna**), Admin langsung menentukan:
+      - **Prinsiple yang Dihandle**: Opsi *Semua Prinsiple (Nasional)* atau *Pilih Prinsiple Tertentu* (lengkap dengan pencarian live, tombol Pilih/Batal Semua, dan daftar centang).
+      - **Area Cover Penempatan**: Opsi *Semua Area (Nasional)* atau *Pilih Area Tertentu* (lengkap dengan pencarian live kota/wilayah, tombol Pilih/Batal Semua, dan daftar centang).
+- **Isolasi & Pemfilteran Data Otomatis**:
+  - Setiap kali AS login ke sistem, query data pada modul Karyawan, Kandidat Talent Pool, Interview Inhouse, dan AI Ranking otomatis terfilter sesuai cakupan prinsiple dan area yang ditugaskan khusus untuk akun tersebut.
+  - Administrator HR (`admin`) tetap memiliki akses tak terbatas (unrestricted) ke seluruh modul, prinsiple, dan area nasional.
+- **Tampilan Tabel Pengguna Transparan**:
+  - Tabel menyajikan kolom terpisah untuk *Role Akses*, *Prinsiple Dihandle* (dengan badge jumlah dan daftar preview nama prinsiple), serta *Area Cover* (dengan badge jumlah dan preview wilayah).
+
 ---
 
-## 📜 Riwayat Commit Terkini (Git Log)
+## 📜 Riwayat Commit & Pembaruan Kode
 
-| Hash Commit | Deskripsi Perubahan |
-|---|---|
+| Commit ID | Deskripsi Pembaruan |
+| :--- | :--- |
+| `dc98162` | refactor(rbac): decouple principle and area scoping from roles to individual user configuration (1 Role Akses AS untuk banyak user) |
 | `e2978e6` | fix: restore missing master.prinsiple.destroy route in routes/web.php |
 | `671adbc` | docs: document Milestone 40 personality test alignment and master personality admin in UPDATE_PROGRESS.md |
 | `b4b8017` | fix(personality): remove non-existent updated_at column from legacy tb_kandidat update |
