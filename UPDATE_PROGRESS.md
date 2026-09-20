@@ -1118,6 +1118,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `5c8e7f3` | feat(workplan): implement WhatsApp-style Groups Chat with real-time messaging, inhouse members, and SweetAlert2 |
 | `f03d859` | feat(workplan): open attachment preview inside lightbox modal instead of new tab |
 | `20ecb07` | docs: document Milestone 58 interactive attachment uploader |
 | `f5c80a3` | feat(workplan): add drag and drop, clipboard paste, and image preview to task and comment attachment fields |
