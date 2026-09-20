@@ -490,10 +490,51 @@ class User extends Authenticatable
      */
     public function getLinkedEmployeeAttribute(): ?Employee
     {
-        if (empty($this->email)) {
-            return null;
+        if (!empty($this->email)) {
+            $emp = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($this->email))])
+                ->where('status', 'Aktiv')
+                ->first();
+            if ($emp) return $emp;
+
+            $empAny = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($this->email))])->first();
+            if ($empAny) return $empAny;
         }
-        return Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($this->email))])->first();
+
+        if (!empty($this->name)) {
+            $emp = Employee::whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower(trim($this->name))])
+                ->where('status', 'Aktiv')
+                ->first();
+            if ($emp) return $emp;
+        }
+
+        return null;
+    }
+
+    /**
+     * Nama Jabatan Pengguna untuk Tampilan Dashboard (Prioritas: Jabatan di Data Karyawan -> Job Title User -> Fallback Role)
+     */
+    public function getJabatanDisplayAttribute(): string
+    {
+        // 1. Cek dari linked employee (Data Karyawan)
+        $emp = $this->linked_employee;
+        if ($emp && !empty($emp->jabatan)) {
+            return trim($emp->jabatan);
+        }
+
+        // 2. Cek dari field job_title pada tabel users
+        if (!empty($this->job_title)) {
+            return trim($this->job_title);
+        }
+
+        // 3. Fallback jika jabatan belum diisi
+        return match ($this->role) {
+            'admin' => 'Administrator',
+            'karyawan_inhouse' => 'Karyawan Inhouse',
+            'karyawan_ratecard' => 'Karyawan RateCard',
+            'recruiter' => 'Recruiter',
+            'head_hr' => 'Head of HR',
+            default => !empty($this->role) ? ucfirst(str_replace('_', ' ', $this->role)) : 'Staff'
+        };
     }
 
     /**

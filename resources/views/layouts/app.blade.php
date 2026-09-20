@@ -18,10 +18,30 @@
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
 
+    <!-- Immediate Theme Application (Zero-Flicker LocalStorage) -->
+    <script>
+        (function() {
+            try {
+                var theme = localStorage.getItem('asystem_theme_mode') || 'light';
+                var palette = localStorage.getItem('asystem_theme_palette') || 'navy';
+                var primary = localStorage.getItem('asystem_primary_color') || '#0F52BA';
+                document.documentElement.setAttribute('data-theme', theme);
+                document.documentElement.setAttribute('data-palette', palette);
+                document.documentElement.style.setProperty('--color-primary', primary);
+                if (theme === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } catch(e) {}
+        })();
+    </script>
+
     <!-- Tailwind CSS Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
@@ -29,12 +49,12 @@
                     },
                     colors: {
                         primary: {
-                            DEFAULT: '#0F52BA', // Sapphire Blue
+                            DEFAULT: 'var(--color-primary, #0F52BA)', // Dynamic Custom Primary Color
                             50: '#eef6ff',
                             100: '#d9ebff',
                             200: '#bce0fd',
                             500: '#2563eb',
-                            600: '#0F52BA',
+                            600: 'var(--color-primary, #0F52BA)',
                             700: '#1d4ed8',
                             800: '#1e40af',
                             900: '#1e3a8a',
@@ -49,8 +69,12 @@
         }
     </script>
     
-    <!-- Custom CSS matching Attendance Portal -->
+    <!-- Custom CSS matching Attendance Portal & Multi-Palette Dark Mode -->
     <style>
+        :root {
+            --color-primary: #0F52BA;
+        }
+
         html {
             zoom: 80%;
             -webkit-text-size-adjust: 100%;
@@ -64,8 +88,12 @@
             box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px 0 rgba(0, 0, 0, 0.03);
         }
 
+        .bg-primary { background-color: var(--color-primary) !important; }
+        .text-primary { color: var(--color-primary) !important; }
+        .border-primary { border-color: var(--color-primary) !important; }
+
         .sidebar-item-active {
-            background: linear-gradient(135deg, #0F52BA 0%, #2563eb 100%);
+            background: linear-gradient(135deg, var(--color-primary, #0F52BA) 0%, #2563eb 100%) !important;
             color: #ffffff !important;
             box-shadow: 0 4px 12px rgba(15, 82, 186, 0.25);
         }
@@ -158,6 +186,190 @@
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
+        }
+
+        /* ============================================================
+           DARK MODE COLOR PALETTES (Hitam Pekat, Biru Navy, Dark Grey, Soft Grey)
+           ============================================================ */
+
+        /* 1. Hitam Pekat (Pitch Black) */
+        html[data-theme="dark"][data-palette="black"] {
+            --bg-body: #050505;
+            --bg-sidebar: #09090b;
+            --bg-topbar: #0c0c0f;
+            --bg-card: #121215;
+            --bg-card-alt: #18181f;
+            --bg-input: #0f0f14;
+            --border-color: #26262e;
+            --border-subtle: #1c1c24;
+            --text-title: #f8fafc;
+            --text-body: #cbd5e1;
+            --text-muted: #71717a;
+        }
+
+        /* 2. Biru Navy (Deep Navy Blue - Default Dark) */
+        html[data-theme="dark"][data-palette="navy"],
+        html[data-theme="dark"]:not([data-palette]) {
+            --bg-body: #070d1e;
+            --bg-sidebar: #0b142d;
+            --bg-topbar: #0f1c3f;
+            --bg-card: #13224d;
+            --bg-card-alt: #172a5e;
+            --bg-input: #0e1a3d;
+            --border-color: #213775;
+            --border-subtle: #182a5c;
+            --text-title: #f1f5f9;
+            --text-body: #cbd5e1;
+            --text-muted: #8295b5;
+        }
+
+        /* 3. Dark Grey (Charcoal / Carbon Dark) */
+        html[data-theme="dark"][data-palette="dark_grey"] {
+            --bg-body: #121316;
+            --bg-sidebar: #18191e;
+            --bg-topbar: #1d1f25;
+            --bg-card: #23252d;
+            --bg-card-alt: #2a2c36;
+            --bg-input: #1b1d24;
+            --border-color: #383b48;
+            --border-subtle: #2c2e39;
+            --text-title: #f1f5f9;
+            --text-body: #cbd5e1;
+            --text-muted: #8c92a4;
+        }
+
+        /* 4. Soft Grey (Titanium / Muted Dark) */
+        html[data-theme="dark"][data-palette="soft_grey"] {
+            --bg-body: #23252b;
+            --bg-sidebar: #2b2d35;
+            --bg-topbar: #32353e;
+            --bg-card: #393c47;
+            --bg-card-alt: #414552;
+            --bg-input: #2e313b;
+            --border-color: #525666;
+            --border-subtle: #434756;
+            --text-title: #f8fafc;
+            --text-body: #e2e8f0;
+            --text-muted: #9fa6b7;
+        }
+
+        /* DARK MODE CONTAINER & ELEMENT AUTOMATIC OVERRIDES */
+        html[data-theme="dark"] body {
+            background-color: var(--bg-body) !important;
+            color: var(--text-body) !important;
+        }
+
+        html[data-theme="dark"] aside#sidebar {
+            background-color: var(--bg-sidebar) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        html[data-theme="dark"] aside#sidebar .border-b,
+        html[data-theme="dark"] aside#sidebar .border-t {
+            border-color: var(--border-color) !important;
+        }
+
+        html[data-theme="dark"] aside#sidebar .bg-white {
+            background-color: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        html[data-theme="dark"] aside#sidebar .bg-slate-50\/50,
+        html[data-theme="dark"] aside#sidebar .bg-slate-100 {
+            background-color: var(--bg-card-alt) !important;
+        }
+
+        html[data-theme="dark"] header.topbar-shadow {
+            background-color: var(--bg-topbar) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        html[data-theme="dark"] .bg-white {
+            background-color: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        html[data-theme="dark"] .bg-slate-50,
+        html[data-theme="dark"] .bg-slate-50\/50,
+        html[data-theme="dark"] .bg-slate-50\/80,
+        html[data-theme="dark"] .bg-slate-50\/90,
+        html[data-theme="dark"] .bg-slate-100,
+        html[data-theme="dark"] .bg-slate-100\/70 {
+            background-color: var(--bg-card-alt) !important;
+            border-color: var(--border-subtle) !important;
+        }
+
+        html[data-theme="dark"] .border-slate-200,
+        html[data-theme="dark"] .border-slate-200\/90,
+        html[data-theme="dark"] .border-slate-200\/80,
+        html[data-theme="dark"] .border-slate-100,
+        html[data-theme="dark"] .border-slate-300 {
+            border-color: var(--border-color) !important;
+        }
+
+        html[data-theme="dark"] .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+        html[data-theme="dark"] .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+            border-color: var(--border-subtle) !important;
+        }
+
+        html[data-theme="dark"] .text-slate-900,
+        html[data-theme="dark"] .text-slate-800 {
+            color: var(--text-title) !important;
+        }
+
+        html[data-theme="dark"] .text-slate-700,
+        html[data-theme="dark"] .text-slate-600 {
+            color: var(--text-body) !important;
+        }
+
+        html[data-theme="dark"] .text-slate-500,
+        html[data-theme="dark"] .text-slate-400 {
+            color: var(--text-muted) !important;
+        }
+
+        html[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+        html[data-theme="dark"] select,
+        html[data-theme="dark"] textarea {
+            background-color: var(--bg-input) !important;
+            border-color: var(--border-color) !important;
+            color: var(--text-title) !important;
+        }
+
+        html[data-theme="dark"] input::placeholder,
+        html[data-theme="dark"] textarea::placeholder {
+            color: var(--text-muted) !important;
+        }
+
+        html[data-theme="dark"] .table-card,
+        html[data-theme="dark"] .page-header-card,
+        html[data-theme="dark"] .stat-box {
+            background-color: var(--bg-card) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        html[data-theme="dark"] .custom-table th {
+            background-color: var(--bg-card-alt) !important;
+            color: var(--text-title) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        html[data-theme="dark"] .custom-table td {
+            color: var(--text-body) !important;
+            border-color: var(--border-subtle) !important;
+        }
+
+        html[data-theme="dark"] .custom-table tr:hover td {
+            background-color: var(--bg-card-alt) !important;
+        }
+
+        html[data-theme="dark"] ::-webkit-scrollbar-track {
+            background: var(--bg-body);
+        }
+        html[data-theme="dark"] ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+        }
+        html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-muted);
         }
     </style>
 </head>
@@ -505,6 +717,7 @@
                     $userName = $currentUser ? $currentUser->name : 'Administrator HRD';
                     $userEmail = $currentUser ? ($currentUser->job_title ?: $currentUser->email) : 'admin.pusat@arina.co.id';
                     $userRole = $currentUser ? ($currentUser->role ?? 'admin') : 'admin';
+                    $userJabatan = $currentUser ? $currentUser->jabatan_display : 'Administrator';
                     $roleLabel = match($userRole) {
                         'admin' => 'Administrator',
                         'karyawan_inhouse' => 'Karyawan Inhouse',
@@ -517,13 +730,13 @@
                 @endphp
                 <!-- Expanded User Profile -->
                 <div class="flex items-center gap-2 p-2 rounded-xl bg-white border border-slate-200 shadow-sm hover:border-primary-300 transition-all group" x-show="!sidebarCollapsed">
-                    <a href="{{ route('profile.index') }}" class="flex items-center gap-2.5 flex-1 min-w-0" title="Klik untuk Buka Profil & Edit Data">
+                    <a href="{{ route('profile.index') }}" class="flex items-center gap-2.5 flex-1 min-w-0" title="Klik untuk Buka Profil & Edit Data ({{ $userJabatan }})">
                         <img src="{{ $userAvatarUrl }}" alt="{{ $userName }}" class="w-9 h-9 rounded-lg border border-slate-100 flex-shrink-0 object-cover">
                         <div class="flex-1 min-w-0">
                             <div class="text-xs font-bold text-slate-900 group-hover:text-primary transition-colors truncate">{{ $userName }}</div>
-                            <div class="text-[10px] text-slate-500 font-medium truncate flex items-center gap-1">
+                            <div class="text-[10px] text-slate-500 font-medium truncate flex items-center gap-1" title="{{ $userJabatan }}">
                                 <span class="inline-block w-1.5 h-1.5 rounded-full {{ $userRole === 'admin' ? 'bg-blue-500' : ($userRole === 'karyawan_inhouse' ? 'bg-emerald-500' : 'bg-amber-500') }}"></span>
-                                <span>{{ $roleLabel }}</span>
+                                <span class="truncate">{{ $userJabatan }}</span>
                             </div>
                         </div>
                     </a>
@@ -539,7 +752,7 @@
                 </div>
                 <!-- Collapsed User Profile -->
                 <div class="flex flex-col items-center gap-2 p-1" x-show="sidebarCollapsed" x-cloak>
-                    <a href="{{ route('profile.index') }}" title="Profil {{ $userName }} ({{ $roleLabel }})">
+                    <a href="{{ route('profile.index') }}" title="Profil {{ $userName }} ({{ $userJabatan }})">
                         <img src="{{ $userAvatarUrl }}" alt="{{ $userName }}" class="w-9 h-9 rounded-lg border border-slate-200 shadow-sm object-cover hover:ring-2 hover:ring-primary transition-all">
                     </a>
                     <form method="POST" action="{{ route('logout') }}" class="inline m-0 p-0">
@@ -645,6 +858,15 @@
 
                     <div class="h-6 w-px bg-slate-200 mx-1"></div>
 
+                    <!-- Quick Dark / Light Mode Toggle Button -->
+                    <button type="button" 
+                            id="quickThemeToggleBtn"
+                            onclick="toggleQuickTheme()"
+                            class="p-2 text-slate-500 hover:text-primary rounded-xl hover:bg-slate-100 transition-all focus:outline-none"
+                            title="Ganti Mode Tampilan (Terang / Gelap)">
+                        <i id="themeToggleIcon" class="fa-regular fa-moon text-lg transition-transform duration-300"></i>
+                    </button>
+
                     <!-- Notification Dropdown Component (Alpine.js) -->
                     <div class="relative" x-data="asystemNotifications()" x-init="initNotifications()" @click.outside="isOpen = false">
                         <!-- Notification Bell Button -->
@@ -735,11 +957,11 @@
 
                     <!-- Topbar Profile -->
                     <div class="flex items-center gap-2 pl-2">
-                        <a href="{{ route('profile.index') }}" class="flex items-center gap-2 hover:opacity-90 group transition-all" title="Klik untuk Buka Profil Akun">
+                        <a href="{{ route('profile.index') }}" class="flex items-center gap-2 hover:opacity-90 group transition-all" title="Klik untuk Buka Profil Akun ({{ $userJabatan }})">
                             <img src="{{ $userAvatarUrl }}" alt="{{ $userName }}" class="w-8 h-8 rounded-lg border border-slate-200 object-cover group-hover:ring-2 group-hover:ring-primary/40 transition-all">
                             <div class="hidden md:block text-left">
                                 <div class="text-xs font-bold text-slate-800 group-hover:text-primary transition-colors leading-none">{{ $userName }}</div>
-                                <div class="text-[10px] text-slate-500 leading-none mt-1 font-medium">{{ $roleLabel }}</div>
+                                <div class="text-[10px] text-slate-500 leading-none mt-1 font-medium truncate max-w-[140px]" title="{{ $userJabatan }}">{{ $userJabatan }}</div>
                             </div>
                         </a>
                         <a href="{{ route('profile.index') }}" title="Edit Profil Saya" class="text-slate-400 hover:text-primary p-1.5 rounded-md hover:bg-slate-100 transition-all">
@@ -1042,6 +1264,51 @@
             }
         };
     }
+    </script>
+
+    <!-- Dashboard Custom Theme & Dark Mode Manager -->
+    <script>
+    function updateThemeUI() {
+        const currentTheme = localStorage.getItem('asystem_theme_mode') || 'light';
+        const icon = document.getElementById('themeToggleIcon');
+        const btn = document.getElementById('quickThemeToggleBtn');
+        if (icon) {
+            if (currentTheme === 'dark') {
+                icon.className = 'fa-solid fa-sun text-lg text-amber-400 rotate-180 transition-transform duration-300';
+                if (btn) btn.title = 'Ganti ke Mode Terang';
+            } else {
+                icon.className = 'fa-regular fa-moon text-lg text-slate-500 transition-transform duration-300';
+                if (btn) btn.title = 'Ganti ke Mode Gelap';
+            }
+        }
+    }
+
+    function toggleQuickTheme() {
+        const currentTheme = localStorage.getItem('asystem_theme_mode') || 'light';
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        const palette = localStorage.getItem('asystem_theme_palette') || 'navy';
+        const primary = localStorage.getItem('asystem_primary_color') || '#0F52BA';
+
+        localStorage.setItem('asystem_theme_mode', newTheme);
+        document.documentElement.setAttribute('data-theme', newTheme);
+        document.documentElement.setAttribute('data-palette', palette);
+        document.documentElement.style.setProperty('--color-primary', primary);
+        if (newTheme === 'dark') {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+        updateThemeUI();
+
+        // Dispatch custom event for real-time sync with profile page or other listeners
+        window.dispatchEvent(new CustomEvent('asystemThemeChanged', { 
+            detail: { theme: newTheme, palette: palette, primary: primary } 
+        }));
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        updateThemeUI();
+    });
     </script>
     
     @yield('scripts')

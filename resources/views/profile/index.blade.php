@@ -200,17 +200,24 @@
             <div class="bg-white rounded-2xl p-1.5 border border-slate-200/90 shadow-sm flex items-center gap-1">
                 <button @click="activeTab = 'info'" 
                         type="button"
-                        class="flex-1 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2"
+                        class="flex-1 py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2"
                         :class="activeTab === 'info' ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-600 hover:bg-slate-50'">
                     <i class="fa-solid fa-user-pen"></i>
-                    <span>Informasi Akun & Kontak</span>
+                    <span>Informasi Akun</span>
                 </button>
                 <button @click="activeTab = 'security'" 
                         type="button"
-                        class="flex-1 py-3 px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-2"
+                        class="flex-1 py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2"
                         :class="activeTab === 'security' ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-600 hover:bg-slate-50'">
                     <i class="fa-solid fa-lock"></i>
                     <span>Keamanan & Password</span>
+                </button>
+                <button @click="activeTab = 'theme'" 
+                        type="button"
+                        class="flex-1 py-3 px-3 sm:px-4 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center justify-center gap-1.5 sm:gap-2"
+                        :class="activeTab === 'theme' ? 'bg-primary text-white shadow-md shadow-primary/25' : 'text-slate-600 hover:bg-slate-50'">
+                    <i class="fa-solid fa-palette"></i>
+                    <span>Tema & Warna</span>
                 </button>
             </div>
 
@@ -481,13 +488,270 @@
                 </form>
             </div>
 
+            <!-- TAB 3: PENGATURAN TEMA & WARNA CUSTOM DASHBOARD -->
+            <div x-show="activeTab === 'theme'" x-cloak class="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 sm:p-8 space-y-8" x-data="themePageController()" x-init="initThemeController()">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-slate-100">
+                    <div>
+                        <h3 class="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                            <i class="fa-solid fa-palette text-primary"></i>
+                            <span>Kustomisasi Nuansa Tema Dashboard</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">
+                            Personalisasi gaya visual, mode tampilan, dan warna nuansa dashboard Anda secara mandiri.
+                        </p>
+                    </div>
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 self-start">
+                        <i class="fa-solid fa-laptop-code text-xs"></i>
+                        <span>Tersimpan di Browser Anda (LocalStorage)</span>
+                    </span>
+                </div>
+
+                <!-- 1. PILIHAN MODE TAMPILAN (LIGHT / DARK) -->
+                <div class="space-y-3">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-circle-half-stroke text-primary"></i>
+                        <span>1. Mode Tampilan Sistem</span>
+                    </label>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Mode Terang (Light) -->
+                        <button type="button" 
+                                @click="setThemeMode('light')"
+                                class="p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden flex items-center gap-4 group"
+                                :class="themeMode === 'light' ? 'border-primary bg-primary-50/40 ring-2 ring-primary/20' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                            <div class="w-12 h-12 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center text-xl flex-shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                                <i class="fa-solid fa-sun"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-extrabold text-sm text-slate-900 flex items-center justify-between">
+                                    <span>Mode Terang (Light)</span>
+                                    <i x-show="themeMode === 'light'" class="fa-solid fa-circle-check text-primary text-base"></i>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Latar bersih cerah, optimal untuk aktivitas siang hari.</p>
+                            </div>
+                        </button>
+
+                        <!-- Mode Gelap (Dark) -->
+                        <button type="button" 
+                                @click="setThemeMode('dark')"
+                                class="p-4 rounded-2xl border-2 text-left transition-all relative overflow-hidden flex items-center gap-4 group"
+                                :class="themeMode === 'dark' ? 'border-primary bg-slate-900/10 ring-2 ring-primary/20' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                            <div class="w-12 h-12 rounded-xl bg-slate-900 text-indigo-400 flex items-center justify-center text-xl flex-shrink-0 shadow-xs group-hover:scale-105 transition-transform">
+                                <i class="fa-solid fa-moon"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="font-extrabold text-sm text-slate-900 flex items-center justify-between">
+                                    <span>Mode Gelap (Dark)</span>
+                                    <i x-show="themeMode === 'dark'" class="fa-solid fa-circle-check text-primary text-base"></i>
+                                </div>
+                                <p class="text-[11px] text-slate-500 mt-0.5">Latar gelap teduh, nyaman untuk mata dan hemat daya.</p>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 2. PILIHAN WARNA TEMA GELAP (HITAM PEKAT, BIRU NAVY, DARK GREY, SOFT GREY) -->
+                <div class="space-y-3 pt-2">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-paint-roller text-primary"></i>
+                            <span>2. Pilihan Warna Tema Gelap</span>
+                        </label>
+                        <span class="text-[11px] text-slate-400 italic" x-show="themeMode === 'light'">(Pilih palet di bawah untuk mengaktifkan)</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+                        <!-- Hitam Pekat -->
+                        <button type="button" 
+                                @click="setPalette('black')"
+                                class="p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between relative group"
+                                :class="themePalette === 'black' ? 'border-primary bg-slate-50 ring-2 ring-primary/20' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-6 h-6 rounded-lg bg-[#050505] border border-slate-700 shadow-inner"></div>
+                                    <div class="w-6 h-6 rounded-lg bg-[#18181f] border border-slate-700 shadow-inner -ml-3"></div>
+                                </div>
+                                <i x-show="themePalette === 'black'" class="fa-solid fa-circle-check text-primary text-sm"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-900">Hitam Pekat</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5 leading-snug">Pitch Black (#050505) pekat & kontras tajam.</div>
+                            </div>
+                        </button>
+
+                        <!-- Biru Navy -->
+                        <button type="button" 
+                                @click="setPalette('navy')"
+                                class="p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between relative group"
+                                :class="themePalette === 'navy' ? 'border-primary bg-slate-50 ring-2 ring-primary/20' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-6 h-6 rounded-lg bg-[#070d1e] border border-blue-900 shadow-inner"></div>
+                                    <div class="w-6 h-6 rounded-lg bg-[#13224d] border border-blue-800 shadow-inner -ml-3"></div>
+                                </div>
+                                <i x-show="themePalette === 'navy'" class="fa-solid fa-circle-check text-primary text-sm"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-900">Biru Navy</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5 leading-snug">Deep Navy (#070d1e) nuansa korporat ESA.</div>
+                            </div>
+                        </button>
+
+                        <!-- Dark Grey -->
+                        <button type="button" 
+                                @click="setPalette('dark_grey')"
+                                class="p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between relative group"
+                                :class="themePalette === 'dark_grey' ? 'border-primary bg-slate-50 ring-2 ring-primary/20' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-6 h-6 rounded-lg bg-[#121316] border border-slate-700 shadow-inner"></div>
+                                    <div class="w-6 h-6 rounded-lg bg-[#23252d] border border-slate-600 shadow-inner -ml-3"></div>
+                                </div>
+                                <i x-show="themePalette === 'dark_grey'" class="fa-solid fa-circle-check text-primary text-sm"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-900">Dark Grey</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5 leading-snug">Charcoal (#121316) graphite modern.</div>
+                            </div>
+                        </button>
+
+                        <!-- Soft Grey -->
+                        <button type="button" 
+                                @click="setPalette('soft_grey')"
+                                class="p-4 rounded-2xl border-2 text-left transition-all flex flex-col justify-between relative group"
+                                :class="themePalette === 'soft_grey' ? 'border-primary bg-slate-50 ring-2 ring-primary/20' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex items-center gap-1.5">
+                                    <div class="w-6 h-6 rounded-lg bg-[#23252b] border border-slate-600 shadow-inner"></div>
+                                    <div class="w-6 h-6 rounded-lg bg-[#393c47] border border-slate-500 shadow-inner -ml-3"></div>
+                                </div>
+                                <i x-show="themePalette === 'soft_grey'" class="fa-solid fa-circle-check text-primary text-sm"></i>
+                            </div>
+                            <div>
+                                <div class="font-bold text-xs text-slate-900">Soft Grey</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5 leading-snug">Titanium (#23252b) abu-abu teduh lembut.</div>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 3. PENGATURAN WARNA CUSTOM DASHBOARD (ACCENT COLOR) -->
+                <div class="space-y-4 pt-2">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-eye-dropper text-primary"></i>
+                        <span>3. Pengaturan Nuansa Warna Custom Dashboard</span>
+                    </label>
+
+                    <div class="p-5 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-4">
+                        <!-- Preset Cepat Warna Populer -->
+                        <div>
+                            <span class="text-[11px] font-bold text-slate-600 block mb-2">Preset Warna Nuansa Pilihan:</span>
+                            <div class="flex items-center gap-2.5 flex-wrap">
+                                <template x-for="c in colorPresets" :key="c.hex">
+                                    <button type="button" 
+                                            @click="setPrimaryColor(c.hex)"
+                                            class="flex items-center gap-2 px-3 py-1.5 rounded-xl border transition-all text-xs font-bold shadow-2xs"
+                                            :class="primaryColor.toLowerCase() === c.hex.toLowerCase() ? 'border-slate-900 bg-white ring-2 ring-slate-400 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'">
+                                        <span class="w-4 h-4 rounded-full flex-shrink-0 shadow-xs" :style="'background-color: ' + c.hex"></span>
+                                        <span class="text-slate-700" x-text="c.name"></span>
+                                    </button>
+                                </template>
+                            </div>
+                        </div>
+
+                        <!-- Color Picker Bebas -->
+                        <div class="pt-3 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div class="flex items-center gap-3">
+                                <div class="relative">
+                                    <input type="color" 
+                                           x-model="primaryColor" 
+                                           @input="applyThemeToDOM()"
+                                           class="w-12 h-12 rounded-xl cursor-pointer border-2 border-slate-300 p-0.5 bg-white shadow-sm focus:outline-none">
+                                </div>
+                                <div>
+                                    <div class="text-xs font-bold text-slate-800">Pilih Warna Bebas (Color Picker Custom)</div>
+                                    <div class="text-[11px] text-slate-500 font-mono" x-text="'Kode Hex: ' + primaryColor.toUpperCase()"></div>
+                                </div>
+                            </div>
+                            <div class="text-[11px] text-slate-400 italic">
+                                *Warna diterapkan pada tombol, menu aktif, badge, dan sorotan navigasi dashboard Anda.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. PRATINJAU INTERAKTIF (LIVE PREVIEW) -->
+                <div class="space-y-3 pt-2">
+                    <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-display text-primary"></i>
+                        <span>4. Pratinjau Tampilan Dashboard (Live Interactive Preview)</span>
+                    </label>
+
+                    <div class="rounded-2xl border p-4 sm:p-5 transition-all duration-300"
+                         :style="previewCardStyle">
+                        <div class="flex items-center justify-between pb-3 border-b border-white/10 mb-4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-3 h-3 rounded-full bg-rose-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+                                <span class="text-xs font-bold ml-2 opacity-90" x-text="'Simulasi Dashboard (' + (themeMode === 'dark' ? 'Mode Gelap - ' + getPaletteLabel() : 'Mode Terang') + ')'"></span>
+                            </div>
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold text-white shadow-xs"
+                                  :style="'background-color: ' + primaryColor" x-text="primaryColor.toUpperCase()"></span>
+                        </div>
+
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                            <div class="p-3 rounded-xl border border-white/10" :style="previewInnerBoxStyle">
+                                <div class="text-[10px] opacity-60 font-semibold mb-1">Menu Navigasi Aktif</div>
+                                <div class="py-1.5 px-2.5 rounded-lg text-white font-bold text-xs flex items-center justify-between shadow-xs"
+                                     :style="'background-color: ' + primaryColor">
+                                    <span class="flex items-center gap-1.5"><i class="fa-solid fa-house text-[10px]"></i> Beranda</span>
+                                    <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+                                </div>
+                            </div>
+                            <div class="p-3 rounded-xl border border-white/10" :style="previewInnerBoxStyle">
+                                <div class="text-[10px] opacity-60 font-semibold mb-1">Tombol Aksi Utama</div>
+                                <button type="button" class="w-full py-1.5 px-3 rounded-lg text-white font-bold text-xs shadow-xs"
+                                        :style="'background-color: ' + primaryColor">
+                                    <i class="fa-solid fa-plus-circle mr-1"></i> Simpan Data
+                                </button>
+                            </div>
+                            <div class="p-3 rounded-xl border border-white/10" :style="previewInnerBoxStyle">
+                                <div class="text-[10px] opacity-60 font-semibold mb-1">Badge & Indikator</div>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="w-2.5 h-2.5 rounded-full" :style="'background-color: ' + primaryColor"></span>
+                                    <span class="text-xs font-bold opacity-90">ASystem Cloud Active</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. TOMBOL AKSI SIMPAN & RESET -->
+                <div class="pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
+                    <button type="button" 
+                            @click="resetToDefaultTheme()"
+                            class="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
+                        <i class="fa-solid fa-rotate-left"></i>
+                        <span>Reset ke Bawaan Sistem</span>
+                    </button>
+
+                    <button type="button" 
+                            @click="saveThemeSettings()"
+                            class="px-6 py-3 rounded-xl text-white text-xs sm:text-sm font-bold shadow-md hover:shadow-lg transition-all flex items-center gap-2"
+                            :style="'background-color: ' + primaryColor">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Terapkan & Simpan Tema</span>
+                    </button>
+                </div>
+            </div>
+
         </div>
 
     </div>
 
 </div>
 
-<!-- JAVASCRIPT UNTUK LIVE PREVIEW FOTO PROFIL -->
+<!-- JAVASCRIPT UNTUK LIVE PREVIEW FOTO PROFIL & CONTROLLER TEMA -->
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const avatarInput = document.getElementById('avatarInputDirect');
@@ -515,5 +779,133 @@
             });
         }
     });
+
+    function themePageController() {
+        return {
+            themeMode: localStorage.getItem('asystem_theme_mode') || 'light',
+            themePalette: localStorage.getItem('asystem_theme_palette') || 'navy',
+            primaryColor: localStorage.getItem('asystem_primary_color') || '#0F52BA',
+            colorPresets: [
+                { name: 'Biru ESA', hex: '#0F52BA' },
+                { name: 'Indigo', hex: '#4F46E5' },
+                { name: 'Emerald', hex: '#059669' },
+                { name: 'Purple', hex: '#7C3AED' },
+                { name: 'Ruby Rose', hex: '#E11D48' },
+                { name: 'Amber Gold', hex: '#D97706' },
+                { name: 'Teal Ocean', hex: '#0891B2' },
+            ],
+
+            initThemeController() {
+                this.themeMode = localStorage.getItem('asystem_theme_mode') || 'light';
+                this.themePalette = localStorage.getItem('asystem_theme_palette') || 'navy';
+                this.primaryColor = localStorage.getItem('asystem_primary_color') || '#0F52BA';
+
+                window.addEventListener('asystemThemeChanged', (e) => {
+                    if (e.detail) {
+                        this.themeMode = e.detail.theme;
+                        this.themePalette = e.detail.palette;
+                        this.primaryColor = e.detail.primary;
+                    }
+                });
+            },
+
+            setThemeMode(mode) {
+                this.themeMode = mode;
+                this.applyThemeToDOM();
+            },
+
+            setPalette(pal) {
+                this.themePalette = pal;
+                if (this.themeMode !== 'dark') {
+                    this.themeMode = 'dark';
+                }
+                this.applyThemeToDOM();
+            },
+
+            setPrimaryColor(hex) {
+                this.primaryColor = hex;
+                this.applyThemeToDOM();
+            },
+
+            getPaletteLabel() {
+                const labels = {
+                    'black': 'Hitam Pekat',
+                    'navy': 'Biru Navy',
+                    'dark_grey': 'Dark Grey',
+                    'soft_grey': 'Soft Grey'
+                };
+                return labels[this.themePalette] || 'Biru Navy';
+            },
+
+            get previewCardStyle() {
+                if (this.themeMode === 'light') {
+                    return 'background-color: #f8fafc; color: #1e293b; border-color: #e2e8f0;';
+                }
+                const bgMap = {
+                    'black': 'background-color: #09090b; color: #f8fafc; border-color: #27272a;',
+                    'navy': 'background-color: #070d1e; color: #f1f5f9; border-color: #213775;',
+                    'dark_grey': 'background-color: #121316; color: #f1f5f9; border-color: #383b48;',
+                    'soft_grey': 'background-color: #23252b; color: #f8fafc; border-color: #525666;'
+                };
+                return bgMap[this.themePalette] || bgMap['navy'];
+            },
+
+            get previewInnerBoxStyle() {
+                if (this.themeMode === 'light') {
+                    return 'background-color: #ffffff; border-color: #e2e8f0;';
+                }
+                const boxMap = {
+                    'black': 'background-color: #121215; border-color: #26262e;',
+                    'navy': 'background-color: #13224d; border-color: #213775;',
+                    'dark_grey': 'background-color: #23252d; border-color: #383b48;',
+                    'soft_grey': 'background-color: #393c47; border-color: #525666;'
+                };
+                return boxMap[this.themePalette] || boxMap['navy'];
+            },
+
+            applyThemeToDOM() {
+                document.documentElement.setAttribute('data-theme', this.themeMode);
+                document.documentElement.setAttribute('data-palette', this.themePalette);
+                document.documentElement.style.setProperty('--color-primary', this.primaryColor);
+                if (this.themeMode === 'dark') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+                if (typeof updateThemeUI === 'function') {
+                    updateThemeUI();
+                }
+            },
+
+            saveThemeSettings() {
+                localStorage.setItem('asystem_theme_mode', this.themeMode);
+                localStorage.setItem('asystem_theme_palette', this.themePalette);
+                localStorage.setItem('asystem_primary_color', this.primaryColor);
+                this.applyThemeToDOM();
+
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Tema Dashboard Disimpan!',
+                        text: 'Nuansa tema berhasil diterapkan secara personal.',
+                        showConfirmButton: false,
+                        timer: 2500,
+                        timerProgressBar: true
+                    });
+                } else {
+                    alert('Tema Dashboard berhasil disimpan!');
+                }
+            },
+
+            resetToDefaultTheme() {
+                this.themeMode = 'light';
+                this.themePalette = 'navy';
+                this.primaryColor = '#0F52BA';
+                this.saveThemeSettings();
+            }
+        };
+    }
 </script>
 @endsection

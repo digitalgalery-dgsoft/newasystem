@@ -16,6 +16,7 @@
     $userName = $currentUser ? $currentUser->name : 'Pengguna';
     $userEmail = $currentUser ? $currentUser->email : '-';
     $userRole = $currentUser ? ($currentUser->role ?? 'admin') : 'admin';
+    $userJabatan = $currentUser ? $currentUser->jabatan_display : 'Administrator';
     $isAdmin = $currentUser ? $currentUser->isAdmin() : false;
 
     $roleLabel = match($userRole) {
@@ -181,6 +182,14 @@
                             </div>
                         </div>
                     @else
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Jabatan</div>
+                            <div class="text-slate-800 font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-briefcase text-slate-400"></i>
+                                <span>{{ $userJabatan }}</span>
+                            </div>
+                        </div>
+
                         <div class="space-y-1">
                             <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Lingkup Sistem</div>
                             <div class="text-slate-800 font-medium">Enterprise Management, Talent Pool & Odoo ERP</div>

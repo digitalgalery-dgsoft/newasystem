@@ -1212,11 +1212,39 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 66. 🎨 Kustomisasi Tema Dashboard Personal (Light/Dark Mode, 4 Palet Gelap, Custom Accent Color) & Tampilan Jabatan User (20 September 2026)
+- **Latar Belakang & Kebutuhan**:
+  1. Label di bawah nama pengguna pada pojok kanan atas (Topbar) dan pojok kiri bawah (Sidebar Footer) sebelumnya menampilkan Role Akses (misal: `Administrator`, `Karyawan Inhouse`). Pengguna meminta agar diganti menampilkan **Jabatan** dari user tersebut.
+  2. Menambahkan pengaturan warna custom di halaman **Edit Profile** agar setiap pengguna dapat mengubah nuansa dashboard mereka sendiri tanpa ter-apply secara global (tersimpan mandiri secara `localStorage`).
+  3. Menambahkan pilihan **Light / Dark Mode** dengan opsi palet warna gelap: **Hitam Pekat**, **Biru Navy**, **Dark Grey**, dan **Soft Grey**.
+- **Solusi & Implementasi Terpadu**:
+  1. **Resolusi Jabatan Pengguna (`User.php`)**:
+     - Membuat accessor cerdas `getJabatanDisplayAttribute()` pada model `User`: memprioritaskan jabatan resmi dari Data Karyawan (`Employee::jabatan` jika terhubung), kemudian kolom `job_title` pada tabel `users`, dan fallback terformat jika belum terisi.
+     - Memperbarui label di pojok kanan atas (Topbar) dan pojok kiri bawah (Sidebar) pada [app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php) serta kartu profil pada [index.blade.php](file:///d:/ASystem/newasystem/resources/views/fitur/index.blade.php) sehingga selalu mencerminkan jabatan resmi pengguna.
+  2. **Multi-Palette Dark & Custom Accent Color System**:
+     - Mengembangkan arsitektur CSS Variables terpadu di [layouts/app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php) dengan dukungan 4 palet warna gelap:
+       - **Hitam Pekat** (`black`): Pitch black murni (`#050505` & `#121215`) dengan kontras tajam.
+       - **Biru Navy** (`navy`): Deep Navy Blue khas ASystem (`#070d1e` & `#13224d`).
+       - **Dark Grey** (`dark_grey`): Charcoal Graphite modern (`#121316` & `#23252d`).
+       - **Soft Grey** (`soft_grey`): Titanium Muted netral (`#23252b` & `#393c47`).
+     - Script inisialisasi awal di tag `<head>` (*Zero-Flicker*) yang langsung menerapkan preferensi tema dari `localStorage` sebelum peramban selesai merender halaman.
+     - Menyediakan tombol cepat **Quick Dark / Light Toggle** (ikon matahari/bulan) di Topbar samping notifikasi.
+  3. **Antarmuka Kustomisasi Tema di Edit Profile (`profile/index.blade.php`)**:
+     - Menambahkan Tab ke-3 **"Tema & Warna"** dengan pengontrol Alpine.js interaktif:
+       - Pemilihan mode: *Mode Terang (Light)* vs *Mode Gelap (Dark)*.
+       - Pemilihan palet gelap dengan kartu visual & swatch warna.
+       - Pemilihan nuansa aksen dashboard: 7 preset warna populer serta **Custom Color Picker** bebas (`<input type="color">`).
+       - **Live Simulation Preview**: Miniatur dashboard yang berubah warna secara real-time saat pengguna menguji tema.
+       - Tombol simpan ke `localStorage` dan tombol reset ke bawaan sistem.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
-| `92fd040` | feat(export): sertakan jabatan AS dan eliminasi fallback Administrator ESA pada export Excel |
+| `b6a0433` | feat(ui): tampilkan jabatan di label user dan tambahkan kustomisasi tema dashboard (light/dark mode & custom color) |
+| `ed77715` | feat(export): sertakan jabatan AS dan eliminasi fallback Administrator ESA pada export Excel |
 | `3badda1` | docs: document Milestone 64 recruiter full name resolution in UPDATE_PROGRESS.md |
 | `792c6ab` | feat(export): resolve recruiter full name from employee data in candidate portal XLSX export |
 | `c5de959` | docs: document Milestone 63 profile avatar in chat bubbles and real-time notifications in UPDATE_PROGRESS.md |
