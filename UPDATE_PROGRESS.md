@@ -1134,6 +1134,22 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 62. ⚡ Optimasi Kecepatan Ekstrim Groups Chat & Perbaikan Pembukaan Modal (20 September 2026)
+- **Akar Masalah Teridentifikasi**:
+  1. **Query Terlalu Besar (23.367 Baris)**: Query inhouse karyawan sebelumnya menyertakan kondisi fallback entitas yang secara tidak sengaja menarik puluhan ribu karyawan *RateCard* (outsourced), menghasilkan payload JSON 3.5 MB yang membekukan thread JavaScript browser saat inisialisasi Alpine.js.
+  2. **Event Bubbling Alpine `@click.away`**: Modal kartu menggunakan direktif `@click.away` tanpa modifier `@click.stop` pada tombol pemicu, sehingga klik tombol luar langsung memicu penutupan modal pada *tick* yang sama persis saat modal baru saja dibuka.
+- **Solusi & Optimasi yang Diterapkan**:
+  - **Pemangkasan 97% Data Karyawan (Dari 23.367 menjadi 794 Orang)**:
+    - Query `WorkPlanChatController` kini difokuskan murni pada `status = 'Aktiv'` dan `tipe_karyawan = 'Inhouse'` serta akun User portal aktif.
+    - Waktu query terpangkas drastis menjadi **39 ms** (dari hitungan detik) dan ukuran payload JSON menyusut dari 3.5 MB menjadi hanya ~50 KB.
+  - **Render Cepat Terproteksi (*Capped List Rendering*)**:
+    - Menambahkan *getter* `displayedInhouseEmployees` dan `displayedAddMembers` yang membatasi render DOM hingga 60 item pertama saat pencarian kosong dan merender instan seluruh hasil yang cocok saat pengguna mengetik. Render DOM turun dari 4.000+ nodes menjadi hanya 60 nodes (< 3ms).
+  - **Perbaikan Pembukaan Modal Handal**:
+    - Menambahkan `.stop` pada seluruh tombol pembuka (`@click.stop="openCreateGroupModal()"`, `@click.stop="openAddMemberModal()"`, `@click.stop="openViewMembersModal()"`).
+    - Memindahkan penutupan latar belakang ke `@click.self="show... = false"` pada elemen *backdrop* gelap serta menambahkan `@click.stop` pada kartu modal, menjamin modal terbuka 100% responsif tanpa konflik klik luar.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |

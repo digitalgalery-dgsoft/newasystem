@@ -29,7 +29,7 @@
         </div>
 
         <div class="flex items-center gap-2">
-            <button type="button" @click="openCreateGroupModal()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20">
+            <button type="button" @click.stop="openCreateGroupModal()" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20">
                 <i class="fa-solid fa-plus text-xs"></i>
                 <span>Buat Group Baru</span>
             </button>
@@ -62,7 +62,7 @@
                 </div>
 
                 <div class="flex items-center gap-1">
-                    <button type="button" @click="openCreateGroupModal()" class="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors" title="Buat Group Baru">
+                    <button type="button" @click.stop="openCreateGroupModal()" class="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors" title="Buat Group Baru">
                         <i class="fa-solid fa-user-group text-xs"></i>
                     </button>
                     <button type="button" @click="pollGroups(true)" class="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors" title="Refresh Daftar Group">
@@ -119,7 +119,7 @@
                     <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">
                         Klik tombol di atas untuk membuat group baru dan menambahkan anggota tim.
                     </p>
-                    <button type="button" @click="openCreateGroupModal()" class="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-sm">
+                    <button type="button" @click.stop="openCreateGroupModal()" class="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-sm">
                         <i class="fa-solid fa-plus text-[10px]"></i>
                         <span>Buat Group Pertama</span>
                     </button>
@@ -140,7 +140,7 @@
                          style="background-color: {{ $activeGroup->avatar_color ?: '#10b981' }}">
                         {{ $activeGroup->initials }}
                     </div>
-                    <div class="min-w-0 cursor-pointer" @click="openViewMembersModal()">
+                    <div class="min-w-0 cursor-pointer" @click.stop="openViewMembersModal()">
                         <div class="text-xs md:text-sm font-bold text-slate-900 truncate hover:text-emerald-700 transition-colors flex items-center gap-1.5">
                             <span>{{ $activeGroup->name }}</span>
                             <i class="fa-solid fa-circle-info text-[11px] text-slate-400"></i>
@@ -156,11 +156,11 @@
                 </div>
 
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    <button type="button" @click="openAddMemberModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold transition-all shadow-xs" title="Tambah Personel ke Group Ini">
+                    <button type="button" @click.stop="openAddMemberModal()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-800 text-xs font-bold transition-all shadow-xs" title="Tambah Personel ke Group Ini">
                         <i class="fa-solid fa-user-plus text-[11px] text-emerald-600"></i>
                         <span class="hidden sm:inline">Tambah Anggota</span>
                     </button>
-                    <button type="button" @click="openViewMembersModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors" title="Lihat Daftar Anggota">
+                    <button type="button" @click.stop="openViewMembersModal()" class="w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 flex items-center justify-center transition-colors" title="Lihat Daftar Anggota">
                         <i class="fa-solid fa-users text-xs"></i>
                     </button>
                 </div>
@@ -254,7 +254,7 @@
                     Kirim dan terima pesan real-time antar karyawan inhouse. Diskusikan tugas, koordinasikan proyek harian, dan pantau progres kerja tim tanpa perlu membuka aplikasi luar.
                 </p>
                 <div class="mt-6 flex items-center gap-3">
-                    <button type="button" @click="openCreateGroupModal()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all">
+                    <button type="button" @click.stop="openCreateGroupModal()" class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all">
                         <i class="fa-solid fa-plus text-xs"></i>
                         <span>Buat Group Chat Baru</span>
                     </button>
@@ -273,6 +273,7 @@
     <!-- MODAL: BUAT GROUP BARU -->
     <!-- ================================================================= -->
     <div x-show="showCreateGroupModal"
+         @click.self="showCreateGroupModal = false"
          class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
@@ -283,7 +284,7 @@
          style="display: none;">
         
         <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-visible relative"
-             @click.away="showCreateGroupModal = false">
+             @click.stop>
             
             <div class="px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between rounded-t-2xl">
                 <div class="flex items-center gap-2.5">
@@ -375,11 +376,11 @@
                             
                             <div class="px-3 py-1.5 bg-slate-50 text-[10px] text-slate-500 flex justify-between items-center font-medium">
                                 <span>Pilih nama karyawan di bawah:</span>
-                                <span class="font-bold text-slate-700" x-text="filteredInhouseEmployees.length + ' personil tersedia'"></span>
+                                <span class="font-bold text-slate-700" x-text="filteredInhouseEmployees.length + ' personil' + (filteredInhouseEmployees.length > 60 ? ' (menampilkan 60)' : '')"></span>
                             </div>
 
                             <div class="max-h-48 overflow-y-auto divide-y divide-slate-100">
-                                <template x-for="emp in filteredInhouseEmployees" :key="emp.id">
+                                <template x-for="emp in displayedInhouseEmployees" :key="emp.id">
                                     <div @click="toggleMember(emp.nama_karyawan)"
                                          class="flex items-center justify-between px-3.5 py-2 hover:bg-emerald-50/60 cursor-pointer transition-colors select-none"
                                          :class="isMemberSelected(emp.nama_karyawan) ? 'bg-emerald-50/80' : ''">
@@ -437,6 +438,7 @@
     <!-- ================================================================= -->
     @if($activeGroup)
     <div x-show="showAddMemberModal"
+         @click.self="showAddMemberModal = false"
          class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
@@ -447,7 +449,7 @@
          style="display: none;">
         
         <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-visible relative"
-             @click.away="showAddMemberModal = false">
+             @click.stop>
             
             <div class="px-6 py-4 bg-emerald-600 text-white flex items-center justify-between rounded-t-2xl">
                 <div class="flex items-center gap-2.5">
@@ -522,12 +524,12 @@
                             <!-- Search Status & Quick Count -->
                             <div class="px-3 py-1.5 bg-slate-50 text-[10px] text-slate-500 flex justify-between items-center font-medium">
                                 <span>Pilih calon anggota yang akan ditambahkan:</span>
-                                <span class="font-bold text-slate-700" x-text="nonMemberCandidates.length + ' personil tersedia'"></span>
+                                <span class="font-bold text-slate-700" x-text="nonMemberCandidates.length + ' personil' + (nonMemberCandidates.length > 60 ? ' (menampilkan 60)' : '')"></span>
                             </div>
 
                             <!-- List of Non-Member Candidates -->
                             <div class="max-h-48 overflow-y-auto divide-y divide-slate-100">
-                                <template x-for="emp in nonMemberCandidates" :key="emp.id">
+                                <template x-for="emp in displayedAddMembers" :key="emp.id">
                                     <div @click="toggleAddMember(emp.nama_karyawan)"
                                          class="flex items-center justify-between px-3.5 py-2 hover:bg-emerald-50/60 cursor-pointer transition-colors select-none"
                                          :class="isAddMemberSelected(emp.nama_karyawan) ? 'bg-emerald-50/80' : ''">
@@ -587,6 +589,7 @@
     <!-- MODAL: LIHAT SEMUA ANGGOTA GROUP -->
     <!-- ================================================================= -->
     <div x-show="showViewMembersModal"
+         @click.self="showViewMembersModal = false"
          class="fixed inset-0 z-50 overflow-y-auto flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs"
          x-transition:enter="transition ease-out duration-200"
          x-transition:enter-start="opacity-0"
@@ -597,7 +600,7 @@
          style="display: none;">
         
         <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-md w-full overflow-hidden"
-             @click.away="showViewMembersModal = false">
+             @click.stop>
             
             <div class="px-5 py-4 bg-slate-900 text-white flex items-center justify-between">
                 <div class="flex items-center gap-2.5">
@@ -762,6 +765,14 @@ function wpGroupChat() {
                        ((e.jabatan_db || e.jabatan || '').toLowerCase().includes(q)) ||
                        ((e.area || '').toLowerCase().includes(q));
             });
+        },
+
+        get displayedInhouseEmployees() {
+            return this.filteredInhouseEmployees.slice(0, 60);
+        },
+
+        get displayedAddMembers() {
+            return this.nonMemberCandidates.slice(0, 60);
         },
 
         // Searchable Multi-Select Dropdown methods (Create Group)

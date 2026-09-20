@@ -76,27 +76,12 @@ class WorkPlanChatController extends Controller
                 ->update(['last_read_at' => now()]);
         }
 
-        // Ambil daftar karyawan Inhouse aktif untuk tambah anggota / buat group (kompatibel penuh struktur db)
-        $inhouseEmployeesQuery = Employee::where(function ($q) {
-                $q->where('status', 'Aktiv')
-                  ->orWhere('status', 'like', '%Aktiv%')
-                  ->orWhereNull('status');
-            })
+        // Ambil daftar karyawan Inhouse aktif (hanya tipe Inhouse & status Aktiv)
+        $inhouseEmployees = Employee::where('status', 'Aktiv')
             ->where(function ($q) {
                 $q->where('tipe_karyawan', 'Inhouse')
-                  ->orWhere(DB::raw('LOWER(TRIM(tipe_karyawan))'), 'inhouse')
-                  ->orWhereIn('entity', ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'])
-                  ->orWhere('prinsiple', 'like', '%ARINA MULTI%')
-                  ->orWhere('prinsiple', 'like', '%ALVA KARYA%')
-                  ->orWhere('prinsiple', 'like', '%ANUGRAH TERPERCAYA%')
-                  ->orWhere('prinsiple', 'like', '%ABADI BERKAT%')
-                  ->orWhere('prinsiple', 'like', '%BINTANG OETAMA%')
-                  ->orWhere('prinsiple', 'like', '%TALENTA BERKARYA%')
-                  ->orWhere('prinsiple', 'like', '%TRI BERKAH%')
-                  ->orWhereNull('tipe_karyawan');
-            });
-
-        $inhouseEmployees = (clone $inhouseEmployeesQuery)
+                  ->orWhere(DB::raw('LOWER(TRIM(tipe_karyawan))'), 'inhouse');
+            })
             ->select('id', 'nama_karyawan', 'jabatan', 'area', 'divisi')
             ->orderBy('nama_karyawan')
             ->get();
