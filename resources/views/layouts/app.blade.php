@@ -341,14 +341,14 @@
                             </a>
                         </li>
 
-                        <!-- WA GROUPS CHAT -->
+                        <!-- GROUPS CHAT -->
                         <li>
                             <a href="{{ route('workplan.chat') }}" 
-                               title="WA Groups Chat"
+                               title="Groups Chat"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('workplan.chat*') ? 'sidebar-item-active' : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50' }}"
                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
-                                <i class="fa-brands fa-whatsapp text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('workplan.chat*') ? 'text-white' : 'text-emerald-500' }}"></i>
-                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">WA Groups Chat</span>
+                                <i class="fa-solid fa-comments text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('workplan.chat*') ? 'text-white' : 'text-emerald-500' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Groups Chat</span>
                                 <span x-show="!sidebarCollapsed" class="text-[9px] {{ request()->routeIs('workplan.chat*') ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800' }} font-bold px-1.5 py-0.5 rounded-md">LIVE</span>
                             </a>
                         </li>

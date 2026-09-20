@@ -1114,6 +1114,26 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 61. 👥 Searchable Multi-Select Dropdown Anggota Tim & Penyesuaian Label "Groups Chat" (20 September 2026)
+- **Searchable Multi-Select Dropdown Interaktif**:
+  - **Form Buat Group Baru & Form Tambah Anggota**: Mengubah field input pemilihan anggota tim menjadi komponen Searchable Multi-Select Dropdown modern yang intuitif dan responsif.
+  - **Tampilan Chips / Badges Anggota Terpilih**:
+    - Anggota yang dipilih langsung tampil sebagai tag/badge rapi berwarna hijau toska dengan tombol silang (*✕*) untuk menghapus anggota secara cepat per individu.
+  - **Pencarian Real-Time & Panel Dropdown Mengambang**:
+    - Input teks pencarian cerdas yang memfilter nama karyawan, jabatan, dan kota/area secara instan di sisi klien.
+    - Panel dropdown melayang (*floating dropdown menu* `z-50 shadow-2xl rounded-xl`) dengan avatar inisial, nama tebal, divisi/area, dan indikator checkmark terpilih.
+    - Dilengkapi tombol cepat *"Pilih Semua"* (memilih semua hasil filter pencarian aktif) dan *"Reset"* (mengosongkan pilihan).
+    - Footer dropdown menampilkan ringkasan jumlah anggota terpilih dan tombol *"Selesai"*.
+  - **Sinkronisasi Skema Karyawan Inhouse & User Portal**:
+    - Penyesuaian query pada `WorkPlanChatController` untuk mencocokkan skema database riil: `status = 'Aktiv'`, `tipe_karyawan = 'Inhouse'`, entitas resmi ESA Groups (AMK, AKP, ATK, ABO, ATB), dan menyertakan seluruh akun User aktif sistem agar seluruh personel (misal: Irfan Nur, Abdurrahman Jamil, dll.) dapat langsung dicari dan dipilih.
+- **Standarisasi Penamaan Label ("Groups Chat")**:
+  - Menghapus penyebutan merek pihak ketiga ("WA" / "WhatsApp") dan mengganti label menjadi **"Groups Chat"** di seluruh antarmuka:
+    - Menu navigasi bilah samping (*sidebar*) utama portal dengan ikon obrolan modern (`fa-solid fa-comments`) dan badge **LIVE**.
+    - Tombol pintas navigasi pada header Work Plan Kanban.
+    - Judul halaman, breadcrumbs, modal *"Buat Group Baru"*, dan welcome screen obrolan.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'WhatsApp Groups Chat - Work Plan & ToDoList')
+@section('title', 'Groups Chat - Work Plan & ToDoList')
 
 @section('content')
 <div class="space-y-4" x-data="wpGroupChat()" x-init="initChat()">
@@ -12,18 +12,18 @@
                 <i class="fa-solid fa-arrow-left text-sm"></i>
             </a>
             <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white flex items-center justify-center text-xl shadow-md shadow-emerald-500/25 flex-shrink-0">
-                <i class="fa-brands fa-whatsapp"></i>
+                <i class="fa-solid fa-comments"></i>
             </div>
             <div>
                 <div class="flex items-center gap-2">
-                    <h1 class="text-base font-bold text-slate-900 tracking-tight">Work Plan Groups Chat</h1>
+                    <h1 class="text-base font-bold text-slate-900 tracking-tight">Groups Chat</h1>
                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-300">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                         REAL-TIME
                     </span>
                 </div>
                 <p class="text-[11px] text-slate-500">
-                    Kolaborasi pesan grup langsung ala WhatsApp Web antar personil inhouse ESA Groups.
+                    Kolaborasi pesan grup langsung antar personil inhouse ESA Groups.
                 </p>
             </div>
         </div>
@@ -117,7 +117,7 @@
                     </div>
                     <div class="text-xs font-bold text-slate-700">Tidak ada group ditemukan</div>
                     <p class="text-[11px] text-slate-400 mt-1 max-w-xs mx-auto">
-                        Klik tombol di atas untuk membuat group WA baru dan menambahkan anggota tim.
+                        Klik tombol di atas untuk membuat group baru dan menambahkan anggota tim.
                     </p>
                     <button type="button" @click="openCreateGroupModal()" class="mt-3.5 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-[11px] font-bold shadow-sm">
                         <i class="fa-solid fa-plus text-[10px]"></i>
@@ -247,9 +247,9 @@
             <!-- EMPTY STATE: WELCOME SCREEN (WA WEB STYLE) -->
             <div class="flex-1 flex flex-col items-center justify-center p-8 text-center bg-slate-50/70">
                 <div class="w-20 h-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center text-4xl shadow-inner mb-4">
-                    <i class="fa-brands fa-whatsapp"></i>
+                    <i class="fa-solid fa-comments"></i>
                 </div>
-                <h2 class="text-xl font-black text-slate-800 tracking-tight">Work Plan WhatsApp Groups</h2>
+                <h2 class="text-xl font-black text-slate-800 tracking-tight">Work Plan Groups Chat</h2>
                 <p class="text-xs text-slate-500 mt-2 max-w-md leading-relaxed">
                     Kirim dan terima pesan real-time antar karyawan inhouse. Diskusikan tugas, koordinasikan proyek harian, dan pantau progres kerja tim tanpa perlu membuka aplikasi luar.
                 </p>
@@ -282,16 +282,16 @@
          x-transition:leave-end="opacity-0"
          style="display: none;">
         
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden"
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-visible relative"
              @click.away="showCreateGroupModal = false">
             
-            <div class="px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between">
+            <div class="px-6 py-4 bg-gradient-to-r from-emerald-600 to-teal-700 text-white flex items-center justify-between rounded-t-2xl">
                 <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white">
                         <i class="fa-solid fa-user-group text-sm"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold">Buat Group WA Baru</h3>
+                        <h3 class="text-sm font-bold">Buat Group Baru</h3>
                         <p class="text-[10px] text-emerald-100">Kolaborasi tugas dan koordinasi tim</p>
                     </div>
                 </div>
@@ -319,41 +319,103 @@
                               class="w-full px-3.5 py-2.5 text-xs rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all resize-none"></textarea>
                 </div>
 
-                <!-- Pilih Anggota dari Karyawan Inhouse -->
-                <div>
+                <!-- Pilih Anggota Tim (Searchable Multi-Select Dropdown) -->
+                <div class="relative" @click.away="inhouseDropdownOpen = false">
                     <div class="flex items-center justify-between mb-1.5">
                         <label class="block text-xs font-bold text-slate-700">
                             Pilih Anggota Tim (Inhouse)
-                            <span class="text-slate-400 font-normal ml-1" x-text="'(' + newGroupForm.members.length + ' dipilih)'"></span>
+                            <span class="text-emerald-700 font-semibold ml-1" x-text="'(' + newGroupForm.members.length + ' dipilih)'"></span>
                         </label>
                         <div class="flex items-center gap-2 text-[11px]">
-                            <button type="button" @click="selectAllInhouse()" class="text-emerald-600 hover:underline font-semibold">Pilih Semua</button>
+                            <button type="button" @click="selectAllFilteredInhouse()" class="text-emerald-600 hover:text-emerald-800 hover:underline font-semibold">Pilih Semua</button>
                             <span class="text-slate-300">•</span>
-                            <button type="button" @click="newGroupForm.members = []" class="text-rose-600 hover:underline font-semibold">Reset</button>
+                            <button type="button" @click="clearSelectedMembers()" class="text-rose-500 hover:text-rose-700 hover:underline font-semibold">Reset</button>
                         </div>
                     </div>
 
-                    <!-- Search filter inhouse -->
-                    <div class="relative mb-2">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                        <input type="text" x-model="inhouseSearch" placeholder="Cari nama karyawan inhouse..."
-                               class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 rounded-lg border border-slate-200 focus:border-emerald-500 outline-none">
+                    <!-- Selected Chips / Badges Display -->
+                    <div x-show="newGroupForm.members.length > 0" class="flex flex-wrap gap-1.5 mb-2 max-h-24 overflow-y-auto p-1.5 bg-emerald-50/60 rounded-xl border border-emerald-200/80">
+                        <template x-for="name in newGroupForm.members" :key="name">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-800 text-[11px] font-bold shadow-xs">
+                                <span x-text="name"></span>
+                                <button type="button" @click.stop="removeMember(name)" class="w-4 h-4 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-700 inline-flex items-center justify-center transition-colors" title="Hapus">
+                                    <i class="fa-solid fa-xmark text-[9px]"></i>
+                                </button>
+                            </span>
+                        </template>
                     </div>
 
-                    <!-- Scrollable list of inhouse employees -->
-                    <div class="max-h-48 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white p-1">
-                        <template x-for="emp in filteredInhouseEmployees" :key="emp.id">
-                            <label class="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
-                                <input type="checkbox" :value="emp.nama_karyawan" x-model="newGroupForm.members"
-                                       class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-                                <div class="min-w-0 flex-1">
-                                    <div class="text-xs font-bold text-slate-800 truncate" x-text="emp.nama_karyawan"></div>
-                                    <div class="text-[10px] text-slate-400 truncate">
-                                        <span x-text="emp.jabatan_db || 'Karyawan'"></span> • <span x-text="emp.area || 'Pusat'"></span>
+                    <!-- Dropdown Trigger & Search Input -->
+                    <div class="relative">
+                        <div class="relative flex items-center cursor-pointer" @click="inhouseDropdownOpen = true">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-slate-400 text-xs pointer-events-none"></i>
+                            <input type="text" 
+                                   x-model="inhouseSearch" 
+                                   @focus="inhouseDropdownOpen = true"
+                                   @click="inhouseDropdownOpen = true"
+                                   placeholder="Ketik untuk mencari nama karyawan..."
+                                   class="w-full pl-9 pr-10 py-2.5 text-xs bg-white rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all placeholder:text-slate-400 font-medium">
+                            <button type="button" 
+                                    @click.stop="inhouseDropdownOpen = !inhouseDropdownOpen" 
+                                    class="absolute right-2.5 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
+                                <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200" :class="{'rotate-180 text-emerald-600': inhouseDropdownOpen}"></i>
+                            </button>
+                        </div>
+
+                        <!-- Floating Dropdown Panel -->
+                        <div x-show="inhouseDropdownOpen" 
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-100"
+                             style="display: none;">
+                            
+                            <div class="px-3 py-1.5 bg-slate-50 text-[10px] text-slate-500 flex justify-between items-center font-medium">
+                                <span>Pilih nama karyawan di bawah:</span>
+                                <span class="font-bold text-slate-700" x-text="filteredInhouseEmployees.length + ' personil tersedia'"></span>
+                            </div>
+
+                            <div class="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                <template x-for="emp in filteredInhouseEmployees" :key="emp.id">
+                                    <div @click="toggleMember(emp.nama_karyawan)"
+                                         class="flex items-center justify-between px-3.5 py-2 hover:bg-emerald-50/60 cursor-pointer transition-colors select-none"
+                                         :class="isMemberSelected(emp.nama_karyawan) ? 'bg-emerald-50/80' : ''">
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <div class="w-7 h-7 rounded-lg text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0"
+                                                 :class="isMemberSelected(emp.nama_karyawan) ? 'bg-emerald-600 shadow-xs' : 'bg-slate-400'">
+                                                <span x-text="(emp.nama_karyawan || '').substring(0, 2).toUpperCase()"></span>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="text-xs text-slate-800 truncate" :class="isMemberSelected(emp.nama_karyawan) ? 'font-extrabold text-emerald-900' : 'font-semibold'" x-text="emp.nama_karyawan"></div>
+                                                <div class="text-[10px] text-slate-400 truncate">
+                                                    <span x-text="emp.jabatan_db || emp.jabatan || 'Karyawan'"></span> • <span x-text="emp.area || 'Pusat'"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="w-5 h-5 rounded-md border flex items-center justify-center transition-all flex-shrink-0"
+                                             :class="isMemberSelected(emp.nama_karyawan) ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'border-slate-300 bg-white'">
+                                            <i class="fa-solid fa-check text-[10px]" x-show="isMemberSelected(emp.nama_karyawan)"></i>
+                                        </div>
                                     </div>
+                                </template>
+
+                                <div x-show="filteredInhouseEmployees.length === 0" class="p-6 text-center text-xs text-slate-400">
+                                    <i class="fa-solid fa-user-slash text-base mb-1 block text-slate-300"></i>
+                                    Tidak ada karyawan yang cocok dengan pencarian "<span class="font-semibold text-slate-600" x-text="inhouseSearch"></span>"
                                 </div>
-                            </label>
-                        </template>
+                            </div>
+
+                            <div class="p-2 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                                <span class="text-[11px] text-emerald-700 font-bold" x-text="newGroupForm.members.length + ' anggota dipilih'"></span>
+                                <button type="button" @click="inhouseDropdownOpen = false" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition-colors">
+                                    Selesai
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -384,10 +446,10 @@
          x-transition:leave-end="opacity-0"
          style="display: none;">
         
-        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-hidden"
+        <div class="bg-white rounded-2xl shadow-2xl border border-slate-200 max-w-lg w-full overflow-visible relative"
              @click.away="showAddMemberModal = false">
             
-            <div class="px-6 py-4 bg-emerald-600 text-white flex items-center justify-between">
+            <div class="px-6 py-4 bg-emerald-600 text-white flex items-center justify-between rounded-t-2xl">
                 <div class="flex items-center gap-2.5">
                     <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center text-white">
                         <i class="fa-solid fa-user-plus text-sm"></i>
@@ -403,36 +465,108 @@
             </div>
 
             <form @submit.prevent="submitAddMembers()" class="p-6 space-y-4">
-                <div class="flex items-center justify-between mb-1">
-                    <label class="block text-xs font-bold text-slate-700">
-                        Pilih Karyawan Inhouse
-                        <span class="text-slate-400 font-normal ml-1" x-text="'(' + selectedAddMembers.length + ' dipilih)'"></span>
-                    </label>
-                </div>
+                <!-- Pilih Karyawan Inhouse (Searchable Multi-Select Dropdown) -->
+                <div class="relative" @click.away="addMemberDropdownOpen = false">
+                    <div class="flex items-center justify-between mb-1.5">
+                        <label class="block text-xs font-bold text-slate-700">
+                            Pilih Karyawan Inhouse
+                            <span class="text-emerald-700 font-semibold ml-1" x-text="'(' + selectedAddMembers.length + ' dipilih)'"></span>
+                        </label>
+                        <div class="flex items-center gap-2 text-[11px]">
+                            <button type="button" @click="selectAllFilteredAddMembers()" class="text-emerald-600 hover:text-emerald-800 hover:underline font-semibold">Pilih Semua</button>
+                            <span class="text-slate-300">•</span>
+                            <button type="button" @click="clearAddMembers()" class="text-rose-500 hover:text-rose-700 hover:underline font-semibold">Reset</button>
+                        </div>
+                    </div>
 
-                <!-- Search filter -->
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="text" x-model="addMemberSearch" placeholder="Cari nama karyawan..."
-                           class="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 rounded-lg border border-slate-200 focus:border-emerald-500 outline-none">
-                </div>
+                    <!-- Selected Chips / Badges Container -->
+                    <div x-show="selectedAddMembers.length > 0" class="flex flex-wrap gap-1.5 mb-2 max-h-24 overflow-y-auto p-1.5 bg-emerald-50/60 rounded-xl border border-emerald-200/80">
+                        <template x-for="name in selectedAddMembers" :key="name">
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-emerald-300 text-emerald-800 text-[11px] font-bold shadow-xs">
+                                <span x-text="name"></span>
+                                <button type="button" @click.stop="removeAddMember(name)" class="w-4 h-4 rounded-full bg-emerald-100 hover:bg-emerald-200 text-emerald-700 inline-flex items-center justify-center transition-colors" title="Hapus">
+                                    <i class="fa-solid fa-xmark text-[9px]"></i>
+                                </button>
+                            </span>
+                        </template>
+                    </div>
 
-                <!-- Scrollable list of available candidates -->
-                <div class="max-h-56 overflow-y-auto border border-slate-200 rounded-xl divide-y divide-slate-100 bg-white p-1">
-                    <template x-for="emp in nonMemberCandidates" :key="emp.id">
-                        <label class="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 rounded-lg cursor-pointer transition-colors">
-                            <input type="checkbox" :value="emp.nama_karyawan" x-model="selectedAddMembers"
-                                   class="rounded border-slate-300 text-emerald-600 focus:ring-emerald-500">
-                            <div class="min-w-0 flex-1">
-                                <div class="text-xs font-bold text-slate-800 truncate" x-text="emp.nama_karyawan"></div>
-                                <div class="text-[10px] text-slate-400 truncate">
-                                    <span x-text="emp.jabatan_db || 'Karyawan'"></span> • <span x-text="emp.area || 'Pusat'"></span>
+                    <!-- Search Input & Dropdown Toggle Box -->
+                    <div class="relative">
+                        <div class="relative flex items-center cursor-pointer" @click="addMemberDropdownOpen = true">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3.5 text-slate-400 text-xs pointer-events-none"></i>
+                            <input type="text" 
+                                   x-model="addMemberSearch" 
+                                   @focus="addMemberDropdownOpen = true"
+                                   @click="addMemberDropdownOpen = true"
+                                   placeholder="Ketik untuk mencari nama karyawan..."
+                                   class="w-full pl-9 pr-10 py-2.5 text-xs bg-white rounded-xl border border-slate-300 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all placeholder:text-slate-400 font-medium">
+                            <button type="button" 
+                                    @click.stop="addMemberDropdownOpen = !addMemberDropdownOpen" 
+                                    class="absolute right-2.5 w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors">
+                                <i class="fa-solid fa-chevron-down text-xs transition-transform duration-200" :class="{'rotate-180 text-emerald-600': addMemberDropdownOpen}"></i>
+                            </button>
+                        </div>
+
+                        <!-- Floating Dropdown List Panel -->
+                        <div x-show="addMemberDropdownOpen" 
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 right-0 top-full mt-1.5 bg-white border border-slate-200 rounded-xl shadow-2xl z-50 overflow-hidden divide-y divide-slate-100"
+                             style="display: none;">
+                            
+                            <!-- Search Status & Quick Count -->
+                            <div class="px-3 py-1.5 bg-slate-50 text-[10px] text-slate-500 flex justify-between items-center font-medium">
+                                <span>Pilih calon anggota yang akan ditambahkan:</span>
+                                <span class="font-bold text-slate-700" x-text="nonMemberCandidates.length + ' personil tersedia'"></span>
+                            </div>
+
+                            <!-- List of Non-Member Candidates -->
+                            <div class="max-h-48 overflow-y-auto divide-y divide-slate-100">
+                                <template x-for="emp in nonMemberCandidates" :key="emp.id">
+                                    <div @click="toggleAddMember(emp.nama_karyawan)"
+                                         class="flex items-center justify-between px-3.5 py-2 hover:bg-emerald-50/60 cursor-pointer transition-colors select-none"
+                                         :class="isAddMemberSelected(emp.nama_karyawan) ? 'bg-emerald-50/80' : ''">
+                                        
+                                        <div class="flex items-center gap-2.5 min-w-0">
+                                            <div class="w-7 h-7 rounded-lg text-white font-bold text-[10px] flex items-center justify-center flex-shrink-0"
+                                                 :class="isAddMemberSelected(emp.nama_karyawan) ? 'bg-emerald-600 shadow-xs' : 'bg-slate-400'">
+                                                <span x-text="(emp.nama_karyawan || '').substring(0, 2).toUpperCase()"></span>
+                                            </div>
+                                            <div class="min-w-0">
+                                                <div class="text-xs text-slate-800 truncate" :class="isAddMemberSelected(emp.nama_karyawan) ? 'font-extrabold text-emerald-900' : 'font-semibold'" x-text="emp.nama_karyawan"></div>
+                                                <div class="text-[10px] text-slate-400 truncate">
+                                                    <span x-text="emp.jabatan_db || emp.jabatan || 'Karyawan'"></span> • <span x-text="emp.area || 'Pusat'"></span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Checkbox Pill -->
+                                        <div class="w-5 h-5 rounded-md border flex items-center justify-center transition-all flex-shrink-0"
+                                             :class="isAddMemberSelected(emp.nama_karyawan) ? 'bg-emerald-600 border-emerald-600 text-white shadow-xs' : 'border-slate-300 bg-white'">
+                                            <i class="fa-solid fa-check text-[10px]" x-show="isAddMemberSelected(emp.nama_karyawan)"></i>
+                                        </div>
+                                    </div>
+                                </template>
+
+                                <div x-show="nonMemberCandidates.length === 0" class="p-6 text-center text-xs text-slate-400">
+                                    <i class="fa-solid fa-circle-info text-base mb-1 block text-slate-300"></i>
+                                    Semua karyawan inhouse sudah menjadi anggota group ini atau tidak ada hasil pencarian.
                                 </div>
                             </div>
-                        </label>
-                    </template>
-                    <div x-show="nonMemberCandidates.length === 0" class="p-6 text-center text-xs text-slate-400">
-                        Semua karyawan inhouse sudah menjadi anggota group ini.
+
+                            <!-- Dropdown Footer -->
+                            <div class="p-2 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                                <span class="text-[11px] text-emerald-700 font-bold" x-text="selectedAddMembers.length + ' anggota dipilih'"></span>
+                                <button type="button" @click="addMemberDropdownOpen = false" class="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-xs transition-colors">
+                                    Selesai
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -552,6 +686,7 @@ function wpGroupChat() {
         // Modals state
         showCreateGroupModal: false,
         isSubmittingGroup: false,
+        inhouseDropdownOpen: false,
         newGroupForm: {
             name: '',
             description: '',
@@ -560,6 +695,7 @@ function wpGroupChat() {
 
         showAddMemberModal: false,
         isSubmittingMembers: false,
+        addMemberDropdownOpen: false,
         addMemberSearch: '',
         selectedAddMembers: [],
 
@@ -609,24 +745,87 @@ function wpGroupChat() {
             return this.inhouseEmployees.filter(e => 
                 (e.nama_karyawan && e.nama_karyawan.toLowerCase().includes(q)) ||
                 (e.jabatan_db && e.jabatan_db.toLowerCase().includes(q)) ||
+                (e.jabatan && e.jabatan.toLowerCase().includes(q)) ||
                 (e.area && e.area.toLowerCase().includes(q))
             );
         },
 
         get nonMemberCandidates() {
-            const currentMembersLower = this.activeGroupMembers.map(m => m.toLowerCase().trim());
+            const currentMembersLower = this.activeGroupMembers.map(m => (m || '').toLowerCase().trim());
             return this.inhouseEmployees.filter(e => {
                 const name = (e.nama_karyawan || '').toLowerCase().trim();
                 const isMember = currentMembersLower.includes(name);
                 if (isMember) return false;
                 if (!this.addMemberSearch.trim()) return true;
                 const q = this.addMemberSearch.toLowerCase();
-                return name.includes(q) || (e.jabatan_db && e.jabatan_db.toLowerCase().includes(q));
+                return name.includes(q) || 
+                       ((e.jabatan_db || e.jabatan || '').toLowerCase().includes(q)) ||
+                       ((e.area || '').toLowerCase().includes(q));
             });
         },
 
-        selectAllInhouse() {
-            this.newGroupForm.members = this.filteredInhouseEmployees.map(e => e.nama_karyawan);
+        // Searchable Multi-Select Dropdown methods (Create Group)
+        toggleMember(name) {
+            if (!name) return;
+            const idx = this.newGroupForm.members.indexOf(name);
+            if (idx > -1) {
+                this.newGroupForm.members.splice(idx, 1);
+            } else {
+                this.newGroupForm.members.push(name);
+            }
+        },
+
+        removeMember(name) {
+            this.newGroupForm.members = this.newGroupForm.members.filter(n => n !== name);
+        },
+
+        isMemberSelected(name) {
+            return this.newGroupForm.members.includes(name);
+        },
+
+        selectAllFilteredInhouse() {
+            const names = this.filteredInhouseEmployees.map(e => e.nama_karyawan).filter(Boolean);
+            names.forEach(name => {
+                if (!this.newGroupForm.members.includes(name)) {
+                    this.newGroupForm.members.push(name);
+                }
+            });
+        },
+
+        clearSelectedMembers() {
+            this.newGroupForm.members = [];
+        },
+
+        // Searchable Multi-Select Dropdown methods (Add Members)
+        toggleAddMember(name) {
+            if (!name) return;
+            const idx = this.selectedAddMembers.indexOf(name);
+            if (idx > -1) {
+                this.selectedAddMembers.splice(idx, 1);
+            } else {
+                this.selectedAddMembers.push(name);
+            }
+        },
+
+        removeAddMember(name) {
+            this.selectedAddMembers = this.selectedAddMembers.filter(n => n !== name);
+        },
+
+        isAddMemberSelected(name) {
+            return this.selectedAddMembers.includes(name);
+        },
+
+        selectAllFilteredAddMembers() {
+            const names = this.nonMemberCandidates.map(e => e.nama_karyawan).filter(Boolean);
+            names.forEach(name => {
+                if (!this.selectedAddMembers.includes(name)) {
+                    this.selectedAddMembers.push(name);
+                }
+            });
+        },
+
+        clearAddMembers() {
+            this.selectedAddMembers = [];
         },
 
         selectGroup(id) {
@@ -787,6 +986,7 @@ function wpGroupChat() {
                 members: []
             };
             this.inhouseSearch = '';
+            this.inhouseDropdownOpen = false;
             this.showCreateGroupModal = true;
         },
 
@@ -849,6 +1049,7 @@ function wpGroupChat() {
         openAddMemberModal() {
             this.selectedAddMembers = [];
             this.addMemberSearch = '';
+            this.addMemberDropdownOpen = false;
             this.showAddMemberModal = true;
         },
 

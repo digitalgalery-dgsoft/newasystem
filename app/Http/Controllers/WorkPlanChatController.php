@@ -76,20 +76,48 @@ class WorkPlanChatController extends Controller
                 ->update(['last_read_at' => now()]);
         }
 
-        // Ambil daftar karyawan Inhouse aktif untuk tambah anggota / buat group
-        $inhouseEmployees = Employee::where('is_active', 1)
+        // Ambil daftar karyawan Inhouse aktif untuk tambah anggota / buat group (kompatibel penuh struktur db)
+        $inhouseEmployeesQuery = Employee::where(function ($q) {
+                $q->where('status', 'Aktiv')
+                  ->orWhere('status', 'like', '%Aktiv%')
+                  ->orWhereNull('status');
+            })
             ->where(function ($q) {
-                $q->where('tipe', 'Inhouse')
-                  ->orWhere('prinsiple', 'like', '%ARINA MULTI KARYA%')
+                $q->where('tipe_karyawan', 'Inhouse')
+                  ->orWhere(DB::raw('LOWER(TRIM(tipe_karyawan))'), 'inhouse')
+                  ->orWhereIn('entity', ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'])
+                  ->orWhere('prinsiple', 'like', '%ARINA MULTI%')
                   ->orWhere('prinsiple', 'like', '%ALVA KARYA%')
                   ->orWhere('prinsiple', 'like', '%ANUGRAH TERPERCAYA%')
                   ->orWhere('prinsiple', 'like', '%ABADI BERKAT%')
+                  ->orWhere('prinsiple', 'like', '%BINTANG OETAMA%')
                   ->orWhere('prinsiple', 'like', '%TALENTA BERKARYA%')
-                  ->orWhere('prinsiple', 'like', '%TRI BERKAH%');
-            })
-            ->select('id', 'nama_karyawan', 'jabatan_db', 'area', 'divisi')
+                  ->orWhere('prinsiple', 'like', '%TRI BERKAH%')
+                  ->orWhereNull('tipe_karyawan');
+            });
+
+        $inhouseEmployees = (clone $inhouseEmployeesQuery)
+            ->select('id', 'nama_karyawan', 'jabatan', 'area', 'divisi')
             ->orderBy('nama_karyawan')
             ->get();
+
+        // Gabungkan juga User portal aktif agar semua personil yang terdaftar selalu tersedia di dropdown
+        $existingNames = $inhouseEmployees->pluck('nama_karyawan')->map(fn($n) => strtolower(trim($n)))->toArray();
+        $systemUsers = \App\Models\User::all();
+        foreach ($systemUsers as $u) {
+            $uName = trim($u->name ?: ($u->email ?: ''));
+            if (!empty($uName) && !in_array(strtolower($uName), $existingNames)) {
+                $inhouseEmployees->push((object)[
+                    'id' => 'u_' . $u->id,
+                    'nama_karyawan' => $uName,
+                    'jabatan' => $u->role ? ucfirst($u->role) : 'User Portal',
+                    'area' => 'Pusat',
+                    'divisi' => 'Operasional'
+                ]);
+                $existingNames[] = strtolower($uName);
+            }
+        }
+        $inhouseEmployees = $inhouseEmployees->sortBy('nama_karyawan')->values();
 
         // Format JSON payload untuk frontend Alpine.js
         $groupsJson = $groups->map(function ($g) {
@@ -198,7 +226,7 @@ class WorkPlanChatController extends Controller
         }
 
         return redirect()->route('workplan.chat', ['group_id' => $group->id])
-            ->with('success', "Group WA '{$group->name}' berhasil dibuat!");
+            ->with('success', "Group '{$group->name}' berhasil dibuat!");
     }
 
     /**

@@ -33,8 +33,8 @@
                 <span>Tambah Tugas Baru</span>
             </button>
             <a href="{{ route('workplan.chat') }}" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20">
-                <i class="fa-brands fa-whatsapp text-sm"></i>
-                <span>WA Groups Chat</span>
+                <i class="fa-solid fa-comments text-sm"></i>
+                <span>Groups Chat</span>
             </a>
             <button type="button" @click="openCopyReportModal()" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 text-xs font-bold transition-all shadow-sm">
                 <i class="fa-solid fa-clipboard-list text-purple-600"></i>
