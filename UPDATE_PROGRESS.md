@@ -1051,10 +1051,27 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 58. 📎 Modernisasi Field Input Lampiran: Drag & Drop, Paste Clipboard (Ctrl+V) & Image Preview Real-time (20 September 2026)
+- **Area Dropzone Interaktif & Modern**:
+  - Menggantikan input file standar browser dengan dropzone modern bergaris putus-putus (*dashed border*), ikon upload yang membesar saat hover, dan feedback dragover (*ring highlight*).
+- **Dukungan Clipboard Paste (Ctrl+V)**:
+  - Pengguna dapat langsung menempelkan gambar hasil tangkapan layar (*screenshot*) dari clipboard cukup dengan menekan `Ctrl+V` saat mengetik di judul, deskripsi, komentar, atau area form tanpa perlu menyimpan gambar ke file explorer terlebih dahulu.
+- **Kartu Pratinjau (Preview Card) Real-time**:
+  - **Lampiran Gambar**: Menampilkan thumbnail pratinjau gambar, link perbesar (*magnifier*), nama file, ukuran file terformat (KB/MB), dan tombol hapus/batal.
+  - **Lampiran Dokumen**: Menampilkan kartu dokumen dengan ikon berwarna sesuai format (PDF merah, Excel hijau, Word biru, ZIP oranye) dan detail ukuran file.
+- **Implementasi Komprehensif di 3 Titik Form**:
+  - **Form Tambah Tugas Baru**: Dropzone bersih dengan deteksi paste di seluruh area modal.
+  - **Form Edit Tugas**: Menampilkan lampiran lama jika ada, dropzone baru, dan preview pengganti sebelum disimpan via `FormData` asinkron.
+  - **Form Komentar & Diskusi**: Tombol lampirkan cepat, paste screenshot langsung saat mengetik di textarea komentar, dan thumbnail gambar interaktif di dalam riwayat komentar.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `f5c80a3` | feat(workplan): add drag and drop, clipboard paste, and image preview to task and comment attachment fields |
+| `d255ad7` | docs: document Milestone 57 SweetAlert2 modernization |
 | `60c8a3b` | feat(workplan): replace all native alert and confirm dialogs with SweetAlert2 |
 | `2c8ce2c` | feat(workplan): filter employee dropdown strictly to active inhouse employees and add search filter |
 | `2979858` | feat(workplan): restrict employee filter dropdown to inhouse employees only and add real-time search functionality |
