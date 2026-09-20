@@ -57,35 +57,118 @@ class InterviewInhouseController extends Controller
     /**
      * Halaman Utama Kandidat Inhouse: Replikasi interviewinhouse.php
      */
+    /**
+     * Ambil daftar ID prinsiple resmi 5 entitas inhouse
+     */
+    public static function getInhousePrincipleIds(): array
+    {
+        $names = [
+            'PT ARINA MULTI KARYA', 'PT Arina Multikarya', 'PT ARINA MULTIKARYA', 'ARINA MULTI KARYA',
+            'PT ALVA KARYA PERKASA', 'PT Alva Karya Perkasa', 'ALVA KARYA PERKASA',
+            'PT ANUGRAH TERPERCAYA KERJA', 'PT Anugrah Terpercaya Kerja', 'ANUGRAH TERPERCAYA KERJA',
+            'PT ABADI BERKAT ODELIA', 'PT Abadi Berkat Odelia', 'PT ARINA BINTANG OETAMA', 'PT Arina Bintang Oetama',
+            'PT ANUGRAH TALENTA BERKARYA', 'PT Anugrah Talenta Berkarya', 'PT ANUGRAH TRI BERKAH', 'PT Anugrah Tri Berkah'
+        ];
+
+        return Principle::whereIn('entity', ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'])
+            ->orWhere(function($pq) use ($names) {
+                foreach ($names as $ip) {
+                    $pq->orWhere('name', 'like', "%{$ip}%");
+                }
+            })->pluck('id')->toArray();
+    }
+
+    /**
+     * Cek apakah kandidat berstatus inhouse 5 entitas
+     */
+    public static function isCandidateInhouse($candidate): bool
+    {
+        $inhouseIds = self::getInhousePrincipleIds();
+        if (!empty($candidate->principle_id) && in_array($candidate->principle_id, $inhouseIds)) {
+            return true;
+        }
+        if (!empty($candidate->is_inhouse)) {
+            return true;
+        }
+        $prinName = is_string($candidate->principle) ? $candidate->principle : ($candidate->principle?->name ?? '');
+        return \App\Models\Employee::isInhousePrinciple($prinName);
+    }
+
+    /**
+     * Halaman Utama Kandidat Inhouse: Replikasi interviewinhouse.php
+     * Hanya tampil untuk HRD dan Head dari user (Rekrutor / AS) yang handle kandidat
+     */
     public function index(Request $request)
     {
         $user = $this->getCurrentUser();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        // Halaman kandidat inhouse HANYA untuk user HRD dan Head dari user (Rekrutor / AS)
+        if (!$user->isHrdOrHead()) {
+            return redirect()->route('interview.index')->with('error', 'Akses Ditolak! Halaman Kandidat Inhouse hanya dapat diakses oleh HRD dan Head / Pimpinan untuk proses approval.');
+        }
+
         $salam = $this->getSalam();
         $search = $request->query('search') ?? $request->query('q');
         $statusReplace = $request->query('status_replace');
         $statusApproval = $request->query('status_approval');
 
-        // Base Query: Kandidat Inhouse Aktif
-        $inhousePrinciples = [
-            'PT ARINA MULTI KARYA', 'PT Arina Multikarya',
-            'PT ALVA KARYA PERKASA', 'PT Alva Karya Perkasa',
-            'PT ANUGRAH TERPERCAYA KERJA', 'PT Anugrah Terpercaya Kerja',
-            'PT ABADI BERKAT ODELIA', 'PT Abadi Berkat Odelia',
-            'PT ABADAI BERKAT ODELIA'
+        // 1. Filter: HANYA tampil kandidat dengan prinsiple 5 entitas inhouse
+        $inhouseIds = self::getInhousePrincipleIds();
+        $inhouseNames = [
+            'ARINA MULTI KARYA', 'ALVA KARYA PERKASA', 'ANUGRAH TERPERCAYA KERJA',
+            'ABADI BERKAT ODELIA', 'ARINA BINTANG OETAMA', 'ANUGRAH TALENTA BERKARYA', 'ANUGRAH TRI BERKAH'
         ];
 
         $baseQuery = Candidate::with(['principle', 'recruiter', 'testResults', 'inhouseApprovals'])
-            ->where('status', 'Active')
-            ->where(function ($q) use ($inhousePrinciples) {
-                $q->where('is_inhouse', 1)
-                  ->orWhereHas('principle', function ($pq) use ($inhousePrinciples) {
-                      $pq->whereIn('name', $inhousePrinciples);
+            ->whereNotIn('status', ['Arsip', 'archived'])
+            ->where(function ($q) use ($inhouseIds, $inhouseNames) {
+                $q->whereIn('principle_id', $inhouseIds)
+                  ->orWhere(function ($sq) use ($inhouseNames) {
+                      $sq->where('is_inhouse', 1)
+                         ->orWhere(function ($eq) use ($inhouseNames) {
+                             foreach ($inhouseNames as $n) {
+                                 $eq->orWhere('principle', 'like', "%{$n}%");
+                             }
+                         });
                   });
             });
 
-        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
-        if ($user) {
+        // 2. Hak Akses: HRD melihat semua inhouse, Head HANYA melihat kandidat yang dihandle rekruter/AS binaannya
+        if ($user->isHrd()) {
+            // HRD / Super Admin: Melihat seluruh kandidat inhouse (dibatasi scope bila diset)
             $user->applyRoleScopeToCandidates($baseQuery);
+        } else {
+            // Head dari user (Rekrutor / AS) yang handle kandidat tersebut
+            $subIdentifiers = $user->getSubordinateRecruiterIdentifiers();
+            $headArea = !empty($user->area) ? strtoupper(trim($user->area)) : null;
+            $allowedAreas = array_map('strtoupper', $user->getEffectiveAreas());
+
+            $baseQuery->where(function ($q) use ($subIdentifiers, $headArea, $allowedAreas, $user) {
+                $hasCondition = false;
+                if (!empty($subIdentifiers)) {
+                    $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(TRIM(useras))'), $subIdentifiers);
+                    $hasCondition = true;
+                }
+                if (!empty($allowedAreas)) {
+                    if ($hasCondition) {
+                        $q->orWhereIn(\Illuminate\Support\Facades\DB::raw('UPPER(TRIM(area))'), $allowedAreas);
+                    } else {
+                        $q->whereIn(\Illuminate\Support\Facades\DB::raw('UPPER(TRIM(area))'), $allowedAreas);
+                        $hasCondition = true;
+                    }
+                } elseif (!empty($headArea)) {
+                    if ($hasCondition) {
+                        $q->orWhere(\Illuminate\Support\Facades\DB::raw('UPPER(TRIM(area))'), $headArea);
+                    } else {
+                        $q->where(\Illuminate\Support\Facades\DB::raw('UPPER(TRIM(area))'), $headArea);
+                        $hasCondition = true;
+                    }
+                }
+                $q->orWhere('recruiter_id', $user->id);
+            });
         }
 
         // Hitung Statistik
@@ -168,6 +251,14 @@ class InterviewInhouseController extends Controller
     public function show($id)
     {
         $user = $this->getCurrentUser();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        if (!$user->isHrdOrHead()) {
+            return redirect()->route('interview.index')->with('error', 'Akses Ditolak! Halaman Detail Inhouse hanya dapat diakses oleh HRD dan Head / Pimpinan.');
+        }
+
         $candidate = Candidate::with([
             'principle',
             'recruiter',
@@ -176,6 +267,25 @@ class InterviewInhouseController extends Controller
             'testResults',
             'inhouseApprovals'
         ])->findOrFail($id);
+
+        if (!self::isCandidateInhouse($candidate)) {
+            return redirect()->route('interview.index')->with('error', 'Akses Ditolak! Kandidat ini bukan kandidat inhouse 5 entitas.');
+        }
+
+        // Jika user adalah Head (dan bukan HRD), periksa apakah kandidat ini dihandle oleh timnya
+        if (!$user->isHrd()) {
+            $subIdentifiers = $user->getSubordinateRecruiterIdentifiers();
+            $candUseras = strtolower(trim($candidate->useras ?? ''));
+            $isSub = in_array($candUseras, $subIdentifiers) || ($candidate->recruiter_id == $user->id);
+            $headArea = !empty($user->area) ? strtoupper(trim($user->area)) : null;
+            $candArea = strtoupper(trim($candidate->area ?? ''));
+            $allowedAreas = array_map('strtoupper', $user->getEffectiveAreas());
+            $isAreaMatch = (!empty($allowedAreas) && in_array($candArea, $allowedAreas)) || (!empty($headArea) && $candArea === $headArea);
+
+            if (!$isSub && !$isAreaMatch) {
+                return redirect()->route('interviewinhouse.index')->with('error', 'Akses Ditolak! Anda bukan Head yang menangani kandidat inhouse ini.');
+            }
+        }
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
         $areas = [
@@ -196,12 +306,17 @@ class InterviewInhouseController extends Controller
 
         $evalData = \App\Services\CandidateEvaluationDataService::getEvaluationData($candidate);
 
+        $isHrd = $user->isHrd();
+        $isHead = $user->isHead();
+
         return view('interviewinhouse.show', array_merge([
             'candidate' => $candidate,
             'user' => $user,
             'principles' => $principles,
             'areas' => $areas,
             'statusBadge' => $statusBadge,
+            'isHrd' => $isHrd,
+            'isHead' => $isHead,
         ], $evalData));
     }
 
@@ -213,9 +328,22 @@ class InterviewInhouseController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
         $user = $this->getCurrentUser();
-
-        // Handle JSON or Form Request
         $isJson = $request->isJson() || $request->wantsJson() || $request->header('Content-Type') === 'application/json';
+
+        if (!$user || !$user->isHrdOrHead()) {
+            if ($isJson) {
+                return response()->json(['status' => 'error', 'message' => 'Akses ditolak! Anda bukan HRD atau Head approver.'], 403);
+            }
+            return back()->with('error', 'Akses ditolak! Anda bukan HRD atau Head approver.');
+        }
+
+        if (!self::isCandidateInhouse($candidate)) {
+            if ($isJson) {
+                return response()->json(['status' => 'error', 'message' => 'Kandidat ini bukan kandidat inhouse 5 entitas.'], 422);
+            }
+            return back()->with('error', 'Kandidat ini bukan kandidat inhouse 5 entitas.');
+        }
+
         $catatan = $request->input('catatan');
         $approval = $request->input('approval') ?? $request->input('status') ?? 'Approve';
         $imageData = $request->input('image') ?? $request->input('signature_data');
@@ -226,6 +354,22 @@ class InterviewInhouseController extends Controller
                 return response()->json(['status' => 'error', 'message' => 'Catatan dan hasil keputusan wajib diisi!'], 422);
             }
             return back()->with('error', 'Catatan dan hasil keputusan wajib diisi!');
+        }
+
+        // Proteksi: Submit HRD hanya boleh dilakukan oleh HRD
+        if ($submitType === 'hrd' && !$user->isHrd()) {
+            if ($isJson) {
+                return response()->json(['status' => 'error', 'message' => 'Akses ditolak! Hanya HRD yang berhak melakukan Submit HRD.'], 403);
+            }
+            return back()->with('error', 'Akses ditolak! Hanya HRD yang berhak melakukan Submit HRD.');
+        }
+
+        // Proteksi: Submit Head hanya boleh dilakukan oleh Head (atau HRD/Admin yang bertindak atas nama Head)
+        if ($submitType === 'head' && !$user->isHead() && !$user->isHrd()) {
+            if ($isJson) {
+                return response()->json(['status' => 'error', 'message' => 'Akses ditolak! Anda bukan Head yang berwenang melakukan Submit Head.'], 403);
+            }
+            return back()->with('error', 'Akses ditolak! Anda bukan Head yang berwenang melakukan Submit Head.');
         }
 
         // Tanda tangan image processing

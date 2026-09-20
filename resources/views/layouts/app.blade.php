@@ -439,6 +439,7 @@
                                     <span>Kandidat Interview</span>
                                 </a>
 
+                                @if(Auth::user() && (Auth::user()->isAdmin() || Auth::user()->isHrdOrHead()))
                                 <!-- 7. Kandidat Inhouse -->
                                 <a href="{{ route('interviewinhouse.index') }}" 
                                    title="Kandidat Inhouse"
@@ -449,6 +450,7 @@
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
                                 </a>
+                                @endif
 
                                 <!-- 8. Interview Selesai -->
                                 <a href="{{ route('interview.done') }}" 

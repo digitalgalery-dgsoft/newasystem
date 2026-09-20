@@ -23,7 +23,7 @@
                 </div>
             </div>
 
-            @if(isset($allRecruiters) && count($allRecruiters) > 0)
+            @if(!empty($isAdmin) && isset($allRecruiters) && count($allRecruiters) > 0)
             <div class="w-full sm:w-72">
                 <select name="filter_user" onchange="this.form.submit()" class="w-full text-xs rounded-lg border-slate-300 bg-white py-2 px-3 font-medium">
                     <option value="all" {{ ($filterUser === 'all' || empty($filterUser)) ? 'selected' : '' }}>-- Semua Rekruter (Nasional) --</option>

@@ -91,6 +91,111 @@ class User extends Authenticatable
     }
 
     /**
+     * Cek apakah user berstatus HRD (Admin, Head HR, Role HRD, atau Jabatan HRD/Manager)
+     */
+    public function isHrd(): bool
+    {
+        if ($this->isAdmin() || $this->role === 'admin' || $this->role === 'head_hr' || $this->role === 'hrd') {
+            return true;
+        }
+        $role = strtolower($this->role ?? '');
+        if ($role === 'hrd' || $role === 'head_hr') {
+            return true;
+        }
+
+        $job = strtolower($this->job_title ?? '');
+        // Rekruter biasa BUKAN HRD, kecuali memiliki titel Head / Lead / Manager
+        if (str_contains($job, 'recruiter') || str_contains($job, 'rekrutmen') || str_contains($job, 'aro')) {
+            return str_contains($job, 'head') || str_contains($job, 'lead') || str_contains($job, 'manager');
+        }
+
+        return str_contains($job, 'hrd') || str_contains($job, 'hr lead') || str_contains($job, 'hr manager') || str_contains($job, 'head of hr');
+    }
+
+    /**
+     * Cek apakah user berstatus Head / Pimpinan (Head HR, Supervisor, Manager, Lead, atau terdaftar sebagai Pimpinan di data karyawan)
+     */
+    public function isHead(): bool
+    {
+        if ($this->isHrd()) {
+            return true;
+        }
+        if (in_array($this->role, ['head', 'head_hr', 'supervisor', 'area_manager', 'team_leader'])) {
+            return true;
+        }
+        $job = strtolower($this->job_title ?? '');
+        // Staff atau rekruter biasa tanpa titel pimpinan bukan Head
+        if (str_contains($job, 'staff') || str_contains($job, 'promotor') || ((str_contains($job, 'recruiter') || str_contains($job, 'rekrutmen')) && !str_contains($job, 'head') && !str_contains($job, 'lead') && !str_contains($job, 'manager'))) {
+            return false;
+        }
+        $headKeywords = ['head', 'spv', 'supervisor', 'manager', 'lead', 'koordinator', 'pimpinan'];
+        foreach ($headKeywords as $kw) {
+            if (str_contains($job, $kw)) {
+                return true;
+            }
+        }
+        // Cek apakah tercatat sebagai pimpinan bagi karyawan di database
+        if (!empty($this->name)) {
+            $isPimpinan = Employee::where('pimpinan', $this->name)
+                ->orWhere('pimpinan', 'like', "%{$this->name}%")
+                ->exists();
+            if ($isPimpinan) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Cek apakah user berhak mengakses modul kandidat inhouse (HRD atau Head)
+     */
+    public function isHrdOrHead(): bool
+    {
+        return $this->isHrd() || $this->isHead();
+    }
+
+    /**
+     * Ambil daftar identifier (email / nama) dari rekruter atau karyawan binaan di bawah Head ini
+     */
+    public function getSubordinateRecruiterIdentifiers(): array
+    {
+        $names = array_filter([$this->name, $this->email]);
+        if (empty($names)) {
+            return [];
+        }
+
+        $subordinates = Employee::where(function($q) use ($names) {
+            foreach ($names as $n) {
+                $q->orWhere('pimpinan', $n)->orWhere('pimpinan', 'like', "%{$n}%");
+            }
+        })->get(['email', 'nama_karyawan']);
+
+        $identifiers = [];
+        foreach ($subordinates as $sub) {
+            if (!empty($sub->email)) {
+                $identifiers[] = strtolower(trim($sub->email));
+            }
+            if (!empty($sub->nama_karyawan)) {
+                $identifiers[] = strtolower(trim($sub->nama_karyawan));
+            }
+        }
+
+        // Sertakan juga rekruter yang ditugaskan ke user ID ini
+        $recruiterUsers = User::where('id', '!=', $this->id)
+            ->where(function($q) use ($names) {
+                foreach ($names as $n) {
+                    $q->orWhere('name', 'like', "%{$n}%");
+                }
+            })->get(['email', 'name']);
+        foreach ($recruiterUsers as $ru) {
+            if (!empty($ru->email)) $identifiers[] = strtolower(trim($ru->email));
+            if (!empty($ru->name)) $identifiers[] = strtolower(trim($ru->name));
+        }
+
+        return array_values(array_unique($identifiers));
+    }
+
+    /**
      * Cek apakah user berhak melihat seluruh data kandidat (lintas rekruter / nasional)
      * Mengembalikan true jika user adalah admin, role head_hr/admin_officer,
      * ATAU diset menangani Semua Prinsiple DAN Semua Area (All Prinsiple & All Area).

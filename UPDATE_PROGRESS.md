@@ -849,7 +849,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   - **Proteksi Super Administrator**:
     - Administrator utama (`admin`) selalu memiliki bypass penuh (`handlesAllPrinciples() = true`, `coversAllAreas() = true`) sehingga tetap memiliki pengawasan nasional terhadap seluruh data sistem.
 
-### 14. 🛡️ Hak Akses Pengguna, Role Dinamis (RBAC), & Multi-User Scoping AS
+### 44. 🛡️ Hak Akses Pengguna, Role Dinamis (RBAC), & Multi-User Scoping AS
 - **Pemisahan Definisi Role vs Penugasan Scope Karyawan**:
   - **1 Role Akses untuk Banyak Pengguna (contoh: `Role Akses AS`)**:
     - Definisi Role murni berfungsi sebagai template otorisasi hak akses menu & fitur (Talent Pool, AI Ranking, Export, Master Data).
@@ -862,7 +862,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 - **Isolasi & Pemfilteran Data Otomatis**:
   - Setiap kali AS login ke sistem, query data pada modul Karyawan, Kandidat Talent Pool, Interview Inhouse, dan AI Ranking otomatis terfilter sesuai cakupan prinsiple dan area yang ditugaskan khusus untuk akun tersebut.
   - Administrator HR (`admin`) tetap memiliki akses tak terbatas (unrestricted) ke seluruh modul, prinsiple, dan area nasional.
-### 15. 👤 Pendaftaran Karyawan Langsung & Shortcut Akses RBAC dari Master Karyawan
+### 45. 👤 Pendaftaran Karyawan Langsung & Shortcut Akses RBAC dari Master Karyawan
 - **Modal Pendaftaran Akun Cepat**:
   - Pada halaman Pengaturan Akses & Role (`/roles`), ditambahkan modal *"Daftarkan Akun User Baru"*.
   - Dilengkapi fitur live auto-complete dari data NIK, nama, dan email karyawan aktif di database `employees`.
@@ -872,7 +872,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 16. ⚙️ Manajemen Profil Pengguna (Edit Akun Karyawan & Sinkronisasi Master)
+### 46. ⚙️ Manajemen Profil Pengguna (Edit Akun Karyawan & Sinkronisasi Master)
 - **Halaman Edit Profil Pengguna (`/profile`)**:
   - Pengguna dan karyawan dapat memperbarui data akun mereka sendiri, meliputi: Nama Lengkap, Email, Nomor WhatsApp / Handphone, dan Kata Sandi baru dengan konfirmasi.
   - Fitur unggah Foto Profil interaktif dengan preview gambar langsung.
@@ -881,7 +881,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 17. 📁 Manajemen Berkas & Lampiran Kandidat (Foto, CV, Fallback Server, & XLSX Link)
+### 47. 📁 Manajemen Berkas & Lampiran Kandidat (Foto, CV, Fallback Server, & XLSX Link)
 - **Modal Media Kandidat Interaktif (`/candidate/{id}/media`)**:
   - Menampilkan preview foto profil kandidat dan berkas CV (PDF/dokumen) dalam modal yang responsif.
 - **Sistem Fallback Deteksi Berkas Multi-Server**:
@@ -891,7 +891,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 18. 🤖 Optimasi Engine AI CV Analyzer (Rotasi Kunci Pintar, Anti-Stall, & Error Handling)
+### 48. 🤖 Optimasi Engine AI CV Analyzer (Rotasi Kunci Pintar, Anti-Stall, & Error Handling)
 - **Rotasi Pintar Multi-Kunci Google Gemini API**:
   - Mendukung hingga 19+ API Key Gemini dengan sistem fallback otomatis ketika salah satu kunci mencapai batas kuota rate-limit (*HTTP 429*).
   - Periode cooldown otomatis selama 2 menit untuk token yang limit sebelum dicoba kembali.
@@ -903,7 +903,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 19. 🔄 Integrasi Status Tahapan Rekrutmen Odoo ERP Berdasarkan NIK & Auto-Archive
+### 49. 🔄 Integrasi Status Tahapan Rekrutmen Odoo ERP Berdasarkan NIK & Auto-Archive
 - **Pemadanan Kandidat dengan Odoo ERP (`hr.applicant`)**:
   - Mencocokkan data kandidat di ASystem dengan database rekrutmen Odoo ERP berdasarkan Nomor Induk Kependudukan (NIK).
   - Menampilkan badge tahapan seleksi resmi Odoo: *Data Pelamar*, *Interview*, *Principal*, *E-Learning*, *PKWT*, dan *Joined*.
@@ -916,7 +916,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 20. 📊 Modul Eksekutif Statistik Job & Pelamar (`/job-stats`) & Export Multi-Sheet XLSX
+### 50. 📊 Modul Eksekutif Statistik Job & Pelamar (`/job-stats`) & Export Multi-Sheet XLSX
 - **Dashboard Statistik Lowongan & Rekrutmen Eksekutif**:
   - Menampilkan ringkasan total lowongan, total pelamar portal, pelamar yang diproses di Odoo, hingga kandidat yang berhasil *Joined*.
   - Tabel rincian pelamar per lowongan pekerjaan dengan breakdown lengkap tahapan seleksi Odoo ERP.
@@ -932,7 +932,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 21. 🔄 Fitur Switch User & Revert User Account (Kembali ke Akun Asli)
+### 51. 🔄 Fitur Switch User & Revert User Account (Kembali ke Akun Asli)
 - **Kemudahan Impersonasi untuk Supervisi**:
   - Administrator dapat beralih akun (*Switch User*) untuk melihat sistem persis seperti yang dilihat oleh pengguna atau rekruter tertentu.
 - **Tombol Kembali ke Akun Asli (Revert Switch User)**:
@@ -944,7 +944,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 22. 🎯 Penyempurnaan Scope All-Principle & All-Area pada Kandidat Portal & Interview
+### 52. 🎯 Penyempurnaan Scope All-Principle & All-Area pada Kandidat Portal & Interview
 - **Koreksi Logika Otorisasi Scope Global**:
   - Memperbaiki penanganan akun pengguna yang dikonfigurasi dengan cakupan *All Prinsiple* (`all_principles = 1` atau array kosong) dan *All Area* (`all_areas = 1` atau array kosong).
   - Sebelumnya, akun dengan izin nasional ini sempat memicu filter kosong pada Kandidat Portal & Kandidat Interview.
@@ -952,7 +952,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 23. ⏰ Standarisasi Zona Waktu Sistem & Kandidat ke Asia/Jakarta (WIB)
+### 53. ⏰ Standarisasi Zona Waktu Sistem & Kandidat ke Asia/Jakarta (WIB)
 - **Konfigurasi Timezone Laravel**:
   - Mengubah konfigurasi zona waktu aplikasi pada [config/app.php](file:///d:/ASystem/newasystem/config/app.php) dari default `UTC` menjadi `'Asia/Jakarta'`.
 - **Akurasi Waktu Pendaftaran Pelamar**:
@@ -961,7 +961,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 24. ⚡ Live Running Text Marquee AI CV Analyzer & Pacing Otomatis 1 Kandidat per 30 Detik (Job Portal Only)
+### 54. ⚡ Live Running Text Marquee AI CV Analyzer & Pacing Otomatis 1 Kandidat per 30 Detik (Job Portal Only)
 - **Komponen Running Text Marquee Dinamis**:
   - Menampilkan banner live ticker glassmorphic modern di bagian atas halaman Kandidat Job Portal.
   - **Pulsing Indicator**: Badge menyala `● PROSES AI` (Emerald) saat menganalisis dan `● AI STANDBY` (Amber) saat jeda antrean.
@@ -977,10 +977,35 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 55. 🔒 Perbaikan Error Undefined $isAdmin, Isolasi Data Interview Selesai & Arsip per Rekrutor / AS, serta Akses Khusus Kandidat Inhouse 5 Entitas (Approval HRD & Head) (20 September 2026)
+- **Perbaikan Fatal Error Undefined Variable `$isAdmin` di Halaman Selesai & Arsip**:
+  - Menyelesaikan bug `ErrorException: Undefined variable $isAdmin` pada metode `done()` (baris 1072) dan `arsip()` (baris 1153) di [InterviewController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php).
+  - Variabel `$isAdmin` kini diinisialisasi secara dini di awal method (`$isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');`).
+- **Isolasi Akses Data Interview Selesai (`/interviewdone`) & Arsip (`/interviewarsip`)**:
+  - **User Biasa (Rekrutor / AS)**:
+    - Hanya menampilkan data kandidat yang merupakan milik atau di-handle oleh user itu sendiri (`LOWER(TRIM(useras))` sesuai identitas user / NIK / email / nama, atau `recruiter_id = $user->id`).
+    - Menghilangkan klausul longgar (`orWhere('useras', '')` / `orWhereNull('useras')`) yang sebelumnya membuat rekruter bisa melihat kandidat tak bertuan atau kandidat rekruter lain.
+    - Sembunyikan elemen dropdown/filter pilih rekruter pada antarmuka [done.blade.php](file:///d:/ASystem/newasystem/resources/views/interview/done.blade.php) dan [arsip.blade.php](file:///d:/ASystem/newasystem/resources/views/interview/arsip.blade.php) jika bukan Administrator.
+  - **Administrator**:
+    - Mempertahankan hak akses penuh (unrestricted) untuk melihat semua data kandidat selesai dan arsip secara nasional, lengkap dengan dropdown filter per rekruter.
+- **Standarisasi Modul Kandidat Inhouse 5 Entitas Resmi ([InterviewInhouseController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewInhouseController.php))**:
+  - **Filter Ketat 5 Entitas Inhouse**:
+    - Kandidat inhouse dibatasi strictly hanya untuk 5 entitas resmi: `AMK` (PT Arina Multi Karya), `AKP` (PT Alva Karya Perkasa), `ATK` (PT Anugrah Terpercaya Kerja), `ABO` (PT Abadi Berkat Odelia), dan `ATB` (PT Anugrah Talenta Berkarya) via pencocokan `principle_id` dan nama entitas.
+  - **Otorisasi Khusus Role HRD & Head**:
+    - Menu dan halaman Kandidat Inhouse ditutup untuk umum/rekruter biasa dan hanya dapat diakses oleh user dengan role/kriteria **HRD** atau **Head** dari Rekrutor/AS yang meng-handle kandidat bersangkutan.
+    - Sembunyikan link menu sidebar *"Kandidat Inhouse"* di [app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php) jika user yang login bukan Admin, HRD, atau Head.
+  - **Hierarki Approval Head & HRD**:
+    - **Akses Head**: Hanya dapat melihat dan menyetujui kandidat inhouse yang ditangani oleh rekruter binaannya (berdasarkan relasi struktural pimpinan di master karyawan `employees.pimpinan` atau area supervisi). Pada halaman detail ([show.blade.php](file:///d:/ASystem/newasystem/resources/views/interviewinhouse/show.blade.php)), Head hanya memiliki tombol aksi **"Submit Data Head"**.
+    - **Akses HRD / Admin**: Memiliki hak approval final dengan tombol aksi **"Submit HRD"** untuk seluruh kandidat inhouse.
+    - Backend `storeApproval()` memvalidasi otorisasi `submit_type` ('head' vs 'hrd') secara ketat guna mencegah eskalasi hak akses.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `3ced891` | fix: resolve undefined isAdmin, scope done and arsip to own candidates, and restrict inhouse candidates to 5 entities with HRD and Head approval |
 | `ef18db8` | fix(ai-analyzer): restrict AI analysis queue and runner strictly to Job Portal candidates |
 | `3995c51` | fix(console): register app/Console/Commands in bootstrap/app.php |
 | `bbf580a` | feat(ai-analyzer): implement live running text ticker for AI CV processing and set pace to 1 candidate per 30 seconds |

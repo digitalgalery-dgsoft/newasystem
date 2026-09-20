@@ -1005,17 +1005,21 @@
 
                     <!-- Submit Buttons (Matching legacy Submit HRD & Submit Data Head) -->
                     <div class="pt-3 border-t border-slate-200 flex flex-wrap items-center gap-2.5">
+                        @if(!empty($isHead) || (!empty($user) && ($user->isAdmin() || $user->isHead())))
                         <button type="button" onclick="submitInhouseDecision('head')" 
                                 class="flex-1 btn-att-secondary text-xs font-bold py-2.5 flex items-center justify-center gap-2 border-primary-300 text-primary hover:bg-primary-50">
                             <i class="fa-solid fa-paper-plane"></i>
                             <span>Submit Data Head</span>
                         </button>
+                        @endif
 
+                        @if(!empty($isHrd) || (!empty($user) && ($user->isAdmin() || $user->isHrd())))
                         <button type="button" onclick="submitInhouseDecision('hrd')" 
                                 class="flex-1 btn-att-primary text-xs font-bold py-2.5 flex items-center justify-center gap-2">
                             <i class="fa-solid fa-check-double"></i>
                             <span>Submit HRD</span>
                         </button>
+                        @endif
                     </div>
                 </div>
 
