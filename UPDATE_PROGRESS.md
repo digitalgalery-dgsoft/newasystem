@@ -1332,12 +1332,13 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
-| `43781fb` | fix(ui): perbaiki tabel step Odoo dan hilangkan background kolom kusam pada mode dark |
-| `fc5c7f4` | fix(ui): perbaiki kontras dan keterbacaan tabel di modul job statistik pada dark mode |
-| `6ed5542` | fix(ui): perbaiki kontras dan keterbacaan card step Odoo ERP serta opacity slate pada dark mode |
+| `ea0d004` | feat(audit): implementasi sistem audit trail terpusat, activity logs viewer, diff modal, dan export excel di seluruh sistem |
+| `e64305b` | fix(ui): perbaiki tabel step Odoo dan hilangkan background kolom kusam pada mode dark |
+| `6cebd6a` | fix(ui): perbaiki kontras dan keterbacaan tabel di modul job statistik pada dark mode |
+| `e040663` | fix(ui): perbaiki kontras dan keterbacaan card step Odoo ERP serta opacity slate pada dark mode |
 | `419d18c` | feat(ui): tampilkan jabatan di label user dan tambahkan kustomisasi tema dashboard (light/dark mode & custom color) |
 | `ed77715` | feat(export): sertakan jabatan AS dan eliminasi fallback Administrator ESA pada export Excel |
-| `3badda1` | docs: document Milestone 64 recruiter full name resolution in UPDATE_PROGRESS.md |
+| `3badda1` | docs: record commit 792c6ab in UPDATE_PROGRESS.md |
 | `792c6ab` | feat(export): resolve recruiter full name from employee data in candidate portal XLSX export |
 | `c5de959` | docs: document Milestone 63 profile avatar in chat bubbles and real-time notifications in UPDATE_PROGRESS.md |
 | `e218f23` | fix(workplan-chat): replace @error with x-on:error to avoid blade directive collision |
