@@ -1326,13 +1326,47 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
      - **Menu Sidebar "Log Aktivitas"**: Ditempatkan di grup Pengaturan Sistem khusus Administrator dengan badge `AUDIT`.
      - **Dukungan Penuh Dark Mode**: Menyesuaikan otomatis dengan 4 palet tema (*Hitam Pekat, Biru Navy, Dark Grey, Soft Grey*).
 
+
+---
+
+### 70. 📊 Perbaikan Error Export Excel Work Plan & Activity Logs: Migrasi ke OpenXML ZipArchive Mandiri (Zero External Dependency) (20 September 2026)
+- **Akar Masalah**:
+  - Pada saat mengekspor data Work Plan (`https://new.asystem.co.id/workplan/export`), sistem memicu error fatal `Class "PhpOffice\PhpSpreadsheet\Spreadsheet" not found` (HTTP 500) di [WorkPlanController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/WorkPlanController.php) baris 969.
+  - Masalah serupa juga terdapat pada [ActivityLogController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/ActivityLogController.php) di mana kedua controller mengimpor class dari package `PhpOffice\PhpSpreadsheet` yang tidak terpasang di `composer.json` / `vendor` server produksi.
+- **Solusi & Implementasi Terpadu**:
+  1. **WorkPlanXlsxExportService ([app/Services/WorkPlanXlsxExportService.php](file:///d:/ASystem/newasystem/app/Services/WorkPlanXlsxExportService.php))**:
+     - Mengembangkan service export mandiri berbasis PHP native `ZipArchive` & OpenXML Spreadsheet standard mengikuti pola sukses [CandidateXlsxExportService.php](file:///d:/ASystem/newasystem/app/Services/CandidateXlsxExportService.php) dan [JobStatistikXlsxExportService.php](file:///d:/ASystem/newasystem/app/Services/JobStatistikXlsxExportService.php) tanpa ketergantungan package eksternal (*zero external dependency*).
+     - **Desain & Tata Letak Seluruh 13 Kolom**:
+       - Kolom A: `NO` (rata tengah)
+       - Kolom B: `ID TUGAS` (#123)
+       - Kolom C: `JUDUL TUGAS` (lebar 40, wrap-text rapi)
+       - Kolom D: `PRIORITAS` (badge tematik: High = soft rose `#FFE11D48`, Medium = soft amber `#FFD97706`, Low = slate)
+       - Kolom E: `STATUS` (badge tematik: Done = soft emerald `#FF059669`, In Progress = soft sky `#FF0284C7`, Review = soft purple `#FF7C3AED`, Archived = muted)
+       - Kolom F: `PENUGAS (CREATOR)`
+       - Kolom G: `ASSIGNEE (PENERIMA)`
+       - Kolom H: `DELEGATOR`
+       - Kolom I: `TARGET DEADLINE` (format `d/m/Y`)
+       - Kolom J: `PROGRESS SUBTASK` (rekap checklist contoh: `2/5 (40%)`)
+       - Kolom K: `TANGGAL INPUT` (format `d/m/Y H:i`)
+       - Kolom L: `TANGGAL SELESAI` (format `d/m/Y H:i`)
+       - Kolom M: `LINK LAMPIRAN` (formula hyperlink Excel `=HYPERLINK(...)` aktif)
+     - **Tampilan Profesional**: Banner judul, rincian metadata filter, header baris Dark Slate 800 (`#1E293B`) dengan teks putih tebal, freeze pane baris ke-4, zebra striping berselang-seling (`#FFFFFF` dan `#F8FAFC`), serta border sel tipis (`#CBD5E1`).
+  2. **ActivityLogXlsxExportService ([app/Services/ActivityLogXlsxExportService.php](file:///d:/ASystem/newasystem/app/Services/ActivityLogXlsxExportService.php))**:
+     - Mengembangkan service mandiri berbasis `ZipArchive` untuk ekspor audit trail, mencegah timbulnya error serupa pada modul Log Aktivitas.
+     - Styling Sapphire Blue (`#0F52BA`) elegan dengan badge aksi tematik (Create, Update, Delete, Login, Failed).
+  3. **Penyelarasan Controller & Respons Download**:
+     - Menggantikan manual header `header(...)` dan `exit;` dengan standar Laravel `response()->download($filePath, $fileName, [...])->deleteFileAfterSend(true)`.
+     - Menghapus seluruh import class `PhpOffice\PhpSpreadsheet` di [WorkPlanController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/WorkPlanController.php) dan [ActivityLogController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/ActivityLogController.php).
+
 ---
 
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `c4dbdf0` | fix(export): resolve Class PhpOffice\PhpSpreadsheet\Spreadsheet not found by migrating WorkPlan and ActivityLog exports to native ZipArchive OpenXML |
 | `ea0d004` | feat(audit): implementasi sistem audit trail terpusat, activity logs viewer, diff modal, dan export excel di seluruh sistem |
+
 | `e64305b` | fix(ui): perbaiki tabel step Odoo dan hilangkan background kolom kusam pada mode dark |
 | `6cebd6a` | fix(ui): perbaiki kontras dan keterbacaan tabel di modul job statistik pada dark mode |
 | `e040663` | fix(ui): perbaiki kontras dan keterbacaan card step Odoo ERP serta opacity slate pada dark mode |

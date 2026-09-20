@@ -17,11 +17,7 @@ use App\Models\WorkPlanDaily;
 use App\Models\Employee;
 use App\Models\User;
 use App\Services\ActivityLogger;
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
-use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Style\Fill;
+use App\Services\WorkPlanXlsxExportService;
 
 class WorkPlanController extends Controller
 {
@@ -966,82 +962,31 @@ class WorkPlanController extends Controller
 
         $tasks = $query->orderBy('id', 'desc')->get();
 
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Work Plan & ToDo');
-
-        // Header Style
-        $headers = [
-            'A1' => 'NO',
-            'B1' => 'ID TUGAS',
-            'C1' => 'JUDUL TUGAS',
-            'D1' => 'PRIORITAS',
-            'E1' => 'STATUS',
-            'F1' => 'PENUGAS (CREATOR)',
-            'G1' => 'ASSIGNEE (PENERIMA)',
-            'H1' => 'DELEGATOR',
-            'I1' => 'TARGET DEADLINE',
-            'J1' => 'PROGRESS SUBTASK',
-            'K1' => 'TANGGAL INPUT',
-            'L1' => 'TANGGAL SELESAI',
-            'M1' => 'LINK LAMPIRAN',
+        $meta = [
+            'user_filter' => $filterUser,
+            'smart' => $filterSmart,
+            'status' => $filterStatus,
+            'exporter_name' => $user ? $this->getUserOfficialName($user) : 'Administrator',
         ];
 
-        foreach ($headers as $cell => $val) {
-            $sheet->setCellValue($cell, $val);
-        }
-
-        $headerStyle = [
-            'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF'], 'size' => 11],
-            'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF1E293B']], // Slate 800
-            'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
-            'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['argb' => 'FFCBD5E1']]],
-        ];
-        $sheet->getStyle('A1:M1')->applyFromArray($headerStyle);
-        $sheet->getRowDimension(1)->setRowHeight(28);
-
-        $row = 2;
-        $no = 1;
-        foreach ($tasks as $task) {
-            $totalSub = $task->subtasks->count();
-            $compSub = $task->subtasks->where('is_completed', true)->count();
-            $subtaskStr = $totalSub > 0 ? "{$compSub}/{$totalSub} (" . round(($compSub/$totalSub)*100) . "%)" : "-";
-
-            $sheet->setCellValue("A{$row}", $no++);
-            $sheet->setCellValue("B{$row}", "#{$task->id}");
-            $sheet->setCellValue("C{$row}", $task->title);
-            $sheet->setCellValue("D{$row}", $task->priority);
-            $sheet->setCellValue("E{$row}", strtoupper($task->status));
-            $sheet->setCellValue("F{$row}", $task->user ?: '-');
-            $sheet->setCellValue("G{$row}", $task->assignee ?: '-');
-            $sheet->setCellValue("H{$row}", $task->delegator ?: '-');
-            $sheet->setCellValue("I{$row}", $task->due_date ? $task->due_date->format('d/m/Y') : '-');
-            $sheet->setCellValue("J{$row}", $subtaskStr);
-            $sheet->setCellValue("K{$row}", $task->date_input ? $task->date_input->format('d/m/Y H:i') : '-');
-            $sheet->setCellValue("L{$row}", $task->date_completed ? $task->date_completed->format('d/m/Y H:i') : '-');
-            $sheet->setCellValue("M{$row}", $task->attachment_url ?: '-');
-
-            $row++;
-        }
-
-        foreach (range('A', 'M') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
-
-        $filename = 'WorkPlan_ToDoList_' . date('Ymd_His') . '.xlsx';
+        $filePath = WorkPlanXlsxExportService::generateXlsx($tasks, $meta);
+        $fileName = 'WorkPlan_ToDoList_' . date('Ymd_His') . '.xlsx';
 
         ActivityLogger::export('Work Plan', "Mengekspor daftar tugas work plan ke Excel (" . count($tasks) . " baris)", [
             'total_rows' => count($tasks),
+            'status' => $filterStatus,
+            'smart' => $filterSmart,
+            'user_filter' => $filterUser,
         ]);
 
-        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-        header("Content-Disposition: attachment; filename=\"{$filename}\"");
-        header('Cache-Control: max-age=0');
-
-        $writer = new Xlsx($spreadsheet);
-        $writer->save('php://output');
-        exit;
+        return response()->download($filePath, $fileName, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
+            'Expires' => '0',
+            'Pragma' => 'public',
+        ])->deleteFileAfterSend(true);
     }
+
 
     /**
      * Halaman Daily Work Activity Log (tb_workplan)
