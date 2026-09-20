@@ -333,11 +333,23 @@
                         <li>
                             <a href="{{ route('workplan.index') }}" 
                                title="Work Plan & ToDo"
-                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('workplan.*') ? 'sidebar-item-active' : 'text-slate-700 hover:text-primary hover:bg-slate-50' }}"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('workplan.index', 'workplan.daily') ? 'sidebar-item-active' : 'text-slate-700 hover:text-primary hover:bg-slate-50' }}"
                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
-                                <i class="fa-solid fa-list-check text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('workplan.*') ? 'text-white' : 'text-indigo-500' }}"></i>
+                                <i class="fa-solid fa-list-check text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('workplan.index', 'workplan.daily') ? 'text-white' : 'text-indigo-500' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Work Plan & ToDo</span>
-                                <span x-show="!sidebarCollapsed" class="text-[9px] {{ request()->routeIs('workplan.*') ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700' }} font-bold px-1.5 py-0.5 rounded-md">KANBAN</span>
+                                <span x-show="!sidebarCollapsed" class="text-[9px] {{ request()->routeIs('workplan.index', 'workplan.daily') ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700' }} font-bold px-1.5 py-0.5 rounded-md">KANBAN</span>
+                            </a>
+                        </li>
+
+                        <!-- WA GROUPS CHAT -->
+                        <li>
+                            <a href="{{ route('workplan.chat') }}" 
+                               title="WA Groups Chat"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('workplan.chat*') ? 'sidebar-item-active' : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-brands fa-whatsapp text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('workplan.chat*') ? 'text-white' : 'text-emerald-500' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">WA Groups Chat</span>
+                                <span x-show="!sidebarCollapsed" class="text-[9px] {{ request()->routeIs('workplan.chat*') ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800' }} font-bold px-1.5 py-0.5 rounded-md">LIVE</span>
                             </a>
                         </li>
 

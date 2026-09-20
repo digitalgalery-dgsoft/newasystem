@@ -1083,6 +1083,37 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 60. 💬 Modul WhatsApp Groups Chat Real-time pada Work Plan & ToDoList (20 September 2026)
+- **Tampilan Antarmuka WhatsApp Web Modern & Responsif**:
+  - **Bilah Samping Kiri (Group Sidebar)**:
+    - Header profil pengguna aktif dengan indikator status *Online*, tombol cepat buat group baru (`fa-user-group`), dan tombol penyegaran instan.
+    - Bilah pencarian (*search filter*) interaktif untuk memfilter daftar grup obrolan secara instan di sisi klien.
+    - Daftar obrolan grup dengan avatar inisial berlatar warna dinamis, nama grup, cuplikan pesan terakhir (*latest message preview*) dengan nama pengirim, penanda waktu percakapan terakhir, dan badge total anggota.
+  - **Area Obrolan Kanan (Active Chat Stream)**:
+    - Header grup aktif menampilkan nama grup, total personel, daftar ringkasan anggota tim, tombol tambah anggota cepat (`+ Tambah Anggota`), tombol lihat seluruh anggota, dan tombol pintas navigasi kembali ke papan Kanban.
+    - Latar belakang khas WhatsApp Web dengan pola doodle subtle hangat.
+    - Gelembung pesan (*chat bubble*) terstruktur:
+      - **Pesan Anggota Lain (Incoming)**: Sebelah kiri, berlatar putih bersih (`#ffffff`), dilengkapi nama pengirim dengan palet warna kontras beragam, konversi tautan URL otomatis, dan penanda waktu kirim.
+      - **Pesan Sendiri (Outgoing)**: Sebelah kanan, berlatar hijau lembut WhatsApp (`#d9fdd3`), teks pesan, penanda waktu kirim, dan ikon centang ganda biru (*double blue checkmark*).
+      - **Pesan Sistem / Notifikasi**: Ditampilkan di posisi tengah dengan pill membulat (*cth: "Group dibuat oleh...", "X menambahkan Y"*).
+    - Bilah input pesan fleksibel dengan dukungan kirim instan tombol `Enter` (serta `Ctrl+Enter` untuk baris baru), dan tombol kirim bulat hijau WhatsApp (`#25D366`).
+  - **Layar Pembuka (Welcome Screen)**:
+    - Tampilan placeholder profesional saat belum ada grup yang dipilih dengan ikon WhatsApp besar dan tombol cepat ajakan membuat grup.
+- **Manajemen Anggota Karyawan Inhouse**:
+  - Modal pembuatan grup baru yang terintegrasi langsung dengan direktori karyawan Inhouse aktif (5 entitas ESA Groups: AMK, AKP, ATK, ABO, ATB).
+  - Dilengkapi fitur pencarian real-time nama karyawan, informasi jabatan dan area penempatan, serta tombol pintas *"Pilih Semua"* dan *"Reset"*.
+  - Modal penambahan anggota ke dalam grup yang sudah berjalan dengan pencegahan duplikasi data.
+  - Modal inspeksi detail keanggotaan grup dengan pembagian peran (*Admin* vs *Anggota*).
+- **Arsitektur Real-Time Cerdas & Kompatibel (Polling Interval)**:
+  - Polling pesan asinkron setiap 2.5 detik pada grup aktif via endpoint `last_id` tanpa membebani server dan 100% kompatibel dengan arsitektur PHP-FPM / Nginx tanpa dependensi daemon background.
+  - Polling sidebar setiap 6 detik untuk memperbarui snippet pesan terakhir dan urutan obrolan teratas.
+  - Fitur auto-scroll cerdas ke dasar obrolan hanya jika posisi scroll pengguna berada di dekat bagian bawah (*near bottom*).
+- **Integrasi Navigasi & Notifikasi SweetAlert2**:
+  - Menggantikan dialog konfirmasi/error standar dengan SweetAlert2 elegan.
+  - Akses satu-klik via tombol **"WA Groups Chat"** pada header Work Plan Kanban dan item menu bilah samping navigasi utama portal dengan badge **LIVE**.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |

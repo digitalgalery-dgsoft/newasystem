@@ -18,6 +18,7 @@ use App\Http\Controllers\CbtController;
 use App\Http\Controllers\CandidateImportController;
 use App\Http\Controllers\JobStatistikController;
 use App\Http\Controllers\WorkPlanController;
+use App\Http\Controllers\WorkPlanChatController;
 
 // ==========================================
 // HALAMAN AWAL WEB & LANDING PAGE (v3/index.php)
@@ -511,6 +512,14 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/workplan-daily', [WorkPlanController::class, 'daily'])->name('workplan.daily');
     Route::post('/workplan-daily', [WorkPlanController::class, 'storeDaily'])->name('workplan.daily.store');
     Route::delete('/workplan-daily/{kode}', [WorkPlanController::class, 'destroyDaily'])->name('workplan.daily.destroy');
+
+    // Work Plan Groups Chat (WhatsApp Web style)
+    Route::get('/workplan-chat', [WorkPlanChatController::class, 'index'])->name('workplan.chat');
+    Route::post('/workplan-chat/groups', [WorkPlanChatController::class, 'storeGroup'])->name('workplan.chat.groups.store');
+    Route::post('/workplan-chat/groups/{id}/members', [WorkPlanChatController::class, 'addMembers'])->name('workplan.chat.groups.members');
+    Route::get('/workplan-chat/groups/{id}/messages', [WorkPlanChatController::class, 'getMessages'])->name('workplan.chat.messages');
+    Route::post('/workplan-chat/groups/{id}/messages', [WorkPlanChatController::class, 'sendMessage'])->name('workplan.chat.messages.send');
+    Route::get('/workplan-chat/groups-poll', [WorkPlanChatController::class, 'getGroups'])->name('workplan.chat.groups.poll');
 });
 
 // Redirect sistem lama (wp.php, wptodo.php, todo.php, exportwp.php)
