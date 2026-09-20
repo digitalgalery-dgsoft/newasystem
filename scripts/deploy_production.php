@@ -18,7 +18,7 @@ echo "🚀 ASYSTEM PRODUCTION AUTO-DEPLOY (Server 3: new.asystem.co.id)\n";
 echo "==============================================================================\n";
 echo "Waktu Mulai: " . date('Y-m-d H:i:s') . "\n";
 
-$cmd = "--version && cd /www/wwwroot/new.asystem.co.id && git fetch origin main && git reset --hard origin/main && php artisan migrate --force && php artisan wp:import-dump && php artisan optimize:clear && git log -1 --oneline";
+$cmd = "--version && cd /www/wwwroot/new.asystem.co.id && git fetch origin main && git reset --hard origin/main && php artisan migrate --force && php artisan optimize:clear && git log -1 --oneline";
 
 $url = "https://appsend.my.id/deploy-production.php?token=dgsoft_rahasia_123&only_server=3&artisan_cmd=" . urlencode($cmd);
 
