@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 19 September 2026*
+*Terakhir diperbarui: 20 September 2026*
 
 ---
 
@@ -1148,14 +1148,44 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
     - Menambahkan `.stop` pada seluruh tombol pembuka (`@click.stop="openCreateGroupModal()"`, `@click.stop="openAddMemberModal()"`, `@click.stop="openViewMembersModal()"`).
     - Memindahkan penutupan latar belakang ke `@click.self="show... = false"` pada elemen *backdrop* gelap serta menambahkan `@click.stop` pada kartu modal, menjamin modal terbuka 100% responsif tanpa konflik klik luar.
 
+### 63. 🖼️ Foto Profil pada Chat Bubble & Sistem Notifikasi Real-time (Lonceng & Toast) (20 September 2026)
+- **Foto Profil Pengguna pada Chat Bubble**:
+  - **Tampilan Sisi Kiri (Pesan Masuk dari Rekan Tim / Anggota Lain)**:
+    - Menampilkan avatar foto profil melingkar (`w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-slate-200 shadow-2xs`) di sisi kiri gelembung pesan.
+    - Dilengkapi nama pengirim dengan warna dinamis sesuai palet untuk memudahkan membedakan siapa yang mengirim pesan di dalam obrolan grup.
+  - **Tampilan Sisi Kanan (Pesan Keluar dari User Sendiri)**:
+    - Menampilkan avatar foto profil pengguna sendiri di sisi kanan gelembung pesan berlatar hijau toska.
+  - **Resolusi Avatar & Fallback Cerdas**:
+    - Backend `WorkPlanChatController::getSenderAvatarUrl()` memeriksa foto profil pada `User::avatar_url`, master karyawan `Employee::foto` (di direktori `uploads/avatars/` atau `lampiran/`), dan fallback otomatis ke inisial dinamis UI-Avatars ber-warna.
+    - Dilengkapi *request-level cache* pada controller agar resolusi avatar berlangsung cepat tanpa query berulang.
+    - Penggunaan atribut Alpine.js `x-on:error` untuk menangani fallback instan jika berkas gambar gagal dimuat, sekaligus mencegah tabrakan dengan directive bawaan Blade `@error`.
+- **Sistem Notifikasi Real-time (Lonceng Navbar & Popup Toast)**:
+  - **Popup Toast Notifikasi (SweetAlert2)**:
+    - Ketika ada pesan baru masuk dari anggota grup lain pada grup yang diikuti pengguna, muncul popup Toast di pojok kanan atas layar.
+    - Toast memuat judul nama grup yang bersangkutan, avatar pengirim, nama pengirim, dan cuplikan pesan teks.
+    - Dilengkapi audio notifikasi lembut (*chime/beep*) via Web Audio API tanpa dependensi berkas suara eksternal.
+    - Mengklik popup Toast langsung mengarahkan pengguna ke ruang percakapan grup terkait.
+  - **Ikon Lonceng Navbar Topbar Interaktif**:
+    - Mengubah tombol lonceng topbar menjadi komponen Alpine.js `asystemNotifications()` dengan badge angka merah dinamis yang menampilkan total jumlah pesan belum dibaca (`unread_total`).
+    - Ikon beranimasi halus saat notifikasi baru tiba.
+    - Menu dropdown interaktif menampilkan daftar obrolan belum dibaca per grup, nama pengirim terakhir, cuplikan pesan, waktu pesan, badge counter unread, dan tautan cepat ke obrolan.
+  - **Endpoint Pemeriksaan Notifikasi Global (`/workplan-chat/notifications/check`)**:
+    - Polling ringan di latar belakang setiap ~8.5 detik yang bekerja di seluruh halaman ASystem Portal (Kanban, Interview, Dashboard, dll.), menjamin pengguna selalu terinformasi akan pesan baru secara real-time.
+
 ---
 
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
-| `fe8bb62` | fix(pdf): resolve MpdfException pcre.backtrack_limit by using direct local image file paths, filtering principle screenshot, raising PCRE limit, and adding safe HTML chunker |
+| `e218f23` | fix(workplan-chat): replace @error with x-on:error to avoid blade directive collision |
+| `2f445cd` | feat(workplan-chat): add profile avatars to chat bubbles and real-time notifications with bell badge counter and toast popup |
+| `6a5bd22` | fix(chat): optimize employee query to pure inhouse (reduce from 23k to 794 items), cap dropdown rendering to 60 items, and fix modal backdrop click bubbling |
+| `9822220` | feat(chat): implement searchable multi-select dropdown for team members and rename label to Groups Chat |
+| `b425201` | fix(pdf): resolve MpdfException pcre.backtrack_limit by using direct local image file paths and safe HTML chunking |
+| `6dcf11a` | docs: document Milestone 60 WhatsApp Groups Chat in UPDATE_PROGRESS.md |
 | `5c8e7f3` | feat(workplan): implement WhatsApp-style Groups Chat with real-time messaging, inhouse members, and SweetAlert2 |
+| `dafb3a3` | docs: document Milestone 59 lightbox preview modal |
 | `f03d859` | feat(workplan): open attachment preview inside lightbox modal instead of new tab |
 | `20ecb07` | docs: document Milestone 58 interactive attachment uploader |
 | `f5c80a3` | feat(workplan): add drag and drop, clipboard paste, and image preview to task and comment attachment fields |
