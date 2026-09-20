@@ -198,9 +198,9 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- TABEL 1: STATISTIK PER AREA -->
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col" x-data="tableFilterArea()">
+        <div class="job-stats-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col" x-data="tableFilterArea()">
             <!-- HEADER -->
-            <div class="bg-slate-900 text-white px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+            <div class="job-stats-header job-stats-header-area bg-slate-900 text-white px-4 py-3 flex items-center justify-between flex-wrap gap-2">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-map-location-dot text-cyan-400 text-sm"></i>
                     <h2 class="text-sm font-bold tracking-tight">Statistik per Area</h2>
@@ -216,7 +216,7 @@
 
             <!-- TABLE CONTENT -->
             <div class="overflow-x-auto flex-1 max-h-[480px]">
-                <table class="w-full text-left text-xs border-collapse">
+                <table class="job-stats-table w-full text-left text-xs border-collapse">
                     <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 shadow-sm">
                         <tr>
                             <th class="py-2.5 px-3 border-b border-slate-200 w-10 text-center">No</th>
@@ -231,11 +231,11 @@
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="py-2 px-3 text-center text-slate-400" x-text="(page - 1) * perPage + idx + 1"></td>
                                 <td class="py-2 px-3">
-                                    <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200" x-text="row.region"></span>
+                                    <span class="stat-badge-region inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200" x-text="row.region"></span>
                                 </td>
-                                <td class="py-2 px-3 font-semibold text-slate-900" x-text="row.area"></td>
-                                <td class="py-2 px-3 text-center font-bold text-blue-700 bg-blue-50/50" x-text="Number(row.job_post).toLocaleString()"></td>
-                                <td class="py-2 px-3 text-center font-bold text-emerald-700 bg-emerald-50/50" x-text="Number(row.pelamar).toLocaleString()"></td>
+                                <td class="stat-text-primary py-2 px-3 font-semibold text-slate-900" x-text="row.area"></td>
+                                <td class="stat-cell-jobpost py-2 px-3 text-center font-bold text-blue-700 bg-blue-50/50" x-text="Number(row.job_post).toLocaleString()"></td>
+                                <td class="stat-cell-pelamar py-2 px-3 text-center font-bold text-emerald-700 bg-emerald-50/50" x-text="Number(row.pelamar).toLocaleString()"></td>
                             </tr>
                         </template>
                         <tr x-show="filteredRows.length === 0">
@@ -248,7 +248,7 @@
             </div>
 
             <!-- FOOTER & PAGINATION -->
-            <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-medium">
+            <div class="job-stats-footer p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-medium">
                 <div>
                     Total: <strong class="text-slate-800" x-text="totalJobPosts.toLocaleString()"></strong> Job Post, 
                     <strong class="text-slate-800" x-text="totalPelamar.toLocaleString()"></strong> Pelamar
@@ -266,9 +266,9 @@
         </div>
 
         <!-- TABEL 2: STATISTIK PER NAMA USER & AREA -->
-        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col" x-data="tableFilterUserArea()">
+        <div class="job-stats-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col" x-data="tableFilterUserArea()">
             <!-- HEADER -->
-            <div class="bg-sky-700 text-white px-4 py-3 flex items-center justify-between flex-wrap gap-2">
+            <div class="job-stats-header job-stats-header-user bg-sky-700 text-white px-4 py-3 flex items-center justify-between flex-wrap gap-2">
                 <div class="flex items-center gap-2">
                     <i class="fa-solid fa-user-gear text-cyan-200 text-sm"></i>
                     <h2 class="text-sm font-bold tracking-tight">Statistik per Nama User & Area</h2>
@@ -284,7 +284,7 @@
 
             <!-- TABLE CONTENT -->
             <div class="overflow-x-auto flex-1 max-h-[480px]">
-                <table class="w-full text-left text-xs border-collapse">
+                <table class="job-stats-table w-full text-left text-xs border-collapse">
                     <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 shadow-sm">
                         <tr>
                             <th class="py-2.5 px-3 border-b border-slate-200 w-10 text-center">No</th>
@@ -299,13 +299,13 @@
                         <template x-for="(row, idx) in paginatedRows" :key="'userarea-' + idx">
                             <tr class="hover:bg-slate-50 transition-colors">
                                 <td class="py-2 px-3 text-center text-slate-400" x-text="(page - 1) * perPage + idx + 1"></td>
-                                <td class="py-2 px-3 font-semibold text-slate-900" x-text="row.user"></td>
+                                <td class="stat-text-primary py-2 px-3 font-semibold text-slate-900" x-text="row.user"></td>
                                 <td class="py-2 px-3">
-                                    <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200" x-text="row.region"></span>
+                                    <span class="stat-badge-region inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200" x-text="row.region"></span>
                                 </td>
-                                <td class="py-2 px-3" x-text="row.area"></td>
-                                <td class="py-2 px-3 text-center font-bold text-sky-700 bg-sky-50/50" x-text="Number(row.job_post).toLocaleString()"></td>
-                                <td class="py-2 px-3 text-center font-bold text-emerald-700 bg-emerald-50/50" x-text="Number(row.pelamar).toLocaleString()"></td>
+                                <td class="stat-text-primary py-2 px-3" x-text="row.area"></td>
+                                <td class="stat-cell-jobpost py-2 px-3 text-center font-bold text-sky-700 bg-sky-50/50" x-text="Number(row.job_post).toLocaleString()"></td>
+                                <td class="stat-cell-pelamar py-2 px-3 text-center font-bold text-emerald-700 bg-emerald-50/50" x-text="Number(row.pelamar).toLocaleString()"></td>
                             </tr>
                         </template>
                         <tr x-show="filteredRows.length === 0">
@@ -318,7 +318,7 @@
             </div>
 
             <!-- FOOTER & PAGINATION -->
-            <div class="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-medium">
+            <div class="job-stats-footer p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-medium">
                 <div>
                     Menampilkan <span class="font-bold text-slate-800" x-text="filteredRows.length"></span> baris
                 </div>
@@ -337,9 +337,9 @@
     </div>
 
     <!-- TABEL 3: STATISTIK DETAIL KANDIDAT BERDASARKAN PRINSIPLE -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" x-data="tableFilterDetail()">
+    <div class="job-stats-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" x-data="tableFilterDetail()">
         <!-- HEADER -->
-        <div class="bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between flex-wrap gap-3">
+        <div class="job-stats-header job-stats-header-detail bg-slate-900 text-white px-5 py-3.5 flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-2.5">
                 <div class="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs border border-emerald-500/30">
                     <i class="fa-solid fa-building-columns"></i>
@@ -368,7 +368,7 @@
 
         <!-- TABLE CONTENT -->
         <div class="overflow-x-auto max-h-[600px]">
-            <table class="w-full text-left text-xs border-collapse">
+            <table class="job-stats-table w-full text-left text-xs border-collapse">
                 <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 shadow-sm">
                     <tr>
                         <th class="py-3 px-3.5 border-b border-slate-200 w-10 text-center">No</th>
@@ -377,41 +377,41 @@
                         <th class="py-3 px-3.5 border-b border-slate-200">Area</th>
                         <th class="py-3 px-3.5 border-b border-slate-200">Prinsiple</th>
                         <th class="py-3 px-3.5 border-b border-slate-200">Nama Job / Posisi</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-emerald-50 text-emerald-800">Kandidat Green</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-amber-50 text-amber-800">Kandidat Yellow</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-rose-50 text-rose-800">Kandidat Red</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-slate-200 text-slate-900">Total Pelamar</th>
+                        <th class="th-green py-3 px-3.5 border-b border-slate-200 text-center bg-emerald-50 text-emerald-800">Kandidat Green</th>
+                        <th class="th-yellow py-3 px-3.5 border-b border-slate-200 text-center bg-amber-50 text-amber-800">Kandidat Yellow</th>
+                        <th class="th-red py-3 px-3.5 border-b border-slate-200 text-center bg-rose-50 text-rose-800">Kandidat Red</th>
+                        <th class="th-total py-3 px-3.5 border-b border-slate-200 text-center bg-slate-200 text-slate-900">Total Pelamar</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 font-medium text-slate-700">
                     <template x-for="(row, idx) in paginatedRows" :key="'detail-' + idx">
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="py-2.5 px-3.5 text-center text-slate-400" x-text="(page - 1) * perPage + idx + 1"></td>
-                            <td class="py-2.5 px-3.5 font-semibold text-slate-900" x-text="row.user"></td>
+                            <td class="py-2.5 px-3.5 font-semibold text-slate-900 stat-text-primary" x-text="row.user"></td>
                             <td class="py-2.5 px-3.5">
-                                <span class="inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200" x-text="row.region"></span>
+                                <span class="stat-badge-region inline-flex px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200" x-text="row.region"></span>
                             </td>
-                            <td class="py-2.5 px-3.5" x-text="row.area"></td>
-                            <td class="py-2.5 px-3.5 font-semibold text-indigo-700" x-text="row.prinsiple"></td>
-                            <td class="py-2.5 px-3.5 font-bold text-slate-900" x-text="row.job_title"></td>
+                            <td class="py-2.5 px-3.5 stat-text-primary" x-text="row.area"></td>
+                            <td class="stat-cell-prinsiple py-2.5 px-3.5 font-semibold text-indigo-700" x-text="row.prinsiple"></td>
+                            <td class="py-2.5 px-3.5 font-bold text-slate-900 stat-text-primary" x-text="row.job_title"></td>
                             
                             <!-- Green Badge -->
-                            <td class="py-2.5 px-3.5 text-center bg-emerald-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200" x-text="Number(row.green).toLocaleString()"></span>
+                            <td class="stat-cell-green py-2.5 px-3.5 text-center bg-emerald-50/40">
+                                <span class="stat-badge-green inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200" x-text="Number(row.green).toLocaleString()"></span>
                             </td>
 
                             <!-- Yellow Badge -->
-                            <td class="py-2.5 px-3.5 text-center bg-amber-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-200" x-text="Number(row.yello).toLocaleString()"></span>
+                            <td class="stat-cell-yellow py-2.5 px-3.5 text-center bg-amber-50/40">
+                                <span class="stat-badge-yellow inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-200" x-text="Number(row.yello).toLocaleString()"></span>
                             </td>
 
                             <!-- Red Badge -->
-                            <td class="py-2.5 px-3.5 text-center bg-rose-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-200" x-text="Number(row.red).toLocaleString()"></span>
+                            <td class="stat-cell-red py-2.5 px-3.5 text-center bg-rose-50/40">
+                                <span class="stat-badge-red inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-200" x-text="Number(row.red).toLocaleString()"></span>
                             </td>
 
                             <!-- Total -->
-                            <td class="py-2.5 px-3.5 text-center font-black text-slate-900 bg-slate-100/70" x-text="Number(row.total_pelamar).toLocaleString()"></td>
+                            <td class="stat-cell-total py-2.5 px-3.5 text-center font-black text-slate-900 bg-slate-100/70" x-text="Number(row.total_pelamar).toLocaleString()"></td>
                         </tr>
                     </template>
                     <tr x-show="filteredRows.length === 0">
@@ -424,7 +424,7 @@
         </div>
 
         <!-- FOOTER & PAGINATION -->
-        <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+        <div class="job-stats-footer p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 font-medium">
             <div>
                 Menampilkan <strong class="text-slate-800" x-text="filteredRows.length"></strong> posisi lowongan terpilih
             </div>
@@ -447,9 +447,9 @@
     </div>
 
     <!-- TABEL 4: STATISTIK KANDIDAT PER REKRUTOR / AS BERDASARKAN STEP ODOO ERP -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" x-data="tableFilterOdooRecruiter()">
+    <div class="job-stats-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden" x-data="tableFilterOdooRecruiter()">
         <!-- HEADER -->
-        <div class="bg-indigo-900 text-white px-5 py-4 flex items-center justify-between flex-wrap gap-3">
+        <div class="job-stats-header job-stats-header-odoo bg-indigo-900 text-white px-5 py-4 flex items-center justify-between flex-wrap gap-3">
             <div class="flex items-center gap-3">
                 <div class="w-8 h-8 rounded-xl bg-indigo-500/30 text-indigo-200 flex items-center justify-center font-bold text-sm border border-indigo-400/30 shadow-inner">
                     <i class="fa-solid fa-users-gear"></i>
@@ -488,25 +488,25 @@
 
         <!-- TABLE CONTENT -->
         <div class="overflow-x-auto max-h-[600px]">
-            <table class="w-full text-left text-xs border-collapse">
+            <table class="job-stats-table w-full text-left text-xs border-collapse">
                 <thead class="bg-slate-100 text-slate-600 font-bold sticky top-0 z-10 shadow-sm">
                     <tr>
                         <th class="py-3 px-3.5 border-b border-slate-200 w-10 text-center">No</th>
                         <th class="py-3 px-3.5 border-b border-slate-200">Nama Rekrutor / AS</th>
                         <th class="py-3 px-3.5 border-b border-slate-200">Region & Area</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-slate-200/80 text-slate-900">Total</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-sky-50 text-sky-800">1. Pelamar</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-indigo-50 text-indigo-800">2. Interview</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-purple-50 text-purple-800">3. Principal</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-amber-50 text-amber-800">4. E-Learning</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-teal-50 text-teal-800">5. PKWT</th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-emerald-100 text-emerald-900 font-black border-b-2 border-emerald-500">
+                        <th class="th-total py-3 px-3.5 border-b border-slate-200 text-center bg-slate-200/80 text-slate-900">Total</th>
+                        <th class="th-step-pelamar py-3 px-3.5 border-b border-slate-200 text-center bg-sky-50 text-sky-800">1. Pelamar</th>
+                        <th class="th-step-interview py-3 px-3.5 border-b border-slate-200 text-center bg-indigo-50 text-indigo-800">2. Interview</th>
+                        <th class="th-step-principal py-3 px-3.5 border-b border-slate-200 text-center bg-purple-50 text-purple-800">3. Principal</th>
+                        <th class="th-step-elearning py-3 px-3.5 border-b border-slate-200 text-center bg-amber-50 text-amber-800">4. E-Learning</th>
+                        <th class="th-step-pkwt py-3 px-3.5 border-b border-slate-200 text-center bg-teal-50 text-teal-800">5. PKWT</th>
+                        <th class="th-step-joined py-3 px-3.5 border-b border-slate-200 text-center bg-emerald-100 text-emerald-900 font-black border-b-2 border-emerald-500">
                             <div class="flex items-center justify-center gap-1">
                                 <span>6. Joined</span>
                                 <i class="fa-solid fa-arrow-down-wide-short text-[10px] text-emerald-700"></i>
                             </div>
                         </th>
-                        <th class="py-3 px-3.5 border-b border-slate-200 text-center bg-rose-50 text-rose-800">Belum di Odoo</th>
+                        <th class="th-step-none py-3 px-3.5 border-b border-slate-200 text-center bg-rose-50 text-rose-800">Belum di Odoo</th>
                         <th class="py-3 px-3.5 border-b border-slate-200 text-center">Aksi</th>
                     </tr>
                 </thead>
@@ -515,64 +515,64 @@
                         <tr class="hover:bg-slate-50 transition-colors">
                             <td class="py-2.5 px-3.5 text-center text-slate-400" x-text="(page - 1) * perPage + idx + 1"></td>
                             <td class="py-2.5 px-3.5">
-                                <div class="font-bold text-slate-900" x-text="row.user_display"></div>
+                                <div class="font-bold text-slate-900 stat-text-primary" x-text="row.user_display"></div>
                                 <div class="text-[10px] text-slate-400 font-mono" x-text="row.user_email"></div>
                             </td>
                             <td class="py-2.5 px-3.5">
-                                <div class="font-semibold text-slate-800" x-text="row.area"></div>
+                                <div class="font-semibold text-slate-800 stat-text-primary" x-text="row.area"></div>
                                 <div class="text-[10px] text-slate-400" x-text="row.region"></div>
                             </td>
                             <!-- Total -->
-                            <td class="py-2.5 px-3.5 text-center font-black text-slate-900 bg-slate-100/80">
-                                <span class="inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-slate-800 text-white" x-text="Number(row.total).toLocaleString()"></span>
+                            <td class="py-2.5 px-3.5 text-center font-black text-slate-900 bg-slate-100/80 stat-cell-total">
+                                <span class="stat-badge-total inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-slate-800 text-white" x-text="Number(row.total).toLocaleString()"></span>
                             </td>
 
                             <!-- 1. Pelamar -->
                             <td class="py-2.5 px-3.5 text-center bg-sky-50/40">
                                 <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.data_pelamar > 0 ? 'bg-sky-100 text-sky-800 font-black' : 'text-slate-300'"
+                                      :class="row.data_pelamar > 0 ? 'stat-badge-step-pelamar bg-sky-100 text-sky-800 font-black' : 'stat-zero-val text-slate-300'"
                                       x-text="Number(row.data_pelamar).toLocaleString()"></span>
                             </td>
 
                             <!-- 2. Interview -->
                             <td class="py-2.5 px-3.5 text-center bg-indigo-50/40">
                                 <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.interview > 0 ? 'bg-indigo-100 text-indigo-800 font-black' : 'text-slate-300'"
+                                      :class="row.interview > 0 ? 'stat-badge-step-interview bg-indigo-100 text-indigo-800 font-black' : 'stat-zero-val text-slate-300'"
                                       x-text="Number(row.interview).toLocaleString()"></span>
                             </td>
 
                             <!-- 3. Principal -->
                             <td class="py-2.5 px-3.5 text-center bg-purple-50/40">
                                 <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.principal > 0 ? 'bg-purple-100 text-purple-800 font-black' : 'text-slate-300'"
+                                      :class="row.principal > 0 ? 'stat-badge-step-principal bg-purple-100 text-purple-800 font-black' : 'stat-zero-val text-slate-300'"
                                       x-text="Number(row.principal).toLocaleString()"></span>
                             </td>
 
                             <!-- 4. E-Learning -->
                             <td class="py-2.5 px-3.5 text-center bg-amber-50/40">
                                 <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.elearning > 0 ? 'bg-amber-100 text-amber-800 font-black' : 'text-slate-300'"
+                                      :class="row.elearning > 0 ? 'stat-badge-step-elearning bg-amber-100 text-amber-800 font-black' : 'stat-zero-val text-slate-300'"
                                       x-text="Number(row.elearning).toLocaleString()"></span>
                             </td>
 
                             <!-- 5. PKWT -->
                             <td class="py-2.5 px-3.5 text-center bg-teal-50/40">
                                 <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.pkwt > 0 ? 'bg-teal-100 text-teal-800 font-black' : 'text-slate-300'"
+                                      :class="row.pkwt > 0 ? 'stat-badge-step-pkwt bg-teal-100 text-teal-800 font-black' : 'stat-zero-val text-slate-300'"
                                       x-text="Number(row.pkwt).toLocaleString()"></span>
                             </td>
 
                             <!-- 6. Joined -->
                             <td class="py-2.5 px-3.5 text-center bg-emerald-50/40">
                                 <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.joined > 0 ? 'bg-emerald-100 text-emerald-800 font-black' : 'text-slate-300'"
+                                      :class="row.joined > 0 ? 'stat-badge-step-joined bg-emerald-100 text-emerald-800 font-black' : 'stat-zero-val text-slate-300'"
                                       x-text="Number(row.joined).toLocaleString()"></span>
                             </td>
 
                             <!-- Belum di Odoo -->
                             <td class="py-2.5 px-3.5 text-center bg-rose-50/40">
                                 <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.belum_di_odoo > 0 ? 'bg-rose-100 text-rose-800 font-black' : 'text-slate-300'"
+                                      :class="row.belum_di_odoo > 0 ? 'stat-badge-step-none bg-rose-100 text-rose-800 font-black' : 'stat-zero-val text-slate-300'"
                                       x-text="Number(row.belum_di_odoo).toLocaleString()"></span>
                             </td>
 
@@ -580,7 +580,7 @@
                             <td class="py-2.5 px-3.5 text-center">
                                 <a :href="'{{ route('kandidatportal.index') }}?recruiter=' + encodeURIComponent(row.user_email)" 
                                    title="Lihat Kandidat Portal Rekrutor Ini"
-                                   class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-all">
+                                   class="stat-btn-portal inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-all">
                                     <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
                                     <span>Portal</span>
                                 </a>
@@ -597,7 +597,7 @@
         </div>
 
         <!-- FOOTER & PAGINATION -->
-        <div class="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 font-medium">
+        <div class="job-stats-footer p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-slate-500 font-medium">
             <div>
                 Menampilkan <strong class="text-slate-800" x-text="filteredRows.length"></strong> Rekrutor / AS terdaftar
             </div>

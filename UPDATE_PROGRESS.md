@@ -1260,10 +1260,36 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 68. 📊 Optimasi Kontras & Keterbacaan Seluruh Tabel di Modul Job Statistik pada Dark Mode (20 September 2026)
+- **Latar Belakang & Masalah**:
+  - Pada tampilan Dark Mode di modul **Job Statistik** (`/job/stats`), tampilan seluruh tabel mengalami masalah keterbacaan (*low contrast*):
+    - **Tabel 1 (Statistik per Area) & Tabel 2 (Statistik per Nama User & Area)**: Angka *Jumlah Job Post* (`text-blue-700` / `text-sky-700`) dan *Jumlah Pelamar* (`text-emerald-700`) menggunakan warna teks gelap bawaan Tailwind dengan latar sel `bg-*-50/50`, sehingga tulisan tenggelam ke latar gelap dan sulit dibaca.
+    - **Tabel 3 (Statistik Detail Kandidat Berdasarkan Prinsiple)**: Kolom *Prinsiple* (`text-indigo-700`) sangat gelap; badge pill *Kandidat Green*, *Yellow*, *Red*, serta kolom *Total Pelamar* tampak kusam dan kurang kontras.
+    - **Tabel 4 (Statistik Kandidat per Rekrutor Step Odoo ERP)**: Header kolom tahapan rekrutmen Odoo ERP dan pill badge per tahapan sulit dibedakan, terutama antara tahapan aktif dan nilai 0.
+    - Thead sticky, batas garis tabel (*table borders*), dan kontrol footer/pagination perlu diselaraskan dengan ke-4 varian palet tema gelap (*Hitam Pekat, Biru Navy, Dark Grey, Soft Grey*).
+- **Solusi & Implementasi Terpadu**:
+  1. **Class Semantic Terstruktur pada Template ([job/statistik.blade.php](file:///d:/ASystem/newasystem/resources/views/job/statistik.blade.php))**:
+     - Menerapkan arsitektur class terisolasi agar tidak merusak tampilan Light Mode:
+       - Kontainer & Header: `.job-stats-card`, `.job-stats-header-area`, `.job-stats-header-user`, `.job-stats-header-detail`, `.job-stats-header-odoo`.
+       - Tabel & Header Kolom: `.job-stats-table`, `.th-green`, `.th-yellow`, `.th-red`, `.th-total`, `.th-step-*`.
+       - Sel Data: `.stat-cell-jobpost`, `.stat-cell-pelamar`, `.stat-cell-prinsiple`, `.stat-cell-green`, `.stat-cell-yellow`, `.stat-cell-red`, `.stat-cell-total`, `.stat-text-primary`, `.stat-badge-region`.
+       - Badge Tahapan Odoo: `.stat-badge-step-*`, `.stat-zero-val`, `.stat-btn-portal`, `.job-stats-footer`.
+  2. **Styling Dark Mode Presisi Tinggi ([layouts/app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php))**:
+     - **Jumlah Job Post**: Berubah menjadi warna Sky Blue cerah (`#38bdf8`) dengan latar aksen transparan halus (`rgba(56, 189, 248, 0.08)`) dan font tebal (*extra bold*).
+     - **Jumlah Pelamar**: Berubah menjadi warna Mint Emerald tajam (`#34d399`) dengan latar transparan aksen (`rgba(16, 185, 129, 0.08)`).
+     - **Prinsiple**: Diberikan warna Lilac Indigo terang (`#a5b4fc`).
+     - **Badge Kategori Green, Yellow, Red & Total**: Diberikan latar transparan ber-border halus dengan warna kontras tinggi: Green (`#34d399`), Yellow (`#fbbf24`), Red (`#fb7185`), dan Total (`#ffffff`).
+     - **Tahapan Pipeline Odoo ERP**: Diberikan aksen warna neon cerah sesuai tahapan (*Sky, Indigo, Purple, Amber, Teal, Emerald*), dengan penekanan khusus pada *Joined* (`#34d399` font-black) dan pemudaran nilai 0 (`#64748b`) agar data riil lebih menonjol.
+     - **Tombol Aksi Portal**: Diberikan styling dark mode transparan indigo (`rgba(99, 102, 241, 0.18)` / `#a5b4fc`) dengan efek hover terang.
+     - **Header Sticky & Pagination**: Header tabel menggunakan `var(--bg-card-alt)` dengan teks `#cbd5e1`, pemisah border halus `var(--border-subtle)`, dan kontrol paginasi yang nyaman di mata.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `fc5c7f4` | fix(ui): perbaiki kontras dan keterbacaan tabel di modul job statistik pada dark mode |
 | `6ed5542` | fix(ui): perbaiki kontras dan keterbacaan card step Odoo ERP serta opacity slate pada dark mode |
 | `419d18c` | feat(ui): tampilkan jabatan di label user dan tambahkan kustomisasi tema dashboard (light/dark mode & custom color) |
 | `ed77715` | feat(export): sertakan jabatan AS dan eliminasi fallback Administrator ESA pada export Excel |
