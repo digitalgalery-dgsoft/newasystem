@@ -1037,10 +1037,26 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 57. 💎 Modernisasi Seluruh Notifikasi & Dialog Menggunakan SweetAlert2 (20 September 2026)
+- **Transformasi Notifikasi Browser Standar ke SweetAlert2**:
+  - Menggantikan seluruh popup dialog bawaan browser (`alert()` dan `confirm()`) yang kaku dan tidak menarik dengan tampilan modal **SweetAlert2** yang modern, bersih, dan profesional.
+- **Penyempurnaan Dialog Hak Akses & Peringatan**:
+  - Penolakan akses saat user non-delegator mencoba memindahkan tugas status *Review* ke *Done* kini tampil dengan ikon peringatan (*warning*), tipografi tajam, dan tombol aksi Sapphire Blue (`#0F52BA`) dengan sudut membulat (`rounded-2xl`).
+- **Konfirmasi Tindakan Hapus (Destructive Confirmation)**:
+  - Tindakan penghapusan tugas utama, penghapusan sub-tugas checklist, dan penghapusan log kerja harian kini menggunakan modal dialog konfirmasi SweetAlert2 dengan tombol *Ya, Hapus* warna Rose Red (`#e11d48`) dan tombol *Batal* Slate Grey (`#94a3b8`).
+- **Toast Feedback Interaktif & Non-Intrusif**:
+  - Notifikasi penyimpanan berhasil, checklist terhapus, komentar terkirim, dan penyalinan format WhatsApp kini menggunakan SweetAlert2 Toast di pojok kanan atas (`top-end`) dengan durasi otomatis 1.5 - 2.5 detik.
+- **Global Interceptor `window.alert`**:
+  - Diterapkan script interceptor global pada [app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php) sehingga setiap pemanggilan `alert()` di masa mendatang otomatis terkonversi menjadi modal dialog SweetAlert2 dengan deteksi otomatis tipe pesan (*Berhasil*, *Akses Ditolak*, *Perhatian*, atau *Kesalahan*).
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `60c8a3b` | feat(workplan): replace all native alert and confirm dialogs with SweetAlert2 |
+| `2c8ce2c` | feat(workplan): filter employee dropdown strictly to active inhouse employees and add search filter |
 | `2979858` | feat(workplan): restrict employee filter dropdown to inhouse employees only and add real-time search functionality |
 | `914e35d` | feat(workplan): implement Work Plan & ToDoList kanban module, daily activity logs, and import 13k historical tasks |
 | `3ced891` | fix: resolve undefined isAdmin, scope done and arsip to own candidates, and restrict inhouse candidates to 5 entities with HRD and Head approval |
