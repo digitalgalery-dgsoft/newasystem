@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 
 class WorkPlanChatController extends Controller
 {
+    protected static array $avatarCache = [];
+
     protected function getCurrentUser()
     {
         return Auth::user();
@@ -21,6 +23,59 @@ class WorkPlanChatController extends Controller
     {
         if (!$user) return 'Guest';
         return trim($user->name ?: ($user->email ?: 'User'));
+    }
+
+    /**
+     * Resolusi URL avatar foto profil pengirim chat
+     */
+    public static function getSenderAvatarUrl(?string $senderName): string
+    {
+        $name = trim($senderName ?? '');
+        if (empty($name) || strtolower($name) === 'sistem') {
+            return "https://ui-avatars.com/api/?name=Sistem&background=64748b&color=fff&size=128&bold=true";
+        }
+
+        $lower = strtolower($name);
+        if (isset(self::$avatarCache[$lower])) {
+            return self::$avatarCache[$lower];
+        }
+
+        // 1. Cek User berdasarkan nama
+        $user = \App\Models\User::whereRaw('LOWER(TRIM(name)) = ?', [$lower])->first();
+        if ($user && !empty($user->avatar_url)) {
+            self::$avatarCache[$lower] = $user->avatar_url;
+            return self::$avatarCache[$lower];
+        }
+
+        // 2. Cek Employee berdasarkan nama_karyawan
+        $employee = Employee::whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [$lower])->first();
+        if ($employee && !empty($employee->foto)) {
+            $fotoClean = ltrim($employee->foto, '/\\');
+            if (file_exists(public_path($fotoClean))) {
+                $url = asset($fotoClean);
+                self::$avatarCache[$lower] = $url;
+                return $url;
+            }
+            if (file_exists(public_path('uploads/avatars/' . basename($fotoClean)))) {
+                $url = asset('uploads/avatars/' . basename($fotoClean));
+                self::$avatarCache[$lower] = $url;
+                return $url;
+            }
+            if (file_exists(public_path('lampiran/' . basename($fotoClean)))) {
+                $url = asset('lampiran/' . basename($fotoClean));
+                self::$avatarCache[$lower] = $url;
+                return $url;
+            }
+        }
+
+        // 3. Fallback ke UI-Avatars dinamis dengan palet warna khusus
+        $bgColors = ['0F52BA', '059669', 'D97706', '7C3AED', 'DC2626', '4F46E5', '0891B2', 'C026D3'];
+        $hash = abs(crc32($name)) % count($bgColors);
+        $bg = $bgColors[$hash];
+        $url = "https://ui-avatars.com/api/?name=" . urlencode($name) . "&background={$bg}&color=fff&size=128&bold=true";
+
+        self::$avatarCache[$lower] = $url;
+        return $url;
     }
 
     /**
@@ -124,6 +179,7 @@ class WorkPlanChatController extends Controller
             return [
                 'id' => $m->id,
                 'user_sender' => $m->user_sender,
+                'sender_avatar' => self::getSenderAvatarUrl($m->user_sender),
                 'is_me' => (trim(strtolower($m->user_sender)) === trim(strtolower($userName))),
                 'is_system' => ($m->user_sender === 'Sistem'),
                 'message_text' => $m->message_text,
@@ -307,6 +363,7 @@ class WorkPlanChatController extends Controller
             return [
                 'id' => $msg->id,
                 'user_sender' => $msg->user_sender,
+                'sender_avatar' => self::getSenderAvatarUrl($msg->user_sender),
                 'is_me' => (trim(strtolower($msg->user_sender)) === trim(strtolower($userName))),
                 'is_system' => ($msg->user_sender === 'Sistem'),
                 'message_text' => $msg->message_text,
@@ -372,6 +429,7 @@ class WorkPlanChatController extends Controller
             'message' => [
                 'id' => $msg->id,
                 'user_sender' => $msg->user_sender,
+                'sender_avatar' => self::getSenderAvatarUrl($msg->user_sender),
                 'is_me' => true,
                 'is_system' => false,
                 'message_text' => $msg->message_text,
@@ -421,6 +479,123 @@ class WorkPlanChatController extends Controller
         return response()->json([
             'success' => true,
             'groups' => $groups,
+        ]);
+    }
+
+    /**
+     * Polling Global Notifikasi Chat (untuk Lonceng Navbar & Toast Popup)
+     */
+    public function checkNotifications(Request $request)
+    {
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'unread_total' => 0,
+                'max_id' => 0,
+                'new_messages' => [],
+                'unread_groups' => [],
+            ]);
+        }
+
+        $userName = $this->getUserOfficialName($user);
+        $isAdmin = ($user->isAdmin() || $user->role === 'admin');
+
+        // Ambil ID group tempat user menjadi anggota
+        $memberGroupQuery = WpChatGroupMember::where(function ($q) use ($userName) {
+            $q->where('user_name', $userName)
+              ->orWhere(DB::raw('LOWER(TRIM(user_name))'), strtolower($userName));
+        });
+        $userMemberships = $memberGroupQuery->get()->keyBy('group_id');
+        $userGroupIds = $userMemberships->keys()->toArray();
+
+        if ($isAdmin) {
+            $allActiveGroupIds = WpChatGroup::where('is_active', true)->pluck('id')->toArray();
+            $userGroupIds = array_values(array_unique(array_merge($userGroupIds, $allActiveGroupIds)));
+        }
+
+        if (empty($userGroupIds)) {
+            return response()->json([
+                'success' => true,
+                'unread_total' => 0,
+                'max_id' => 0,
+                'new_messages' => [],
+                'unread_groups' => [],
+            ]);
+        }
+
+        $groups = WpChatGroup::whereIn('id', $userGroupIds)
+            ->where('is_active', true)
+            ->get();
+
+        $unreadTotal = 0;
+        $unreadGroups = [];
+
+        foreach ($groups as $grp) {
+            $membership = $userMemberships->get($grp->id);
+            $lastRead = $membership?->last_read_at;
+
+            $msgQuery = WpChatMessage::where('group_id', $grp->id)
+                ->where('user_sender', '!=', 'Sistem')
+                ->whereRaw('LOWER(TRIM(user_sender)) != ?', [strtolower(trim($userName))]);
+
+            if ($lastRead) {
+                $msgQuery->where('created_at', '>', $lastRead);
+            }
+
+            $count = $msgQuery->count();
+            if ($count > 0) {
+                $unreadTotal += $count;
+                $lastMsg = $msgQuery->latest('id')->first();
+                $unreadGroups[] = [
+                    'group_id' => $grp->id,
+                    'group_name' => $grp->name,
+                    'avatar_color' => $grp->avatar_color,
+                    'initials' => $grp->initials,
+                    'unread_count' => $count,
+                    'last_message' => $lastMsg ? [
+                        'sender' => $lastMsg->user_sender,
+                        'text' => \Illuminate\Support\Str::limit($lastMsg->message_text, 65),
+                        'time' => $lastMsg->formatted_time,
+                    ] : null,
+                ];
+            }
+        }
+
+        // Ambil pesan baru yang masuk untuk memicu Toast
+        $newMessages = [];
+        $lastChatId = (int) $request->query('last_chat_id', 0);
+        if ($lastChatId > 0) {
+            $rawNew = WpChatMessage::whereIn('group_id', $userGroupIds)
+                ->where('id', '>', $lastChatId)
+                ->where('user_sender', '!=', 'Sistem')
+                ->whereRaw('LOWER(TRIM(user_sender)) != ?', [strtolower(trim($userName))])
+                ->with('group')
+                ->orderBy('id', 'asc')
+                ->take(10)
+                ->get();
+
+            foreach ($rawNew as $m) {
+                $newMessages[] = [
+                    'id' => $m->id,
+                    'group_id' => $m->group_id,
+                    'group_name' => $m->group ? $m->group->name : 'Group Chat',
+                    'user_sender' => $m->user_sender,
+                    'sender_avatar' => self::getSenderAvatarUrl($m->user_sender),
+                    'message_text' => \Illuminate\Support\Str::limit($m->message_text, 140),
+                    'time' => $m->formatted_time,
+                ];
+            }
+        }
+
+        $currentMaxId = WpChatMessage::whereIn('group_id', $userGroupIds)->max('id') ?: 0;
+
+        return response()->json([
+            'success' => true,
+            'unread_total' => $unreadTotal,
+            'max_id' => $currentMaxId,
+            'new_messages' => $newMessages,
+            'unread_groups' => $unreadGroups,
         ]);
     }
 }

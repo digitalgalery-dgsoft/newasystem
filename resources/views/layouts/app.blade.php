@@ -645,11 +645,93 @@
 
                     <div class="h-6 w-px bg-slate-200 mx-1"></div>
 
-                    <!-- Notification Button -->
-                    <button class="relative p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-all">
-                        <i class="fa-regular fa-bell text-lg"></i>
-                        <span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500"></span>
-                    </button>
+                    <!-- Notification Dropdown Component (Alpine.js) -->
+                    <div class="relative" x-data="asystemNotifications()" x-init="initNotifications()" @click.outside="isOpen = false">
+                        <!-- Notification Bell Button -->
+                        <button type="button" 
+                                @click="toggleDropdown()"
+                                class="relative p-2 text-slate-500 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition-all focus:outline-none"
+                                :class="{'text-primary bg-primary-50': isOpen}"
+                                title="Notifikasi & Chat Masuk">
+                            <i class="fa-regular fa-bell text-lg" :class="{'animate-bounce': unreadTotal > 0 && isRinging}"></i>
+                            
+                            <!-- Red Badge Counter -->
+                            <span x-show="unreadTotal > 0" 
+                                  x-transition
+                                  class="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-600 text-white font-bold text-[10px] flex items-center justify-center shadow-xs border-2 border-white ring-1 ring-rose-500/20"
+                                  x-text="unreadTotal > 9 ? '9+' : unreadTotal">
+                            </span>
+                        </button>
+
+                        <!-- Dropdown Panel -->
+                        <div x-show="isOpen" 
+                             x-transition:enter="transition ease-out duration-200"
+                             x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                             x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                             x-transition:leave="transition ease-in duration-150"
+                             x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                             x-transition:leave-end="opacity-0 translate-y-2 scale-95"
+                             class="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden divide-y divide-slate-100 text-slate-800"
+                             style="display: none;">
+                            
+                            <!-- Header -->
+                            <div class="px-4 py-3 bg-slate-50/90 flex items-center justify-between">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-7 h-7 rounded-lg bg-primary-50 text-primary flex items-center justify-center font-bold text-xs">
+                                        <i class="fa-regular fa-bell"></i>
+                                    </div>
+                                    <span class="text-xs font-bold text-slate-800">Pemberitahuan & Chat</span>
+                                </div>
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                      :class="unreadTotal > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'"
+                                      x-text="unreadTotal > 0 ? (unreadTotal + ' pesan baru') : 'Semua terbaca'"></span>
+                            </div>
+
+                            <!-- Chat Notification Items List -->
+                            <div class="max-h-72 overflow-y-auto divide-y divide-slate-100">
+                                <template x-for="grp in unreadGroups" :key="grp.group_id">
+                                    <a :href="'{{ url('/workplan-chat') }}?group_id=' + grp.group_id"
+                                       class="flex items-start gap-3 p-3 hover:bg-emerald-50/50 transition-colors group">
+                                        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-xs"
+                                             :style="'background-color: ' + (grp.avatar_color || '#10b981')">
+                                            <span x-text="grp.initials"></span>
+                                        </div>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 truncate" x-text="grp.group_name"></span>
+                                                <span class="text-[10px] text-slate-400 flex-shrink-0" x-text="grp.last_message ? grp.last_message.time : ''"></span>
+                                            </div>
+                                            <p class="text-[11px] text-slate-600 truncate leading-tight">
+                                                <span class="font-semibold text-slate-800" x-text="grp.last_message ? (grp.last_message.sender + ': ') : ''"></span>
+                                                <span x-text="grp.last_message ? grp.last_message.text : 'Ada pesan baru'"></span>
+                                            </p>
+                                        </div>
+                                        <span class="px-1.5 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex-shrink-0" x-text="grp.unread_count"></span>
+                                    </a>
+                                </template>
+
+                                <!-- State Kosong jika tidak ada chat belum dibaca -->
+                                <div x-show="unreadGroups.length === 0" class="p-6 text-center text-slate-400">
+                                    <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
+                                        <i class="fa-regular fa-bell-slash text-base"></i>
+                                    </div>
+                                    <div class="text-xs font-bold text-slate-700">Tidak ada notifikasi baru</div>
+                                    <div class="text-[11px] text-slate-400 mt-0.5">Semua pesan di group yang Anda ikuti sudah dibaca.</div>
+                                </div>
+                            </div>
+
+                            <!-- Footer -->
+                            <div class="p-2.5 bg-slate-50 flex items-center justify-between">
+                                <a href="{{ route('workplan.chat') }}" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors">
+                                    <i class="fa-solid fa-comments text-xs"></i>
+                                    <span>Buka Groups Chat</span>
+                                </a>
+                                <button type="button" @click="isOpen = false" class="text-[11px] font-semibold text-slate-400 hover:text-slate-600 px-2 py-1">
+                                    Tutup
+                                </button>
+                            </div>
+                        </div>
+                    </div>
 
                     <!-- Topbar Profile -->
                     <div class="flex items-center gap-2 pl-2">
@@ -818,6 +900,148 @@
                 }
             });
         };
+    </script>
+    
+    <!-- Global Chat Real-time Notification System -->
+    <script>
+    function asystemNotifications() {
+        return {
+            isOpen: false,
+            unreadTotal: 0,
+            unreadGroups: [],
+            lastChatId: 0,
+            pollTimer: null,
+            isRinging: false,
+
+            initNotifications() {
+                // Cek notifikasi pertama kali
+                this.fetchNotifications(true);
+
+                // Polling periodik ringan setiap 8-10 detik
+                if (!this.pollTimer) {
+                    this.pollTimer = setInterval(() => {
+                        this.fetchNotifications(false);
+                    }, 8500);
+                }
+
+                // Listener jika ada chat event dari halaman chat
+                window.addEventListener('asystem-chat-notif', (e) => {
+                    this.fetchNotifications(false);
+                });
+            },
+
+            toggleDropdown() {
+                this.isOpen = !this.isOpen;
+                if (this.isOpen) {
+                    this.fetchNotifications(false);
+                }
+            },
+
+            playChime() {
+                try {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioCtx) return;
+                    const ctx = new AudioCtx();
+                    const osc = ctx.createOscillator();
+                    const gain = ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                    osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                    osc.connect(gain);
+                    gain.connect(ctx.destination);
+                    osc.start();
+                    osc.stop(ctx.currentTime + 0.35);
+                } catch (e) {}
+            },
+
+            async fetchNotifications(isFirstRun = false) {
+                @auth
+                try {
+                    const url = `{{ route('workplan.chat.notifications.check') }}?last_chat_id=${this.lastChatId}`;
+                    const res = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (!res.ok) return;
+                    const data = await res.json();
+
+                    if (data.success) {
+                        this.unreadTotal = data.unread_total || 0;
+                        this.unreadGroups = data.unread_groups || [];
+
+                        // Jika ada pesan baru masuk (bukan saat first page load)
+                        if (!isFirstRun && data.new_messages && data.new_messages.length > 0) {
+                            this.isRinging = true;
+                            this.playChime();
+                            setTimeout(() => { this.isRinging = false; }, 3000);
+
+                            // Jika user sedang berada di luar halaman chat, tampilkan Toast
+                            const isChatPage = window.location.pathname.includes('/workplan-chat');
+                            if (!isChatPage && typeof Swal !== 'undefined') {
+                                data.new_messages.forEach(msg => {
+                                    Swal.fire({
+                                        toast: true,
+                                        position: 'top-end',
+                                        showConfirmButton: false,
+                                        showCloseButton: true,
+                                        timer: 6000,
+                                        timerProgressBar: true,
+                                        iconHtml: `<div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xs bg-emerald-600">
+                                                     <i class="fa-solid fa-comments text-xs"></i>
+                                                   </div>`,
+                                        customClass: {
+                                            popup: 'rounded-2xl shadow-2xl border border-emerald-300 bg-white/95 backdrop-blur-md cursor-pointer hover:shadow-2xl text-left',
+                                            title: 'text-xs font-extrabold text-slate-800 m-0 text-left',
+                                            htmlContainer: 'text-xs text-slate-600 m-0 mt-1 text-left'
+                                        },
+                                        title: `<div class="flex items-center gap-1.5 text-emerald-800 font-extrabold text-xs">
+                                                  <i class="fa-solid fa-users text-[10px] text-emerald-600"></i>
+                                                  <span>${this.escape(msg.group_name)}</span>
+                                                </div>`,
+                                        html: `
+                                            <div class="flex items-start gap-2.5 pt-1">
+                                                <img src="${msg.sender_avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.user_sender) + '&background=059669&color=fff'}" 
+                                                     class="w-7 h-7 rounded-full object-cover border border-slate-200 flex-shrink-0 mt-0.5 shadow-2xs">
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="text-[11px] font-bold text-slate-800 truncate">${this.escape(msg.user_sender)}</div>
+                                                    <div class="text-xs text-slate-600 line-clamp-2 leading-relaxed">${this.escape(msg.message_text)}</div>
+                                                </div>
+                                            </div>
+                                        `,
+                                        didOpen: (toast) => {
+                                            toast.addEventListener('click', (ev) => {
+                                                if (!ev.target.closest('.swal2-close')) {
+                                                    window.location.href = `{{ url('/workplan-chat') }}?group_id=${msg.group_id}`;
+                                                }
+                                            });
+                                        }
+                                    });
+                                });
+                            }
+                        }
+
+                        if (data.max_id > 0) {
+                            this.lastChatId = data.max_id;
+                        }
+                    }
+                } catch (err) {
+                    // Fail gracefully
+                }
+                @endauth
+            },
+
+            escape(str) {
+                const div = document.createElement('div');
+                div.textContent = str || '';
+                return div.innerHTML;
+            }
+        };
+    }
     </script>
     
     @yield('scripts')

@@ -520,6 +520,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/workplan-chat/groups/{id}/messages', [WorkPlanChatController::class, 'getMessages'])->name('workplan.chat.messages');
     Route::post('/workplan-chat/groups/{id}/messages', [WorkPlanChatController::class, 'sendMessage'])->name('workplan.chat.messages.send');
     Route::get('/workplan-chat/groups-poll', [WorkPlanChatController::class, 'getGroups'])->name('workplan.chat.groups.poll');
+    Route::get('/workplan-chat/notifications/check', [WorkPlanChatController::class, 'checkNotifications'])->name('workplan.chat.notifications.check');
 });
 
 // Redirect sistem lama (wp.php, wptodo.php, todo.php, exportwp.php)

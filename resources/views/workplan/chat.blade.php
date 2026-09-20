@@ -184,8 +184,19 @@
                             <div class="px-3 py-1 rounded-lg bg-slate-200/90 text-slate-700 text-[10px] font-medium shadow-2xs text-center max-w-sm" x-text="msg.message_text"></div>
                         </div>
 
-                        <!-- Chat Bubble (User vs Others) -->
-                        <div x-show="!msg.is_system" class="flex" :class="msg.is_me ? 'justify-end' : 'justify-start'">
+                        <!-- Chat Bubble (User vs Others) with Profile Avatar -->
+                        <div x-show="!msg.is_system" class="flex items-end gap-2 my-1" :class="msg.is_me ? 'justify-end' : 'justify-start'">
+                            
+                            <!-- Avatar Pengirim (Pesan Masuk / Orang Lain - Kiri) -->
+                            <template x-if="!msg.is_me">
+                                <div class="flex-shrink-0 mb-0.5" :title="msg.user_sender">
+                                    <img :src="msg.sender_avatar || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.user_sender) + '&background=0F52BA&color=fff&size=64&bold=true')"
+                                         :alt="msg.user_sender"
+                                         class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-slate-200 shadow-2xs ring-1 ring-white/80"
+                                         @error="$event.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.user_sender) + '&background=0F52BA&color=fff&size=64&bold=true'">
+                                </div>
+                            </template>
+
                             <div class="max-w-[85%] sm:max-w-[70%] rounded-2xl px-3.5 py-2 shadow-xs relative text-slate-800 text-xs leading-relaxed break-words"
                                  :class="msg.is_me ? 'bg-[#d9fdd3] rounded-tr-xs border border-emerald-200/60' : 'bg-white rounded-tl-xs border border-slate-200/80'">
                                 
@@ -206,6 +217,16 @@
                                     </span>
                                 </div>
                             </div>
+
+                            <!-- Avatar Pengirim (Pesan Keluar / User Sendiri - Kanan) -->
+                            <template x-if="msg.is_me">
+                                <div class="flex-shrink-0 mb-0.5" title="Anda">
+                                    <img :src="msg.sender_avatar || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=059669&color=fff&size=64&bold=true')"
+                                         :alt="userName"
+                                         class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-emerald-300 shadow-2xs ring-1 ring-white/80"
+                                         @error="$event.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=059669&color=fff&size=64&bold=true'">
+                                </div>
+                            </template>
                         </div>
                     </div>
                 </template>
@@ -667,12 +688,14 @@ function wpGroupChat() {
     return {
         userName: @json($userName),
         activeGroupId: @json($activeGroup ? $activeGroup->id : null),
+        activeGroupName: @json($activeGroup ? $activeGroup->name : 'Groups Chat'),
         csrfToken: '{{ csrf_token() }}',
         
         // Data Groups
         groups: {!! json_encode($groupsJson) !!},
         groupSearch: '',
         isRefreshingGroups: false,
+        lastKnownGroupMessages: {},
 
         // Data Pesan
         messages: {!! json_encode($messagesJson) !!},
@@ -712,6 +735,14 @@ function wpGroupChat() {
             if (this.messages.length > 0) {
                 this.lastMessageId = this.messages[this.messages.length - 1].id;
             }
+
+            // Catat pesan terakhir dari masing-masing grup untuk deteksi chat baru via sidebar
+            this.groups.forEach(g => {
+                if (g.latest_message) {
+                    this.lastKnownGroupMessages[g.id] = g.latest_message.sender + ':' + g.latest_message.text;
+                }
+            });
+
             this.scrollToBottom(false);
 
             // Jalankan polling real-time pesan jika ada group aktif
@@ -880,6 +911,78 @@ function wpGroupChat() {
             return String(string).replace(/[&<>"'\/]/g, s => entityMap[s]);
         },
 
+        // Suara Notifikasi Chat (Web Audio API sintetis, jernih & tanpa file luar)
+        playNotificationSound() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+                osc.frequency.setValueAtTime(880, ctx.currentTime + 0.08); // A5
+                gain.gain.setValueAtTime(0.12, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.35);
+            } catch (e) {
+                // Ignore audio policy restriction
+            }
+        },
+
+        // Trigger Toast SweetAlert2 untuk Chat Baru Masuk
+        triggerChatToast(notif) {
+            this.playNotificationSound();
+
+            // Beritahu layout navbar agar lonceng ikut terupdate
+            window.dispatchEvent(new CustomEvent('asystem-chat-notif', { detail: notif }));
+
+            if (typeof Swal !== 'undefined') {
+                Swal.fire({
+                    toast: true,
+                    position: 'top-end',
+                    showConfirmButton: false,
+                    showCloseButton: true,
+                    timer: 5000,
+                    timerProgressBar: true,
+                    iconHtml: `<div class="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xs bg-emerald-600">
+                                 <i class="fa-solid fa-comments text-xs"></i>
+                               </div>`,
+                    customClass: {
+                        popup: 'rounded-2xl shadow-2xl border border-emerald-300 bg-white/95 backdrop-blur-md cursor-pointer hover:shadow-2xl text-left',
+                        title: 'text-xs font-extrabold text-slate-800 m-0 text-left',
+                        htmlContainer: 'text-xs text-slate-600 m-0 mt-1 text-left'
+                    },
+                    title: `<div class="flex items-center gap-1.5 text-emerald-800 font-extrabold text-xs">
+                              <i class="fa-solid fa-users text-[10px] text-emerald-600"></i>
+                              <span>${this.escapeHtml(notif.group_name)}</span>
+                            </div>`,
+                    html: `
+                        <div class="flex items-start gap-2.5 pt-1">
+                            <img src="${notif.sender_avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(notif.user_sender) + '&background=059669&color=fff'}" 
+                                 class="w-7 h-7 rounded-full object-cover border border-slate-200 flex-shrink-0 mt-0.5 shadow-2xs">
+                            <div class="min-w-0 flex-1">
+                                <div class="text-[11px] font-bold text-slate-800 truncate">${this.escapeHtml(notif.user_sender)}</div>
+                                <div class="text-xs text-slate-600 line-clamp-2 leading-relaxed">${this.escapeHtml(notif.message_text)}</div>
+                            </div>
+                        </div>
+                    `,
+                    didOpen: (toast) => {
+                        toast.addEventListener('click', (e) => {
+                            if (!e.target.closest('.swal2-close')) {
+                                if (notif.group_id && notif.group_id != this.activeGroupId) {
+                                    window.location.href = `{{ url('/workplan-chat') }}?group_id=${notif.group_id}`;
+                                }
+                            }
+                        });
+                    }
+                });
+            }
+        },
+
         // Real-time Polling Pesan
         startMessagePolling() {
             if (this.messagePollTimer) clearInterval(this.messagePollTimer);
@@ -904,6 +1007,17 @@ function wpGroupChat() {
                             if (msg.id > this.lastMessageId) {
                                 this.lastMessageId = msg.id;
                             }
+
+                            // Jika pesan baru bukan dari user sendiri dan bukan sistem, bunyikan dan tampilkan toast!
+                            if (!msg.is_me && !msg.is_system) {
+                                this.triggerChatToast({
+                                    group_id: this.activeGroupId,
+                                    group_name: this.activeGroupName,
+                                    user_sender: msg.user_sender,
+                                    sender_avatar: msg.sender_avatar,
+                                    message_text: msg.message_text
+                                });
+                            }
                         }
                     });
 
@@ -921,7 +1035,7 @@ function wpGroupChat() {
             if (this.groupsPollTimer) clearInterval(this.groupsPollTimer);
             this.groupsPollTimer = setInterval(() => {
                 this.pollGroups(false);
-            }, 6000);
+            }, 5000);
         },
 
         async pollGroups(manual = false) {
@@ -931,6 +1045,24 @@ function wpGroupChat() {
                 if (response.ok) {
                     const res = await response.json();
                     if (res.success && res.groups) {
+                        // Deteksi jika ada pesan baru di group selain activeGroup
+                        res.groups.forEach(g => {
+                            if (g.latest_message && g.id != this.activeGroupId) {
+                                const sig = g.latest_message.sender + ':' + g.latest_message.text;
+                                const prevSig = this.lastKnownGroupMessages[g.id];
+                                if (prevSig && prevSig !== sig && g.latest_message.sender !== this.userName) {
+                                    // Munculkan toast notifikasi untuk grup lain yang ada chat baru!
+                                    this.triggerChatToast({
+                                        group_id: g.id,
+                                        group_name: g.name,
+                                        user_sender: g.latest_message.sender,
+                                        message_text: g.latest_message.text
+                                    });
+                                }
+                                this.lastKnownGroupMessages[g.id] = sig;
+                            }
+                        });
+
                         this.groups = res.groups;
                     }
                 }
