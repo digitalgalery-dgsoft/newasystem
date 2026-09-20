@@ -1239,11 +1239,33 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 67. 🌙 Perbaikan Kontras & Keterbacaan Mini-Card Tahapan Rekrutmen Odoo ERP pada Dark Mode (20 September 2026)
+- **Latar Belakang & Masalah**:
+  - Pada tampilan Dark Mode, card step Odoo (*Tahapan Rekrutmen Odoo ERP*) di modul Kandidat Portal (`/kandidatportal`) dan Talent Pool Interview (`/interview`) mengalami masalah keterbacaan (*low contrast*):
+    - Background 8 mini-card menggunakan class opacity `bg-slate-50/70` yang di mode gelap merender permukaan abu-abu terang / perak (*milky silver*).
+    - Teks angka kandidat menggunakan `text-slate-900` yang terkonversi menjadi teks putih (`#ffffff`), menyebabkan teks putih bertumpuk di atas latar perak terang sehingga angka menjadi nyaris tidak terlihat.
+    - Teks judul tahapan (*Semua Odoo, Data Pelamar, Interview, dll.*) bernuansa abu-abu pudar (`text-slate-500`) yang juga sulit dibaca di atas latar perak tersebut.
+    - Kartu tahapan yang sedang aktif (*selected*) memiliki background pastel cerah (`bg-purple-50/80`, dll.) yang kontrasnya tidak harmonis dengan tema gelap.
+- **Solusi & Implementasi Terpadu**:
+  1. **Standardisasi Class CSS Komponen (`app.blade.php`, `kandidatportal/index.blade.php`, & `interview/index.blade.php`)**:
+     - Menerapkan class terstruktur `.odoo-stat-card`, `.odoo-card-label`, `.odoo-card-value`, dan `.odoo-card-icon` pada ke-8 mini card di kedua modul.
+     - Menyediakan modifier aktif per warna: `.odoo-stat-matched`, `.odoo-stat-blue`, `.odoo-stat-indigo`, `.odoo-stat-violet`, `.odoo-stat-sky`, `.odoo-stat-amber`, `.odoo-stat-emerald`, dan `.odoo-stat-slate`.
+  2. **Styling Dark Mode Presisi Tinggi (High Contrast & Glowing Aesthetics)**:
+     - **Inactive Card**: Background otomatis menyatu dengan warna kartu dashboard gelap (`var(--bg-card-alt)`), border subtle (`var(--border-color)`), teks label abu-abu terang bersih (`#94a3b8`, hover `#cbd5e1`), dan angka kandidat putih tajam (`#ffffff`).
+     - **Active Card**: Efek *neon accent glow* dengan background transparan berwarna (opacity 20%), border aksen bercahaya, label beraksen warna terang (contoh: Ungu `#e9d5ff`, Biru `#bfdbfe`, dsb.), dan angka kandidat putih tebal (`#ffffff`).
+     - **Badge Icon Pill**: Diberikan background semi-transparan dengan border dan warna ikon cerah menyala (purple, blue, indigo, violet, sky, amber, emerald, slate).
+     - **Tombol Reset Filter**: Diberikan styling dark mode elegan bernuansa rose transparan (`rgba(244, 63, 94, 0.15)`) dengan border halus.
+  3. **Universal Dark Mode Overrides untuk Seluruh Varian Opacity Tailwind Slate**:
+     - Memperluas selektor global `html[data-theme="dark"]` di `layouts/app.blade.php` agar mencakup variasi opacity Tailwind: `.bg-slate-50\/20`, `.bg-slate-50\/30`, `.bg-slate-50\/40`, `.bg-slate-50\/50`, `.bg-slate-50\/60`, `.bg-slate-50\/70`, `.bg-slate-50\/75`, `.bg-slate-50\/80`, `.bg-slate-50\/90`, `.bg-slate-100/*`, dan `.bg-slate-200`, serta badge pastel (*rose, emerald, blue, purple, amber*). Mencegah munculnya bercak abu-abu terang di seluruh modul dashboard lainnya saat dark mode aktif.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
-| `b6a0433` | feat(ui): tampilkan jabatan di label user dan tambahkan kustomisasi tema dashboard (light/dark mode & custom color) |
+| `6ed5542` | fix(ui): perbaiki kontras dan keterbacaan card step Odoo ERP serta opacity slate pada dark mode |
+| `419d18c` | feat(ui): tampilkan jabatan di label user dan tambahkan kustomisasi tema dashboard (light/dark mode & custom color) |
 | `ed77715` | feat(export): sertakan jabatan AS dan eliminasi fallback Administrator ESA pada export Excel |
 | `3badda1` | docs: document Milestone 64 recruiter full name resolution in UPDATE_PROGRESS.md |
 | `792c6ab` | feat(export): resolve recruiter full name from employee data in candidate portal XLSX export |

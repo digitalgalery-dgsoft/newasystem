@@ -290,13 +290,88 @@
         }
 
         html[data-theme="dark"] .bg-slate-50,
+        html[data-theme="dark"] .bg-slate-50\/20,
+        html[data-theme="dark"] .bg-slate-50\/30,
+        html[data-theme="dark"] .bg-slate-50\/40,
         html[data-theme="dark"] .bg-slate-50\/50,
+        html[data-theme="dark"] .bg-slate-50\/60,
+        html[data-theme="dark"] .bg-slate-50\/70,
+        html[data-theme="dark"] .bg-slate-50\/75,
         html[data-theme="dark"] .bg-slate-50\/80,
         html[data-theme="dark"] .bg-slate-50\/90,
         html[data-theme="dark"] .bg-slate-100,
-        html[data-theme="dark"] .bg-slate-100\/70 {
+        html[data-theme="dark"] .bg-slate-100\/50,
+        html[data-theme="dark"] .bg-slate-100\/70,
+        html[data-theme="dark"] .bg-slate-100\/80,
+        html[data-theme="dark"] .bg-slate-200 {
             background-color: var(--bg-card-alt) !important;
             border-color: var(--border-subtle) !important;
+        }
+
+        html[data-theme="dark"] .hover\:bg-white:hover {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+        }
+        html[data-theme="dark"] .hover\:bg-slate-50:hover,
+        html[data-theme="dark"] .hover\:bg-slate-50\/50:hover,
+        html[data-theme="dark"] .hover\:bg-slate-50\/70:hover,
+        html[data-theme="dark"] .hover\:bg-slate-50\/80:hover,
+        html[data-theme="dark"] .hover\:bg-slate-100:hover,
+        html[data-theme="dark"] .hover\:bg-slate-100\/70:hover {
+            background-color: rgba(255, 255, 255, 0.06) !important;
+        }
+
+        html[data-theme="dark"] .bg-rose-50,
+        html[data-theme="dark"] .bg-rose-50\/80,
+        html[data-theme="dark"] .bg-red-50 {
+            background-color: rgba(244, 63, 94, 0.12) !important;
+            border-color: rgba(244, 63, 94, 0.25) !important;
+        }
+        html[data-theme="dark"] .text-rose-600,
+        html[data-theme="dark"] .text-rose-700,
+        html[data-theme="dark"] .text-red-600 {
+            color: #fb7185 !important;
+        }
+
+        html[data-theme="dark"] .bg-emerald-50,
+        html[data-theme="dark"] .bg-emerald-50\/80,
+        html[data-theme="dark"] .bg-green-50 {
+            background-color: rgba(16, 185, 129, 0.12) !important;
+            border-color: rgba(16, 185, 129, 0.25) !important;
+        }
+        html[data-theme="dark"] .text-emerald-700,
+        html[data-theme="dark"] .text-emerald-800,
+        html[data-theme="dark"] .text-green-700 {
+            color: #34d399 !important;
+        }
+
+        html[data-theme="dark"] .bg-blue-50,
+        html[data-theme="dark"] .bg-blue-50\/80 {
+            background-color: rgba(59, 130, 246, 0.12) !important;
+            border-color: rgba(59, 130, 246, 0.25) !important;
+        }
+        html[data-theme="dark"] .text-blue-700,
+        html[data-theme="dark"] .text-blue-800 {
+            color: #60a5fa !important;
+        }
+
+        html[data-theme="dark"] .bg-purple-50,
+        html[data-theme="dark"] .bg-purple-50\/80 {
+            background-color: rgba(168, 85, 247, 0.12) !important;
+            border-color: rgba(168, 85, 247, 0.25) !important;
+        }
+        html[data-theme="dark"] .text-purple-700,
+        html[data-theme="dark"] .text-purple-800 {
+            color: #c084fc !important;
+        }
+
+        html[data-theme="dark"] .bg-amber-50,
+        html[data-theme="dark"] .bg-amber-50\/80 {
+            background-color: rgba(245, 158, 11, 0.12) !important;
+            border-color: rgba(245, 158, 11, 0.25) !important;
+        }
+        html[data-theme="dark"] .text-amber-700,
+        html[data-theme="dark"] .text-amber-800 {
+            color: #fbbf24 !important;
         }
 
         html[data-theme="dark"] .border-slate-200,
@@ -370,6 +445,194 @@
         }
         html[data-theme="dark"] ::-webkit-scrollbar-thumb:hover {
             background: var(--text-muted);
+        }
+
+        /* ============================================================
+           TAHAPAN REKRUTMEN ODOO ERP MINI-CARDS
+           ============================================================ */
+        html[data-theme="dark"] .odoo-stat-card {
+            background-color: var(--bg-card-alt) !important;
+            border-color: var(--border-color) !important;
+        }
+
+        html[data-theme="dark"] .odoo-stat-card:hover {
+            background-color: rgba(255, 255, 255, 0.08) !important;
+            border-color: rgba(255, 255, 255, 0.25) !important;
+            transform: translateY(-1px);
+        }
+
+        html[data-theme="dark"] .odoo-stat-card .odoo-card-label {
+            color: #94a3b8 !important;
+        }
+
+        html[data-theme="dark"] .odoo-stat-card:hover .odoo-card-label {
+            color: #cbd5e1 !important;
+        }
+
+        html[data-theme="dark"] .odoo-stat-card .odoo-card-value {
+            color: #ffffff !important;
+        }
+
+        /* Active Highlight States in Dark Mode */
+        html[data-theme="dark"] .odoo-stat-card-active {
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4) !important;
+        }
+
+        /* 1. Matched / Semua Odoo (Purple) */
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-matched.odoo-stat-card-active {
+            background-color: rgba(168, 85, 247, 0.2) !important;
+            border-color: #c084fc !important;
+            box-shadow: 0 0 14px rgba(168, 85, 247, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-matched.odoo-stat-card-active .odoo-card-label {
+            color: #e9d5ff !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-matched.odoo-stat-card-active .odoo-card-value {
+            color: #ffffff !important;
+        }
+
+        /* 2. Data Pelamar (Blue) */
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-blue.odoo-stat-card-active {
+            background-color: rgba(59, 130, 246, 0.2) !important;
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 14px rgba(59, 130, 246, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-blue.odoo-stat-card-active .odoo-card-label {
+            color: #bfdbfe !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-blue.odoo-stat-card-active .odoo-card-value {
+            color: #ffffff !important;
+        }
+
+        /* 3. Interview (Indigo) */
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-indigo.odoo-stat-card-active {
+            background-color: rgba(99, 102, 241, 0.2) !important;
+            border-color: #818cf8 !important;
+            box-shadow: 0 0 14px rgba(99, 102, 241, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-indigo.odoo-stat-card-active .odoo-card-label {
+            color: #c7d2fe !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-indigo.odoo-stat-card-active .odoo-card-value {
+            color: #ffffff !important;
+        }
+
+        /* 4. Principal (Violet) */
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-violet.odoo-stat-card-active {
+            background-color: rgba(139, 92, 246, 0.2) !important;
+            border-color: #a78bfa !important;
+            box-shadow: 0 0 14px rgba(139, 92, 246, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-violet.odoo-stat-card-active .odoo-card-label {
+            color: #ddd6fe !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-violet.odoo-stat-card-active .odoo-card-value {
+            color: #ffffff !important;
+        }
+
+        /* 5. E-Learning (Sky) */
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-sky.odoo-stat-card-active {
+            background-color: rgba(14, 165, 233, 0.2) !important;
+            border-color: #38bdf8 !important;
+            box-shadow: 0 0 14px rgba(14, 165, 233, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-sky.odoo-stat-card-active .odoo-card-label {
+            color: #bae6fd !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-sky.odoo-stat-card-active .odoo-card-value {
+            color: #ffffff !important;
+        }
+
+        /* 6. PKWT (Amber) */
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-amber.odoo-stat-card-active {
+            background-color: rgba(245, 158, 11, 0.2) !important;
+            border-color: #fbbf24 !important;
+            box-shadow: 0 0 14px rgba(245, 158, 11, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-amber.odoo-stat-card-active .odoo-card-label {
+            color: #fef08a !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-amber.odoo-stat-card-active .odoo-card-value {
+            color: #ffffff !important;
+        }
+
+        /* 7. Joined (Emerald) */
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-emerald.odoo-stat-card-active {
+            background-color: rgba(16, 185, 129, 0.2) !important;
+            border-color: #34d399 !important;
+            box-shadow: 0 0 14px rgba(16, 185, 129, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-emerald.odoo-stat-card-active .odoo-card-label {
+            color: #a7f3d0 !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-emerald.odoo-stat-card-active .odoo-card-value {
+            color: #ffffff !important;
+        }
+
+        /* 8. Belum di Odoo (Slate) */
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-slate.odoo-stat-card-active {
+            background-color: rgba(148, 163, 184, 0.2) !important;
+            border-color: #cbd5e1 !important;
+            box-shadow: 0 0 14px rgba(148, 163, 184, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-slate.odoo-stat-card-active .odoo-card-label {
+            color: #f8fafc !important;
+        }
+        html[data-theme="dark"] .odoo-stat-card.odoo-stat-slate.odoo-stat-card-active .odoo-card-value {
+            color: #ffffff !important;
+        }
+
+        /* Dark Mode Icon Badges */
+        html[data-theme="dark"] .odoo-icon-purple {
+            background-color: rgba(168, 85, 247, 0.22) !important;
+            color: #d8b4fe !important;
+            border: 1px solid rgba(168, 85, 247, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-icon-blue {
+            background-color: rgba(59, 130, 246, 0.22) !important;
+            color: #93c5fd !important;
+            border: 1px solid rgba(59, 130, 246, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-icon-indigo {
+            background-color: rgba(99, 102, 241, 0.22) !important;
+            color: #a5b4fc !important;
+            border: 1px solid rgba(99, 102, 241, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-icon-violet {
+            background-color: rgba(139, 92, 246, 0.22) !important;
+            color: #c4b5fd !important;
+            border: 1px solid rgba(139, 92, 246, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-icon-sky {
+            background-color: rgba(14, 165, 233, 0.22) !important;
+            color: #7dd3fc !important;
+            border: 1px solid rgba(14, 165, 233, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-icon-amber {
+            background-color: rgba(245, 158, 11, 0.22) !important;
+            color: #fde68a !important;
+            border: 1px solid rgba(245, 158, 11, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-icon-emerald {
+            background-color: rgba(16, 185, 129, 0.22) !important;
+            color: #6ee7b7 !important;
+            border: 1px solid rgba(16, 185, 129, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-icon-slate {
+            background-color: rgba(148, 163, 184, 0.22) !important;
+            color: #cbd5e1 !important;
+            border: 1px solid rgba(148, 163, 184, 0.35) !important;
+        }
+
+        /* Reset Button */
+        html[data-theme="dark"] .odoo-reset-btn {
+            background-color: rgba(244, 63, 94, 0.15) !important;
+            color: #fda4af !important;
+            border: 1px solid rgba(244, 63, 94, 0.35) !important;
+        }
+        html[data-theme="dark"] .odoo-reset-btn:hover {
+            background-color: rgba(244, 63, 94, 0.25) !important;
+            color: #ffffff !important;
         }
     </style>
 </head>
