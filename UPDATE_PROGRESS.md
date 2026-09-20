@@ -1196,6 +1196,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `792c6ab` | feat(export): resolve recruiter full name from employee data in candidate portal XLSX export |
 | `c5de959` | docs: document Milestone 63 profile avatar in chat bubbles and real-time notifications in UPDATE_PROGRESS.md |
 | `e218f23` | fix(workplan-chat): replace @error with x-on:error to avoid blade directive collision |
 | `2f445cd` | feat(workplan-chat): add profile avatars to chat bubbles and real-time notifications with bell badge counter and toast popup |
