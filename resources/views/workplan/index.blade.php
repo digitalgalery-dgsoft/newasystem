@@ -511,12 +511,157 @@ function kanbanBoard() {
         newCommentText: '',
         newSubtaskText: '',
         submittingComment: false,
+        createAttachment: null,
+        isDraggingCreate: false,
+        editAttachment: null,
+        isDraggingEdit: false,
+        commentAttachment: null,
+        isDraggingComment: false,
         editForm: {
             title: '',
             description: '',
             priority: 'Medium',
             due_date: '',
             assignee: ''
+        },
+
+        formatBytes(bytes) {
+            if (!bytes || bytes === 0) return '0 B';
+            const k = 1024;
+            const sizes = ['B', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+        },
+
+        setAttachmentFile(file, target) {
+            if (!file) return;
+            if (file.size > 10 * 1024 * 1024) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'File Terlalu Besar',
+                    text: 'Ukuran berkas lampiran maksimal 10 MB.',
+                    confirmButtonColor: '#0F52BA',
+                    customClass: { popup: 'rounded-2xl' }
+                });
+                return;
+            }
+
+            const isImage = file.type.startsWith('image/');
+            let previewUrl = null;
+            if (isImage) {
+                previewUrl = URL.createObjectURL(file);
+            }
+
+            const ext = file.name && file.name.includes('.') ? file.name.split('.').pop().toLowerCase() : (isImage ? 'png' : 'file');
+
+            const item = {
+                file: file,
+                name: file.name || 'lampiran',
+                size: this.formatBytes(file.size),
+                isImage: isImage,
+                previewUrl: previewUrl,
+                extension: ext
+            };
+
+            if (target === 'create') {
+                if (this.createAttachment && this.createAttachment.previewUrl) {
+                    URL.revokeObjectURL(this.createAttachment.previewUrl);
+                }
+                this.createAttachment = item;
+                const fileInput = document.getElementById('createTaskAttachmentInput');
+                if (fileInput) {
+                    try {
+                        const dt = new DataTransfer();
+                        dt.items.add(file);
+                        fileInput.files = dt.files;
+                    } catch(e) {}
+                }
+            } else if (target === 'edit') {
+                if (this.editAttachment && this.editAttachment.previewUrl) {
+                    URL.revokeObjectURL(this.editAttachment.previewUrl);
+                }
+                this.editAttachment = item;
+            } else if (target === 'comment') {
+                if (this.commentAttachment && this.commentAttachment.previewUrl) {
+                    URL.revokeObjectURL(this.commentAttachment.previewUrl);
+                }
+                this.commentAttachment = item;
+            }
+        },
+
+        removeAttachment(target) {
+            if (target === 'create') {
+                if (this.createAttachment && this.createAttachment.previewUrl) {
+                    URL.revokeObjectURL(this.createAttachment.previewUrl);
+                }
+                this.createAttachment = null;
+                const fileInput = document.getElementById('createTaskAttachmentInput');
+                if (fileInput) fileInput.value = '';
+            } else if (target === 'edit') {
+                if (this.editAttachment && this.editAttachment.previewUrl) {
+                    URL.revokeObjectURL(this.editAttachment.previewUrl);
+                }
+                this.editAttachment = null;
+                const fileInput = document.getElementById('editTaskAttachmentInput');
+                if (fileInput) fileInput.value = '';
+            } else if (target === 'comment') {
+                if (this.commentAttachment && this.commentAttachment.previewUrl) {
+                    URL.revokeObjectURL(this.commentAttachment.previewUrl);
+                }
+                this.commentAttachment = null;
+                const fileInput = document.getElementById('commentAttachmentInput');
+                if (fileInput) fileInput.value = '';
+            }
+        },
+
+        handleFileSelect(e, target) {
+            if (e.target.files && e.target.files.length > 0) {
+                this.setAttachmentFile(e.target.files[0], target);
+            }
+        },
+
+        handleFileDrop(e, target) {
+            e.preventDefault();
+            if (target === 'create') this.isDraggingCreate = false;
+            if (target === 'edit') this.isDraggingEdit = false;
+            if (target === 'comment') this.isDraggingComment = false;
+
+            if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                this.setAttachmentFile(e.dataTransfer.files[0], target);
+            }
+        },
+
+        handleClipboardPaste(e, target) {
+            const clipboard = e.clipboardData || window.clipboardData;
+            if (!clipboard || !clipboard.items) return;
+
+            for (let i = 0; i < clipboard.items.length; i++) {
+                const item = clipboard.items[i];
+                if (item.kind === 'file') {
+                    const blob = item.getAsFile();
+                    if (blob) {
+                        let fileName = blob.name;
+                        if (!fileName || fileName === 'image.png' || fileName === 'blob') {
+                            const now = new Date();
+                            const timeStr = now.getHours().toString().padStart(2,'0') + now.getMinutes().toString().padStart(2,'0') + now.getSeconds().toString().padStart(2,'0');
+                            fileName = `screenshot_${timeStr}.png`;
+                        }
+                        const file = new File([blob], fileName, { type: blob.type || 'image/png' });
+                        this.setAttachmentFile(file, target);
+                        e.preventDefault();
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Screenshot Ditempel!',
+                            text: `File '${fileName}' berhasil dilampirkan dari clipboard.`,
+                            timer: 1500,
+                            showConfirmButton: false,
+                            toast: true,
+                            position: 'top-end'
+                        });
+                        break;
+                    }
+                }
+            }
         },
 
         setSmartFilter(val) {
@@ -526,11 +671,13 @@ function kanbanBoard() {
 
         openCreateModal(defaultStatus = 'todo') {
             document.getElementById('createTaskForm').reset();
+            this.removeAttachment('create');
             document.getElementById('createTaskStatus').value = defaultStatus;
             document.getElementById('createTaskModal').classList.remove('hidden');
         },
 
         closeCreateModal() {
+            this.removeAttachment('create');
             document.getElementById('createTaskModal').classList.add('hidden');
         },
 
@@ -666,6 +813,8 @@ function kanbanBoard() {
             this.activeTab = 'detail';
             this.isLoadingDetail = true;
             this.isEditingTask = false;
+            this.removeAttachment('edit');
+            this.removeAttachment('comment');
             document.getElementById('taskDetailDrawer').classList.remove('hidden');
 
             fetch(`/workplan/${taskId}/details`)
@@ -711,6 +860,9 @@ function kanbanBoard() {
         },
 
         closeTaskDetail() {
+            this.removeAttachment('edit');
+            this.removeAttachment('comment');
+            this.isEditingTask = false;
             document.getElementById('taskDetailDrawer').classList.add('hidden');
         },
 
@@ -828,14 +980,26 @@ function kanbanBoard() {
         },
 
         saveTaskEdit() {
+            const formData = new FormData();
+            formData.append('_method', 'PUT');
+            formData.append('title', this.editForm.title);
+            formData.append('description', this.editForm.description || '');
+            formData.append('priority', this.editForm.priority || 'Medium');
+            formData.append('due_date', this.editForm.due_date || '');
+            if (this.editForm.assignee) {
+                formData.append('assignee', this.editForm.assignee);
+            }
+            if (this.editAttachment && this.editAttachment.file) {
+                formData.append('attachment', this.editAttachment.file);
+            }
+
             fetch(`/workplan/${this.detailTaskId}`, {
-                method: 'PUT',
+                method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify(this.editForm)
+                body: formData
             })
             .then(r => r.json())
             .then(res => {
@@ -845,6 +1009,10 @@ function kanbanBoard() {
                     this.currentTask.priority = this.editForm.priority;
                     this.currentTask.due_date = this.editForm.due_date;
                     this.currentTask.assignee = this.editForm.assignee;
+                    if (res.task && res.task.attachment_url) {
+                        this.currentTask.attachment_url = res.task.attachment_url;
+                    }
+                    this.removeAttachment('edit');
                     this.isEditingTask = false;
                     this.loadActivities(this.detailTaskId);
                     const cardTitle = document.querySelector(`#task-card-${this.detailTaskId} h4`);
@@ -923,14 +1091,13 @@ function kanbanBoard() {
         },
 
         submitComment() {
-            if (!this.newCommentText.trim()) return;
+            if (!this.newCommentText.trim() && !this.commentAttachment) return;
             this.submittingComment = true;
 
             const form = new FormData();
-            form.append('comment_text', this.newCommentText);
-            const fileInput = document.getElementById('commentAttachmentInput');
-            if (fileInput && fileInput.files[0]) {
-                form.append('attachment', fileInput.files[0]);
+            form.append('comment_text', this.newCommentText || '');
+            if (this.commentAttachment && this.commentAttachment.file) {
+                form.append('attachment', this.commentAttachment.file);
             }
 
             fetch(`/workplan/${this.detailTaskId}/comments`, {
@@ -947,7 +1114,7 @@ function kanbanBoard() {
                 if (data.success) {
                     this.comments.push(data.comment);
                     this.newCommentText = '';
-                    if (fileInput) fileInput.value = '';
+                    this.removeAttachment('comment');
                     this.loadActivities(this.detailTaskId);
                     Swal.fire({
                         icon: 'success',

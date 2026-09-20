@@ -21,7 +21,7 @@
         </div>
 
         <!-- Form Modal -->
-        <form id="createTaskForm" method="POST" action="{{ route('workplan.store') }}" enctype="multipart/form-data" class="flex-1 overflow-y-auto p-6 space-y-4">
+        <form id="createTaskForm" method="POST" action="{{ route('workplan.store') }}" enctype="multipart/form-data" @paste="handleClipboardPaste($event, 'create')" class="flex-1 overflow-y-auto p-6 space-y-4">
             @csrf
             <input type="hidden" name="status" id="createTaskStatus" value="todo">
 
@@ -92,16 +92,95 @@
                 </select>
             </div>
 
-            <!-- Lampiran Berkas -->
+            <!-- Lampiran Berkas (Drag & Drop, Paste Clipboard & Image Preview) -->
             <div>
-                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5">
-                    Lampiran Berkas / Screenshot (Opsional)
+                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>Lampiran Berkas / Screenshot (Opsional)</span>
+                    <span class="text-[10px] text-slate-400 font-normal lowercase">Bisa Ctrl+V Paste dari Clipboard</span>
                 </label>
+
+                <!-- Hidden Native Input -->
                 <input type="file" 
                        name="attachment" 
-                       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx"
-                       class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-xs file:font-semibold file:bg-primary-50 file:text-primary hover:file:bg-primary-100 border border-slate-200 rounded-xl bg-slate-50 cursor-pointer">
-                <span class="text-[10px] text-slate-400 mt-1 block">Maksimal 10MB (Gambar, PDF, Word, Excel).</span>
+                       id="createTaskAttachmentInput" 
+                       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
+                       @change="handleFileSelect($event, 'create')"
+                       class="hidden">
+
+                <!-- Dropzone Area (When no attachment) -->
+                <div x-show="!createAttachment"
+                     @dragover.prevent="isDraggingCreate = true"
+                     @dragleave.prevent="isDraggingCreate = false"
+                     @drop.prevent="handleFileDrop($event, 'create')"
+                     @click="document.getElementById('createTaskAttachmentInput').click()"
+                     :class="{ 'border-primary bg-primary-50/50 ring-2 ring-primary/20 scale-[1.01]': isDraggingCreate, 'border-slate-200 bg-slate-50/70 hover:bg-slate-100/70 hover:border-primary/40': !isDraggingCreate }"
+                     class="border-2 border-dashed rounded-2xl p-4 text-center cursor-pointer transition-all duration-150 group">
+                    <div class="w-11 h-11 mx-auto rounded-xl bg-white shadow-xs border border-slate-200 text-primary flex items-center justify-center text-lg mb-2 group-hover:scale-110 transition-transform">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <p class="text-xs font-bold text-slate-700">
+                        Tarik & lepaskan file ke sini atau <span class="text-primary hover:underline">Pilih dari Komputer</span>
+                    </p>
+                    <div class="flex items-center justify-center gap-2 mt-1 text-[10px] text-slate-400">
+                        <span class="inline-flex items-center gap-1 bg-white px-2 py-0.5 rounded border border-slate-200/80 font-medium text-slate-500">
+                            <i class="fa-regular fa-paste text-primary"></i> Dukung Paste (Ctrl+V)
+                        </span>
+                        <span>• Gambar, PDF, Word, Excel (Maks. 10MB)</span>
+                    </div>
+                </div>
+
+                <!-- Preview Area (When attachment selected) -->
+                <template x-if="createAttachment">
+                    <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-start gap-3 relative group">
+                        <template x-if="createAttachment.isImage">
+                            <div class="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0">
+                                <img :src="createAttachment.previewUrl" class="w-full h-full object-cover">
+                                <a :href="createAttachment.previewUrl" target="_blank" class="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white text-xs">
+                                    <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                </a>
+                            </div>
+                        </template>
+                        <template x-if="!createAttachment.isImage">
+                            <div class="w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 text-2xl"
+                                 :class="{
+                                     'bg-rose-50 text-rose-600 border border-rose-200': createAttachment.extension === 'pdf',
+                                     'bg-emerald-50 text-emerald-600 border border-emerald-200': ['xls','xlsx','csv'].includes(createAttachment.extension),
+                                     'bg-blue-50 text-blue-600 border border-blue-200': ['doc','docx'].includes(createAttachment.extension),
+                                     'bg-amber-50 text-amber-600 border border-amber-200': ['zip','rar','7z'].includes(createAttachment.extension),
+                                     'bg-slate-50 text-slate-600 border border-slate-200': !['pdf','xls','xlsx','csv','doc','docx','zip','rar','7z'].includes(createAttachment.extension)
+                                 }">
+                                <i class="fa-solid"
+                                   :class="{
+                                       'fa-file-pdf': createAttachment.extension === 'pdf',
+                                       'fa-file-excel': ['xls','xlsx','csv'].includes(createAttachment.extension),
+                                       'fa-file-word': ['doc','docx'].includes(createAttachment.extension),
+                                       'fa-file-zipper': ['zip','rar','7z'].includes(createAttachment.extension),
+                                       'fa-file-lines': !['pdf','xls','xlsx','csv','doc','docx','zip','rar','7z'].includes(createAttachment.extension)
+                                   }"></i>
+                            </div>
+                        </template>
+
+                        <div class="flex-1 min-w-0 py-0.5">
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase"
+                                      :class="createAttachment.isImage ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-slate-100 text-slate-700 border border-slate-200'"
+                                      x-text="createAttachment.isImage ? 'Gambar Screenshot' : createAttachment.extension"></span>
+                                <span class="text-[11px] text-slate-400 font-semibold" x-text="createAttachment.size"></span>
+                            </div>
+                            <p class="text-xs font-bold text-slate-800 truncate mt-1" x-text="createAttachment.name"></p>
+                            <p class="text-[10px] text-emerald-600 font-medium mt-0.5 flex items-center gap-1">
+                                <i class="fa-solid fa-circle-check"></i> Siap dilampirkan ke tugas baru
+                            </p>
+                        </div>
+
+                        <button type="button" 
+                                @click="removeAttachment('create')" 
+                                class="w-8 h-8 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all"
+                                title="Hapus Lampiran">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </div>
+                </template>
             </div>
 
             <!-- Footer Buttons -->
@@ -243,7 +322,7 @@
             <div x-show="!isLoadingDetail && activeTab === 'detail'" class="space-y-6">
                 
                 <!-- 1.1 FORM EDIT MODE -->
-                <div x-show="isEditingTask" class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3.5">
+                <div x-show="isEditingTask" @paste="handleClipboardPaste($event, 'edit')" class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3.5">
                     <h5 class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
                         <i class="fa-solid fa-pen text-primary"></i> Edit Data Tugas
                     </h5>
@@ -271,6 +350,99 @@
                             <label class="block text-[11px] font-bold text-slate-600 mb-1">Target Deadline</label>
                             <input type="date" x-model="editForm.due_date" class="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-xl">
                         </div>
+                    </div>
+
+                    <!-- Edit Attachment Field -->
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-600 mb-1 flex items-center justify-between">
+                            <span>Lampiran Berkas (Opsional)</span>
+                            <span class="text-[10px] text-slate-400 font-normal">Bisa Drag & Drop / Ctrl+V Paste</span>
+                        </label>
+
+                        <!-- Existing Attachment Notice -->
+                        <template x-if="currentTask && currentTask.attachment_url && !editAttachment">
+                            <div class="mb-2 p-2.5 rounded-xl bg-indigo-50/70 border border-indigo-100 text-xs flex items-center justify-between">
+                                <div class="flex items-center gap-2 truncate">
+                                    <i class="fa-solid fa-paperclip text-indigo-600"></i>
+                                    <span class="text-slate-600 text-[11px]">Lampiran saat ini:</span>
+                                    <a :href="currentTask.attachment_url" target="_blank" class="font-bold text-primary hover:underline truncate" x-text="currentTask.attachment_url.split('/').pop()"></a>
+                                </div>
+                                <span class="text-[10px] text-slate-400 flex-shrink-0 ml-2">Pilih file baru di bawah untuk mengganti</span>
+                            </div>
+                        </template>
+
+                        <!-- Hidden Native Input -->
+                        <input type="file" 
+                               id="editTaskAttachmentInput" 
+                               accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
+                               @change="handleFileSelect($event, 'edit')"
+                               class="hidden">
+
+                        <!-- Dropzone Area (When no new attachment selected) -->
+                        <div x-show="!editAttachment"
+                             @dragover.prevent="isDraggingEdit = true"
+                             @dragleave.prevent="isDraggingEdit = false"
+                             @drop.prevent="handleFileDrop($event, 'edit')"
+                             @click="document.getElementById('editTaskAttachmentInput').click()"
+                             :class="{ 'border-primary bg-primary-50/50 ring-2 ring-primary/20 scale-[1.01]': isDraggingEdit, 'border-slate-200 bg-white hover:bg-slate-50 hover:border-primary/40': !isDraggingEdit }"
+                             class="border-2 border-dashed rounded-xl p-3 text-center cursor-pointer transition-all duration-150 group">
+                            <div class="w-8 h-8 mx-auto rounded-lg bg-slate-50 border border-slate-200 text-primary flex items-center justify-center text-xs mb-1 group-hover:scale-110 transition-transform">
+                                <i class="fa-solid fa-cloud-arrow-up"></i>
+                            </div>
+                            <p class="text-[11px] font-bold text-slate-700">
+                                Tarik file ke sini atau <span class="text-primary hover:underline">Pilih dari Komputer</span>
+                            </p>
+                            <span class="text-[10px] text-slate-400 block mt-0.5">Dukung Paste (Ctrl+V) langsung dari screenshot clipboard</span>
+                        </div>
+
+                        <!-- Preview Area (When new attachment selected) -->
+                        <template x-if="editAttachment">
+                            <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs flex items-start gap-2.5 relative group">
+                                <template x-if="editAttachment.isImage">
+                                    <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0">
+                                        <img :src="editAttachment.previewUrl" class="w-full h-full object-cover">
+                                        <a :href="editAttachment.previewUrl" target="_blank" class="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white text-xs">
+                                            <i class="fa-solid fa-magnifying-glass-plus"></i>
+                                        </a>
+                                    </div>
+                                </template>
+                                <template x-if="!editAttachment.isImage">
+                                    <div class="w-12 h-12 rounded-lg flex items-center justify-center flex-shrink-0 text-xl"
+                                         :class="{
+                                             'bg-rose-50 text-rose-600 border border-rose-200': editAttachment.extension === 'pdf',
+                                             'bg-emerald-50 text-emerald-600 border border-emerald-200': ['xls','xlsx','csv'].includes(editAttachment.extension),
+                                             'bg-blue-50 text-blue-600 border border-blue-200': ['doc','docx'].includes(editAttachment.extension),
+                                             'bg-slate-50 text-slate-600 border border-slate-200': !['pdf','xls','xlsx','csv','doc','docx'].includes(editAttachment.extension)
+                                         }">
+                                        <i class="fa-solid"
+                                           :class="{
+                                               'fa-file-pdf': editAttachment.extension === 'pdf',
+                                               'fa-file-excel': ['xls','xlsx','csv'].includes(editAttachment.extension),
+                                               'fa-file-word': ['doc','docx'].includes(editAttachment.extension),
+                                               'fa-file-lines': !['pdf','xls','xlsx','csv','doc','docx'].includes(editAttachment.extension)
+                                           }"></i>
+                                    </div>
+                                </template>
+
+                                <div class="flex-1 min-w-0 py-0.5">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase bg-slate-100 text-slate-700" x-text="editAttachment.extension"></span>
+                                        <span class="text-[10px] text-slate-400 font-semibold" x-text="editAttachment.size"></span>
+                                    </div>
+                                    <p class="text-xs font-bold text-slate-800 truncate mt-0.5" x-text="editAttachment.name"></p>
+                                    <p class="text-[10px] text-emerald-600 font-medium mt-0.5">
+                                        <i class="fa-solid fa-check"></i> Siap mengganti lampiran saat disimpan
+                                    </p>
+                                </div>
+
+                                <button type="button" 
+                                        @click="removeAttachment('edit')" 
+                                        class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all"
+                                        title="Batalkan Lampiran Baru">
+                                    <i class="fa-solid fa-trash-can text-xs"></i>
+                                </button>
+                            </div>
+                        </template>
                     </div>
 
                     <div class="flex items-center justify-end gap-2 pt-2">
@@ -315,12 +487,26 @@
 
                     <!-- Lampiran File Utama -->
                     <template x-if="currentTask && currentTask.attachment_url">
-                        <div class="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-50/60 border border-indigo-100 text-xs">
-                            <i class="fa-solid fa-paperclip text-indigo-600"></i>
-                            <span class="text-slate-600">Lampiran Berkas:</span>
-                            <a :href="currentTask.attachment_url" target="_blank" class="font-bold text-primary hover:underline truncate">
-                                Buka Berkas Lampiran
-                            </a>
+                        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80 space-y-2">
+                            <div class="flex items-center justify-between text-xs">
+                                <span class="font-bold text-slate-700 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-paperclip text-primary"></i> Lampiran Tugas:
+                                </span>
+                                <a :href="currentTask.attachment_url" target="_blank" class="text-[11px] font-bold text-primary hover:underline flex items-center gap-1">
+                                    <span>Buka / Unduh Berkas</span>
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                                </a>
+                            </div>
+                            <template x-if="currentTask.attachment_url.match(/\.(jpg|jpeg|png|gif|webp|svg)($|\?)/i)">
+                                <div>
+                                    <a :href="currentTask.attachment_url" target="_blank" class="inline-block group relative">
+                                        <img :src="currentTask.attachment_url" class="max-h-48 max-w-full rounded-xl border border-slate-200 object-cover shadow-xs group-hover:opacity-95 transition-all">
+                                        <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-slate-900/80 text-white text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-all">
+                                            <i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Perbesar
+                                        </span>
+                                    </a>
+                                </div>
+                            </template>
                         </div>
                     </template>
                 </div>
@@ -422,9 +608,21 @@
                             <p class="text-xs text-slate-700 whitespace-pre-wrap pl-8 leading-relaxed" x-text="c.comment_text"></p>
                             <template x-if="c.attachment_url">
                                 <div class="pl-8 pt-1">
-                                    <a :href="c.attachment_url" target="_blank" class="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline font-semibold bg-white px-2.5 py-1 rounded-lg border border-slate-200">
-                                        <i class="fa-solid fa-paperclip text-slate-400"></i> Lampiran Berkas
-                                    </a>
+                                    <template x-if="c.attachment_url.match(/\.(jpg|jpeg|png|gif|webp|svg)($|\?)/i)">
+                                        <div class="mt-1">
+                                            <a :href="c.attachment_url" target="_blank" class="inline-block group relative">
+                                                <img :src="c.attachment_url" class="max-h-36 max-w-xs rounded-xl border border-slate-200 object-cover shadow-xs group-hover:opacity-95 transition-all">
+                                                <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-slate-900/80 text-white text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-all">
+                                                    <i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Perbesar
+                                                </span>
+                                            </a>
+                                        </div>
+                                    </template>
+                                    <template x-if="!c.attachment_url.match(/\.(jpg|jpeg|png|gif|webp|svg)($|\?)/i)">
+                                        <a :href="c.attachment_url" target="_blank" class="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline font-semibold bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                                            <i class="fa-solid fa-paperclip text-slate-400"></i> Lampiran Berkas
+                                        </a>
+                                    </template>
                                 </div>
                             </template>
                         </div>
@@ -435,18 +633,68 @@
                     </div>
                 </div>
 
-                <!-- Input Tambah Komentar -->
-                <div class="pt-4 border-t border-slate-200 space-y-2.5">
+                <!-- Input Tambah Komentar (Dukung Paste Screenshot & Drag & Drop) -->
+                <div class="pt-4 border-t border-slate-200 space-y-2.5"
+                     @dragover.prevent="isDraggingComment = true"
+                     @dragleave.prevent="isDraggingComment = false"
+                     @drop.prevent="handleFileDrop($event, 'comment')"
+                     @paste="handleClipboardPaste($event, 'comment')">
+
                     <textarea x-model="newCommentText" 
                               rows="3" 
-                              placeholder="Tulis tanggapan, update hasil kerja, atau ketik @NamaKaryawan..."
+                              placeholder="Tulis tanggapan, update hasil kerja, atau ketik @NamaKaryawan... (Bisa Ctrl+V screenshot langsung ke sini)"
+                              :class="{ 'border-primary ring-2 ring-primary/20 bg-primary-50/30': isDraggingComment }"
                               class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary text-slate-700 transition-all"></textarea>
                     
+                    <!-- Hidden File Input for Comment -->
+                    <input type="file" 
+                           id="commentAttachmentInput" 
+                           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip,.rar"
+                           @change="handleFileSelect($event, 'comment')"
+                           class="hidden">
+
+                    <!-- Comment Attachment Preview Card -->
+                    <template x-if="commentAttachment">
+                        <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center gap-2.5 relative group">
+                            <template x-if="commentAttachment.isImage">
+                                <div class="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0">
+                                    <img :src="commentAttachment.previewUrl" class="w-full h-full object-cover">
+                                </div>
+                            </template>
+                            <template x-if="!commentAttachment.isImage">
+                                <div class="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 text-base bg-slate-100 text-slate-700 border border-slate-200">
+                                    <i class="fa-solid fa-paperclip"></i>
+                                </div>
+                            </template>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-xs font-bold text-slate-800 truncate" x-text="commentAttachment.name"></p>
+                                <span class="text-[10px] text-slate-400 font-semibold" x-text="commentAttachment.size"></span>
+                            </div>
+                            <button type="button" 
+                                    @click="removeAttachment('comment')" 
+                                    class="w-7 h-7 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 flex items-center justify-center transition-all"
+                                    title="Hapus Lampiran">
+                                <i class="fa-solid fa-trash-can text-xs"></i>
+                            </button>
+                        </div>
+                    </template>
+
+                    <!-- Actions Bar -->
                     <div class="flex items-center justify-between gap-2">
-                        <input type="file" id="commentAttachmentInput" class="text-xs text-slate-500 file:mr-2 file:py-1 file:px-2.5 file:rounded-lg file:border-0 file:text-[11px] file:font-semibold file:bg-slate-100 hover:file:bg-slate-200 cursor-pointer">
+                        <div class="flex items-center gap-2">
+                            <button type="button" 
+                                    @click="document.getElementById('commentAttachmentInput').click()" 
+                                    class="px-2.5 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs font-semibold flex items-center gap-1.5 transition-all">
+                                <i class="fa-solid fa-paperclip text-slate-400"></i>
+                                <span>Lampirkan Berkas</span>
+                            </button>
+                            <span class="text-[10px] text-slate-400 hidden sm:inline-flex items-center gap-1">
+                                <i class="fa-regular fa-clipboard text-primary"></i> Paste (Ctrl+V) screenshot langsung
+                            </span>
+                        </div>
                         <button type="button" 
                                 @click="submitComment()" 
-                                :disabled="submittingComment"
+                                :disabled="submittingComment || (!newCommentText.trim() && !commentAttachment)"
                                 class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all disabled:opacity-50 flex items-center gap-1.5 shadow-sm">
                             <i class="fa-solid fa-paper-plane text-[10px]"></i>
                             <span>Kirim Komentar</span>
