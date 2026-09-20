@@ -132,17 +132,115 @@
                 @endif
             </div>
 
-            <!-- Filter Karyawan / Assignee (Admin & Head) -->
+            <!-- Filter Karyawan / Assignee Inhouse dengan Fitur Search (Admin & Head) -->
             @if($isAdmin || ($isHead && count($usersInView) > 1))
-            <div class="w-full lg:w-64">
-                <select name="user_filter" 
-                        onchange="this.form.submit()" 
-                        class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium text-slate-700 transition-all">
-                    <option value="all">Semua Karyawan ({{ count($usersInView) }} Anggota)</option>
-                    @foreach($usersInView as $uName)
-                        <option value="{{ $uName }}" {{ $filterUser === $uName ? 'selected' : '' }}>{{ $uName }}</option>
-                    @endforeach
-                </select>
+            <div class="w-full lg:w-72 relative" 
+                 x-data="searchableUserFilter({
+                     selected: '{{ $filterUser }}',
+                     users: {{ json_encode($usersInView) }}
+                 })"
+                 @click.outside="open = false">
+                
+                <input type="hidden" name="user_filter" :value="selectedValue" id="userFilterInput">
+
+                <!-- Trigger Button -->
+                <button type="button" 
+                        @click="toggleDropdown()" 
+                        class="w-full px-3.5 py-2 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary flex items-center justify-between gap-2 transition-all shadow-xs cursor-pointer text-left">
+                    <div class="flex items-center gap-2 min-w-0 flex-1">
+                        <i class="fa-solid fa-user-tie text-slate-400 text-xs shrink-0" :class="{ 'text-primary': selectedValue && selectedValue !== 'all' }"></i>
+                        <span class="truncate" 
+                              :class="selectedValue && selectedValue !== 'all' ? 'font-extrabold text-slate-900' : 'font-medium text-slate-600'" 
+                              x-text="displayLabel">
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-1.5 shrink-0">
+                        <span x-show="selectedValue && selectedValue !== 'all'" 
+                              @click.stop="selectUser('all')" 
+                              class="w-4 h-4 rounded-full bg-slate-200 hover:bg-rose-100 hover:text-rose-600 text-slate-500 flex items-center justify-center text-[10px] transition-colors" 
+                              title="Reset Filter Karyawan">
+                            <i class="fa-solid fa-xmark"></i>
+                        </span>
+                        <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200" 
+                           :class="{ 'rotate-180': open }"></i>
+                    </div>
+                </button>
+
+                <!-- Dropdown Menu dengan Kotak Search -->
+                <div x-show="open" 
+                     x-transition:enter="transition ease-out duration-150"
+                     x-transition:enter-start="opacity-0 translate-y-1 scale-98"
+                     x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave="transition ease-in duration-100"
+                     x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+                     x-transition:leave-end="opacity-0 translate-y-1 scale-98"
+                     class="absolute left-0 top-full mt-1.5 z-50 bg-white rounded-2xl shadow-xl border border-slate-200/90 overflow-hidden w-full min-w-[280px]" 
+                     style="display: none;">
+                    
+                    <!-- Search Input Box -->
+                    <div class="p-2.5 border-b border-slate-100 bg-slate-50/80">
+                        <div class="relative">
+                            <i class="fa-solid fa-magnifying-glass text-slate-400 text-xs absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                            <input type="text" 
+                                   x-ref="searchInput" 
+                                   x-model="search" 
+                                   @keydown.escape="open = false" 
+                                   @keydown.enter.prevent="if(filteredUsers.length > 0) selectUser(filteredUsers[0])"
+                                   placeholder="Cari nama karyawan inhouse..." 
+                                   class="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium">
+                            <button type="button" 
+                                    x-show="search" 
+                                    @click="search = ''; $refs.searchInput.focus()" 
+                                    class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-[11px]">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Options List -->
+                    <div class="max-h-60 overflow-y-auto p-1.5 space-y-0.5 text-xs">
+                        <!-- Option: Semua Karyawan Inhouse -->
+                        <button type="button" 
+                                @click="selectUser('all')" 
+                                class="w-full px-3 py-2 rounded-xl text-left transition-all flex items-center justify-between font-medium cursor-pointer"
+                                :class="!selectedValue || selectedValue === 'all' ? 'bg-primary-50 text-primary font-bold shadow-xs' : 'text-slate-700 hover:bg-slate-50'">
+                            <span class="flex items-center gap-2">
+                                <i class="fa-solid fa-users text-xs text-primary"></i>
+                                <span>Semua Karyawan Inhouse ({{ count($usersInView) }})</span>
+                            </span>
+                            <i x-show="!selectedValue || selectedValue === 'all'" class="fa-solid fa-check text-xs text-primary"></i>
+                        </button>
+
+                        <div class="border-t border-slate-100 my-1"></div>
+
+                        <!-- Filtered Inhouse Employees -->
+                        <template x-for="name in filteredUsers" :key="name">
+                            <button type="button" 
+                                    @click="selectUser(name)" 
+                                    class="w-full px-3 py-2 rounded-xl text-left transition-all flex items-center justify-between font-medium cursor-pointer"
+                                    :class="selectedValue === name ? 'bg-primary-50 text-primary font-bold shadow-xs' : 'text-slate-700 hover:bg-slate-50'">
+                                <span class="flex items-center gap-2 truncate">
+                                    <i class="fa-solid fa-user-circle text-slate-400 text-xs shrink-0" :class="{ 'text-primary': selectedValue === name }"></i>
+                                    <span class="truncate" x-text="name"></span>
+                                </span>
+                                <i x-show="selectedValue === name" class="fa-solid fa-check text-xs text-primary shrink-0 ml-2"></i>
+                            </button>
+                        </template>
+
+                        <!-- Empty State -->
+                        <div x-show="filteredUsers.length === 0" class="py-6 text-center text-slate-400 text-xs">
+                            <i class="fa-solid fa-user-slash text-base text-slate-300 block mb-1"></i>
+                            <span>Tidak ada karyawan inhouse yang cocok</span>
+                        </div>
+                    </div>
+
+                    <!-- Footer Info -->
+                    <div class="px-3 py-2 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
+                        <span>Hanya Karyawan Inhouse</span>
+                        <span x-text="`${filteredUsers.length} karyawan ditemukan`"></span>
+                    </div>
+                </div>
+
             </div>
             @endif
 
@@ -730,6 +828,50 @@ function kanbanBoard() {
                 this.submittingComment = false;
                 alert('Terjadi kesalahan jaringan.');
             });
+        }
+    }
+}
+
+function searchableUserFilter(config) {
+    return {
+        open: false,
+        selectedValue: config.selected || 'all',
+        search: '',
+        users: config.users || [],
+
+        get displayLabel() {
+            if (!this.selectedValue || this.selectedValue === 'all') {
+                return `Semua Karyawan Inhouse (${this.users.length})`;
+            }
+            return this.selectedValue;
+        },
+
+        get filteredUsers() {
+            if (!this.search || !this.search.trim()) {
+                return this.users;
+            }
+            const q = this.search.toLowerCase().trim();
+            return this.users.filter(u => (u + '').toLowerCase().includes(q));
+        },
+
+        toggleDropdown() {
+            this.open = !this.open;
+            if (this.open) {
+                this.search = '';
+                this.$nextTick(() => {
+                    if (this.$refs.searchInput) {
+                        this.$refs.searchInput.focus();
+                    }
+                });
+            }
+        },
+
+        selectUser(val) {
+            this.selectedValue = val;
+            this.open = false;
+            this.search = '';
+            document.getElementById('userFilterInput').value = val;
+            document.getElementById('userFilterInput').form.submit();
         }
     }
 }

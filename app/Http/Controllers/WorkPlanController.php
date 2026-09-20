@@ -196,26 +196,44 @@ class WorkPlanController extends Controller
         // Ambil Data Arsip (15 data terbaru yang diarsipkan)
         $tasksArchived = (clone $baseQuery)->where('status', 'archived')->orderBy('date_completed', 'desc')->orderBy('id', 'desc')->paginate(15);
 
-        // Ambil Daftar Karyawan Unik untuk Dropdown Filter
+        // Ambil Daftar Karyawan Unik HANYA Karyawan Inhouse untuk Dropdown Filter
+        $inhouseEmployeesQuery = Employee::where('status', 'Aktiv')
+            ->where(function ($q) {
+                $q->where('tipe_karyawan', 'Inhouse')
+                  ->orWhere(DB::raw('LOWER(TRIM(tipe_karyawan))'), 'inhouse')
+                  ->orWhereIn('entity', ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'])
+                  ->orWhere('prinsiple', 'like', '%ARINA MULTI%')
+                  ->orWhere('prinsiple', 'like', '%ALVA KARYA%')
+                  ->orWhere('prinsiple', 'like', '%ANUGRAH TERPERCAYA%')
+                  ->orWhere('prinsiple', 'like', '%ABADI BERKAT%')
+                  ->orWhere('prinsiple', 'like', '%BINTANG OETAMA%')
+                  ->orWhere('prinsiple', 'like', '%TALENTA BERKARYA%')
+                  ->orWhere('prinsiple', 'like', '%TRI BERKAH%');
+            });
+
+        $inhouseEmployees = (clone $inhouseEmployeesQuery)
+            ->select('id', 'nama_karyawan', 'jabatan_db', 'area', 'divisi', 'entity')
+            ->orderBy('nama_karyawan')
+            ->get();
+
         if ($isAdmin) {
-            $usersInView = Employee::where('status', 'Aktiv')->orderBy('nama_karyawan')->pluck('nama_karyawan')->toArray();
+            $usersInView = $inhouseEmployees->pluck('nama_karyawan')->unique()->values()->toArray();
+            if (empty($usersInView) && !empty($userName)) {
+                $usersInView = [$userName];
+            }
         } elseif ($isHead && !empty($teamMembers)) {
-            $usersInView = $teamMembers;
-            sort($usersInView);
+            $usersInView = $inhouseEmployees->whereIn('nama_karyawan', $teamMembers)->pluck('nama_karyawan')->unique()->values()->toArray();
+            if (empty($usersInView)) {
+                $usersInView = $teamMembers;
+            }
         } else {
             $usersInView = [$userName];
         }
 
-        // Ambil Daftar Assignee yang Dikelompokkan per Area dari Employee Aktif
+        // Ambil Daftar Assignee yang Dikelompokkan per Area HANYA dari Inhouse Aktif
         $employeesGrouped = [];
-        $activeEmployees = Employee::where('status', 'Aktiv')
-            ->select('nama_karyawan', 'jabatan_db', 'area')
-            ->orderBy('area')
-            ->orderBy('nama_karyawan')
-            ->get();
-
-        foreach ($activeEmployees as $emp) {
-            $area = !empty($emp->area) ? strtoupper(trim($emp->area)) : 'LAIN-LAIN';
+        foreach ($inhouseEmployees as $emp) {
+            $area = !empty($emp->area) ? strtoupper(trim($emp->area)) : 'PUSAT / LAINNYA';
             $employeesGrouped[$area][] = $emp;
         }
 
