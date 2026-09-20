@@ -1118,6 +1118,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `fe8bb62` | fix(pdf): resolve MpdfException pcre.backtrack_limit by using direct local image file paths, filtering principle screenshot, raising PCRE limit, and adding safe HTML chunker |
 | `5c8e7f3` | feat(workplan): implement WhatsApp-style Groups Chat with real-time messaging, inhouse members, and SweetAlert2 |
 | `f03d859` | feat(workplan): open attachment preview inside lightbox modal instead of new tab |
 | `20ecb07` | docs: document Milestone 58 interactive attachment uploader |

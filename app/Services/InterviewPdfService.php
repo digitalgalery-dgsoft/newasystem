@@ -15,6 +15,15 @@ class InterviewPdfService
      */
     public function generate(Candidate $candidate): string
     {
+        @ini_set('pcre.backtrack_limit', '10000000');
+        @ini_set('memory_limit', '512M');
+        @set_time_limit(180);
+
+        $tempDir = storage_path('app/temp-pdf');
+        if (!is_dir($tempDir)) {
+            @mkdir($tempDir, 0777, true);
+        }
+
         // Require legacy vendor autoload for mPDF
         if (!class_exists('\Mpdf\Mpdf')) {
             $possibleAutoloads = [
@@ -77,11 +86,6 @@ class InterviewPdfService
             }
         }
 
-        $logoBase64 = '';
-        if (!empty($kopPath) && file_exists($kopPath)) {
-            $logoBase64 = 'data:image/png;base64,' . base64_encode(file_get_contents($kopPath));
-        }
-
 
         // Generate Pie Chart for DISC Test
         $rawPsikotes = \Illuminate\Support\Facades\DB::table('tb_hasilpsikotes')
@@ -130,7 +134,7 @@ class InterviewPdfService
             'c' => round(($discResults['c'] / $totalDisc) * 100, 1),
             'd' => round(($discResults['d'] / $totalDisc) * 100, 1)
         ];
-        $chartBase64 = $this->generatePieChart($discResults, $persentase);
+        $chartPath = $this->generatePieChart($discResults, $persentase, $tempDir, (int)$candidate->id);
 
         // Dominant trait
         arsort($discResults);
@@ -214,11 +218,6 @@ class InterviewPdfService
         $scorePct = round(($mathCorrectCount / $totalMath) * 100);
         $grade = ($scorePct >= 80) ? 'A (SANGAT BAIK)' : (($scorePct >= 65) ? 'B (LULUS)' : 'C (REMIDI)');
 
-        $tempDir = storage_path('app/temp-pdf');
-        if (!is_dir($tempDir)) {
-            @mkdir($tempDir, 0777, true);
-        }
-
         // Setup mPDF jika class tersedia
         if (!class_exists('\Mpdf\Mpdf')) {
             $possibleAutoloads = [
@@ -271,9 +270,7 @@ class InterviewPdfService
         // ==========================================
         $html1 = '<!DOCTYPE html><html><head><style>' . $css . '</style></head><body>';
         $html1 .= '<table width="100%"><tr>';
-        if (!empty($logoBase64)) {
-            $html1 .= '<td align="left" width="50%"><img src="' . $logoBase64 . '" style="height: 48px; max-width: 260px; object-fit: contain;"></td>';
-        } elseif (!empty($kopPath) && file_exists($kopPath)) {
+        if (!empty($kopPath) && file_exists($kopPath)) {
             $html1 .= '<td align="left" width="50%"><img src="' . $kopPath . '" style="height: 48px; max-width: 260px; object-fit: contain;"></td>';
         } else {
             $html1 .= '<td align="left" width="50%"><h2 style="margin:0;color:#1e40af;font-size:15px;">' . htmlspecialchars($parentComp) . '</h2></td>';
@@ -399,16 +396,23 @@ class InterviewPdfService
         if (empty($asSigPath) && !empty($asDetails['user'])) {
             $asSigPath = $asDetails['user']->signature_path;
         }
-        $asSigBase64 = $this->resolveBase64Image($asSigPath);
-        $asSigHtml = !empty($asSigBase64)
-            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $asSigBase64 . '" style="height:45px; max-width:130px;"></div>'
+        $asSigResolved = $this->resolveImageForPdf($asSigPath, $tempDir);
+        $asSigHtml = !empty($asSigResolved)
+            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $asSigResolved . '" style="height:45px; max-width:130px;"></div>'
             : '<div style="height:48px; margin:2px 0;"></div>';
 
-        // Principle signature
-        $principleSig = $candidate->ttd_prinsiple ?? $candidate->principleApprovals->first()?->signature_path ?? null;
-        $principleSigBase64 = $this->resolveBase64Image($principleSig);
-        $principleSigHtml = !empty($principleSigBase64)
-            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $principleSigBase64 . '" style="height:45px; max-width:130px;"></div>'
+        // Principle signature (only if actual signature, not approval screenshot)
+        $principleSig = null;
+        $rawPrincipleSig = $candidate->ttd_prinsiple ?? $candidate->principleApprovals->first()?->signature_path ?? null;
+        if (!empty($rawPrincipleSig)) {
+            $baseSig = basename(trim($rawPrincipleSig));
+            if (str_starts_with($baseSig, 'ttd_') || str_starts_with($rawPrincipleSig, 'data:image')) {
+                $principleSig = $rawPrincipleSig;
+            }
+        }
+        $principleSigResolved = $this->resolveImageForPdf($principleSig, $tempDir);
+        $principleSigHtml = !empty($principleSigResolved)
+            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $principleSigResolved . '" style="height:45px; max-width:130px;"></div>'
             : '<div style="height:48px; margin:2px 0;"></div>';
 
         // Candidate signature
@@ -416,9 +420,9 @@ class InterviewPdfService
         if ($candSig && $candSig === ($assess?->interviewer_signature_path ?? '')) {
             $candSig = null;
         }
-        $candSigBase64 = $this->resolveBase64Image($candSig);
-        $candSigHtml = !empty($candSigBase64)
-            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $candSigBase64 . '" style="height:45px; max-width:130px;"></div>'
+        $candSigResolved = $this->resolveImageForPdf($candSig, $tempDir);
+        $candSigHtml = !empty($candSigResolved)
+            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $candSigResolved . '" style="height:45px; max-width:130px;"></div>'
             : '<div style="height:48px; margin:2px 0;"></div>';
 
         // Pernyataan & Tanda Tangan
@@ -431,7 +435,7 @@ class InterviewPdfService
         $html1 .= '</body></html>';
 
         if ($mpdf) {
-            $mpdf->WriteHTML($html1);
+            $this->writeMpdfHtml($mpdf, $html1);
         }
 
         // =========================================================================
@@ -450,16 +454,14 @@ class InterviewPdfService
                 : 'https://asystem.co.id/v3/approval/' . rawurlencode($baseName);
 
             $approvalImgPath = \App\Services\LegacyAttachmentService::resolveApproval($approvalFilename);
-            $approvalBase64 = ($approvalImgPath && file_exists($approvalImgPath)) 
-                ? \App\Services\LegacyAttachmentService::getImageBase64($approvalImgPath) 
-                : null;
 
-            if ($approvalBase64) {
-                $approvalSrc = $approvalBase64;
-            } elseif ($approvalImgPath && file_exists($approvalImgPath)) {
-                $approvalSrc = $mpdf ? $approvalImgPath : asset($isTtd ? 'prinsiple/ttdfileprinsiple/' . $baseName : 'approval/' . $baseName);
+            if ($mpdf && $approvalImgPath && file_exists($approvalImgPath)) {
+                $approvalSrc = $approvalImgPath;
             } else {
-                $approvalSrc = $legacyUrl;
+                $approvalBase64 = ($approvalImgPath && file_exists($approvalImgPath)) 
+                    ? \App\Services\LegacyAttachmentService::getImageBase64($approvalImgPath) 
+                    : null;
+                $approvalSrc = $approvalBase64 ?: $legacyUrl;
             }
 
             $titleApproval = $isTtd 
@@ -477,7 +479,7 @@ class InterviewPdfService
 
             if ($mpdf) {
                 $mpdf->AddPage();
-                $mpdf->WriteHTML($htmlApproval);
+                $this->writeMpdfHtml($mpdf, $htmlApproval);
             }
         }
 
@@ -549,16 +551,14 @@ class InterviewPdfService
             $legacyUrl = 'https://asystem.co.id/v3/refcekfile/' . rawurlencode($baseName);
 
             $refCekImgPath = \App\Services\LegacyAttachmentService::resolveRefcek($refProofFile);
-            $refCekBase64 = ($refCekImgPath && file_exists($refCekImgPath)) 
-                ? \App\Services\LegacyAttachmentService::getImageBase64($refCekImgPath) 
-                : null;
 
-            if ($refCekBase64) {
-                $refCekSrc = $refCekBase64;
-            } elseif ($refCekImgPath && file_exists($refCekImgPath)) {
-                $refCekSrc = $mpdf ? $refCekImgPath : asset('refcekfile/' . $baseName);
+            if ($mpdf && $refCekImgPath && file_exists($refCekImgPath)) {
+                $refCekSrc = $refCekImgPath;
             } else {
-                $refCekSrc = $legacyUrl;
+                $refCekBase64 = ($refCekImgPath && file_exists($refCekImgPath)) 
+                    ? \App\Services\LegacyAttachmentService::getImageBase64($refCekImgPath) 
+                    : null;
+                $refCekSrc = $refCekBase64 ?: $legacyUrl;
             }
 
             $htmlRefCek = '<!DOCTYPE html><html><head><style>' . $css . '</style></head><body>';
@@ -574,7 +574,7 @@ class InterviewPdfService
 
             if ($mpdf) {
                 $mpdf->AddPage();
-                $mpdf->WriteHTML($htmlRefCek);
+                $this->writeMpdfHtml($mpdf, $htmlRefCek);
             }
         }
 
@@ -597,7 +597,7 @@ class InterviewPdfService
         $html3 .= '<table width="100%"><tr>';
         $html3 .= '<td width="35%" style="vertical-align:top; text-align:center;">';
         $html3 .= '<b>Distribusi Jawaban</b><br>';
-        $html3 .= '<img src="data:image/png;base64,' . $chartBase64 . '" style="width:220px;"><br>';
+        $html3 .= '<img src="' . $chartPath . '" style="width:220px;"><br>';
         $html3 .= '<ul style="list-style:none; padding:0; text-align:left; margin-top:5px; font-size:9px;">';
         $html3 .= '<li><b>Jawaban A (Melankolis) :</b> ' . $persentase['a'] . '%</li>';
         $html3 .= '<li><b>Jawaban B (Sanguinis) :</b> ' . $persentase['b'] . '%</li>';
@@ -623,12 +623,16 @@ class InterviewPdfService
         $html3 .= '</td></tr></table>';
         $html3 .= '</body></html>';
 
-        $mpdf->WriteHTML($html3);
+        if ($mpdf) {
+            $this->writeMpdfHtml($mpdf, $html3);
+        }
 
         // ==========================================
         // PAGE: HASIL TES MATEMATIKA & KOMPUTER
         // ==========================================
-        $mpdf->AddPage();
+        if ($mpdf) {
+            $mpdf->AddPage();
+        }
         $html4 = '<!DOCTYPE html><html><head><style>' . $css . ' body { font-size:9px; } </style></head><body>';
         $html4 .= '<h3>HASIL TES MATEMATIKA</h3>';
         $html4 .= '<table width="100%" style="margin-bottom:6px;">';
@@ -660,7 +664,7 @@ class InterviewPdfService
         $html4 .= '</body></html>';
 
         if ($mpdf) {
-            $mpdf->WriteHTML($html4);
+            $this->writeMpdfHtml($mpdf, $html4);
             return $mpdf->Output('', 'S');
         }
 
@@ -738,8 +742,42 @@ class InterviewPdfService
         return $fullHtml;
     }
 
-    private function generatePieChart(array $data, array $labels): string
+    protected function writeMpdfHtml(\Mpdf\Mpdf $mpdf, string $html): void
     {
+        $limit = (int) ini_get('pcre.backtrack_limit');
+        if ($limit <= 0) {
+            $limit = 10000000;
+        }
+
+        if (strlen($html) <= $limit) {
+            $mpdf->WriteHTML($html);
+            return;
+        }
+
+        // If string exceeds limit, split by table or div blocks safely
+        $chunks = preg_split('/(?<=<\/table>|<\/div>|<\/p>)/i', $html);
+        $buffer = '';
+        foreach ($chunks as $chunk) {
+            if (strlen($buffer) + strlen($chunk) > ($limit - 50000)) {
+                if (!empty($buffer)) {
+                    $mpdf->WriteHTML($buffer);
+                    $buffer = '';
+                }
+            }
+            $buffer .= $chunk;
+        }
+        if (!empty($buffer)) {
+            $mpdf->WriteHTML($buffer);
+        }
+    }
+
+    private function generatePieChart(array $data, array $labels, string $tempDir, int $candidateId): string
+    {
+        $chartPath = $tempDir . DIRECTORY_SEPARATOR . 'disc_chart_' . $candidateId . '.png';
+        if (file_exists($chartPath) && filesize($chartPath) > 50) {
+            return $chartPath;
+        }
+
         $image = imagecreate(400, 400);
         $background = imagecolorallocate($image, 255, 255, 255);
         $colors = [
@@ -771,41 +809,55 @@ class InterviewPdfService
             $i++;
         }
 
-        ob_start();
-        imagepng($image);
-        $chartData = ob_get_clean();
+        imagepng($image, $chartPath);
         imagedestroy($image);
-        return base64_encode($chartData);
+        return $chartPath;
     }
 
-    private function resolveBase64Image(?string $path): ?string
+    private function resolveImageForPdf(?string $path, string $tempDir): ?string
     {
         if (empty($path)) {
             return null;
         }
 
+        // If it's a data URI (canvas signature), write to temp PNG file
         if (str_starts_with($path, 'data:image')) {
-            return $path;
+            $pos = strpos($path, ',');
+            if ($pos !== false) {
+                $data = base64_decode(substr($path, $pos + 1));
+                if ($data !== false && strlen($data) > 0) {
+                    $tmpPath = $tempDir . DIRECTORY_SEPARATOR . 'sig_' . md5($path) . '.png';
+                    @file_put_contents($tmpPath, $data);
+                    return $tmpPath;
+                }
+            }
+            return null;
         }
 
-        if (\Illuminate\Support\Facades\Storage::disk('public')->exists($path)) {
-            $content = \Illuminate\Support\Facades\Storage::disk('public')->get($path);
-            return 'data:image/png;base64,' . base64_encode($content);
-        }
+        $base = basename(trim($path));
 
-        if (file_exists(public_path($path))) {
-            $content = file_get_contents(public_path($path));
-            return 'data:image/png;base64,' . base64_encode($content);
-        }
+        // Check local filesystem paths
+        $candidates = [
+            $path,
+            public_path($path),
+            public_path('uploads/ttd/' . $path),
+            public_path('uploads/ttd/' . $base),
+            public_path('prinsiple/ttdfileprinsiple/' . $path),
+            public_path('prinsiple/ttdfileprinsiple/' . $base),
+            public_path('approval/' . $path),
+            public_path('approval/' . $base),
+            public_path('storage/' . $path),
+            storage_path('app/public/' . $path),
+            storage_path('app/public/signatures/' . $base),
+            storage_path('app/public/approvals/' . $base),
+            'd:/ASystem/v3/prinsiple/ttdfileprinsiple/' . $base,
+            'd:/ASystem/v3/approval/' . $base,
+        ];
 
-        if (file_exists(public_path('uploads/ttd/' . $path))) {
-            $content = file_get_contents(public_path('uploads/ttd/' . $path));
-            return 'data:image/png;base64,' . base64_encode($content);
-        }
-
-        if (file_exists(storage_path('app/public/' . $path))) {
-            $content = file_get_contents(storage_path('app/public/' . $path));
-            return 'data:image/png;base64,' . base64_encode($content);
+        foreach ($candidates as $cand) {
+            if (!empty($cand) && file_exists($cand) && !is_dir($cand) && filesize($cand) > 50) {
+                return $cand;
+            }
         }
 
         return null;
