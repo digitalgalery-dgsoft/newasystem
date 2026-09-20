@@ -232,7 +232,7 @@ class CandidateXlsxExportService
             14 => 18,  // Area
             15 => 14,  // Region
             16 => 22,  // Secondary City
-            17 => 24,  // Nama AS
+            17 => 32,  // Nama AS
             18 => 35,  // Principle
             19 => 28,  // Applied Job
             20 => 45,  // Ringkasan Pengalaman Kerja
@@ -351,7 +351,7 @@ class CandidateXlsxExportService
         }
         $baseUrl = rtrim($baseUrl, '/');
 
-        // Pre-fetch Data Karyawan (Employee) & User berdasarkan email untuk kolom Nama AS
+        // Pre-fetch Data Karyawan (Employee) berdasarkan email untuk kolom Nama AS & Jabatan
         $asEmails = [];
         foreach ($candidates as $c) {
             $raw = trim($c->useras ?? '');
@@ -364,36 +364,23 @@ class CandidateXlsxExportService
         }
         $asEmails = array_values(array_unique($asEmails));
 
-        $asNameLookup = [];
+        $asLookup = [];
         if (!empty($asEmails)) {
-            // 1. Prioritas Utama: Ambil Nama Lengkap dari Data Karyawan (Employee) berdasarkan email
+            // Ambil Nama Lengkap & Jabatan dari Data Karyawan (Employee) berdasarkan email
             try {
                 $emps = Employee::whereIn(DB::raw('LOWER(TRIM(email))'), $asEmails)
                     ->whereNotNull('nama_karyawan')
                     ->where('nama_karyawan', '!=', '')
                     ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
                     ->orderBy('id', 'desc')
-                    ->get(['email', 'nama_karyawan']);
+                    ->get(['email', 'nama_karyawan', 'jabatan']);
                 foreach ($emps as $e) {
                     $k = strtolower(trim($e->email));
-                    if (!empty($e->nama_karyawan) && !isset($asNameLookup[$k])) {
-                        $asNameLookup[$k] = trim($e->nama_karyawan);
-                    }
-                }
-            } catch (\Throwable $e) {
-                // safeguard
-            }
-
-            // 2. Prioritas Kedua: Ambil dari data Users jika belum ada di Data Karyawan (misal akun Admin)
-            try {
-                $users = User::whereIn(DB::raw('LOWER(TRIM(email))'), $asEmails)
-                    ->whereNotNull('name')
-                    ->where('name', '!=', '')
-                    ->get(['email', 'name']);
-                foreach ($users as $u) {
-                    $k = strtolower(trim($u->email));
-                    if (!isset($asNameLookup[$k]) && !empty($u->name) && !str_contains($u->name, '@')) {
-                        $asNameLookup[$k] = trim($u->name);
+                    if (!empty($e->nama_karyawan) && !isset($asLookup[$k])) {
+                        $asLookup[$k] = [
+                            'name' => trim($e->nama_karyawan),
+                            'jabatan' => trim($e->jabatan ?? ''),
+                        ];
                     }
                 }
             } catch (\Throwable $e) {
@@ -440,21 +427,40 @@ class CandidateXlsxExportService
             $region = $regionMap[$areaLower] ?? (!empty($c->region) ? $c->region : 'Region 1');
             $secCity = !empty($c->city_domicile) ? trim($c->city_domicile) : (!empty($c->penempatan) ? trim($c->penempatan) : $area);
 
-            // Q: Nama AS (Ambil Nama Lengkap dari Data Karyawan berdasarkan email)
+            // Q: Nama AS & Jabatan (Ambil dari Data Karyawan berdasarkan email)
             $namaAs = '-';
             $rawAs = !empty($c->useras) ? trim($c->useras) : ($c->recruiter ? ($c->recruiter->email ?: $c->recruiter->name) : '');
             if (!empty($rawAs)) {
                 $lowerAs = strtolower($rawAs);
-                if (isset($asNameLookup[$lowerAs])) {
-                    $namaAs = $asNameLookup[$lowerAs];
-                } elseif ($c->recruiter && !empty($c->recruiter->name) && !str_contains($c->recruiter->name, '@')) {
-                    $namaAs = trim($c->recruiter->name);
-                } elseif (!str_contains($rawAs, '@')) {
-                    $namaAs = ucwords(strtolower($rawAs));
+                $recEmail = ($c->recruiter && !empty($c->recruiter->email)) ? strtolower(trim($c->recruiter->email)) : null;
+
+                if (isset($asLookup[$lowerAs])) {
+                    $emp = $asLookup[$lowerAs];
+                    $namaAs = !empty($emp['jabatan']) ? "{$emp['name']} ({$emp['jabatan']})" : $emp['name'];
+                } elseif ($recEmail && isset($asLookup[$recEmail])) {
+                    $emp = $asLookup[$recEmail];
+                    $namaAs = !empty($emp['jabatan']) ? "{$emp['name']} ({$emp['jabatan']})" : $emp['name'];
                 } else {
-                    $parts = explode('@', $rawAs)[0];
-                    $cleanName = preg_replace('/[0-9_.-]+/', ' ', $parts);
-                    $namaAs = ucwords(trim($cleanName)) ?: $rawAs;
+                    // Jika nama tidak ditemukan di Data Karyawan:
+                    // Fallback JANGAN dibuat 'Administrator ESA' atau Administrator apapun.
+                    // Tampilkan apa adanya email yang tercantum, atau tanda '-' jika kosong/admin text.
+                    $isAdminText = (stripos($rawAs, 'administrator') !== false || stripos($rawAs, 'admin esa') !== false);
+                    if ($isAdminText) {
+                        if ($recEmail) {
+                            $namaAs = $recEmail;
+                        } elseif (str_contains($rawAs, '@')) {
+                            $namaAs = $rawAs;
+                        } else {
+                            $namaAs = '-';
+                        }
+                    } elseif (str_contains($rawAs, '@')) {
+                        // Tampilkan apa adanya saja berupa email yang tercantum
+                        $namaAs = $rawAs;
+                    } elseif (!empty($c->recruiter) && !empty($c->recruiter->email)) {
+                        $namaAs = trim($c->recruiter->email);
+                    } else {
+                        $namaAs = ucwords(strtolower($rawAs));
+                    }
                 }
             }
 

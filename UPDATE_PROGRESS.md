@@ -1192,10 +1192,32 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 65. 🏷️ Penambahan Jabatan AS dan Eliminasi Fallback Administrator ESA pada Export Excel (.xlsx) Kandidat Portal (20 September 2026)
+- **Latar Belakang & Kebutuhan**:
+  - Pada hasil export data Kandidat Job Portal ke format Excel (.xlsx), pengguna menghendaki agar kolom **Nama AS** (kolom Q) tidak hanya menampilkan nama lengkap AS/rekruter, namun juga menyertakan **Jabatan** dari karyawan tersebut.
+  - Jika nama akun AS tidak terdaftar di Data Karyawan (`Employee`) (seperti akun super admin `admin@asystem.co.id`), sistem sebelumnya mengambil fallback nama akun User dari database yang menghasilkan teks `Administrator ESA`. Pengguna meminta agar fallback tersebut **dieliminasi**: jangan menampilkan `Administrator ESA`, melainkan tampilkan apa adanya alamat email yang tercantum atau berikan tanda strip `-` jika kosong.
+- **Solusi & Implementasi Teknis**:
+  1. **Format Nama & Jabatan**:
+     - Memperluas kueri pre-fetch batch pada [CandidateXlsxExportService.php](file:///d:/ASystem/newasystem/app/Services/CandidateXlsxExportService.php) untuk mengambil kolom `email`, `nama_karyawan`, dan `jabatan` dari tabel `employees`.
+     - Jika karyawan ditemukan di Data Karyawan dan memiliki nilai jabatan, disajikan dalam format elegan: `Nama Lengkap (Jabatan)` (contoh: `Ivola Piscessario Geraldyne (Area Supervisor)` atau `MUHAMMAD ARRY FITRAH (Area Supervisor)`). Jika kolom jabatan kosong di data karyawan, cukup disajikan `Nama Lengkap`.
+     - Memperlebar lebar kolom Q dari 24 menjadi 32 pt agar nama beserta jabatan tertampil penuh tanpa terpotong.
+  2. **Eliminasi Fallback Administrator ESA**:
+     - Menghapus fallback pencarian ke tabel `users` yang sebelumnya memetakan email admin ke nama `Administrator ESA`.
+     - Apabila nama tidak ditemukan di Data Karyawan:
+       - Jika ada alamat email yang tercantum: tampilkan alamat email tersebut apa adanya (contoh: `admin@asystem.co.id`).
+       - Jika tidak ada email atau data kosong: tampilkan tanda `-`.
+       - Mencegah string teks yang mengandung kata `Administrator` / `Administrator ESA` muncul di kolom Nama AS.
+  3. **Penyelarasan Model & Tampilan Web**:
+     - Memperbarui accessor `getUserDisplayNameAttribute()` pada [Candidate.php](file:///d:/ASystem/newasystem/app/Models/Candidate.php) dan selector filter `allRecruiters` pada [KandidatPortalController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/KandidatPortalController.php) agar konsisten menyertakan jabatan dan mengeliminasi fallback nama administrator.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `92fd040` | feat(export): sertakan jabatan AS dan eliminasi fallback Administrator ESA pada export Excel |
+| `3badda1` | docs: document Milestone 64 recruiter full name resolution in UPDATE_PROGRESS.md |
 | `792c6ab` | feat(export): resolve recruiter full name from employee data in candidate portal XLSX export |
 | `c5de959` | docs: document Milestone 63 profile avatar in chat bubbles and real-time notifications in UPDATE_PROGRESS.md |
 | `e218f23` | fix(workplan-chat): replace @error with x-on:error to avoid blade directive collision |

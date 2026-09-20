@@ -157,9 +157,12 @@ class KandidatPortalController extends Controller
                     ->whereNotNull('nama_karyawan')
                     ->where('nama_karyawan', '!=', '')
                     ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
-                    ->get(['email', 'nama_karyawan']);
+                    ->get(['email', 'nama_karyawan', 'jabatan']);
                 foreach ($emps as $e) {
-                    $employeeLookup[strtolower(trim($e->email))] = trim($e->nama_karyawan);
+                    $k = strtolower(trim($e->email));
+                    $nama = trim($e->nama_karyawan);
+                    $jab = trim($e->jabatan ?? '');
+                    $employeeLookup[$k] = !empty($jab) ? "{$nama} ({$jab})" : $nama;
                 }
             }
 
@@ -168,9 +171,7 @@ class KandidatPortalController extends Controller
                 if (isset($employeeLookup[$lower])) {
                     $r->display_name = $employeeLookup[$lower];
                 } elseif (str_contains($r->useras, '@')) {
-                    $parts = explode('@', $r->useras)[0];
-                    $name = preg_replace('/[0-9_.-]+/', ' ', $parts);
-                    $r->display_name = ucwords(trim($name)) ?: $r->useras;
+                    $r->display_name = $r->useras;
                 } else {
                     $r->display_name = ucwords(strtolower($r->useras));
                 }
@@ -1099,15 +1100,16 @@ class KandidatPortalController extends Controller
         if ($isAdmin || $canViewAllRecruiters) {
             if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
                 if (str_contains($filterRecruiter, '@')) {
-                    $empName = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($filterRecruiter))])
+                    $emp = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($filterRecruiter))])
                         ->whereNotNull('nama_karyawan')
                         ->where('nama_karyawan', '!=', '')
-                        ->value('nama_karyawan');
-                    if ($empName) {
-                        $recruiterLabel = $empName;
+                        ->first(['nama_karyawan', 'jabatan']);
+                    if ($emp) {
+                        $nama = trim($emp->nama_karyawan);
+                        $jab = trim($emp->jabatan ?? '');
+                        $recruiterLabel = !empty($jab) ? "{$nama} ({$jab})" : $nama;
                     } else {
-                        $usrName = User::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($filterRecruiter))])->value('name');
-                        $recruiterLabel = ($usrName && !str_contains($usrName, '@')) ? $usrName : $filterRecruiter;
+                        $recruiterLabel = $filterRecruiter;
                     }
                 } else {
                     $recruiterLabel = $filterRecruiter;

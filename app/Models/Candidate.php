@@ -537,34 +537,38 @@ class Candidate extends Model
     {
         $useras = trim($this->useras ?? '');
         if (empty($useras)) {
-            return $this->recruiter->name ?? 'Administrator HR';
+            if ($this->recruiter && !empty($this->recruiter->email)) {
+                $useras = trim($this->recruiter->email);
+            } else {
+                return '-';
+            }
         }
 
         if (str_contains($useras, '@')) {
             $cleanEmail = strtolower($useras);
 
-            // 1. Prioritas Utama: Ambil Nama Lengkap dari Data Karyawan (Employee) berdasarkan email
+            // 1. Prioritas Utama: Ambil Nama Lengkap & Jabatan dari Data Karyawan (Employee) berdasarkan email
             $employee = Employee::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])
                 ->whereNotNull('nama_karyawan')
                 ->where('nama_karyawan', '!=', '')
                 ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
                 ->orderBy('id', 'desc')
-                ->first();
+                ->first(['nama_karyawan', 'jabatan']);
 
             if ($employee && !empty($employee->nama_karyawan)) {
-                return trim($employee->nama_karyawan);
+                $empName = trim($employee->nama_karyawan);
+                $empJabatan = trim($employee->jabatan ?? '');
+                return !empty($empJabatan) ? "{$empName} ({$empJabatan})" : $empName;
             }
 
-            // 2. Cek akun User jika ada di users dan namanya bukan email
-            $userObj = User::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first();
-            if ($userObj && !empty($userObj->name) && !str_contains($userObj->name, '@')) {
-                return trim($userObj->name);
-            }
+            // 2. Jika tidak ditemukan di Data Karyawan:
+            // JANGAN fallback ke Administrator ESA / Administrator HR
+            // Tampilkan apa adanya email yang tercantum
+            return $useras;
+        }
 
-            // 3. Fallback: format username email menjadi Title Case
-            $parts = explode('@', $useras)[0];
-            $name = preg_replace('/[0-9_.-]+/', ' ', $parts);
-            return ucwords(trim($name)) ?: $useras;
+        if (stripos($useras, 'administrator') !== false || stripos($useras, 'admin esa') !== false) {
+            return '-';
         }
 
         return ucwords(strtolower($useras));
