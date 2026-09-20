@@ -1041,6 +1041,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `2979858` | feat(workplan): restrict employee filter dropdown to inhouse employees only and add real-time search functionality |
 | `914e35d` | feat(workplan): implement Work Plan & ToDoList kanban module, daily activity logs, and import 13k historical tasks |
 | `3ced891` | fix: resolve undefined isAdmin, scope done and arsip to own candidates, and restrict inhouse candidates to 5 entities with HRD and Head approval |
 | `ef18db8` | fix(ai-analyzer): restrict AI analysis queue and runner strictly to Job Portal candidates |
