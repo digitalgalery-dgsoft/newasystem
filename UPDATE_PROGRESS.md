@@ -1066,10 +1066,29 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 59. 🖼️ Lightbox Modal Pratinjau Berkas & Gambar (Tanpa Membuka Tab Baru) (20 September 2026)
+- **Modal Lightbox Terintegrasi (`previewModal`)**:
+  - Mengubah seluruh interaksi klik pada gambar thumbnail dan tautan lampiran agar terbuka langsung di dalam jendela pop-up modal (lightbox), tidak lagi membuka tab baru (`target="_blank"`).
+- **Dukungan Berbagai Tipe Berkas**:
+  - **Gambar (JPG, PNG, GIF, WebP, SVG)**: Ditampilkan secara responsif dengan ukuran proporsional penuh (*containment*), latar gelap tembus pandang (*dark glassmorphic backdrop* `bg-slate-950/85`), bayangan tajam, dan kontrol navigasi.
+  - **PDF (`.pdf`)**: Menampilkan dokumen PDF langsung di dalam frame modal (`<iframe>` interaktif) sehingga pengguna dapat membaca isi dokumen tanpa harus meninggalkan dashboard.
+  - **Dokumen Office / Arsip (Word, Excel, ZIP)**: Menampilkan kartu informasi dokumen dengan tombol unduh langsung dan opsi buka di tab baru jika diperlukan.
+- **Kenyamanan Navigasi Pengguna**:
+  - Dapat ditutup secara instan dengan menekan tombol **`Esc`**, mengklik tombol silang, atau mengklik area luar modal (*click outside*).
+  - Terhubung ke seluruh bagian modul:
+    - Thumbnail gambar pada stream komentar dan diskusi tim.
+    - Lampiran berkas utama pada panel detail tugas.
+    - Ikon paperclip lampiran pada kartu Kanban Board.
+    - Thumbnail pratinjau pada form tambah tugas baru dan form edit tugas.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `f03d859` | feat(workplan): open attachment preview inside lightbox modal instead of new tab |
+| `20ecb07` | docs: document Milestone 58 interactive attachment uploader |
 | `f5c80a3` | feat(workplan): add drag and drop, clipboard paste, and image preview to task and comment attachment fields |
 | `d255ad7` | docs: document Milestone 57 SweetAlert2 modernization |
 | `60c8a3b` | feat(workplan): replace all native alert and confirm dialogs with SweetAlert2 |
