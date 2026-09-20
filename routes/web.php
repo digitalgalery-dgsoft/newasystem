@@ -17,6 +17,7 @@ use App\Http\Controllers\PublicJobController;
 use App\Http\Controllers\CbtController;
 use App\Http\Controllers\CandidateImportController;
 use App\Http\Controllers\JobStatistikController;
+use App\Http\Controllers\WorkPlanController;
 
 // ==========================================
 // HALAMAN AWAL WEB & LANDING PAGE (v3/index.php)
@@ -472,6 +473,55 @@ Route::get('/prinsiple/ttdfileprinsiple/{filename}', function ($filename) {
     return redirect()->away('https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName));
 })->where('filename', '.*')->name('prinsiple.ttd.show');
 
+// ==========================================
+// WORK PLAN & TODOLIST (KANBAN & DAILY ACTIVITY)
+// ==========================================
+Route::middleware(['auth'])->group(function () {
+    Route::get('/workplan', [WorkPlanController::class, 'index'])->name('workplan.index');
+    Route::post('/workplan', [WorkPlanController::class, 'store'])->name('workplan.store');
+    Route::put('/workplan/{id}', [WorkPlanController::class, 'update'])->name('workplan.update');
+    Route::post('/workplan/{id}/move', [WorkPlanController::class, 'moveStatus'])->name('workplan.move');
+    Route::post('/workplan/{id}/archive', [WorkPlanController::class, 'archive'])->name('workplan.archive');
+    Route::post('/workplan/{id}/unarchive', [WorkPlanController::class, 'unarchive'])->name('workplan.unarchive');
+    Route::delete('/workplan/{id}', [WorkPlanController::class, 'destroy'])->name('workplan.destroy');
+
+    Route::get('/workplan/{id}/details', [WorkPlanController::class, 'getDetails'])->name('workplan.details');
+
+    // Subtasks / Checklist
+    Route::post('/workplan/{id}/subtasks', [WorkPlanController::class, 'storeSubtask'])->name('workplan.subtasks.store');
+    Route::post('/workplan/subtasks/{id}/toggle', [WorkPlanController::class, 'toggleSubtask'])->name('workplan.subtasks.toggle');
+    Route::delete('/workplan/subtasks/{id}', [WorkPlanController::class, 'deleteSubtask'])->name('workplan.subtasks.delete');
+
+    // Komentar & Mention
+    Route::get('/workplan/{id}/comments', [WorkPlanController::class, 'getComments'])->name('workplan.comments.get');
+    Route::post('/workplan/{id}/comments', [WorkPlanController::class, 'storeComment'])->name('workplan.comments.store');
+
+    // Activity Log
+    Route::get('/workplan/{id}/activities', [WorkPlanController::class, 'getActivities'])->name('workplan.activities.get');
+
+    // Notifikasi
+    Route::get('/workplan-notifications', [WorkPlanController::class, 'getNotifications'])->name('workplan.notifications.get');
+    Route::post('/workplan-notifications/{id}/read', [WorkPlanController::class, 'markNotificationRead'])->name('workplan.notifications.read');
+
+    // Alat Bantu Cepat
+    Route::get('/workplan/copy-report', [WorkPlanController::class, 'copyReport'])->name('workplan.copy_report');
+    Route::get('/workplan/export', [WorkPlanController::class, 'exportExcel'])->name('workplan.export');
+
+    // Daily Work Plan Logs (tb_workplan)
+    Route::get('/workplan-daily', [WorkPlanController::class, 'daily'])->name('workplan.daily');
+    Route::post('/workplan-daily', [WorkPlanController::class, 'storeDaily'])->name('workplan.daily.store');
+    Route::delete('/workplan-daily/{kode}', [WorkPlanController::class, 'destroyDaily'])->name('workplan.daily.destroy');
+});
+
+// Redirect sistem lama (wp.php, wptodo.php, todo.php, exportwp.php)
+Route::get('/wp.php', fn() => redirect()->route('workplan.index'));
+Route::get('/wptodo.php', fn() => redirect()->route('workplan.index'));
+Route::get('/todo.php', fn() => redirect()->route('workplan.index'));
+Route::get('/exportwp.php', fn() => redirect()->route('workplan.export'));
+Route::get('/v3/wp.php', fn() => redirect()->route('workplan.index'));
+Route::get('/v3/wptodo.php', fn() => redirect()->route('workplan.index'));
+Route::get('/v3/exportwp.php', fn() => redirect()->route('workplan.export'));
+
 // 5. Wildcard Fallback Semua Aset V3 Lama (https://asystem.co.id/v3/{path})
 Route::get('/v3/{path}', function ($path) {
     $candidates = [
@@ -486,6 +536,7 @@ Route::get('/v3/{path}', function ($path) {
     }
     return redirect()->away('https://asystem.co.id/v3/' . $path);
 })->where('path', '.*')->name('legacy.v3.fallback');
+
 
 
 

@@ -997,7 +997,43 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   - **Hierarki Approval Head & HRD**:
     - **Akses Head**: Hanya dapat melihat dan menyetujui kandidat inhouse yang ditangani oleh rekruter binaannya (berdasarkan relasi struktural pimpinan di master karyawan `employees.pimpinan` atau area supervisi). Pada halaman detail ([show.blade.php](file:///d:/ASystem/newasystem/resources/views/interviewinhouse/show.blade.php)), Head hanya memiliki tombol aksi **"Submit Data Head"**.
     - **Akses HRD / Admin**: Memiliki hak approval final dengan tombol aksi **"Submit HRD"** untuk seluruh kandidat inhouse.
-    - Backend `storeApproval()` memvalidasi otorisasi `submit_type` ('head' vs 'hrd') secara ketat guna mencegah eskalasi hak akses.
+### 56. 📋 Implementasi Modul Work Plan & ToDoList (Kanban Board 4 Kolom, Daily Activity Log, Kolaborasi Tim & Migrasi 13.101 Data Historis) (20 September 2026)
+- **Latar Belakang & Modernisasi Modul**:
+  - Mengadaptasi dan memodernisasi penuh modul perencanaan kerja dari sistem lama (`v3/wp.php`, `v3/wptodo.php`, `v3/datawp.php`) ke dalam arsitektur Laravel 12 dan desain modern ASystem Portal.
+  - Menghadirkan antarmuka **Kanban Board** 4 kolom status: **To Do**, **In Progress**, **Review**, dan **Done**, dilengkapi panel accordion untuk tugas-tugas historis yang telah diarsipkan (**Archived**).
+- **Migrasi Data Historis Lengkap dari MySQL Dump (`db_wp.sql`)**:
+  - Dibuat command artisan otomatis: `php artisan wp:import-dump`.
+  - Penanganan khusus konversi escape karakter MySQL (`\'` $\rightarrow$ `''`) untuk kompatibilitas penuh dengan driver database SQLite.
+  - **Hasil Migrasi 100% Berhasil**:
+    - **13.101 Tugas Utama** (`tasks` / `tb_task`)
+    - **431 Sub-Tugas Checklist** (`task_subtasks` / `tb_task_subtask`)
+    - **448 Komentar Diskusi** (`task_comments` / `tb_task_comment`)
+    - **25.810 Jejak Riwayat Aktivitas** (`task_activities` / `tb_task_activity`)
+    - **3.855 Notifikasi Pengguna** (`task_notifications` / `tb_task_notification`)
+    - **6 Kategori Tugas** (`task_categories` / `tb_task_category`)
+    - **18 Catatan Kerja Harian** (`tb_workplan`)
+- **Fitur Unggulan Kanban Board & Kolaborasi Tim ([index.blade.php](file:///d:/ASystem/newasystem/resources/views/workplan/index.blade.php))**:
+  - **Interaksi Drag & Drop Cepat**: Pemindahan tugas antar status secara intuitif dengan HTML5 drag-and-drop dan pembaruan backend asinkron.
+  - **Aturan Otorisasi Alur Kerja (Workflow Permission Guard)**:
+    - Hanya **Delegator (Pimpinan pembuat tugas)** atau **Administrator** yang berhak menyetujui pemindahan status dari **Review** ke **Done**. Staf biasa dicegah dengan respon HTTP 403 dan notifikasi peringatan.
+  - **Panel Slide-Over Drawer Detail & Edit Tugas**:
+    - Mode lihat & edit data tugas langsung di slide drawer tanpa meninggalkan halaman.
+    - Quick action bar untuk navigasi status cepat dan tombol arsip/hapus terproteksi izin.
+  - **Checklist Sub-Tugas Interaktif**:
+    - Bar indikator persentase capaian penyelesaian sub-tugas real-time.
+    - Toggle selesai checklist secara langsung via AJAX tanpa refresh halaman.
+  - **Diskusi & Notifikasi Mentions (`@NamaKaryawan`)**:
+    - Thread komentar tim dengan unggahan lampiran dokumen/gambar pendukung.
+    - Pendeteksian tag `@Nama` yang otomatis membuat notifikasi penugasan atau review bagi rekan kerja yang ditandai.
+  - **Audit Trail Jejak Aktivitas**: Riwayat perubahan status, delegasi, dan pembaruan tugas terekam transparan.
+  - **Alat Bantu Salin Laporan WhatsApp (Copy Report)**: Menghasilkan format pesan teks rapi yang siap dikirimkan ke grup chat / WhatsApp pimpinan.
+  - **Export Excel Profesional**: Disediakan unduhan rekap tugas format XLSX dengan penataan gaya sel, border, dan header menggunakan PhpSpreadsheet.
+- **Modul Catatan Aktivitas Harian (Daily Work Plan - [daily.blade.php](file:///d:/ASystem/newasystem/resources/views/workplan/daily.blade.php))**:
+  - Halaman khusus `/workplan-daily` untuk mencatat log operasional dan kendala harian per divisi.
+  - Menampilkan 4 kartu metrik statistik, bilah filter pencarian kata kunci, dropdown divisi, dan tanggal pelaksanaan.
+  - Form modal pencatatan aktivitas baru terintegrasi otomatis dengan divisi karyawan pelapor.
+- **Standar Visual & Keselarasan Tema**:
+  - Menerapkan palet warna resmi ASystem (Sapphire Blue `#0F52BA`, Navy `#1e293b`), tipografi Google Outfit, badge status beranimasi halus, dan tata letak responsif.
 
 ---
 
@@ -1005,6 +1041,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `[PENDING]` | feat(workplan): implement Work Plan & ToDoList kanban module, daily activity logs, and import 13k historical tasks |
 | `3ced891` | fix: resolve undefined isAdmin, scope done and arsip to own candidates, and restrict inhouse candidates to 5 entities with HRD and Head approval |
 | `ef18db8` | fix(ai-analyzer): restrict AI analysis queue and runner strictly to Job Portal candidates |
 | `3995c51` | fix(console): register app/Console/Commands in bootstrap/app.php |

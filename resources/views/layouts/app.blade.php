@@ -329,6 +329,18 @@
                     </div>
                     <div x-show="sidebarCollapsed" class="w-8 h-px bg-slate-200 mx-auto my-2" x-cloak></div>
                     <ul class="space-y-1">
+                        <!-- WORK PLAN & TODOLIST -->
+                        <li>
+                            <a href="{{ route('workplan.index') }}" 
+                               title="Work Plan & ToDo"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('workplan.*') ? 'sidebar-item-active' : 'text-slate-700 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-list-check text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('workplan.*') ? 'text-white' : 'text-indigo-500' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Work Plan & ToDo</span>
+                                <span x-show="!sidebarCollapsed" class="text-[9px] {{ request()->routeIs('workplan.*') ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700' }} font-bold px-1.5 py-0.5 rounded-md">KANBAN</span>
+                            </a>
+                        </li>
+
                         <!-- SUB-MENU INTERVIEW (COLLAPSIBLE ACCORDION) -->
                         <li>
                             <button @click="if(sidebarCollapsed) { toggleSidebar(); interviewOpen = true; } else { interviewOpen = !interviewOpen }" 

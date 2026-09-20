@@ -1,0 +1,737 @@
+@extends('layouts.app')
+
+@section('title', 'Work Plan & ToDoList - Support System')
+
+@section('content')
+<div class="space-y-6" x-data="kanbanBoard()">
+
+    <!-- Page Header Card -->
+    <div class="page-header-card flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="w-13 h-13 rounded-2xl bg-gradient-to-br from-indigo-600 via-primary-600 to-blue-700 text-white flex items-center justify-center text-2xl shadow-lg shadow-indigo-600/25 flex-shrink-0">
+                <i class="fa-solid fa-list-check"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2 flex-wrap">
+                    <h1 class="text-xl font-bold text-slate-900 tracking-tight">Work Plan & ToDoList</h1>
+                    <span class="badge-pill bg-indigo-50 text-indigo-700 border-indigo-200">
+                        <i class="fa-solid fa-table-columns text-[10px]"></i> KANBAN BOARD
+                    </span>
+                    <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200 font-semibold">
+                        <i class="fa-solid fa-users text-[10px]"></i> Kolaborasi Tim
+                    </span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">
+                    Kelola perencanaan kerja, delegasi tugas harian, checklist sub-tugas, dan evaluasi hasil kerja tim secara terstruktur dan real-time.
+                </p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 flex-wrap">
+            <button type="button" @click="openCreateModal()" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-primary-600 to-indigo-600 hover:from-primary-700 hover:to-indigo-700 text-white text-xs font-bold transition-all shadow-md shadow-primary-600/20">
+                <i class="fa-solid fa-plus text-sm"></i>
+                <span>Tambah Tugas Baru</span>
+            </button>
+            <button type="button" @click="openCopyReportModal()" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-purple-50 border border-purple-200 text-purple-700 hover:bg-purple-100 text-xs font-bold transition-all shadow-sm">
+                <i class="fa-solid fa-clipboard-list text-purple-600"></i>
+                <span>Salin Laporan (WA)</span>
+            </button>
+            <a href="{{ route('workplan.export', request()->query()) }}" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 text-xs font-bold transition-all shadow-sm">
+                <i class="fa-solid fa-file-excel text-emerald-600"></i>
+                <span>Export Excel</span>
+            </a>
+            <a href="{{ route('workplan.daily') }}" class="inline-flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-slate-100 border border-slate-200 text-slate-700 hover:bg-slate-200 text-xs font-semibold transition-all">
+                <i class="fa-solid fa-book-bookmark text-slate-600"></i>
+                <span>Catatan Divisi (Daily)</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- 5 STATISTIC METRIC CARDS -->
+    <div class="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+        <!-- 1. Total Tugas Aktif -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-all">
+            <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-solid fa-bars-progress"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Total Aktif</div>
+                <div class="text-xl font-extrabold text-slate-900 tracking-tight">{{ number_format($statsTotal) }}</div>
+            </div>
+        </div>
+
+        <!-- 2. To Do -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-all">
+            <div class="w-11 h-11 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-regular fa-clock"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">To Do</div>
+                <div class="text-xl font-extrabold text-slate-900 tracking-tight">{{ number_format($statsTodo) }}</div>
+            </div>
+        </div>
+
+        <!-- 3. In Progress -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-all">
+            <div class="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-solid fa-spinner fa-spin-pulse"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">In Progress</div>
+                <div class="text-xl font-extrabold text-amber-600 tracking-tight">{{ number_format($statsInProgress) }}</div>
+            </div>
+        </div>
+
+        <!-- 4. Review Dibutuhkan -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-all">
+            <div class="w-11 h-11 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-solid fa-magnifying-glass-chart"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Review</div>
+                <div class="text-xl font-extrabold text-indigo-600 tracking-tight">{{ number_format($statsReview) }}</div>
+            </div>
+        </div>
+
+        <!-- 5. Selesai (Done) & Overdue -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between gap-2 col-span-2 md:col-span-1 hover:shadow-md transition-all">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg flex-shrink-0">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div class="min-w-0">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Done</div>
+                    <div class="text-lg font-extrabold text-emerald-600 tracking-tight leading-none">{{ number_format($statsDone) }}</div>
+                </div>
+            </div>
+            @if($statsOverdue > 0)
+            <div class="text-right pl-2 border-l border-slate-100">
+                <span class="text-[10px] font-bold text-rose-500 uppercase tracking-wider block">Overdue</span>
+                <span class="text-sm font-black text-rose-600">{{ number_format($statsOverdue) }}</span>
+            </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- FILTER & SEARCH TOOLBAR -->
+    <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
+        <form method="GET" action="{{ route('workplan.index') }}" class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            
+            <!-- Search Keyword Input -->
+            <div class="flex-1 relative min-w-[240px]">
+                <i class="fa-solid fa-magnifying-glass text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 text-sm"></i>
+                <input type="text" 
+                       name="search" 
+                       value="{{ $search }}"
+                       placeholder="Cari judul tugas, deskripsi, atau tags..." 
+                       class="w-full pl-10 pr-4 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                @if(!empty($search))
+                <a href="{{ route('workplan.index', array_merge(request()->except('search'))) }}" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+                @endif
+            </div>
+
+            <!-- Filter Karyawan / Assignee (Admin & Head) -->
+            @if($isAdmin || ($isHead && count($usersInView) > 1))
+            <div class="w-full lg:w-64">
+                <select name="user_filter" 
+                        onchange="this.form.submit()" 
+                        class="w-full px-3 py-2 text-xs bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary font-medium text-slate-700 transition-all">
+                    <option value="all">Semua Karyawan ({{ count($usersInView) }} Anggota)</option>
+                    @foreach($usersInView as $uName)
+                        <option value="{{ $uName }}" {{ $filterUser === $uName ? 'selected' : '' }}>{{ $uName }}</option>
+                    @endforeach
+                </select>
+            </div>
+            @endif
+
+            <!-- Smart Filter Pills -->
+            <div class="flex items-center gap-1.5 flex-wrap">
+                <input type="hidden" name="smart" id="smartFilterInput" value="{{ $smartFilter }}">
+
+                <button type="button" 
+                        @click="setSmartFilter('all')" 
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ $smartFilter === 'all' ? 'bg-primary text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                    Semua
+                </button>
+                <button type="button" 
+                        @click="setSmartFilter('my')" 
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ $smartFilter === 'my' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                    <i class="fa-solid fa-user text-[10px] mr-1"></i> Tugas Saya
+                </button>
+                <button type="button" 
+                        @click="setSmartFilter('high')" 
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ $smartFilter === 'high' ? 'bg-rose-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                    <i class="fa-solid fa-fire text-[10px] mr-1"></i> Prioritas Tinggi
+                </button>
+                <button type="button" 
+                        @click="setSmartFilter('overdue')" 
+                        class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ $smartFilter === 'overdue' ? 'bg-amber-600 text-white shadow-sm' : 'bg-slate-100 text-slate-600 hover:bg-slate-200' }}">
+                    <i class="fa-solid fa-triangle-exclamation text-[10px] mr-1"></i> Terlambat
+                </button>
+                <button type="submit" class="px-3 py-1.5 bg-slate-800 text-white rounded-lg text-xs font-bold hover:bg-slate-900 transition-all">
+                    Filter
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- ============================================================================== -->
+    <!-- KANBAN BOARD (4 KOLOM STATUS)                                                  -->
+    <!-- ============================================================================== -->
+    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start">
+        
+        <!-- KOLOM 1: TO DO -->
+        <div class="kanban-col-wrapper bg-slate-50/80 rounded-2xl border border-slate-200/80 p-3.5 flex flex-col min-h-[520px]">
+            <!-- Header Kolom -->
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-slate-200">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                    <h3 class="text-xs font-black tracking-wider text-slate-800 uppercase">To Do</h3>
+                    <span class="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 text-[10px] font-extrabold">
+                        {{ $tasksTodo->count() }}
+                    </span>
+                </div>
+                <button type="button" @click="openCreateModal('todo')" class="w-6 h-6 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-500 flex items-center justify-center text-xs transition-all" title="Tambah ke To Do">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+
+            <!-- Drop Zone / Cards List -->
+            <div class="kanban-dropzone flex-1 space-y-3 min-h-[420px]" 
+                 id="col-todo" 
+                 data-status="todo"
+                 @dragover.prevent="handleDragOver($event)"
+                 @dragleave="handleDragLeave($event)"
+                 @drop="handleDrop($event, 'todo')">
+                @forelse($tasksTodo as $task)
+                    @include('workplan._card', ['task' => $task, 'column' => 'todo'])
+                @empty
+                    <div class="h-40 flex flex-col items-center justify-center text-slate-400 text-center p-4 border border-dashed border-slate-200 rounded-xl pointer-events-none">
+                        <i class="fa-solid fa-inbox text-2xl mb-1 text-slate-300"></i>
+                        <span class="text-xs font-medium">Tidak ada tugas To Do</span>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+        <!-- KOLOM 2: IN PROGRESS -->
+        <div class="kanban-col-wrapper bg-amber-50/40 rounded-2xl border border-amber-200/60 p-3.5 flex flex-col min-h-[520px]">
+            <!-- Header Kolom -->
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-amber-200/60">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
+                    <h3 class="text-xs font-black tracking-wider text-amber-900 uppercase">In Progress</h3>
+                    <span class="px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-800 text-[10px] font-extrabold">
+                        {{ $tasksInProgress->count() }}
+                    </span>
+                </div>
+                <button type="button" @click="openCreateModal('inprogress')" class="w-6 h-6 rounded-lg bg-white border border-amber-200 hover:bg-amber-100 text-amber-700 flex items-center justify-center text-xs transition-all" title="Tambah ke In Progress">
+                    <i class="fa-solid fa-plus"></i>
+                </button>
+            </div>
+
+            <!-- Drop Zone / Cards List -->
+            <div class="kanban-dropzone flex-1 space-y-3 min-h-[420px]" 
+                 id="col-inprogress" 
+                 data-status="inprogress"
+                 @dragover.prevent="handleDragOver($event)"
+                 @dragleave="handleDragLeave($event)"
+                 @drop="handleDrop($event, 'inprogress')">
+                @forelse($tasksInProgress as $task)
+                    @include('workplan._card', ['task' => $task, 'column' => 'inprogress'])
+                @empty
+                    <div class="h-40 flex flex-col items-center justify-center text-amber-400 text-center p-4 border border-dashed border-amber-200 rounded-xl pointer-events-none">
+                        <i class="fa-solid fa-spinner text-2xl mb-1 text-amber-300"></i>
+                        <span class="text-xs font-medium">Tidak ada tugas sedang dikerjakan</span>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+        <!-- KOLOM 3: REVIEW -->
+        <div class="kanban-col-wrapper bg-indigo-50/40 rounded-2xl border border-indigo-200/60 p-3.5 flex flex-col min-h-[520px]">
+            <!-- Header Kolom -->
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-indigo-200/60">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
+                    <h3 class="text-xs font-black tracking-wider text-indigo-900 uppercase">Review</h3>
+                    <span class="px-2 py-0.5 rounded-full bg-indigo-200/80 text-indigo-800 text-[10px] font-extrabold">
+                        {{ $tasksReview->count() }}
+                    </span>
+                </div>
+                <span class="text-[10px] font-bold text-indigo-600 bg-indigo-100/80 px-2 py-0.5 rounded-md" title="Persetujuan Delegator/Pimpinan">
+                    APPROVAL
+                </span>
+            </div>
+
+            <!-- Drop Zone / Cards List -->
+            <div class="kanban-dropzone flex-1 space-y-3 min-h-[420px]" 
+                 id="col-review" 
+                 data-status="review"
+                 @dragover.prevent="handleDragOver($event)"
+                 @dragleave="handleDragLeave($event)"
+                 @drop="handleDrop($event, 'review')">
+                @forelse($tasksReview as $task)
+                    @include('workplan._card', ['task' => $task, 'column' => 'review'])
+                @empty
+                    <div class="h-40 flex flex-col items-center justify-center text-indigo-400 text-center p-4 border border-dashed border-indigo-200 rounded-xl pointer-events-none">
+                        <i class="fa-solid fa-check-double text-2xl mb-1 text-indigo-300"></i>
+                        <span class="text-xs font-medium">Tidak ada tugas menunggu review</span>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+        <!-- KOLOM 4: DONE -->
+        <div class="kanban-col-wrapper bg-emerald-50/40 rounded-2xl border border-emerald-200/60 p-3.5 flex flex-col min-h-[520px]">
+            <!-- Header Kolom -->
+            <div class="flex items-center justify-between pb-3 mb-3 border-b border-emerald-200/60">
+                <div class="flex items-center gap-2">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <h3 class="text-xs font-black tracking-wider text-emerald-900 uppercase">Done</h3>
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-800 text-[10px] font-extrabold">
+                        {{ $tasksDone->count() }}
+                    </span>
+                </div>
+                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
+                    SELESAI
+                </span>
+            </div>
+
+            <!-- Drop Zone / Cards List -->
+            <div class="kanban-dropzone flex-1 space-y-3 min-h-[420px]" 
+                 id="col-done" 
+                 data-status="done"
+                 @dragover.prevent="handleDragOver($event)"
+                 @dragleave="handleDragLeave($event)"
+                 @drop="handleDrop($event, 'done')">
+                @forelse($tasksDone as $task)
+                    @include('workplan._card', ['task' => $task, 'column' => 'done'])
+                @empty
+                    <div class="h-40 flex flex-col items-center justify-center text-emerald-400 text-center p-4 border border-dashed border-emerald-200 rounded-xl pointer-events-none">
+                        <i class="fa-solid fa-award text-2xl mb-1 text-emerald-300"></i>
+                        <span class="text-xs font-medium">Belum ada tugas selesai</span>
+                    </div>
+                @endforelse
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ============================================================================== -->
+    <!-- DAFTAR TUGAS DIARSIPKAN (ARCHIVED ACCORDION)                                    -->
+    <!-- ============================================================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden" x-data="{ openArchive: false }">
+        <button type="button" 
+                @click="openArchive = !openArchive"
+                class="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-all">
+            <div class="flex items-center gap-3">
+                <div class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 flex items-center justify-center text-sm">
+                    <i class="fa-solid fa-box-archive"></i>
+                </div>
+                <div class="text-left">
+                    <h4 class="text-sm font-bold text-slate-800">Tugas Diarsipkan (Archived)</h4>
+                    <p class="text-[11px] text-slate-400">Daftar tugas historis yang telah diselesaikan dan disimpan rapi.</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">
+                    {{ $tasksArchived->total() }} Arsip
+                </span>
+                <i class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': openArchive }"></i>
+            </div>
+        </button>
+
+        <div x-show="openArchive" x-collapse class="border-t border-slate-200 p-5 bg-slate-50/40">
+            @if($tasksArchived->count() > 0)
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                @foreach($tasksArchived as $archivedTask)
+                <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between gap-2">
+                    <div>
+                        <div class="flex items-center justify-between gap-2 mb-1.5">
+                            <span class="text-[10px] font-bold text-slate-400">#{{ $archivedTask->id }}</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600">
+                                {{ $archivedTask->priority }}
+                            </span>
+                        </div>
+                        <h5 class="text-xs font-bold text-slate-800 line-clamp-2">{{ $archivedTask->title }}</h5>
+                    </div>
+                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+                        <span>{{ $archivedTask->date_completed ? $archivedTask->date_completed->format('d M Y') : '-' }}</span>
+                        <div class="flex items-center gap-2">
+                            <button type="button" @click="openTaskDetail({{ $archivedTask->id }})" class="text-primary hover:underline font-semibold">
+                                Detail
+                            </button>
+                            <form method="POST" action="{{ route('workplan.unarchive', $archivedTask->id) }}" class="inline">
+                                @csrf
+                                <button type="submit" class="text-emerald-600 hover:underline font-semibold" title="Pulihkan ke Done">
+                                    Pulihkan
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+            <div class="mt-4">
+                {{ $tasksArchived->links() }}
+            </div>
+            @else
+            <div class="text-center py-8 text-slate-400 text-xs">
+                Belum ada tugas yang diarsipkan.
+            </div>
+            @endif
+        </div>
+    </div>
+
+    <!-- ============================================================================== -->
+    <!-- MODALS: TAMBAH TUGAS, DETAIL TUGAS, SALIN LAPORAN                              -->
+    <!-- ============================================================================== -->
+    @include('workplan._modals')
+
+</div>
+@endsection
+
+@push('scripts')
+<script>
+function kanbanBoard() {
+    return {
+        draggedTaskId: null,
+        detailTaskId: null,
+        activeTab: 'detail',
+        currentTask: null,
+        subtasks: [],
+        comments: [],
+        activities: [],
+        canEdit: false,
+        canDelete: false,
+        canApprove: false,
+        isEditingTask: false,
+        isLoadingDetail: false,
+        newCommentText: '',
+        newSubtaskText: '',
+        submittingComment: false,
+        editForm: {
+            title: '',
+            description: '',
+            priority: 'Medium',
+            due_date: '',
+            assignee: ''
+        },
+
+        setSmartFilter(val) {
+            document.getElementById('smartFilterInput').value = val;
+            document.getElementById('smartFilterInput').form.submit();
+        },
+
+        openCreateModal(defaultStatus = 'todo') {
+            document.getElementById('createTaskForm').reset();
+            document.getElementById('createTaskStatus').value = defaultStatus;
+            document.getElementById('createTaskModal').classList.remove('hidden');
+        },
+
+        closeCreateModal() {
+            document.getElementById('createTaskModal').classList.add('hidden');
+        },
+
+        openCopyReportModal() {
+            fetch("{{ route('workplan.copy_report') }}")
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('copyReportTextarea').value = data.report;
+                        document.getElementById('copyReportModal').classList.remove('hidden');
+                    }
+                })
+                .catch(err => alert('Gagal memuat laporan.'));
+        },
+
+        closeCopyReportModal() {
+            document.getElementById('copyReportModal').classList.add('hidden');
+        },
+
+        copyReportToClipboard() {
+            const textarea = document.getElementById('copyReportTextarea');
+            textarea.select();
+            document.execCommand('copy');
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(textarea.value);
+            }
+            alert('Laporan berhasil disalin ke clipboard! Siap ditempel ke WhatsApp / Chat.');
+            this.closeCopyReportModal();
+        },
+
+        // Drag and drop
+        handleDragStart(event, taskId) {
+            this.draggedTaskId = taskId;
+            event.dataTransfer.effectAllowed = 'move';
+            event.dataTransfer.setData('text/plain', taskId);
+            event.target.classList.add('opacity-50', 'scale-95');
+        },
+
+        handleDragEnd(event) {
+            event.target.classList.remove('opacity-50', 'scale-95');
+            document.querySelectorAll('.kanban-dropzone').forEach(el => el.classList.remove('bg-primary-50/50', 'border-primary'));
+        },
+
+        handleDragOver(event) {
+            event.currentTarget.classList.add('bg-primary-50/50', 'border-primary');
+        },
+
+        handleDragLeave(event) {
+            event.currentTarget.classList.remove('bg-primary-50/50', 'border-primary');
+        },
+
+        handleDrop(event, targetStatus) {
+            event.currentTarget.classList.remove('bg-primary-50/50', 'border-primary');
+            const taskId = this.draggedTaskId || event.dataTransfer.getData('text/plain');
+            if (!taskId) return;
+
+            this.moveTaskStatus(taskId, targetStatus);
+        },
+
+        moveTaskStatus(taskId, targetStatus) {
+            if (this.currentTask && this.currentTask.status === 'review' && targetStatus === 'done' && !this.canApprove) {
+                alert('Akses ditolak! Hanya Delegator/Pimpinan (' + this.currentTask.delegator + ') atau Administrator yang berhak menyetujui tugas dari status Review menjadi Done.');
+                return;
+            }
+
+            fetch(`/workplan/${taskId}/move`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ status: targetStatus })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    window.location.reload();
+                } else {
+                    alert(res.error || 'Gagal memindahkan tugas.');
+                }
+            })
+            .catch(err => {
+                alert('Terjadi kesalahan jaringan.');
+            });
+        },
+
+        // Task detail slide-over
+        openTaskDetail(taskId) {
+            this.detailTaskId = taskId;
+            this.activeTab = 'detail';
+            this.isLoadingDetail = true;
+            this.isEditingTask = false;
+            document.getElementById('taskDetailDrawer').classList.remove('hidden');
+
+            fetch(`/workplan/${taskId}/details`)
+                .then(r => r.json())
+                .then(res => {
+                    this.isLoadingDetail = false;
+                    if (res.success) {
+                        this.currentTask = res.task;
+                        this.subtasks = res.task.subtasks || [];
+                        this.canEdit = res.can_edit;
+                        this.canDelete = res.can_delete;
+                        this.canApprove = res.can_approve;
+                        this.editForm = {
+                            title: res.task.title,
+                            description: res.task.description,
+                            priority: res.task.priority,
+                            due_date: res.task.due_date,
+                            assignee: res.task.assignee,
+                        };
+                    } else {
+                        alert(res.error || 'Gagal memuat rincian tugas.');
+                    }
+                })
+                .catch(() => {
+                    this.isLoadingDetail = false;
+                    alert('Terjadi kesalahan jaringan.');
+                });
+
+            this.loadComments(taskId);
+            this.loadActivities(taskId);
+        },
+
+        closeTaskDetail() {
+            document.getElementById('taskDetailDrawer').classList.add('hidden');
+        },
+
+        addSubtask() {
+            if (!this.newSubtaskText.trim()) return;
+            const text = this.newSubtaskText.trim();
+            this.newSubtaskText = '';
+
+            fetch(`/workplan/${this.detailTaskId}/subtasks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ subtask_text: text })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    this.subtasks.push({
+                        id: res.subtask.id,
+                        subtask_text: res.subtask.subtask_text,
+                        is_completed: false
+                    });
+                    this.loadActivities(this.detailTaskId);
+                } else {
+                    alert(res.error || 'Gagal menambah subtask.');
+                }
+            });
+        },
+
+        toggleSubtaskItem(subtaskId) {
+            const item = this.subtasks.find(s => s.id === subtaskId);
+            if (!item) return;
+            item.is_completed = !item.is_completed;
+
+            fetch(`/workplan/subtasks/${subtaskId}/toggle`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify({ is_completed: item.is_completed })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    item.is_completed = !item.is_completed; // rollback
+                } else {
+                    this.loadActivities(this.detailTaskId);
+                }
+            });
+        },
+
+        deleteSubtaskItem(subtaskId) {
+            if (!confirm('Hapus item checklist ini?')) return;
+            fetch(`/workplan/subtasks/${subtaskId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    this.subtasks = this.subtasks.filter(s => s.id !== subtaskId);
+                    this.loadActivities(this.detailTaskId);
+                }
+            });
+        },
+
+        saveTaskEdit() {
+            fetch(`/workplan/${this.detailTaskId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: JSON.stringify(this.editForm)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    this.currentTask.title = this.editForm.title;
+                    this.currentTask.description = this.editForm.description;
+                    this.currentTask.priority = this.editForm.priority;
+                    this.currentTask.due_date = this.editForm.due_date;
+                    this.currentTask.assignee = this.editForm.assignee;
+                    this.isEditingTask = false;
+                    this.loadActivities(this.detailTaskId);
+                    const cardTitle = document.querySelector(`#task-card-${this.detailTaskId} h4`);
+                    if (cardTitle) cardTitle.innerText = this.editForm.title;
+                } else {
+                    alert(res.error || 'Gagal menyimpan perubahan.');
+                }
+            });
+        },
+
+        deleteCurrentTask() {
+            if (!confirm('Hapus tugas ini secara permanen?')) return;
+            fetch(`/workplan/${this.detailTaskId}`, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(() => {
+                window.location.reload();
+            });
+        },
+
+        loadComments(taskId) {
+            fetch(`/workplan/${taskId}/comments`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        this.comments = data.comments;
+                    }
+                });
+        },
+
+        loadActivities(taskId) {
+            fetch(`/workplan/${taskId}/activities`)
+                .then(r => r.json())
+                .then(data => {
+                    if (data.success) {
+                        this.activities = data.activities;
+                    }
+                });
+        },
+
+        submitComment() {
+            if (!this.newCommentText.trim()) return;
+            this.submittingComment = true;
+
+            const form = new FormData();
+            form.append('comment_text', this.newCommentText);
+            const fileInput = document.getElementById('commentAttachmentInput');
+            if (fileInput && fileInput.files[0]) {
+                form.append('attachment', fileInput.files[0]);
+            }
+
+            fetch(`/workplan/${this.detailTaskId}/comments`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                    'Accept': 'application/json'
+                },
+                body: form
+            })
+            .then(r => r.json())
+            .then(data => {
+                this.submittingComment = false;
+                if (data.success) {
+                    this.comments.push(data.comment);
+                    this.newCommentText = '';
+                    if (fileInput) fileInput.value = '';
+                    this.loadActivities(this.detailTaskId);
+                } else {
+                    alert(data.error || 'Gagal mengirim komentar.');
+                }
+            })
+            .catch(() => {
+                this.submittingComment = false;
+                alert('Terjadi kesalahan jaringan.');
+            });
+        }
+    }
+}
+</script>
+@endpush
