@@ -1100,6 +1100,16 @@
                                 <span x-show="!sidebarCollapsed" class="text-[10px] bg-amber-50 text-amber-700 font-bold px-1.5 py-0.5 rounded-md border border-amber-200">AI</span>
                             </a>
                         </li>
+                        <li>
+                            <a href="{{ route('activity-logs.index') }}" 
+                               title="Log Aktivitas & Audit"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('activity-logs.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-clock-rotate-left text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('activity-logs.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Log Aktivitas</span>
+                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-purple-50 text-purple-700 font-bold px-1.5 py-0.5 rounded-md border border-purple-200">AUDIT</span>
+                            </a>
+                        </li>
                     </ul>
                 </div>
                 @endif

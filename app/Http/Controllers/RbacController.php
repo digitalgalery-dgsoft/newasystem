@@ -9,6 +9,7 @@ use App\Models\Permission;
 use App\Models\Principle;
 use App\Models\Employee;
 use App\Models\Candidate;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -133,6 +134,8 @@ class RbacController extends Controller
             $role->permissions()->sync($request->permissions);
         }
 
+        ActivityLogger::crud('CREATE', 'RBAC & Hak Akses', "Menambahkan role baru: {$role->display_name} ({$role->name})", $role, [], $role->toArray());
+
         return redirect()->route('setting.rbac.index', ['tab' => 'roles'])
             ->with('success', "Role baru '{$role->display_name}' ({$role->name}) berhasil ditambahkan! Anda dapat langsung mengatur penugasan user beserta cakupan prinsiple & areanya di Tab Manajemen Pengguna.");
     }
@@ -143,6 +146,7 @@ class RbacController extends Controller
     public function updateRole(Request $request, $id)
     {
         $role = Role::findOrFail($id);
+        $oldRoleData = $role->toArray();
 
         $rules = [
             'display_name' => 'required|string|max:100',
@@ -179,6 +183,8 @@ class RbacController extends Controller
             }
         }
 
+        ActivityLogger::crud('UPDATE', 'RBAC & Hak Akses', "Memperbarui data role: {$role->display_name} ({$role->name})", $role, $oldRoleData, $role->toArray());
+
         return redirect()->route('setting.rbac.index', ['tab' => 'roles'])
             ->with('success', "Data role '{$role->display_name}' berhasil diperbarui!");
     }
@@ -202,8 +208,11 @@ class RbacController extends Controller
         }
 
         $roleName = $role->display_name;
+        $oldRoleData = $role->toArray();
         $role->permissions()->detach();
         $role->delete();
+
+        ActivityLogger::crud('DELETE', 'RBAC & Hak Akses', "Menghapus role kustom: {$roleName}", $role, $oldRoleData, []);
 
         return redirect()->route('setting.rbac.index', ['tab' => 'roles'])
             ->with('success', "Role '{$roleName}' berhasil dihapus dari sistem!");
@@ -230,6 +239,8 @@ class RbacController extends Controller
                 $role->permissions()->sync($assignedPermIds);
             }
         });
+
+        ActivityLogger::log('UPDATE', 'RBAC & Hak Akses', "Menyimpan pembaruan matriks hak akses per role secara massal");
 
         return redirect()->route('setting.rbac.index', ['tab' => 'matrix'])
             ->with('success', 'Matriks perizinan hak akses per role berhasil disimpan!');
@@ -289,6 +300,13 @@ class RbacController extends Controller
         $principleSummary = $handleAllPrinciples ? 'Semua Prinsiple' : count((array) $user->allowed_principles) . ' Prinsiple';
         $areaSummary = $coverAllAreas ? 'Semua Area' : count((array) $user->allowed_areas) . ' Area';
 
+        ActivityLogger::log('UPDATE_ROLE', 'RBAC & Hak Akses', "Memperbarui hak akses & perizinan pengguna {$user->name} ({$user->email}) ke role '{$user->role}' (Prinsiple: {$principleSummary}, Area: {$areaSummary})", $user, [
+            'role' => $user->role,
+            'is_active' => $user->is_active,
+            'principles' => $principleSummary,
+            'areas' => $areaSummary,
+        ]);
+
         return redirect()->route('setting.rbac.index', ['tab' => 'users'])
             ->with('success', "Pengaturan akses untuk {$user->name} berhasil diperbarui (Role: {$user->role}, Prinsiple: {$principleSummary}, Area: {$areaSummary})!");
     }
@@ -329,6 +347,8 @@ class RbacController extends Controller
             'allowed_areas' => $coverAllAreas ? null : array_values(array_filter((array) $request->input('allowed_areas', []))),
         ]);
 
+        ActivityLogger::crud('CREATE', 'RBAC & Hak Akses', "Mendaftarkan akun pengguna baru: {$user->name} ({$user->email}) dengan role '{$user->role}'", $user, [], $user->toArray());
+
         return redirect()->route('setting.rbac.index', ['tab' => 'users', 'search' => $user->email])
             ->with('success', "Akun pengguna untuk '{$user->name}' berhasil dibuat dengan role '{$user->role}'!");
     }
@@ -368,6 +388,8 @@ class RbacController extends Controller
 
         $user->password = Hash::make($request->password);
         $user->save();
+
+        ActivityLogger::log('RESET_PASSWORD', 'RBAC & Hak Akses', "Reset password pengguna: {$user->name} ({$user->email})", $user);
 
         return redirect()->route('setting.rbac.index', ['tab' => 'users'])
             ->with('success', "Password untuk pengguna {$user->name} berhasil diperbarui!");

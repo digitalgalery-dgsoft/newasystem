@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\Principle;
 use App\Models\Employee;
+use App\Services\ActivityLogger;
 
 class PrincipleController extends Controller
 {
@@ -70,7 +71,9 @@ class PrincipleController extends Controller
         ]);
 
         $validated['is_active'] = true;
-        Principle::create($validated);
+        $principle = Principle::create($validated);
+
+        ActivityLogger::crud('CREATE', 'Master Prinsiple', "Menambahkan prinsiple baru: {$principle->name} ({$principle->code})", $principle, [], $principle->toArray());
 
         return redirect()->route('master.prinsiple.index')->with('success', 'Data Prinsiple berhasil ditambahkan!');
     }
@@ -90,7 +93,10 @@ class PrincipleController extends Controller
             'is_active' => 'required|boolean',
         ]);
 
+        $oldValues = $principle->only(array_keys($validated));
         $principle->update($validated);
+
+        ActivityLogger::crud('UPDATE', 'Master Prinsiple', "Memperbarui data prinsiple: {$principle->name} ({$principle->code})", $principle, $oldValues, $principle->only(array_keys($validated)));
 
         return redirect()->route('master.prinsiple.index')->with('success', 'Data Prinsiple berhasil diperbarui!');
     }
@@ -101,13 +107,21 @@ class PrincipleController extends Controller
         $principle->update(['is_active' => !$principle->is_active]);
 
         $statusStr = $principle->is_active ? 'diaktifkan' : 'dinonaktifkan';
+
+        ActivityLogger::log('UPDATE', 'Master Prinsiple', "Mengubah status aktif prinsiple {$principle->name} menjadi: " . ($principle->is_active ? 'Aktif' : 'Non-aktif'), $principle, [
+            'is_active' => $principle->is_active
+        ]);
+
         return redirect()->route('master.prinsiple.index')->with('info', "Prinsiple {$principle->name} berhasil {$statusStr}.");
     }
 
     public function destroy($id)
     {
         $principle = Principle::findOrFail($id);
+        $oldData = $principle->toArray();
         $principle->delete();
+
+        ActivityLogger::crud('DELETE', 'Master Prinsiple', "Menghapus data prinsiple: {$oldData['name']} ({$oldData['code']})", $principle, $oldData, []);
 
         return redirect()->route('master.prinsiple.index')->with('success', 'Data Prinsiple berhasil dihapus.');
     }
@@ -115,6 +129,9 @@ class PrincipleController extends Controller
     public function reimportOfficial()
     {
         \Illuminate\Support\Facades\Artisan::call('asystem:import-principles');
+
+        ActivityLogger::log('IMPORT', 'Master Prinsiple', "Menjalankan re-import official master prinsiple 5 entitas");
+
         return redirect()->route('master.prinsiple.index')->with('success', 'Data dummy berhasil dibersihkan dan 157 data master prinsiple resmi 5 entitas telah diimpor!');
     }
 }

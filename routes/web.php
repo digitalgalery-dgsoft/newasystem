@@ -361,6 +361,17 @@ Route::middleware(['admin'])->prefix('setting/rbac')->name('setting.rbac.')->gro
 // Shortcut aliases
 Route::get('/rbac', function() { return redirect()->route('setting.rbac.index'); })->name('rbac.index');
 
+// ==============================================================
+// AUDIT TRAIL & LOG AKTIVITAS SISTEM
+// ==============================================================
+Route::middleware(['admin'])->prefix('activity-logs')->name('activity-logs.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ActivityLogController::class, 'index'])->name('index');
+    Route::get('/export/excel', [\App\Http\Controllers\ActivityLogController::class, 'export'])->name('export');
+    Route::get('/{id}', [\App\Http\Controllers\ActivityLogController::class, 'show'])->name('show');
+});
+Route::get('/logs', function() { return redirect()->route('activity-logs.index'); });
+Route::get('/audit', function() { return redirect()->route('activity-logs.index'); });
+
 
 // ==============================================================
 // MASTER USER PRINSIPLE (v3/dataprinsiple.php)

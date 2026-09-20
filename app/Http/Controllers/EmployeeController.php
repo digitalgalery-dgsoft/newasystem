@@ -12,6 +12,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use App\Services\ActivityLogger;
 
 class EmployeeController extends Controller
 {
@@ -383,7 +384,9 @@ class EmployeeController extends Controller
         $validated['has_komponen'] = true;
         $validated['level'] = (str_contains(strtoupper($validated['jabatan']), 'SPV') ? 'SPV' : (str_contains(strtoupper($validated['jabatan']), 'HEAD') ? 'HEAD' : 'STAFF'));
 
-        Employee::create($validated);
+        $newEmp = Employee::create($validated);
+
+        ActivityLogger::crud('CREATE', 'Master Karyawan', "Menambahkan karyawan baru: {$newEmp->nama_karyawan} (NIK: {$newEmp->nik}, Jabatan: {$newEmp->jabatan})", $newEmp, [], $validated);
 
         return redirect()->route('master.karyawan.index')->with('success', 'Data Karyawan berhasil ditambahkan!');
     }
@@ -433,7 +436,10 @@ class EmployeeController extends Controller
             $validated['akses_login'] = $request->has('akses_login') && in_array($request->input('akses_login'), ['1', 'on', 'true'], true);
         }
 
+        $oldValues = $employee->only(array_keys($validated));
         $employee->update($validated);
+
+        ActivityLogger::crud('UPDATE', 'Master Karyawan', "Memperbarui data karyawan: {$employee->nama_karyawan} (NIK: {$employee->nik})", $employee, $oldValues, $validated);
 
         // Sync to User table if existing
         if ($employee->email) {
@@ -465,6 +471,8 @@ class EmployeeController extends Controller
 
         $employee->akses_login = !$employee->akses_login;
         $employee->save();
+
+        ActivityLogger::crud('UPDATE', 'Master Karyawan', "Mengubah izin login karyawan: {$employee->nama_karyawan} menjadi " . ($employee->akses_login ? 'Aktif' : 'Nonaktif'), $employee);
 
         if ($employee->email) {
             $user = User::where('email', $employee->email)->first();
@@ -531,15 +539,22 @@ class EmployeeController extends Controller
             $updateData['jabatan_pimpinan'] = $jabatanPimpinan;
         }
 
-        $affected = $query->update($updateData);
+        $updatedCount = $query->update($updateData);
 
-        $msg = "Berhasil menetapkan pimpinan '{$pimpinan}' untuk {$affected} data karyawan.";
+        ActivityLogger::crud('UPDATE', 'Master Karyawan', "Bulk update pimpinan ({$updatedCount} karyawan) menjadi {$pimpinan}" . ($jabatanPimpinan ? " ({$jabatanPimpinan})" : ''), null, [], [
+            'pimpinan' => $pimpinan,
+            'jabatan_pimpinan' => $jabatanPimpinan,
+            'updated_count' => $updatedCount,
+            'target_type' => $validated['target_type'],
+        ]);
+
+        $msg = "Berhasil menetapkan pimpinan '{$pimpinan}' untuk {$updatedCount} data karyawan.";
 
         if ($request->wantsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => $msg,
-                'affected' => $affected,
+                'affected' => $updatedCount,
             ]);
         }
 
@@ -594,6 +609,11 @@ class EmployeeController extends Controller
 
         Auth::login($user);
 
+        ActivityLogger::log('SWITCH_USER', 'Auth & Akun', "{$impersonatorName} beralih akun (impersonate) sebagai {$employee->nama_karyawan} ({$employee->jabatan})", $employee, [
+            'target_nik' => $employee->nik,
+            'target_email' => $employee->email,
+        ]);
+
         // Pertahankan sesi impersonator
         if ($impersonatorId && $impersonatorId !== $user->id) {
             session([
@@ -627,6 +647,8 @@ class EmployeeController extends Controller
         // Login kembali ke akun asli
         Auth::login($originalUser);
         session()->forget(['impersonator_id', 'impersonator_name', 'impersonator_email']);
+
+        ActivityLogger::log('SWITCH_USER', 'Auth & Akun', "Pengguna kembali dari sesi impersonate ke akun asli: {$originalUser->name}", $originalUser);
 
         return redirect()->route('master.karyawan.index')->with('success', "Berhasil kembali ke akses akun utama: <strong>{$originalUser->name}</strong>.");
     }

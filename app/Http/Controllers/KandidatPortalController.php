@@ -11,6 +11,7 @@ use App\Models\InterviewAssessment;
 use App\Models\WorkExperience;
 use App\Services\AiAnalyzerService;
 use App\Services\OdooRecruitmentSyncService;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\DB;
 
 use Carbon\Carbon;
@@ -803,6 +804,8 @@ class KandidatPortalController extends Controller
         $candidate->password = password_hash($plainPassword, PASSWORD_DEFAULT);
         $candidate->save();
 
+        ActivityLogger::log('RESET_PASSWORD', 'Kandidat Portal', "Reset password akun kandidat: {$candidate->full_name} ({$candidate->nik})", $candidate);
+
         $msg = "Password kandidat <strong>{$candidate->full_name}</strong> berhasil di-reset menjadi: <code>{$plainPassword}</code> (Format ddmmyyyy dari tgl lahir " . $candidate->birth_date->format('d-m-Y') . ").";
 
         if ($request->wantsJson()) {
@@ -880,6 +883,12 @@ class KandidatPortalController extends Controller
         }
         $candidate->save();
 
+        ActivityLogger::log('UPDATE', 'Kandidat Portal', "Memperbarui hasil interview kandidat {$candidate->full_name} (Status: {$candidate->status_kandidat})", $candidate, [
+            'status_kandidat' => $candidate->status_kandidat,
+            'kategori_kandidat' => $candidate->kategori_kandidat,
+            'kategori_industri' => $candidate->kategori_industri,
+        ]);
+
         return redirect()->route('kandidatportal.show', $candidate->id)
             ->with('success', 'Hasil Interview kandidat ' . $candidate->full_name . ' berhasil disimpan!');
     }
@@ -897,6 +906,7 @@ class KandidatPortalController extends Controller
             'notes' => 'nullable|string',
         ]);
 
+        $oldAs = $candidate->useras;
         $candidate->principle_id = $validated['prinsiple_id'] ?? $candidate->principle_id;
         $candidate->useras = $validated['useras'];
         if (!empty($validated['notes'])) {
@@ -904,6 +914,12 @@ class KandidatPortalController extends Controller
         }
         $candidate->status_kandidat = 'Interview';
         $candidate->save();
+
+        ActivityLogger::log('UPDATE', 'Kandidat Portal', "Mengalihkan AS kandidat {$candidate->full_name} dari '{$oldAs}' ke '{$validated['useras']}'", $candidate, [
+            'old_useras' => $oldAs,
+            'new_useras' => $validated['useras'],
+            'principle_id' => $candidate->principle_id,
+        ]);
 
         return redirect()->route('kandidatportal.show', $candidate->id)
             ->with('success', 'Data kandidat ' . $candidate->full_name . ' berhasil dialihkan ke AS: ' . $validated['useras']);
@@ -920,8 +936,14 @@ class KandidatPortalController extends Controller
             'area' => 'required|string',
         ]);
 
+        $oldArea = $candidate->area;
         $candidate->area = $validated['area'];
         $candidate->save();
+
+        ActivityLogger::log('UPDATE', 'Kandidat Portal', "Mengubah area penempatan kandidat {$candidate->full_name} dari '{$oldArea}' ke '{$validated['area']}'", $candidate, [
+            'old_area' => $oldArea,
+            'new_area' => $validated['area'],
+        ]);
 
         return redirect()->route('kandidatportal.show', $candidate->id)
             ->with('success', 'Area penempatan kandidat ' . $candidate->full_name . ' berhasil diubah menjadi: ' . $validated['area']);
@@ -941,6 +963,10 @@ class KandidatPortalController extends Controller
         $candidate->status_kandidat = 'Arsip';
         $candidate->archive_reason = $validated['alasan'];
         $candidate->save();
+
+        ActivityLogger::log('ARCHIVE', 'Kandidat Portal', "Mengarsipkan kandidat {$candidate->full_name}. Alasan: {$validated['alasan']}", $candidate, [
+            'alasan' => $validated['alasan'],
+        ]);
 
         return redirect()->route('kandidatportal.index', ['tab' => 'arsip'])
             ->with('warning', 'Kandidat ' . $candidate->full_name . ' berhasil diarsipkan.');
@@ -1137,6 +1163,16 @@ class KandidatPortalController extends Controller
         $filePath = \App\Services\CandidateXlsxExportService::generateXlsx($candidates, $meta);
         $fileName = 'Data_Kandidat_Job_Portal_' . date('Ymd_His') . '.xlsx';
 
+        ActivityLogger::export('Kandidat Portal', "Mengekspor data pelamar job portal ke Excel (" . count($candidates) . " kandidat)", [
+            'total_rows' => count($candidates),
+            'status' => $status_kandidat,
+            'kategori' => $kategori,
+            'area' => $area,
+            'recruiter' => $filterRecruiter,
+            'start' => $startDate ? $startDate->format('Y-m-d') : null,
+            'end' => $endDate ? $endDate->format('Y-m-d') : null,
+        ]);
+
         return response()->download($filePath, $fileName, [
             'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
             'Cache-Control' => 'must-revalidate, post-check=0, pre-check=0',
@@ -1154,6 +1190,8 @@ class KandidatPortalController extends Controller
         $includeArchived = $request->boolean('all', false);
 
         $result = $syncService->syncAllCandidates(null, $limit, $includeArchived);
+
+        ActivityLogger::sync('Odoo Recruitment', "Sinkronisasi massal kandidat portal dengan Odoo ERP (Cocok: {$result['matched']})", $result);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json($result);
@@ -1174,6 +1212,8 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
         $result = $syncService->syncSingleCandidate($candidate);
+
+        ActivityLogger::sync('Odoo Recruitment', "Sinkronisasi status Odoo untuk kandidat: {$candidate->full_name} ({$candidate->nik})", $result, $candidate);
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json($result);

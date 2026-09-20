@@ -11,6 +11,7 @@ use App\Models\InterviewAssessment;
 use App\Models\WorkExperience;
 use App\Models\TestResult;
 use App\Services\OdooRecruitmentSyncService;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -486,6 +487,7 @@ class InterviewController extends Controller
         $result = $syncService->syncAllCandidates(null, $limit, false, 'interview');
 
         if ($result['success']) {
+            ActivityLogger::sync('Odoo Recruitment', "Sinkronisasi tahapan Odoo kandidat interview ({$result['matched']} cocok, {$result['moved_interview']} ke Interview, {$result['moved_terima']} ke Terima)", $result);
             $msg = "Sinkronisasi Odoo Kandidat Interview selesai! {$result['matched']} kandidat cocok di Odoo ({$result['moved_interview']} tahap Interview, {$result['moved_terima']} tahap Terima/Joined).";
             return back()->with('success', $msg);
         }
@@ -504,6 +506,7 @@ class InterviewController extends Controller
         if ($result['success']) {
             $stageName = $result['stage_name'] ?? 'Belum terdaftar di Odoo';
             $entity = $result['entity'] ?? '-';
+            ActivityLogger::sync('Odoo Recruitment', "Sinkronisasi status Odoo kandidat {$candidate->full_name} ({$candidate->nik}): {$stageName} ({$entity})", $result, $candidate);
             return back()->with('success', "Status Odoo {$candidate->full_name} diperbarui: {$stageName} (Entitas: {$entity})");
         }
 
@@ -665,6 +668,15 @@ class InterviewController extends Controller
                 ]);
             }
         }
+
+        ActivityLogger::log('UPDATE', 'Interview', "Menyimpan form assessment evaluasi interview untuk kandidat: {$candidate->full_name} ({$candidate->id})", $candidate, [
+            'kemauan_kerja' => $km,
+            'penampilan' => $pen,
+            'attitude' => $att,
+            'daya_tangkap' => $dt,
+            'placement_area' => $area,
+            'salary_offered' => $salary,
+        ]);
 
         return redirect()->route("interview.show", $candidate->id)
             ->with("success", "Data Hasil Interview Berhasil Disimpan!");
@@ -926,6 +938,11 @@ class InterviewController extends Controller
 
         $waUrl = "https://web.whatsapp.com/send?phone={$candidate->clean_whatsapp}&text=" . urlencode($pesan);
 
+        ActivityLogger::log('REMIDI', 'Interview / CBT', "Set Remidi Tes Matematika (Ke-{$nextTesKe}) untuk kandidat: {$candidate->full_name} ({$candidate->id})", $candidate, [
+            'tes_ke' => $nextTesKe,
+            'whatsapp' => $candidate->clean_whatsapp,
+        ]);
+
         return redirect()->back()
             ->with('success', "Remidi Berhasil Diset! Tes Matematika telah direset ke Tes Ke - {$nextTesKe}. Silakan hubungi kandidat untuk mengulang tes.")
             ->with('remidi_wa_url', $waUrl);
@@ -939,7 +956,13 @@ class InterviewController extends Controller
         $candidate = Candidate::findOrFail($id);
         $request->validate(['principle_id' => 'required|exists:principles,id']);
 
+        $oldPrincipleId = $candidate->principle_id;
         $candidate->update(['principle_id' => $request->principle_id]);
+
+        ActivityLogger::log('UPDATE', 'Interview', "Memperbarui Prinsiple kandidat {$candidate->full_name} dari ID: {$oldPrincipleId} ke ID: {$request->principle_id}", $candidate, [
+            'old_principle_id' => $oldPrincipleId,
+            'new_principle_id' => $request->principle_id,
+        ]);
 
         return redirect()->route('interview.show', $candidate->id)
             ->with('success', 'Prinsiple Kandidat Berhasil Diperbarui!');
@@ -956,6 +979,10 @@ class InterviewController extends Controller
         $candidate->update([
             'status' => 'Arsip',
             'archive_reason' => $request->archive_reason,
+        ]);
+
+        ActivityLogger::log('ARCHIVE', 'Interview', "Mengarsipkan kandidat {$candidate->full_name} ({$candidate->id}). Alasan: {$request->archive_reason}", $candidate, [
+            'alasan' => $request->archive_reason,
         ]);
 
         return redirect()->route('interview.index')
@@ -1305,6 +1332,12 @@ class InterviewController extends Controller
             ]);
         } catch (\Exception $e) {}
 
+        ActivityLogger::log($status === 'Approved' ? 'APPROVE' : 'REJECT', 'Interview / Approval Prinsiple', "Approval Prinsiple untuk kandidat {$candidate->full_name} ({$candidate->id}): {$status}", $candidate, [
+            'status' => $status,
+            'notes' => $notes,
+            'userprinsiple_id' => $userPrinsipleId,
+        ]);
+
         return redirect()->route('interview.show', $candidate->id)
             ->with('success', 'Status dan Bukti Approval User Principle berhasil disimpan!');
     }
@@ -1315,6 +1348,7 @@ class InterviewController extends Controller
     public function alihkanAS(Request $request, $id)
     {
         $candidate = Candidate::findOrFail($id);
+        $oldAs = $candidate->useras;
         if ($request->filled('prinsiple_id')) {
             $candidate->principle_id = $request->prinsiple_id;
         }
@@ -1328,6 +1362,12 @@ class InterviewController extends Controller
         $candidate->status_kandidat = 'Interview';
         $candidate->save();
 
+        ActivityLogger::log('UPDATE', 'Interview', "Mengalihkan AS kandidat {$candidate->full_name} dari '{$oldAs}' ke '{$candidate->useras}'", $candidate, [
+            'old_useras' => $oldAs,
+            'new_useras' => $candidate->useras,
+            'principle_id' => $candidate->principle_id,
+        ]);
+
         return redirect()->route('interview.show', $candidate->id)
             ->with('success', 'Data kandidat ' . $candidate->full_name . ' berhasil dialihkan.');
     }
@@ -1338,8 +1378,14 @@ class InterviewController extends Controller
     public function gantiArea(Request $request, $id)
     {
         $candidate = Candidate::findOrFail($id);
+        $oldArea = $candidate->area;
         $candidate->area = $request->area;
         $candidate->save();
+
+        ActivityLogger::log('UPDATE', 'Interview', "Mengubah area penempatan kandidat {$candidate->full_name} dari '{$oldArea}' ke '{$candidate->area}'", $candidate, [
+            'old_area' => $oldArea,
+            'new_area' => $candidate->area,
+        ]);
 
         return redirect()->route('interview.show', $candidate->id)
             ->with('success', 'Area penempatan kandidat berhasil diubah menjadi: ' . $candidate->area);

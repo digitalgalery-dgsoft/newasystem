@@ -1288,6 +1288,46 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 69. 🛡️ Sistem Audit Trail & Log Aktivitas Komprehensif Seluruh Sistem (20 September 2026)
+- **Latar Belakang & Kebutuhan**:
+  - Perekaman seluruh aktivitas pengguna di sistem secara terpusat untuk keperluan audit, transparansi, pemantauan operasional, keamanan data, dan kepatuhan regulasi (*compliance*).
+  - Aktivitas mencakup: Sesi Autentikasi (Login, Logout, Gagal Login, Switch User/Impersonate, Revert Switch User), CRUD Master Data (Karyawan, Prinsiple, CBT Soal), Rekrutmen & Pelamar (Kandidat Portal, Interview, Assessment, Remidi CBT, Alihkan AS, Ganti Area, Arsipkan), Export Data Laporan (Excel .xlsx), Integrasi Sinkronisasi Odoo ERP, Konfigurasi RBAC & Hak Akses Pengguna, serta Work Plan & ToDoList.
+- **Komponen & Arsitektur Teknis**:
+  1. **Tabel Database & Indeks Performa (`activity_logs`)**:
+     - Kolom: `id`, `user_id`, `user_name`, `user_email`, `user_jabatan`, `action`, `module`, `description`, `subject_type`, `subject_id`, `properties` (JSON payload diff & metadata), `ip_address`, `user_agent`, `url`, `method`, `timestamps`.
+     - Indeks komposit pada `created_at`, `user_id`, `action`, dan `module` untuk akselerasi kueri filter rentang tanggal.
+  2. **Model Eloquent ([app/Models/ActivityLog.php](file:///d:/ASystem/newasystem/app/Models/ActivityLog.php))**:
+     - Scopes filter dinamis: `filterModule`, `filterAction`, `filterUser`, `search`, `dateRange`.
+     - Accessors cerdas: `action_badge_class`, `action_icon`, `formatted_created_at`, `diff_time`, `device` (deteksi otomatis browser dan platform: Chrome, Safari, Edge, Firefox, Android, iOS, Windows, Mac, Linux).
+  3. **Service Terpusat & Safe Execution ([app/Services/ActivityLogger.php](file:///d:/ASystem/newasystem/app/Services/ActivityLogger.php) & [app/helpers.php](file:///d:/ASystem/newasystem/app/helpers.php))**:
+     - Metode standar: `log()`, `auth()`, `crud()`, `export()`, `sync()`.
+     - Isolasi error dengan `try-catch` sehingga jika terjadi kendala pada database log tidak akan pernah menggagalkan alur transaksi proses utama aplikasi.
+     - Helper global `activity_log(...)` terdaftar otomatis di `AppServiceProvider`.
+  4. **Otomasi Autentikasi Event Listener ([app/Providers/AppServiceProvider.php](file:///d:/ASystem/newasystem/app/Providers/AppServiceProvider.php))**:
+     - Menangkap event resmi Laravel: `Login` (catat login sukses), `Logout` (catat logout), dan `Failed` (catat percobaan login gagal dengan identifier attempted email/username dan IP).
+  5. **Integrasi Controller Menyeluruh**:
+     - **[EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php)**: Create, Update (snapshot diff data lama vs baru), Toggle Login Access, Bulk Edit Pimpinan, Switch User (Impersonate), Revert Switch User.
+     - **[KandidatPortalController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/KandidatPortalController.php)**: Reset Password Kandidat, Update Interview, Alihkan AS, Ganti Area, Arsipkan Kandidat, Export Excel (.xlsx), Sinkronisasi Odoo Massal & Individu.
+     - **[InterviewController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php)**: Form Assessment, Approval Prinsiple (Approve/Reject dengan screenshot), Alihkan AS, Ganti Area, Set Remidi CBT Matematika, Edit Prinsiple, Arsipkan, Sinkronisasi Odoo.
+     - **[JobController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/JobController.php)**: Tambah Job Requirement, Edit Job Requirement (diff old vs new), Toggle Status Job, Hapus Job.
+     - **[JobStatistikController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/JobStatistikController.php)**: Export Laporan Rekapitulasi Statistik Excel (.xlsx).
+     - **[PrincipleController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/PrincipleController.php)**: Tambah Prinsiple, Edit Prinsiple, Toggle Status Aktif, Hapus Prinsiple, Re-import Official 157 Entitas.
+     - **[UserProfileController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/UserProfileController.php)**: Edit Profil Pengguna, Ganti Password Akun, Hapus Avatar Profil.
+     - **[RbacController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/RbacController.php)**: Tambah Role, Edit Role, Hapus Role, Simpan Matriks Hak Akses, Ubah Role & Scope Pengguna, Tambah Akun Pengguna, Reset Password Pengguna.
+     - **[OdooSettingController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/OdooSettingController.php)**: Simpan Konfigurasi Koneksi, Sync per Entitas, Sync All Entitas, Sync by NIK, Cleanup Duplikat Karyawan.
+     - **[WorkPlanController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/WorkPlanController.php)**: Tambah Tugas, Edit Tugas, Pindah Status (Kanban), Arsipkan Tugas, Pulihkan dari Arsip, Hapus Tugas, Export Excel (.xlsx).
+     - **[CbtController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CbtController.php)**: Login/Logout Kandidat, Pengisian Profil 6 Tab, Pengerjaan & Submit Tes Psikotes/Kepribadian, Tes Matematika, dan Tes Komputer.
+  6. **Viewer Antarmuka Modern ([resources/views/activity_logs/index.blade.php](file:///d:/ASystem/newasystem/resources/views/activity_logs/index.blade.php))**:
+     - **4 Kartu Metrik Ringkasan**: Total Seluruh Log, Aktivitas Hari Ini, Total Sesi Login, Perubahan Data (CRUD).
+     - **Filter Bar Responsif 6 Kolom**: Dari Tanggal, Sampai Tanggal, Modul, Jenis Aksi, Pengguna, Kata Kunci Pencarian, serta Pilihan Limit Baris per Halaman (15, 25, 50, 100).
+     - **Tabel Audit Trail Interaktif**: Waktu detail + diff time (*X menit yang lalu*), User badge avatar + nama + jabatan + email, Action badge dengan icon penanda, Modul badge, Deskripsi lengkap, IP Address & jenis Device/Browser.
+     - **Modal Pratinjau Diff Payload Data**: Membandingkan nilai lama (*old values* warna rose) vs nilai baru (*new values* warna emerald) serta raw JSON viewer.
+     - **Tombol Export Excel (.xlsx)**: Unduhan rekap audit trail format XLSX ber-styling Sapphire Blue profesional via PhpSpreadsheet.
+     - **Menu Sidebar "Log Aktivitas"**: Ditempatkan di grup Pengaturan Sistem khusus Administrator dengan badge `AUDIT`.
+     - **Dukungan Penuh Dark Mode**: Menyesuaikan otomatis dengan 4 palet tema (*Hitam Pekat, Biru Navy, Dark Grey, Soft Grey*).
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |

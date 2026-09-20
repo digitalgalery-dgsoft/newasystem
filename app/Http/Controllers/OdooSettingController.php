@@ -6,6 +6,7 @@ use App\Models\Employee;
 use App\Models\OdooEntity;
 use App\Models\OdooSyncLog;
 use App\Services\OdooSyncService;
+use App\Services\ActivityLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -78,6 +79,8 @@ class OdooSettingController extends Controller
 
         $entity->update($validated);
 
+        ActivityLogger::log('UPDATE', 'Integrasi Odoo', "Memperbarui konfigurasi koneksi Odoo entitas {$entity->name} ({$code})", $entity);
+
         return redirect()
             ->route('odoo.setting.index', ['tab' => $code])
             ->with('success', "Konfigurasi koneksi Odoo untuk entitas {$entity->name} ({$code}) berhasil diperbarui.");
@@ -148,6 +151,8 @@ class OdooSettingController extends Controller
             $service = OdooSyncService::fromEntity($entity);
             $result = $service->syncEmployees($entity, null, $category);
 
+            ActivityLogger::sync("Odoo ERP ({$code})", "Sinkronisasi data karyawan Odoo entitas {$code} (Kategori: {$category}, Baru: " . ($result['created'] ?? 0) . ", Update: " . ($result['updated'] ?? 0) . ")", $result);
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => $result['success'],
@@ -215,6 +220,14 @@ class OdooSettingController extends Controller
 
         $entitiesStr = implode(', ', $syncedCodes);
         $summary = "Sinkronisasi selesai ({$categoryLabel}) untuk entitas ({$entitiesStr}). Total Baru: {$totalCreated} | Diperbarui: {$totalUpdated}" . (count($allErrors) > 0 ? " | Error: " . count($allErrors) : "");
+
+        ActivityLogger::sync('Odoo ERP (Semua)', "Sinkronisasi massal seluruh entitas Odoo ({$entitiesStr}). Total Baru: {$totalCreated}, Diperbarui: {$totalUpdated}", [
+            'category' => $category,
+            'entities' => $entitiesStr,
+            'created' => $totalCreated,
+            'updated' => $totalUpdated,
+            'errors' => count($allErrors),
+        ]);
 
         if ($request->wantsJson()) {
             return response()->json([
@@ -689,6 +702,10 @@ class OdooSettingController extends Controller
     {
         try {
             $cleaned = OdooSyncService::cleanupDuplicateEmployees();
+
+            ActivityLogger::log('DELETE', 'Integrasi Odoo', "Membersihkan {$cleaned} data karyawan duplikat berdasarkan NIK", null, [
+                'cleaned_count' => $cleaned
+            ]);
 
             $msg = $cleaned > 0
                 ? "Pembersihan berhasil! {$cleaned} data karyawan duplikat telah digabungkan dan dirapikan."

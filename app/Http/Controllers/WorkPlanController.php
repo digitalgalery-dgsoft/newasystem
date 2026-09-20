@@ -16,6 +16,7 @@ use App\Models\TaskCategory;
 use App\Models\WorkPlanDaily;
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
@@ -333,6 +334,8 @@ class WorkPlanController extends Controller
             ]);
         }
 
+        ActivityLogger::crud('CREATE', 'Work Plan', "Menambahkan tugas work plan baru: '{$title}' (Penanggung Jawab: {$assignee})", $task, [], $task->toArray());
+
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'task' => $task, 'message' => 'Tugas berhasil ditambahkan!']);
         }
@@ -367,6 +370,8 @@ class WorkPlanController extends Controller
             'attachment' => 'nullable|file|max:10240',
         ]);
 
+        $oldTaskData = $task->toArray();
+
         $task->title = trim($request->title);
         $task->description = $request->description;
         $task->priority = $request->priority ?: 'Medium';
@@ -391,6 +396,8 @@ class WorkPlanController extends Controller
             'detail_new' => $task->title,
             'created_at' => now(),
         ]);
+
+        ActivityLogger::crud('UPDATE', 'Work Plan', "Memperbarui rincian tugas work plan: '{$task->title}'", $task, $oldTaskData, $task->toArray());
 
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json(['success' => true, 'task' => $task, 'message' => 'Tugas berhasil diperbarui!']);
@@ -454,6 +461,11 @@ class WorkPlanController extends Controller
             'created_at' => now(),
         ]);
 
+        ActivityLogger::log('UPDATE', 'Work Plan', "Mengubah status tugas '{$task->title}' dari {$oldStatus} ke {$newStatus}", $task, [
+            'old_status' => $oldStatus,
+            'new_status' => $newStatus,
+        ]);
+
         // Notifikasi ke Delegator saat tugas dipindahkan ke Review
         if ($newStatus === 'review' && !empty($task->delegator) && $task->delegator !== $userName) {
             TaskNotification::create([
@@ -497,6 +509,8 @@ class WorkPlanController extends Controller
             'created_at' => now(),
         ]);
 
+        ActivityLogger::log('ARCHIVE', 'Work Plan', "Mengarsipkan tugas work plan: '{$task->title}'", $task);
+
         return back()->with('success', 'Tugas berhasil dipindahkan ke arsip.');
     }
 
@@ -520,6 +534,8 @@ class WorkPlanController extends Controller
             'created_at' => now(),
         ]);
 
+        ActivityLogger::log('UPDATE', 'Work Plan', "Memulihkan tugas work plan dari arsip: '{$task->title}'", $task);
+
         return back()->with('success', 'Tugas dipulihkan dari arsip ke status Done.');
     }
 
@@ -537,12 +553,16 @@ class WorkPlanController extends Controller
             return back()->with('error', 'Akses ditolak! Anda tidak memiliki izin untuk menghapus tugas ini.');
         }
 
+        $oldTaskData = $task->toArray();
+
         // Hapus relasi terkait
         $task->subtasks()->delete();
         $task->comments()->delete();
         $task->activities()->delete();
         $task->notifications()->delete();
         $task->delete();
+
+        ActivityLogger::crud('DELETE', 'Work Plan', "Menghapus tugas work plan: '{$oldTaskData['title']}'", $task, $oldTaskData, []);
 
         return back()->with('success', 'Tugas berhasil dihapus permanen.');
     }
@@ -1009,6 +1029,11 @@ class WorkPlanController extends Controller
         }
 
         $filename = 'WorkPlan_ToDoList_' . date('Ymd_His') . '.xlsx';
+
+        ActivityLogger::export('Work Plan', "Mengekspor daftar tugas work plan ke Excel (" . count($tasks) . " baris)", [
+            'total_rows' => count($tasks),
+        ]);
+
         header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
         header("Content-Disposition: attachment; filename=\"{$filename}\"");
         header('Cache-Control: max-age=0');

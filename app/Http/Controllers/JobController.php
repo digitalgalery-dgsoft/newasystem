@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Models\JobSpec;
 use App\Models\Principle;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -255,12 +256,15 @@ class JobController extends Controller
                     return redirect()->route('job.input')->with('error', 'Akses ditolak! Anda hanya dapat mengubah lowongan yang Anda buat sendiri.');
                 }
             }
+            $oldValues = $job->only(array_keys($validated));
             $job->update($validated);
+            ActivityLogger::crud('UPDATE', 'Job Requirement', "Memperbarui lowongan kerja: {$job->job_title}", $job, $oldValues, $job->only(array_keys($validated)));
             $msg = "Data job '{$job->job_title}' berhasil diperbarui.";
         } else {
             $validated['created_by'] = $user?->email ?? $user?->name ?? 'admin.pusat@arina.co.id';
             $validated['status'] = 'active';
             $job = JobSpec::create($validated);
+            ActivityLogger::crud('CREATE', 'Job Requirement', "Menambahkan lowongan kerja baru: {$job->job_title} ({$job->job_area})", $job, [], $job->toArray());
             $msg = "Job '{$job->job_title}' berhasil disimpan!";
         }
 
@@ -286,7 +290,10 @@ class JobController extends Controller
         }
 
         $title = $job->job_title;
+        $oldData = $job->toArray();
         $job->delete();
+
+        ActivityLogger::crud('DELETE', 'Job Requirement', "Menghapus lowongan kerja: {$title}", $job, $oldData, []);
 
         return redirect()->route('job.input')
             ->with('warning', "Data job '{$title}' berhasil dihapus.");
@@ -312,6 +319,10 @@ class JobController extends Controller
 
         $job->status = $job->status === 'active' ? 'inactive' : 'active';
         $job->save();
+
+        ActivityLogger::log('UPDATE', 'Job Requirement', "Mengubah status lowongan kerja '{$job->job_title}' menjadi " . strtoupper($job->status), $job, [
+            'status' => $job->status
+        ]);
 
         return redirect()->route('job.input')
             ->with('success', "Status job '{$job->job_title}' diubah menjadi: " . strtoupper($job->status));

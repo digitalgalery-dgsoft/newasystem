@@ -7,6 +7,7 @@ use App\Models\Employee;
 use App\Models\JobSpec;
 use App\Models\Principle;
 use App\Services\JobStatistikXlsxExportService;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
@@ -220,6 +221,14 @@ class JobStatistikController extends Controller
         
         $filePath = JobStatistikXlsxExportService::generateXlsx($data, $filters);
         $fileName = 'Statistik_Job_Kandidat_Portal_' . date('Ymd_His') . '.xlsx';
+
+        ActivityLogger::export('Job Statistik', "Mengekspor laporan rekapitulasi statistik job & kandidat portal ke Excel", [
+            'region' => $filters['region'] ?: 'Semua',
+            'area' => $filters['area'] ?: 'Semua',
+            'prinsiple' => $filters['prinsiple'] ?: 'Semua',
+            'user' => $filters['user'] ?: 'Semua',
+            'info' => $filters['info'] ?: 'Semua',
+        ]);
 
         return response()->download($filePath, $fileName, [
             'Content-Type'  => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

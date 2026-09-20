@@ -10,6 +10,7 @@ use App\Models\CandidateLog;
 use App\Models\WorkExperience;
 use App\Models\TestResult;
 use App\Services\CbtQuestionService;
+use App\Services\ActivityLogger;
 
 class CbtController extends Controller
 {
@@ -715,6 +716,13 @@ class CbtController extends Controller
                 'ip_address' => $request->ip(),
                 'browser' => substr($request->userAgent() ?? '', 0, 100),
                 'os' => substr($request->userAgent() ?? '', 0, 255),
+            ]);
+
+            ActivityLogger::log('CBT', 'Portal CBT', "Kandidat {$candidate->full_name} ({$candidate->nik}): {$activity}", $candidate, [
+                'candidate_id' => $candidate->id,
+                'candidate_name' => $candidate->full_name,
+                'nik' => $candidate->nik,
+                'activity' => $activity,
             ]);
         } catch (\Exception $e) {
             // Abaikan kesalahan penulisan log agar tidak memutus alur

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Employee;
 use App\Models\User;
+use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\File;
@@ -113,6 +114,8 @@ class UserProfileController extends Controller
             \Log::warning('Sinkronisasi employee pada edit profile gagal: ' . $e->getMessage());
         }
 
+        ActivityLogger::log('UPDATE', 'Profil Pengguna', "Memperbarui data identitas profil: {$user->name} ({$user->email})", $user);
+
         return redirect()->route('profile.index')->with('success', 'Profil akun Anda berhasil diperbarui.');
     }
 
@@ -155,6 +158,8 @@ class UserProfileController extends Controller
             \Log::warning('Sinkronisasi password employee gagal: ' . $e->getMessage());
         }
 
+        ActivityLogger::log('UPDATE_PASSWORD', 'Profil Pengguna', "Memperbarui password akun: {$user->name} ({$user->email})", $user);
+
         return redirect()->route('profile.index')->with('success', 'Password Anda berhasil diperbarui! Gunakan password baru ini saat login kembali.');
     }
 
@@ -173,6 +178,8 @@ class UserProfileController extends Controller
             }
             $user->avatar = null;
             $user->save();
+
+            ActivityLogger::log('DELETE', 'Profil Pengguna', "Menghapus foto profil avatar: {$user->name}", $user);
         }
 
         return redirect()->route('profile.index')->with('success', 'Foto profil berhasil dihapus dan dikembalikan ke avatar bawaan.');
