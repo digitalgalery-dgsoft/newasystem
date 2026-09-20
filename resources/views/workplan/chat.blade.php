@@ -193,7 +193,7 @@
                                     <img :src="msg.sender_avatar || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.user_sender) + '&background=0F52BA&color=fff&size=64&bold=true')"
                                          :alt="msg.user_sender"
                                          class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-slate-200 shadow-2xs ring-1 ring-white/80"
-                                         @error="$event.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.user_sender) + '&background=0F52BA&color=fff&size=64&bold=true'">
+                                         x-on:error="$event.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.user_sender) + '&background=0F52BA&color=fff&size=64&bold=true'">
                                 </div>
                             </template>
 
@@ -224,7 +224,7 @@
                                     <img :src="msg.sender_avatar || ('https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=059669&color=fff&size=64&bold=true')"
                                          :alt="userName"
                                          class="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-emerald-300 shadow-2xs ring-1 ring-white/80"
-                                         @error="$event.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=059669&color=fff&size=64&bold=true'">
+                                         x-on:error="$event.target.src = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(userName) + '&background=059669&color=fff&size=64&bold=true'">
                                 </div>
                             </template>
                         </div>
