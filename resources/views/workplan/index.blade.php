@@ -524,6 +524,34 @@ function kanbanBoard() {
             due_date: '',
             assignee: ''
         },
+        previewModal: {
+            open: false,
+            url: '',
+            name: '',
+            isImage: false,
+            isPdf: false
+        },
+
+        openPreviewModal(url, name = '') {
+            if (!url) return;
+            const cleanUrl = url.split('?')[0];
+            const isImg = Boolean(cleanUrl.match(/\.(jpg|jpeg|png|gif|webp|svg)$/i) || url.startsWith('blob:') || url.startsWith('data:image/'));
+            const isPdf = Boolean(cleanUrl.match(/\.pdf$/i));
+            const fileName = name || url.split('/').pop() || 'Berkas Lampiran';
+
+            this.previewModal = {
+                open: true,
+                url: url,
+                name: decodeURIComponent(fileName),
+                isImage: isImg,
+                isPdf: isPdf
+            };
+        },
+
+        closePreviewModal() {
+            this.previewModal.open = false;
+            this.previewModal.url = '';
+        },
 
         formatBytes(bytes) {
             if (!bytes || bytes === 0) return '0 B';

@@ -133,11 +133,12 @@
                 <template x-if="createAttachment">
                     <div class="p-3 bg-white rounded-2xl border border-slate-200 shadow-sm flex items-start gap-3 relative group">
                         <template x-if="createAttachment.isImage">
-                            <div class="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0">
+                            <div class="relative w-20 h-20 rounded-xl overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0 cursor-pointer"
+                                 @click="openPreviewModal(createAttachment.previewUrl, createAttachment.name)">
                                 <img :src="createAttachment.previewUrl" class="w-full h-full object-cover">
-                                <a :href="createAttachment.previewUrl" target="_blank" class="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white text-xs">
+                                <div class="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white text-xs">
                                     <i class="fa-solid fa-magnifying-glass-plus"></i>
-                                </a>
+                                </div>
                             </div>
                         </template>
                         <template x-if="!createAttachment.isImage">
@@ -365,7 +366,7 @@
                                 <div class="flex items-center gap-2 truncate">
                                     <i class="fa-solid fa-paperclip text-indigo-600"></i>
                                     <span class="text-slate-600 text-[11px]">Lampiran saat ini:</span>
-                                    <a :href="currentTask.attachment_url" target="_blank" class="font-bold text-primary hover:underline truncate" x-text="currentTask.attachment_url.split('/').pop()"></a>
+                                    <a href="javascript:void(0)" @click.prevent="openPreviewModal(currentTask.attachment_url)" class="font-bold text-primary hover:underline truncate" x-text="currentTask.attachment_url.split('/').pop()"></a>
                                 </div>
                                 <span class="text-[10px] text-slate-400 flex-shrink-0 ml-2">Pilih file baru di bawah untuk mengganti</span>
                             </div>
@@ -399,11 +400,12 @@
                         <template x-if="editAttachment">
                             <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs flex items-start gap-2.5 relative group">
                                 <template x-if="editAttachment.isImage">
-                                    <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0">
+                                    <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0 cursor-pointer"
+                                         @click="openPreviewModal(editAttachment.previewUrl, editAttachment.name)">
                                         <img :src="editAttachment.previewUrl" class="w-full h-full object-cover">
-                                        <a :href="editAttachment.previewUrl" target="_blank" class="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white text-xs">
+                                        <div class="absolute inset-0 bg-slate-900/50 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center text-white text-xs">
                                             <i class="fa-solid fa-magnifying-glass-plus"></i>
-                                        </a>
+                                        </div>
                                     </div>
                                 </template>
                                 <template x-if="!editAttachment.isImage">
@@ -492,14 +494,14 @@
                                 <span class="font-bold text-slate-700 flex items-center gap-1.5">
                                     <i class="fa-solid fa-paperclip text-primary"></i> Lampiran Tugas:
                                 </span>
-                                <a :href="currentTask.attachment_url" target="_blank" class="text-[11px] font-bold text-primary hover:underline flex items-center gap-1">
-                                    <span>Buka / Unduh Berkas</span>
-                                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                                <a href="javascript:void(0)" @click.prevent="openPreviewModal(currentTask.attachment_url)" class="text-[11px] font-bold text-primary hover:underline flex items-center gap-1">
+                                    <span>Lihat Pratinjau Berkas</span>
+                                    <i class="fa-solid fa-expand text-[9px]"></i>
                                 </a>
                             </div>
                             <template x-if="currentTask.attachment_url.match(/\.(jpg|jpeg|png|gif|webp|svg)($|\?)/i)">
                                 <div>
-                                    <a :href="currentTask.attachment_url" target="_blank" class="inline-block group relative">
+                                    <a href="javascript:void(0)" @click.prevent="openPreviewModal(currentTask.attachment_url)" class="inline-block group relative cursor-pointer">
                                         <img :src="currentTask.attachment_url" class="max-h-48 max-w-full rounded-xl border border-slate-200 object-cover shadow-xs group-hover:opacity-95 transition-all">
                                         <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-slate-900/80 text-white text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-all">
                                             <i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Perbesar
@@ -610,7 +612,7 @@
                                 <div class="pl-8 pt-1">
                                     <template x-if="c.attachment_url.match(/\.(jpg|jpeg|png|gif|webp|svg)($|\?)/i)">
                                         <div class="mt-1">
-                                            <a :href="c.attachment_url" target="_blank" class="inline-block group relative">
+                                            <a href="javascript:void(0)" @click.prevent="openPreviewModal(c.attachment_url)" class="inline-block group relative cursor-pointer">
                                                 <img :src="c.attachment_url" class="max-h-36 max-w-xs rounded-xl border border-slate-200 object-cover shadow-xs group-hover:opacity-95 transition-all">
                                                 <span class="absolute bottom-2 right-2 px-2 py-0.5 rounded-md bg-slate-900/80 text-white text-[10px] font-semibold opacity-0 group-hover:opacity-100 transition-all">
                                                     <i class="fa-solid fa-magnifying-glass-plus mr-1"></i> Perbesar
@@ -619,7 +621,7 @@
                                         </div>
                                     </template>
                                     <template x-if="!c.attachment_url.match(/\.(jpg|jpeg|png|gif|webp|svg)($|\?)/i)">
-                                        <a :href="c.attachment_url" target="_blank" class="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline font-semibold bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
+                                        <a href="javascript:void(0)" @click.prevent="openPreviewModal(c.attachment_url)" class="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline font-semibold bg-white px-2.5 py-1 rounded-lg border border-slate-200 shadow-2xs">
                                             <i class="fa-solid fa-paperclip text-slate-400"></i> Lampiran Berkas
                                         </a>
                                     </template>
@@ -657,7 +659,8 @@
                     <template x-if="commentAttachment">
                         <div class="p-2.5 bg-white rounded-xl border border-slate-200 shadow-xs flex items-center gap-2.5 relative group">
                             <template x-if="commentAttachment.isImage">
-                                <div class="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0">
+                                <div class="relative w-12 h-12 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 flex-shrink-0 cursor-pointer"
+                                     @click="openPreviewModal(commentAttachment.previewUrl, commentAttachment.name)">
                                     <img :src="commentAttachment.previewUrl" class="w-full h-full object-cover">
                                 </div>
                             </template>
@@ -666,8 +669,8 @@
                                     <i class="fa-solid fa-paperclip"></i>
                                 </div>
                             </template>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-xs font-bold text-slate-800 truncate" x-text="commentAttachment.name"></p>
+                            <div class="flex-1 min-w-0 cursor-pointer" @click="openPreviewModal(commentAttachment.previewUrl, commentAttachment.name)">
+                                <p class="text-xs font-bold text-slate-800 truncate hover:text-primary transition-colors" x-text="commentAttachment.name"></p>
                                 <span class="text-[10px] text-slate-400 font-semibold" x-text="commentAttachment.size"></span>
                             </div>
                             <button type="button" 
@@ -776,5 +779,110 @@
                 </button>
             </div>
         </div>
+    </div>
+</div>
+
+<!-- ============================================================================== -->
+<!-- 4. MODAL PREVIEW FILE & GAMBAR LAMPIRAN (LIGHTBOX VIEWER)                      -->
+<!-- ============================================================================== -->
+<div x-show="previewModal.open" 
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0"
+     @keydown.escape.window="closePreviewModal()"
+     class="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md overflow-hidden" 
+     x-cloak>
+
+    <div @click.outside="closePreviewModal()"
+         class="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-slate-900 rounded-2xl border border-slate-700/60 shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        <!-- Header Preview Modal -->
+        <div class="px-5 py-3.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-3 text-white flex-shrink-0">
+            <div class="flex items-center gap-2.5 min-w-0">
+                <div class="w-8 h-8 rounded-lg bg-primary-600/30 text-primary-400 border border-primary-500/30 flex items-center justify-center text-sm flex-shrink-0">
+                    <i class="fa-solid" :class="{
+                        'fa-image': previewModal.isImage,
+                        'fa-file-pdf': previewModal.isPdf,
+                        'fa-file-lines': !previewModal.isImage && !previewModal.isPdf
+                    }"></i>
+                </div>
+                <div class="truncate">
+                    <h4 class="text-xs font-bold text-slate-100 truncate" x-text="previewModal.name || 'Pratinjau Lampiran'"></h4>
+                    <p class="text-[10px] text-slate-400">Pratinjau Berkas Lampiran Work Plan</p>
+                </div>
+            </div>
+
+            <!-- Actions Header -->
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <a :href="previewModal.url" 
+                   download 
+                   class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs"
+                   title="Unduh Berkas Asli">
+                    <i class="fa-solid fa-download text-[11px]"></i>
+                    <span class="hidden sm:inline">Unduh</span>
+                </a>
+                <a :href="previewModal.url" 
+                   target="_blank" 
+                   class="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs"
+                   title="Buka di Tab Baru">
+                    <i class="fa-solid fa-arrow-up-right-from-square text-[11px]"></i>
+                    <span class="hidden sm:inline">Tab Baru</span>
+                </a>
+                <button type="button" 
+                        @click="closePreviewModal()" 
+                        class="w-8 h-8 rounded-xl bg-slate-800 hover:bg-rose-600 text-slate-300 hover:text-white flex items-center justify-center transition-all border border-slate-700 hover:border-rose-500"
+                        title="Tutup (Esc)">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Body Content Preview -->
+        <div class="flex-1 overflow-auto p-4 flex items-center justify-center bg-slate-950/60 min-h-[300px]">
+            <!-- 1. Tipe Gambar -->
+            <template x-if="previewModal.isImage">
+                <div class="max-w-full max-h-[78vh] flex items-center justify-center">
+                    <img :src="previewModal.url" 
+                         :alt="previewModal.name"
+                         class="max-w-full max-h-[76vh] object-contain rounded-xl shadow-2xl border border-slate-800">
+                </div>
+            </template>
+
+            <!-- 2. Tipe PDF -->
+            <template x-if="previewModal.isPdf">
+                <div class="w-full h-[76vh] rounded-xl overflow-hidden border border-slate-800 bg-white">
+                    <iframe :src="previewModal.url" class="w-full h-full border-0"></iframe>
+                </div>
+            </template>
+
+            <!-- 3. Dokumen Lainnya (Word, Excel, ZIP, dll) -->
+            <template x-if="!previewModal.isImage && !previewModal.isPdf">
+                <div class="text-center py-12 px-6 max-w-md">
+                    <div class="w-20 h-20 mx-auto rounded-2xl bg-slate-800/90 border border-slate-700 flex items-center justify-center text-4xl text-primary-400 mb-4 shadow-xl">
+                        <i class="fa-solid fa-file-lines"></i>
+                    </div>
+                    <h4 class="text-sm font-bold text-slate-100 truncate" x-text="previewModal.name"></h4>
+                    <p class="text-xs text-slate-400 mt-1 mb-5">
+                        Tipe berkas ini tidak dapat dipratinjau langsung di browser. Silakan unduh atau buka berkas melalui tombol di bawah.
+                    </p>
+                    <div class="flex items-center justify-center gap-2.5">
+                        <a :href="previewModal.url" 
+                           download
+                           class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-600 text-white text-xs font-bold transition-all shadow-md shadow-primary/20 flex items-center gap-2">
+                            <i class="fa-solid fa-download"></i> Unduh File
+                        </a>
+                        <a :href="previewModal.url" 
+                           target="_blank"
+                           class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-bold transition-all border border-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> Buka File
+                        </a>
+                    </div>
+                </div>
+            </template>
+        </div>
+
     </div>
 </div>

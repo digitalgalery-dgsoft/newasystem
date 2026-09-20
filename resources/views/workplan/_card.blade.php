@@ -119,7 +119,7 @@
         <!-- Meta Indicators: Due Date & Comments -->
         <div class="flex items-center gap-2 flex-shrink-0">
             @if(!empty($task->attachment_url))
-            <a href="{{ $task->attachment_url }}" target="_blank" @click.stop class="text-slate-400 hover:text-primary transition-colors" title="Lihat Lampiran">
+            <a href="javascript:void(0)" @click.stop.prevent="openPreviewModal('{{ $task->attachment_url }}', '{{ addslashes($task->title) }}')" class="text-slate-400 hover:text-primary transition-colors cursor-pointer" title="Lihat Lampiran">
                 <i class="fa-solid fa-paperclip text-[10px]"></i>
             </a>
             @endif
