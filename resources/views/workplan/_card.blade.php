@@ -59,7 +59,7 @@
                     </form>
                     @endif
                     @if(Auth::user()->isAdmin() || $task->user === Auth::user()->name || $task->delegator === Auth::user()->name)
-                    <form method="POST" action="{{ route('workplan.destroy', $task->id) }}" onsubmit="return confirm('Hapus tugas ini secara permanen?')" class="block">
+                    <form method="POST" action="{{ route('workplan.destroy', $task->id) }}" onsubmit="return confirmDeleteWorkplan(event, 'Hapus tugas #{{ $task->id }} secara permanen?')" class="block">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="w-full px-3 py-1.5 text-left text-rose-600 hover:bg-rose-50 flex items-center gap-2 border-t border-slate-100">

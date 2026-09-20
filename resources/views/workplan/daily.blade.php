@@ -241,7 +241,7 @@
                         </td>
                         <td class="py-3.5 px-4 text-center whitespace-nowrap">
                             @if($isAdmin || $log->user === $userName)
-                            <form method="POST" action="{{ route('workplan.daily.destroy', $log->kode) }}" onsubmit="return confirm('Hapus catatan aktivitas ini?')" class="inline-block">
+                            <form method="POST" action="{{ route('workplan.daily.destroy', $log->kode) }}" onsubmit="return confirmDeleteWorkplan(event, 'Hapus catatan aktivitas ini?')" class="inline-block">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="w-7 h-7 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 flex items-center justify-center transition-all" title="Hapus Catatan">
@@ -393,3 +393,59 @@
 
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function confirmDeleteWorkplan(event, message) {
+    event.preventDefault();
+    const form = event.target.closest('form');
+    Swal.fire({
+        title: 'Konfirmasi Hapus',
+        text: message || 'Apakah Anda yakin ingin menghapus catatan aktivitas ini?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+        customClass: {
+            popup: 'rounded-2xl shadow-2xl',
+            confirmButton: 'rounded-xl font-bold px-4 py-2 text-xs',
+            cancelButton: 'rounded-xl font-bold px-4 py-2 text-xs'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            form.submit();
+        }
+    });
+    return false;
+}
+
+@if(session('success'))
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: @json(session('success')),
+        timer: 2500,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
+    });
+});
+@endif
+
+@if(session('error'))
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: 'error',
+        title: 'Perhatian!',
+        text: @json(session('error')),
+        confirmButtonColor: '#0F52BA',
+        customClass: { popup: 'rounded-2xl' }
+    });
+});
+@endif
+</script>
+@endpush

@@ -769,6 +769,44 @@
     
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        // Global SweetAlert replacement for native alert()
+        window.alert = function(message) {
+            if (typeof Swal === 'undefined') {
+                console.warn(message);
+                return;
+            }
+            let icon = 'info';
+            let title = 'Pemberitahuan';
+            const str = String(message || '');
+            const lower = str.toLowerCase();
+            if (lower.includes('ditolak') || lower.includes('hanya delegator') || lower.includes('tidak berhak')) {
+                icon = 'warning';
+                title = 'Akses Ditolak!';
+            } else if (lower.includes('gagal') || lower.includes('error') || lower.includes('kesalahan')) {
+                icon = 'error';
+                title = 'Terjadi Kesalahan';
+            } else if (lower.includes('berhasil') || lower.includes('sukses') || lower.includes('tersimpan') || lower.includes('disalin')) {
+                icon = 'success';
+                title = 'Berhasil!';
+            } else if (lower.includes('peringatan') || lower.includes('warning') || lower.includes('perhatian')) {
+                icon = 'warning';
+                title = 'Perhatian';
+            }
+
+            Swal.fire({
+                icon: icon,
+                title: title,
+                html: str.replace(/\n/g, '<br>'),
+                confirmButtonColor: '#0F52BA',
+                confirmButtonText: 'Mengerti',
+                customClass: {
+                    popup: 'rounded-2xl shadow-2xl',
+                    confirmButton: 'rounded-xl font-bold px-5 py-2.5 text-xs'
+                }
+            });
+        };
+    </script>
     
     @yield('scripts')
     @stack('scripts')

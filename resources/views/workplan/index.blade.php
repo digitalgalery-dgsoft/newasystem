@@ -543,7 +543,15 @@ function kanbanBoard() {
                         document.getElementById('copyReportModal').classList.remove('hidden');
                     }
                 })
-                .catch(err => alert('Gagal memuat laporan.'));
+                .catch(err => {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: 'Gagal memuat format laporan.',
+                        confirmButtonColor: '#0F52BA',
+                        customClass: { popup: 'rounded-2xl' }
+                    });
+                });
         },
 
         closeCopyReportModal() {
@@ -557,8 +565,17 @@ function kanbanBoard() {
             if (navigator.clipboard) {
                 navigator.clipboard.writeText(textarea.value);
             }
-            alert('Laporan berhasil disalin ke clipboard! Siap ditempel ke WhatsApp / Chat.');
             this.closeCopyReportModal();
+            Swal.fire({
+                icon: 'success',
+                title: 'Berhasil Disalin!',
+                text: 'Laporan tugas siap ditempel ke WhatsApp / Chat tim.',
+                timer: 2500,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end',
+                timerProgressBar: true
+            });
         },
 
         // Drag and drop
@@ -592,7 +609,17 @@ function kanbanBoard() {
 
         moveTaskStatus(taskId, targetStatus) {
             if (this.currentTask && this.currentTask.status === 'review' && targetStatus === 'done' && !this.canApprove) {
-                alert('Akses ditolak! Hanya Delegator/Pimpinan (' + this.currentTask.delegator + ') atau Administrator yang berhak menyetujui tugas dari status Review menjadi Done.');
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Akses Ditolak!',
+                    html: `Hanya <b>Delegator/Pimpinan (${this.currentTask.delegator})</b> atau <b>Administrator</b> yang berhak menyetujui tugas dari status <b>Review</b> menjadi <b>Done</b>.`,
+                    confirmButtonText: 'Mengerti',
+                    confirmButtonColor: '#0F52BA',
+                    customClass: {
+                        popup: 'rounded-2xl shadow-2xl',
+                        confirmButton: 'rounded-xl font-bold px-5 py-2.5 text-xs'
+                    }
+                });
                 return;
             }
 
@@ -610,11 +637,26 @@ function kanbanBoard() {
                 if (res.success) {
                     window.location.reload();
                 } else {
-                    alert(res.error || 'Gagal memindahkan tugas.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Akses Ditolak!',
+                        html: res.error || 'Gagal memindahkan status tugas.',
+                        confirmButtonColor: '#0F52BA',
+                        customClass: {
+                            popup: 'rounded-2xl shadow-2xl',
+                            confirmButton: 'rounded-xl font-bold px-5 py-2.5 text-xs'
+                        }
+                    });
                 }
             })
             .catch(err => {
-                alert('Terjadi kesalahan jaringan.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Kesalahan Jaringan',
+                    text: 'Tidak dapat menghubungi server. Periksa koneksi Anda.',
+                    confirmButtonColor: '#0F52BA',
+                    customClass: { popup: 'rounded-2xl' }
+                });
             });
         },
 
@@ -644,12 +686,24 @@ function kanbanBoard() {
                             assignee: res.task.assignee,
                         };
                     } else {
-                        alert(res.error || 'Gagal memuat rincian tugas.');
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: res.error || 'Gagal memuat rincian tugas.',
+                            confirmButtonColor: '#0F52BA',
+                            customClass: { popup: 'rounded-2xl' }
+                        });
                     }
                 })
                 .catch(() => {
                     this.isLoadingDetail = false;
-                    alert('Terjadi kesalahan jaringan.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Kesalahan Jaringan',
+                        text: 'Tidak dapat memuat detail tugas.',
+                        confirmButtonColor: '#0F52BA',
+                        customClass: { popup: 'rounded-2xl' }
+                    });
                 });
 
             this.loadComments(taskId);
@@ -683,8 +737,23 @@ function kanbanBoard() {
                         is_completed: false
                     });
                     this.loadActivities(this.detailTaskId);
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Ditambahkan',
+                        text: 'Sub-tugas berhasil ditambahkan.',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        toast: true,
+                        position: 'top-end'
+                    });
                 } else {
-                    alert(res.error || 'Gagal menambah subtask.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal Menambah Sub-Tugas',
+                        text: res.error || 'Terjadi kesalahan.',
+                        confirmButtonColor: '#0F52BA',
+                        customClass: { popup: 'rounded-2xl' }
+                    });
                 }
             });
         },
@@ -714,19 +783,46 @@ function kanbanBoard() {
         },
 
         deleteSubtaskItem(subtaskId) {
-            if (!confirm('Hapus item checklist ini?')) return;
-            fetch(`/workplan/subtasks/${subtaskId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json'
+            Swal.fire({
+                title: 'Hapus Sub-Tugas?',
+                text: 'Item checklist ini akan dihapus dari daftar.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'Ya, Hapus',
+                cancelButtonText: 'Batal',
+                reverseButtons: true,
+                customClass: {
+                    popup: 'rounded-2xl shadow-2xl',
+                    confirmButton: 'rounded-xl font-bold px-4 py-2 text-xs',
+                    cancelButton: 'rounded-xl font-bold px-4 py-2 text-xs'
                 }
-            })
-            .then(r => r.json())
-            .then(res => {
-                if (res.success) {
-                    this.subtasks = this.subtasks.filter(s => s.id !== subtaskId);
-                    this.loadActivities(this.detailTaskId);
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/workplan/subtasks/${subtaskId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(r => r.json())
+                    .then(res => {
+                        if (res.success) {
+                            this.subtasks = this.subtasks.filter(s => s.id !== subtaskId);
+                            this.loadActivities(this.detailTaskId);
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Terhapus',
+                                text: 'Item checklist berhasil dihapus.',
+                                timer: 1500,
+                                showConfirmButton: false,
+                                toast: true,
+                                position: 'top-end'
+                            });
+                        }
+                    });
                 }
             });
         },
@@ -753,23 +849,56 @@ function kanbanBoard() {
                     this.loadActivities(this.detailTaskId);
                     const cardTitle = document.querySelector(`#task-card-${this.detailTaskId} h4`);
                     if (cardTitle) cardTitle.innerText = this.editForm.title;
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Tersimpan!',
+                        text: 'Perubahan tugas berhasil disimpan.',
+                        timer: 1800,
+                        showConfirmButton: false,
+                        toast: true,
+                        position: 'top-end'
+                    });
                 } else {
-                    alert(res.error || 'Gagal menyimpan perubahan.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: res.error || 'Gagal menyimpan perubahan.',
+                        confirmButtonColor: '#0F52BA',
+                        customClass: { popup: 'rounded-2xl' }
+                    });
                 }
             });
         },
 
         deleteCurrentTask() {
-            if (!confirm('Hapus tugas ini secara permanen?')) return;
-            fetch(`/workplan/${this.detailTaskId}`, {
-                method: 'DELETE',
-                headers: {
-                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                    'Accept': 'application/json'
+            Swal.fire({
+                title: 'Hapus Tugas Permanen?',
+                text: 'Tugas ini beserta seluruh sub-tugas dan diskusinya akan dihapus permanen.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#e11d48',
+                cancelButtonColor: '#94a3b8',
+                confirmButtonText: 'Ya, Hapus Permanen',
+                cancelButtonText: 'Batal',
+                reverseButtons: true,
+                customClass: {
+                    popup: 'rounded-2xl shadow-2xl',
+                    confirmButton: 'rounded-xl font-bold px-4 py-2 text-xs',
+                    cancelButton: 'rounded-xl font-bold px-4 py-2 text-xs'
                 }
-            })
-            .then(() => {
-                window.location.reload();
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    fetch(`/workplan/${this.detailTaskId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(() => {
+                        window.location.reload();
+                    });
+                }
             });
         },
 
@@ -820,17 +949,90 @@ function kanbanBoard() {
                     this.newCommentText = '';
                     if (fileInput) fileInput.value = '';
                     this.loadActivities(this.detailTaskId);
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Terkirim',
+                        text: 'Komentar berhasil dipublikasikan.',
+                        timer: 1500,
+                        showConfirmButton: false,
+                        toast: true,
+                        position: 'top-end'
+                    });
                 } else {
-                    alert(data.error || 'Gagal mengirim komentar.');
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Gagal',
+                        text: data.error || 'Gagal mengirim komentar.',
+                        confirmButtonColor: '#0F52BA',
+                        customClass: { popup: 'rounded-2xl' }
+                    });
                 }
             })
             .catch(() => {
                 this.submittingComment = false;
-                alert('Terjadi kesalahan jaringan.');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Kesalahan Jaringan',
+                    text: 'Gagal mengirim komentar.',
+                    confirmButtonColor: '#0F52BA',
+                    customClass: { popup: 'rounded-2xl' }
+                });
             });
         }
     }
 }
+
+function confirmDeleteWorkplan(event, message) {
+    event.preventDefault();
+    const form = event.target.closest('form');
+    Swal.fire({
+        title: 'Konfirmasi Hapus',
+        text: message || 'Apakah Anda yakin ingin menghapus data ini?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#94a3b8',
+        confirmButtonText: 'Ya, Hapus Permanen',
+        cancelButtonText: 'Batal',
+        reverseButtons: true,
+        customClass: {
+            popup: 'rounded-2xl shadow-2xl',
+            confirmButton: 'rounded-xl font-bold px-4 py-2 text-xs',
+            cancelButton: 'rounded-xl font-bold px-4 py-2 text-xs'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            form.submit();
+        }
+    });
+    return false;
+}
+
+@if(session('success'))
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: 'success',
+        title: 'Berhasil!',
+        text: @json(session('success')),
+        timer: 2500,
+        showConfirmButton: false,
+        toast: true,
+        position: 'top-end'
+    });
+});
+@endif
+
+@if(session('error'))
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        icon: 'error',
+        title: 'Perhatian!',
+        text: @json(session('error')),
+        confirmButtonColor: '#0F52BA',
+        customClass: { popup: 'rounded-2xl' }
+    });
+});
+@endif
 
 function searchableUserFilter(config) {
     return {
