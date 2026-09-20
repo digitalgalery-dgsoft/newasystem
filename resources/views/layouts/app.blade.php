@@ -748,16 +748,23 @@
         }
 
         html[data-theme="dark"] .job-stats-table tbody tr:hover {
-            background-color: rgba(255, 255, 255, 0.04) !important;
+            background-color: rgba(255, 255, 255, 0.05) !important;
         }
 
+        /* RESET SELURUH BACKGROUND CELL TD AGAR TIDAK ADA PITA KABUT VERTIKAL */
         html[data-theme="dark"] .job-stats-table tbody td {
+            background-color: transparent !important;
+            background: transparent !important;
             border-color: var(--border-subtle) !important;
             color: var(--text-body) !important;
         }
 
         html[data-theme="dark"] .job-stats-table .stat-text-primary {
-            color: #f8fafc !important;
+            color: #ffffff !important;
+        }
+
+        html[data-theme="dark"] .job-stats-table .stat-text-subtle {
+            color: #94a3b8 !important;
         }
 
         html[data-theme="dark"] .job-stats-table .stat-badge-region {
@@ -786,104 +793,133 @@
             font-weight: 700 !important;
         }
 
-        /* Green, Yellow, Red Cells and Badges */
-        html[data-theme="dark"] .job-stats-table td.stat-cell-green {
-            background-color: rgba(16, 185, 129, 0.04) !important;
-        }
+        /* Green, Yellow, Red Badges (Tabel 3) */
         html[data-theme="dark"] .job-stats-table .stat-badge-green {
             background-color: rgba(16, 185, 129, 0.22) !important;
             color: #34d399 !important;
             border: 1px solid rgba(16, 185, 129, 0.45) !important;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.2) !important;
         }
 
-        html[data-theme="dark"] .job-stats-table td.stat-cell-yellow {
-            background-color: rgba(245, 158, 11, 0.04) !important;
-        }
         html[data-theme="dark"] .job-stats-table .stat-badge-yellow {
             background-color: rgba(245, 158, 11, 0.22) !important;
             color: #fbbf24 !important;
             border: 1px solid rgba(245, 158, 11, 0.45) !important;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.2) !important;
         }
 
-        html[data-theme="dark"] .job-stats-table td.stat-cell-red {
-            background-color: rgba(244, 63, 94, 0.04) !important;
-        }
         html[data-theme="dark"] .job-stats-table .stat-badge-red {
             background-color: rgba(244, 63, 94, 0.22) !important;
             color: #fb7185 !important;
             border: 1px solid rgba(244, 63, 94, 0.45) !important;
+            box-shadow: 0 0 8px rgba(244, 63, 94, 0.2) !important;
         }
 
-        /* Total Pelamar Cell */
         html[data-theme="dark"] .job-stats-table td.stat-cell-total {
             color: #ffffff !important;
-            background-color: rgba(255, 255, 255, 0.05) !important;
             font-weight: 900 !important;
         }
 
-        /* Step Odoo Badges */
-        html[data-theme="dark"] .job-stats-table .stat-badge-step-pelamar {
-            background-color: rgba(14, 165, 233, 0.2) !important;
+        /* ============================================================
+           STEP ODOO PILL BADGES (LIGHT & DARK MODE)
+           ============================================================ */
+        .stat-pill-step {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 28px;
+            padding: 2px 7px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1.25;
+            transition: all 0.15s ease;
+        }
+
+        /* Light Mode Pill Defaults */
+        .stat-pill-pelamar { background-color: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; }
+        .stat-pill-interview { background-color: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; }
+        .stat-pill-principal { background-color: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; }
+        .stat-pill-elearning { background-color: #fef3c7; color: #b45309; border: 1px solid #fde68a; }
+        .stat-pill-pkwt { background-color: #ccfbf1; color: #0f766e; border: 1px solid #99f6e4; }
+        .stat-pill-joined { background-color: #d1fae5; color: #065f46; border: 1px solid #6ee7b7; font-weight: 900; }
+        .stat-pill-none { background-color: #ffe4e6; color: #be123c; border: 1px solid #fecdd3; }
+        .stat-pill-total { background-color: #0f172a; color: #ffffff; border: 1px solid #334155; }
+        .stat-zero-val { color: #cbd5e1; font-weight: 400; font-size: 11px; }
+
+        /* Dark Mode Pill Overrides (Glowing High Contrast) */
+        html[data-theme="dark"] .stat-pill-pelamar {
+            background-color: rgba(14, 165, 233, 0.22) !important;
             color: #38bdf8 !important;
-            border: 1px solid rgba(14, 165, 233, 0.4) !important;
+            border: 1px solid rgba(14, 165, 233, 0.5) !important;
+            box-shadow: 0 0 8px rgba(14, 165, 233, 0.25) !important;
         }
 
-        html[data-theme="dark"] .job-stats-table .stat-badge-step-interview {
-            background-color: rgba(99, 102, 241, 0.2) !important;
-            color: #818cf8 !important;
-            border: 1px solid rgba(99, 102, 241, 0.4) !important;
+        html[data-theme="dark"] .stat-pill-interview {
+            background-color: rgba(99, 102, 241, 0.22) !important;
+            color: #a5b4fc !important;
+            border: 1px solid rgba(99, 102, 241, 0.5) !important;
+            box-shadow: 0 0 8px rgba(99, 102, 241, 0.25) !important;
         }
 
-        html[data-theme="dark"] .job-stats-table .stat-badge-step-principal {
-            background-color: rgba(168, 85, 247, 0.2) !important;
-            color: #c084fc !important;
-            border: 1px solid rgba(168, 85, 247, 0.4) !important;
+        html[data-theme="dark"] .stat-pill-principal {
+            background-color: rgba(168, 85, 247, 0.22) !important;
+            color: #d8b4fe !important;
+            border: 1px solid rgba(168, 85, 247, 0.5) !important;
+            box-shadow: 0 0 8px rgba(168, 85, 247, 0.25) !important;
         }
 
-        html[data-theme="dark"] .job-stats-table .stat-badge-step-elearning {
-            background-color: rgba(245, 158, 11, 0.2) !important;
-            color: #fbbf24 !important;
-            border: 1px solid rgba(245, 158, 11, 0.4) !important;
+        html[data-theme="dark"] .stat-pill-elearning {
+            background-color: rgba(245, 158, 11, 0.22) !important;
+            color: #fde68a !important;
+            border: 1px solid rgba(245, 158, 11, 0.5) !important;
+            box-shadow: 0 0 8px rgba(245, 158, 11, 0.25) !important;
         }
 
-        html[data-theme="dark"] .job-stats-table .stat-badge-step-pkwt {
-            background-color: rgba(20, 184, 166, 0.2) !important;
-            color: #2dd4bf !important;
-            border: 1px solid rgba(20, 184, 166, 0.4) !important;
+        html[data-theme="dark"] .stat-pill-pkwt {
+            background-color: rgba(20, 184, 166, 0.22) !important;
+            color: #5eead4 !important;
+            border: 1px solid rgba(20, 184, 166, 0.5) !important;
+            box-shadow: 0 0 8px rgba(20, 184, 166, 0.25) !important;
         }
 
-        html[data-theme="dark"] .job-stats-table .stat-badge-step-joined {
-            background-color: rgba(16, 185, 129, 0.25) !important;
+        html[data-theme="dark"] .stat-pill-joined {
+            background-color: rgba(16, 185, 129, 0.28) !important;
             color: #34d399 !important;
-            border: 1px solid rgba(16, 185, 129, 0.5) !important;
+            border: 1px solid rgba(16, 185, 129, 0.6) !important;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.35) !important;
+            font-weight: 900 !important;
         }
 
-        html[data-theme="dark"] .job-stats-table .stat-badge-step-none {
-            background-color: rgba(244, 63, 94, 0.2) !important;
-            color: #fb7185 !important;
-            border: 1px solid rgba(244, 63, 94, 0.4) !important;
+        html[data-theme="dark"] .stat-pill-none {
+            background-color: rgba(244, 63, 94, 0.22) !important;
+            color: #fda4af !important;
+            border: 1px solid rgba(244, 63, 94, 0.5) !important;
+            box-shadow: 0 0 8px rgba(244, 63, 94, 0.25) !important;
         }
 
-        /* Neutral Total Pill */
-        html[data-theme="dark"] .job-stats-table .stat-badge-total {
-            background-color: rgba(255, 255, 255, 0.12) !important;
+        html[data-theme="dark"] .stat-pill-total {
+            background-color: rgba(255, 255, 255, 0.15) !important;
             color: #ffffff !important;
-            border: 1px solid rgba(255, 255, 255, 0.22) !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+            box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4) !important;
         }
 
-        /* Zero / Empty Values */
-        html[data-theme="dark"] .job-stats-table .stat-zero-val {
-            color: #64748b !important;
+        html[data-theme="dark"] .stat-zero-val {
+            color: #475569 !important;
+            background: transparent !important;
+            border: none !important;
+            box-shadow: none !important;
         }
 
         /* Portal Action Button */
         html[data-theme="dark"] .job-stats-table .stat-btn-portal {
-            background-color: rgba(99, 102, 241, 0.18) !important;
-            color: #a5b4fc !important;
-            border-color: rgba(99, 102, 241, 0.35) !important;
+            background-color: rgba(99, 102, 241, 0.2) !important;
+            color: #c7d2fe !important;
+            border-color: rgba(99, 102, 241, 0.45) !important;
         }
         html[data-theme="dark"] .job-stats-table .stat-btn-portal:hover {
-            background-color: rgba(99, 102, 241, 0.3) !important;
+            background-color: rgba(99, 102, 241, 0.35) !important;
             color: #ffffff !important;
         }
 

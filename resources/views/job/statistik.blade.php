@@ -396,22 +396,22 @@
                             <td class="py-2.5 px-3.5 font-bold text-slate-900 stat-text-primary" x-text="row.job_title"></td>
                             
                             <!-- Green Badge -->
-                            <td class="stat-cell-green py-2.5 px-3.5 text-center bg-emerald-50/40">
+                            <td class="py-2.5 px-3.5 text-center">
                                 <span class="stat-badge-green inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-200" x-text="Number(row.green).toLocaleString()"></span>
                             </td>
 
                             <!-- Yellow Badge -->
-                            <td class="stat-cell-yellow py-2.5 px-3.5 text-center bg-amber-50/40">
+                            <td class="py-2.5 px-3.5 text-center">
                                 <span class="stat-badge-yellow inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-amber-100 text-amber-800 border border-amber-200" x-text="Number(row.yello).toLocaleString()"></span>
                             </td>
 
                             <!-- Red Badge -->
-                            <td class="stat-cell-red py-2.5 px-3.5 text-center bg-rose-50/40">
+                            <td class="py-2.5 px-3.5 text-center">
                                 <span class="stat-badge-red inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-rose-100 text-rose-800 border border-rose-200" x-text="Number(row.red).toLocaleString()"></span>
                             </td>
 
                             <!-- Total -->
-                            <td class="stat-cell-total py-2.5 px-3.5 text-center font-black text-slate-900 bg-slate-100/70" x-text="Number(row.total_pelamar).toLocaleString()"></td>
+                            <td class="stat-cell-total py-2.5 px-3.5 text-center font-black text-slate-900" x-text="Number(row.total_pelamar).toLocaleString()"></td>
                         </tr>
                     </template>
                     <tr x-show="filteredRows.length === 0">
@@ -516,63 +516,56 @@
                             <td class="py-2.5 px-3.5 text-center text-slate-400" x-text="(page - 1) * perPage + idx + 1"></td>
                             <td class="py-2.5 px-3.5">
                                 <div class="font-bold text-slate-900 stat-text-primary" x-text="row.user_display"></div>
-                                <div class="text-[10px] text-slate-400 font-mono" x-text="row.user_email"></div>
+                                <div class="text-[10px] text-slate-400 font-mono stat-text-subtle" x-text="row.user_email"></div>
                             </td>
                             <td class="py-2.5 px-3.5">
                                 <div class="font-semibold text-slate-800 stat-text-primary" x-text="row.area"></div>
-                                <div class="text-[10px] text-slate-400" x-text="row.region"></div>
+                                <div class="text-[10px] text-slate-400 stat-text-subtle" x-text="row.region"></div>
                             </td>
                             <!-- Total -->
-                            <td class="py-2.5 px-3.5 text-center font-black text-slate-900 bg-slate-100/80 stat-cell-total">
-                                <span class="stat-badge-total inline-flex items-center justify-center min-w-[28px] px-2 py-0.5 rounded-full text-xs font-black bg-slate-800 text-white" x-text="Number(row.total).toLocaleString()"></span>
+                            <td class="py-2.5 px-3.5 text-center font-black stat-cell-total">
+                                <span class="stat-pill-step stat-pill-total" x-text="Number(row.total).toLocaleString()"></span>
                             </td>
 
                             <!-- 1. Pelamar -->
-                            <td class="py-2.5 px-3.5 text-center bg-sky-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.data_pelamar > 0 ? 'stat-badge-step-pelamar bg-sky-100 text-sky-800 font-black' : 'stat-zero-val text-slate-300'"
+                            <td class="py-2.5 px-3.5 text-center">
+                                <span :class="row.data_pelamar > 0 ? 'stat-pill-step stat-pill-pelamar' : 'stat-zero-val'" 
                                       x-text="Number(row.data_pelamar).toLocaleString()"></span>
                             </td>
 
                             <!-- 2. Interview -->
-                            <td class="py-2.5 px-3.5 text-center bg-indigo-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.interview > 0 ? 'stat-badge-step-interview bg-indigo-100 text-indigo-800 font-black' : 'stat-zero-val text-slate-300'"
+                            <td class="py-2.5 px-3.5 text-center">
+                                <span :class="row.interview > 0 ? 'stat-pill-step stat-pill-interview' : 'stat-zero-val'" 
                                       x-text="Number(row.interview).toLocaleString()"></span>
                             </td>
 
                             <!-- 3. Principal -->
-                            <td class="py-2.5 px-3.5 text-center bg-purple-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.principal > 0 ? 'stat-badge-step-principal bg-purple-100 text-purple-800 font-black' : 'stat-zero-val text-slate-300'"
+                            <td class="py-2.5 px-3.5 text-center">
+                                <span :class="row.principal > 0 ? 'stat-pill-step stat-pill-principal' : 'stat-zero-val'" 
                                       x-text="Number(row.principal).toLocaleString()"></span>
                             </td>
 
                             <!-- 4. E-Learning -->
-                            <td class="py-2.5 px-3.5 text-center bg-amber-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.elearning > 0 ? 'stat-badge-step-elearning bg-amber-100 text-amber-800 font-black' : 'stat-zero-val text-slate-300'"
+                            <td class="py-2.5 px-3.5 text-center">
+                                <span :class="row.elearning > 0 ? 'stat-pill-step stat-pill-elearning' : 'stat-zero-val'" 
                                       x-text="Number(row.elearning).toLocaleString()"></span>
                             </td>
 
                             <!-- 5. PKWT -->
-                            <td class="py-2.5 px-3.5 text-center bg-teal-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.pkwt > 0 ? 'stat-badge-step-pkwt bg-teal-100 text-teal-800 font-black' : 'stat-zero-val text-slate-300'"
+                            <td class="py-2.5 px-3.5 text-center">
+                                <span :class="row.pkwt > 0 ? 'stat-pill-step stat-pill-pkwt' : 'stat-zero-val'" 
                                       x-text="Number(row.pkwt).toLocaleString()"></span>
                             </td>
 
                             <!-- 6. Joined -->
-                            <td class="py-2.5 px-3.5 text-center bg-emerald-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.joined > 0 ? 'stat-badge-step-joined bg-emerald-100 text-emerald-800 font-black' : 'stat-zero-val text-slate-300'"
+                            <td class="py-2.5 px-3.5 text-center">
+                                <span :class="row.joined > 0 ? 'stat-pill-step stat-pill-joined' : 'stat-zero-val'" 
                                       x-text="Number(row.joined).toLocaleString()"></span>
                             </td>
 
                             <!-- Belum di Odoo -->
-                            <td class="py-2.5 px-3.5 text-center bg-rose-50/40">
-                                <span class="inline-flex items-center justify-center min-w-[24px] px-1.5 py-0.5 rounded-md text-xs font-bold" 
-                                      :class="row.belum_di_odoo > 0 ? 'stat-badge-step-none bg-rose-100 text-rose-800 font-black' : 'stat-zero-val text-slate-300'"
+                            <td class="py-2.5 px-3.5 text-center">
+                                <span :class="row.belum_di_odoo > 0 ? 'stat-pill-step stat-pill-none' : 'stat-zero-val'" 
                                       x-text="Number(row.belum_di_odoo).toLocaleString()"></span>
                             </td>
 
@@ -580,7 +573,7 @@
                             <td class="py-2.5 px-3.5 text-center">
                                 <a :href="'{{ route('kandidatportal.index') }}?recruiter=' + encodeURIComponent(row.user_email)" 
                                    title="Lihat Kandidat Portal Rekrutor Ini"
-                                   class="stat-btn-portal inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-all">
+                                   class="stat-btn-portal inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold transition-all">
                                     <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
                                     <span>Portal</span>
                                 </a>

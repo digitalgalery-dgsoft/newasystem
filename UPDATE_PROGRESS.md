@@ -1275,12 +1275,15 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
        - Sel Data: `.stat-cell-jobpost`, `.stat-cell-pelamar`, `.stat-cell-prinsiple`, `.stat-cell-green`, `.stat-cell-yellow`, `.stat-cell-red`, `.stat-cell-total`, `.stat-text-primary`, `.stat-badge-region`.
        - Badge Tahapan Odoo: `.stat-badge-step-*`, `.stat-zero-val`, `.stat-btn-portal`, `.job-stats-footer`.
   2. **Styling Dark Mode Presisi Tinggi ([layouts/app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php))**:
-     - **Jumlah Job Post**: Berubah menjadi warna Sky Blue cerah (`#38bdf8`) dengan latar aksen transparan halus (`rgba(56, 189, 248, 0.08)`) dan font tebal (*extra bold*).
-     - **Jumlah Pelamar**: Berubah menjadi warna Mint Emerald tajam (`#34d399`) dengan latar transparan aksen (`rgba(16, 185, 129, 0.08)`).
+     - **Eliminasi Pita Kabut Vertikal**: Seluruh background cell `<td>` diatur transparan (`background: transparent !important;`) pada mode dark, menghapus lapisan belang vertikal kusam (`bg-*-50/40`) sehingga latar tabel tampil bersih, rata, dan menyatu harmonis dengan warna dark theme.
+     - **Jumlah Job Post & Pelamar**: Job Post tampil Sky Blue cerah (`#38bdf8`), Pelamar tampil Mint Emerald tajam (`#34d399`).
      - **Prinsiple**: Diberikan warna Lilac Indigo terang (`#a5b4fc`).
      - **Badge Kategori Green, Yellow, Red & Total**: Diberikan latar transparan ber-border halus dengan warna kontras tinggi: Green (`#34d399`), Yellow (`#fbbf24`), Red (`#fb7185`), dan Total (`#ffffff`).
-     - **Tahapan Pipeline Odoo ERP**: Diberikan aksen warna neon cerah sesuai tahapan (*Sky, Indigo, Purple, Amber, Teal, Emerald*), dengan penekanan khusus pada *Joined* (`#34d399` font-black) dan pemudaran nilai 0 (`#64748b`) agar data riil lebih menonjol.
-     - **Tombol Aksi Portal**: Diberikan styling dark mode transparan indigo (`rgba(99, 102, 241, 0.18)` / `#a5b4fc`) dengan efek hover terang.
+     - **Sistem Pill Tahapan Pipeline Odoo ERP (`.stat-pill-step`)**:
+       - Menerapkan komponen pill rounded tersendiri dengan aksen neon bergradasi (*Pelamar Sky Blue, Interview Indigo, Principal Lavender, E-Learning Golden Amber, PKWT Cyan Teal, Belum di Odoo Soft Coral*).
+       - Penekanan khusus pada **6. Joined** (`#34d399` font-black dengan glow shadow).
+       - Penataan angka kosong / 0 (`.stat-zero-val`): ditampilkan halus tanpa box border (`#475569`) agar pandangan mata pengguna fokus tertuju pada angka tahapan yang aktif.
+     - **Tombol Aksi Portal**: Menggunakan styling dark mode transparan indigo (`rgba(99, 102, 241, 0.2)` / `#c7d2fe`) dengan hover bercahaya terang.
      - **Header Sticky & Pagination**: Header tabel menggunakan `var(--bg-card-alt)` dengan teks `#cbd5e1`, pemisah border halus `var(--border-subtle)`, dan kontrol paginasi yang nyaman di mata.
 
 ---
@@ -1289,6 +1292,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `43781fb` | fix(ui): perbaiki tabel step Odoo dan hilangkan background kolom kusam pada mode dark |
 | `fc5c7f4` | fix(ui): perbaiki kontras dan keterbacaan tabel di modul job statistik pada dark mode |
 | `6ed5542` | fix(ui): perbaiki kontras dan keterbacaan card step Odoo ERP serta opacity slate pada dark mode |
 | `419d18c` | feat(ui): tampilkan jabatan di label user dan tambahkan kustomisasi tema dashboard (light/dark mode & custom color) |
