@@ -5,6 +5,9 @@ namespace App\Services;
 use ZipArchive;
 use Exception;
 use Carbon\Carbon;
+use App\Models\Employee;
+use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class CandidateXlsxExportService
 {
@@ -348,6 +351,56 @@ class CandidateXlsxExportService
         }
         $baseUrl = rtrim($baseUrl, '/');
 
+        // Pre-fetch Data Karyawan (Employee) & User berdasarkan email untuk kolom Nama AS
+        $asEmails = [];
+        foreach ($candidates as $c) {
+            $raw = trim($c->useras ?? '');
+            if (!empty($raw) && str_contains($raw, '@')) {
+                $asEmails[] = strtolower($raw);
+            }
+            if ($c->recruiter && !empty($c->recruiter->email)) {
+                $asEmails[] = strtolower(trim($c->recruiter->email));
+            }
+        }
+        $asEmails = array_values(array_unique($asEmails));
+
+        $asNameLookup = [];
+        if (!empty($asEmails)) {
+            // 1. Prioritas Utama: Ambil Nama Lengkap dari Data Karyawan (Employee) berdasarkan email
+            try {
+                $emps = Employee::whereIn(DB::raw('LOWER(TRIM(email))'), $asEmails)
+                    ->whereNotNull('nama_karyawan')
+                    ->where('nama_karyawan', '!=', '')
+                    ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
+                    ->orderBy('id', 'desc')
+                    ->get(['email', 'nama_karyawan']);
+                foreach ($emps as $e) {
+                    $k = strtolower(trim($e->email));
+                    if (!empty($e->nama_karyawan) && !isset($asNameLookup[$k])) {
+                        $asNameLookup[$k] = trim($e->nama_karyawan);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // safeguard
+            }
+
+            // 2. Prioritas Kedua: Ambil dari data Users jika belum ada di Data Karyawan (misal akun Admin)
+            try {
+                $users = User::whereIn(DB::raw('LOWER(TRIM(email))'), $asEmails)
+                    ->whereNotNull('name')
+                    ->where('name', '!=', '')
+                    ->get(['email', 'name']);
+                foreach ($users as $u) {
+                    $k = strtolower(trim($u->email));
+                    if (!isset($asNameLookup[$k]) && !empty($u->name) && !str_contains($u->name, '@')) {
+                        $asNameLookup[$k] = trim($u->name);
+                    }
+                }
+            } catch (\Throwable $e) {
+                // safeguard
+            }
+        }
+
         // Data Rows
         $rowNum = 5;
         $no = 1;
@@ -387,8 +440,23 @@ class CandidateXlsxExportService
             $region = $regionMap[$areaLower] ?? (!empty($c->region) ? $c->region : 'Region 1');
             $secCity = !empty($c->city_domicile) ? trim($c->city_domicile) : (!empty($c->penempatan) ? trim($c->penempatan) : $area);
 
-            // AS / Rekruter
-            $namaAs = !empty($c->useras) ? trim($c->useras) : ($c->recruiter ? $c->recruiter->name : '-');
+            // Q: Nama AS (Ambil Nama Lengkap dari Data Karyawan berdasarkan email)
+            $namaAs = '-';
+            $rawAs = !empty($c->useras) ? trim($c->useras) : ($c->recruiter ? ($c->recruiter->email ?: $c->recruiter->name) : '');
+            if (!empty($rawAs)) {
+                $lowerAs = strtolower($rawAs);
+                if (isset($asNameLookup[$lowerAs])) {
+                    $namaAs = $asNameLookup[$lowerAs];
+                } elseif ($c->recruiter && !empty($c->recruiter->name) && !str_contains($c->recruiter->name, '@')) {
+                    $namaAs = trim($c->recruiter->name);
+                } elseif (!str_contains($rawAs, '@')) {
+                    $namaAs = ucwords(strtolower($rawAs));
+                } else {
+                    $parts = explode('@', $rawAs)[0];
+                    $cleanName = preg_replace('/[0-9_.-]+/', ' ', $parts);
+                    $namaAs = ucwords(trim($cleanName)) ?: $rawAs;
+                }
+            }
 
             // Principle
             $prinName = '-';

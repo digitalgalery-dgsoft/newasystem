@@ -541,28 +541,27 @@ class Candidate extends Model
         }
 
         if (str_contains($useras, '@')) {
-            $userObj = User::whereRaw('LOWER(email) = ?', [strtolower($useras)])->first();
-            if ($userObj) {
-                return $userObj->name;
-            }
+            $cleanEmail = strtolower($useras);
 
-            $employee = Employee::whereRaw('LOWER(email) = ?', [strtolower($useras)])
-                ->where('tipe_karyawan', 'Inhouse')
-                ->where('status', 'Aktiv')
+            // 1. Prioritas Utama: Ambil Nama Lengkap dari Data Karyawan (Employee) berdasarkan email
+            $employee = Employee::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])
+                ->whereNotNull('nama_karyawan')
+                ->where('nama_karyawan', '!=', '')
+                ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
+                ->orderBy('id', 'desc')
                 ->first();
 
-            if ($employee) {
-                return $employee->nama_karyawan;
+            if ($employee && !empty($employee->nama_karyawan)) {
+                return trim($employee->nama_karyawan);
             }
 
-            $anyEmployee = Employee::whereRaw('LOWER(email) = ?', [strtolower($useras)])
-                ->where('status', 'Aktiv')
-                ->first();
-
-            if ($anyEmployee) {
-                return $anyEmployee->nama_karyawan;
+            // 2. Cek akun User jika ada di users dan namanya bukan email
+            $userObj = User::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first();
+            if ($userObj && !empty($userObj->name) && !str_contains($userObj->name, '@')) {
+                return trim($userObj->name);
             }
 
+            // 3. Fallback: format username email menjadi Title Case
             $parts = explode('@', $useras)[0];
             $name = preg_replace('/[0-9_.-]+/', ' ', $parts);
             return ucwords(trim($name)) ?: $useras;

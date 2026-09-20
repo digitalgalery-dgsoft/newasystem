@@ -1174,10 +1174,29 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 64. 👤 Resolusi Nama Lengkap AS / Rekruter pada Export Excel (.xlsx) Kandidat Portal dari Data Karyawan (20 September 2026)
+- **Akar Masalah**:
+  - Pada dokumen hasil export data Kandidat Job Portal ke format Excel (.xlsx), kolom Q (**Nama AS**) sebelumnya langsung mengambil nilai mentah `candidates.useras`, yang sebagian besar berisi alamat email pengguna (seperti `muhammadarry2693@gmail.com`, `rahmantaufik778@gmail.com`, dll.).
+- **Solusi & Implementasi Terpadu**:
+  1. **Service Export Excel (`CandidateXlsxExportService.php`)**:
+     - Menerapkan mekanisme pre-fetch batch lookup nama lengkap karyawan dari tabel Data Karyawan (`employees`) berdasarkan email (`LOWER(TRIM(email))`), mengeliminasi query N+1 saat mengekspor ribuan data pelamar sekaligus.
+     - Resolusi berjenjang kolom Q **Nama AS**:
+       - *Prioritas 1*: Mengambil `nama_karyawan` resmi dari Data Karyawan (`Employee`).
+       - *Prioritas 2*: Mengambil `name` dari tabel `User` jika belum terdaftar di Data Karyawan (misal akun Administrator).
+       - *Prioritas 3*: Mempertahankan nama asli jika data `useras` sudah berupa nama (bukan alamat email).
+       - *Prioritas 4*: Pemformatan Title Case rapi dari username email jika email belum terdaftar di master data.
+  2. **Model Kandidat (`Candidate.php`)**:
+     - Memperbarui accessor `getUserDisplayNameAttribute()` agar memprioritaskan pencarian nama lengkap dari Data Karyawan (`Employee`) berdasarkan kecocokan email sebelum memeriksa tabel `users`.
+  3. **Controller Kandidat Portal (`KandidatPortalController.php`)**:
+     - Memperbarui penyusunan daftar rekruter (`allRecruiters`) pada dropdown filter serta label subtitle banner dokumen Excel agar selalu menampilkan nama lengkap karyawan resmi.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `c5de959` | docs: document Milestone 63 profile avatar in chat bubbles and real-time notifications in UPDATE_PROGRESS.md |
 | `e218f23` | fix(workplan-chat): replace @error with x-on:error to avoid blade directive collision |
 | `2f445cd` | feat(workplan-chat): add profile avatars to chat bubbles and real-time notifications with bell badge counter and toast popup |
 | `6a5bd22` | fix(chat): optimize employee query to pure inhouse (reduce from 23k to 794 items), cap dropdown rendering to 60 items, and fix modal backdrop click bubbling |
