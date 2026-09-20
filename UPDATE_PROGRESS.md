@@ -1364,7 +1364,8 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
-| `c4dbdf0` | fix(export): resolve Class PhpOffice\PhpSpreadsheet\Spreadsheet not found by migrating WorkPlan and ActivityLog exports to native ZipArchive OpenXML |
+| `88f4183` | fix(export): resolve Class PhpOffice\PhpSpreadsheet\Spreadsheet not found by migrating WorkPlan and ActivityLog exports to native ZipArchive OpenXML |
+| `b924940` | docs: sinkronisasi progres pembaruan sistem dan riwayat commit ke UPDATE_PROGRESS.md |
 | `ea0d004` | feat(audit): implementasi sistem audit trail terpusat, activity logs viewer, diff modal, dan export excel di seluruh sistem |
 
 | `e64305b` | fix(ui): perbaiki tabel step Odoo dan hilangkan background kolom kusam pada mode dark |
