@@ -1613,6 +1613,42 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 25. 🎯 Pembatasan Ketat Data Kandidat Portal & Interview di Dashboard AS (Hanya Kandidat Milik AS Terkait)
+- **Akar Masalah**:
+  - Pada commit `6dc7a35`, metode `User::canViewAllCandidates()` memiliki fallback: `return $this->handlesAllPrinciples() && $this->coversAllAreas();`.
+  - Karena pada model `User` dan `Role` kedua metode tersebut secara default bernilai `true` jika tidak ada pembatasan khusus pada akun, maka **seluruh 124 user AS (Area Supervisor / Recruiter) di sistem otomatis terdeteksi memiliki hak melihat seluruh kandidat nasional** (`canViewAllCandidates() === true`).
+  - Akibatnya, saat AS login ke `/kandidatportal` dan `/interview`, sistem tidak menerapkan filter `useras` / `recruiter_id` dan menampilkan seluruh 25.000+ kandidat nasional beserta dropdown switcher rekruter. Selain itu, pada `/interview`, Tabel 2 (*Data Kandidat Rekan Se-Area*) juga memuat kandidat milik rekruter lain.
+- **Solusi & Implementasi**:
+  1. **Model `User.php` (`canViewAllCandidates()`)**:
+     - Menghapus fallback `handlesAllPrinciples() && coversAllAreas()`.
+     - Fungsi ini sekarang **hanya mengembalikan `true`** untuk:
+       - Administrator (`$this->isAdmin() || $this->role === 'admin'`)
+       - Head HR dan Admin Officer (`in_array($this->role, ['head_hr', 'admin_officer'])`)
+       - User yang secara eksplisit diberikan izin RBAC `view_all_candidates` (`$this->hasPermission('view_all_candidates')`)
+     - Untuk seluruh user AS biasa, fungsi ini secara konsisten mengembalikan `false`.
+  2. **Controller `InterviewController.php`**:
+     - Query utama (`$myCandidatesQuery`) untuk user AS dibatasi secara mutlak hanya pada kandidat milik akun login tersebut via identitas AS (`useras` email, nama, alias) dan `recruiter_id`.
+     - Daftar `$allRecruiters` dioptimasi hanya dieksekusi jika user memiliki hak view all (Admin), sehingga menghemat beban database untuk user AS.
+     - Tabel 2 (*Data Kandidat Rekan Se-Area*) dinonaktifkan untuk user AS (hanya aktif jika Admin sedang memfilter rekruter tertentu), sehingga di dashboard AS hanya muncul kandidat milik AS tersebut.
+     - Pada `walkInterview()`, data kandidat walk-in untuk non-admin juga dibatasi pada kandidat milik AS terkait.
+  3. **Controller `KandidatPortalController.php`**:
+     - Seluruh tab (*Baru*, *Interview*, *Terima*, *Arsip*) serta kartu metrik top statistics secara otomatis mencerminkan hanya kandidat milik AS terkait.
+     - Ekspor Excel (`exportExcel`) untuk AS otomatis hanya mengekspor kandidat milik AS tersebut.
+  4. **Tampilan Blade (`interview/index.blade.php` & `kandidatportal/index.blade.php`)**:
+     - Dropdown filter rekruter (`filter_user` & `recruiter`) disembunyikan untuk user AS biasa dan hanya tampil untuk Administrator.
+     - Tabel 2 disembunyikan sepenuhnya dari dashboard AS.
+- **Hasil Verifikasi Live di Server Production (Server 3)**:
+  - User AS (misal *Yeseniya Emeralda D.S*):
+    - `/interview`: Total 1.467 kandidat (hanya miliknya, rekan area = 0).
+    - `/kandidatportal`: Total 15 pelamar (hanya miliknya, scope: *Kandidat Milik Anda*).
+    - Dropdown switcher rekruter tidak muncul.
+  - User AS lain (*Imam Hozali*): 1.259 kandidat interview & 1 portal pelamar.
+  - User AS lain (*Abdur Rahman*): 4 kandidat interview & 326 portal pelamar.
+  - Super Administrator: Tetap memiliki akses penuh melihat seluruh 10.481 kandidat aktif nasional dan dapat memfilter per rekruter secara bebas.
+
+---
+
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
