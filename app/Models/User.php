@@ -198,11 +198,11 @@ class User extends Authenticatable
     /**
      * Cek apakah user berhak melihat seluruh data kandidat (lintas rekruter / nasional)
      * Mengembalikan true jika user adalah admin, role head_hr/admin_officer,
-     * ATAU diset menangani Semua Prinsiple DAN Semua Area (All Prinsiple & All Area).
+     * ATAU memiliki izin khusus 'view_all_candidates'.
      */
     public function canViewAllCandidates(): bool
     {
-        if ($this->isAdmin()) {
+        if ($this->isAdmin() || $this->role === 'admin') {
             return true;
         }
 
@@ -210,8 +210,13 @@ class User extends Authenticatable
             return true;
         }
 
-        return $this->handlesAllPrinciples() && $this->coversAllAreas();
+        if ($this->hasPermission('view_all_candidates')) {
+            return true;
+        }
+
+        return false;
     }
+
 
     /**
      * Relasi ke role model

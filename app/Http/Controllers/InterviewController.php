@@ -191,45 +191,55 @@ class InterviewController extends Controller
         $searchArea = $request->query('search_area');
         $filterUser = $request->query('filter_user');
 
-        // Ambil daftar rekruter dengan jumlah kandidat aktif
-        $allRecruiters = \Illuminate\Support\Facades\DB::table('candidates')
-            ->select('useras', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
-            ->whereNotIn('status', ['Arsip', 'archived'])
-            ->where(function ($q) {
-                $q->whereNull('jenis')->orWhere('jenis', '');
-            })
-            ->where(function ($q) {
-                $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
-            })
-            ->whereNotNull('useras')
-            ->where('useras', '!=', '')
-            ->groupBy('useras')
-            ->orderByDesc('total')
-            ->get();
+        $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
+        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
+        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
+        $displayRecruiterName = $user ? $user->name : 'User';
+        $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
+        $displayRecruiterArea = $user->area ?? 'JAKARTA';
 
-        $recruiterEmails = $allRecruiters->pluck('useras')->filter(fn($u) => str_contains($u, '@'))->map(fn($e) => strtolower(trim($e)))->unique()->values()->all();
-        $employeeLookup = [];
-        if (!empty($recruiterEmails)) {
-            $emps = Employee::whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(email)'), $recruiterEmails)
-                ->where('status', 'Aktiv')
-                ->get(['email', 'nama_karyawan', 'area']);
-            foreach ($emps as $e) {
-                $employeeLookup[strtolower(trim($e->email))] = $e;
+        // Ambil daftar rekruter dengan jumlah kandidat aktif (Hanya untuk Admin / All-Scope switcher)
+        $allRecruiters = collect();
+        if ($canViewAllRecruiters) {
+            $allRecruiters = \Illuminate\Support\Facades\DB::table('candidates')
+                ->select('useras', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
+                ->whereNotIn('status', ['Arsip', 'archived'])
+                ->where(function ($q) {
+                    $q->whereNull('jenis')->orWhere('jenis', '');
+                })
+                ->where(function ($q) {
+                    $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
+                })
+                ->whereNotNull('useras')
+                ->where('useras', '!=', '')
+                ->groupBy('useras')
+                ->orderByDesc('total')
+                ->get();
+
+            $recruiterEmails = $allRecruiters->pluck('useras')->filter(fn($u) => str_contains($u, '@'))->map(fn($e) => strtolower(trim($e)))->unique()->values()->all();
+            $employeeLookup = [];
+            if (!empty($recruiterEmails)) {
+                $emps = Employee::whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(email)'), $recruiterEmails)
+                    ->where('status', 'Aktiv')
+                    ->get(['email', 'nama_karyawan', 'area']);
+                foreach ($emps as $e) {
+                    $employeeLookup[strtolower(trim($e->email))] = $e;
+                }
             }
-        }
-        foreach ($allRecruiters as $r) {
-            $lower = strtolower(trim($r->useras));
-            if (isset($employeeLookup[$lower])) {
-                $r->display_name = $employeeLookup[$lower]->nama_karyawan;
-                $r->area = $employeeLookup[$lower]->area;
-            } elseif (str_contains($r->useras, '@')) {
-                $parts = explode('@', $r->useras)[0];
-                $name = preg_replace('/[0-9_.-]+/', ' ', $parts);
-                $r->display_name = ucwords(trim($name)) ?: $r->useras;
-                $r->area = '';
-            } else {
-                $r->display_name = ucwords(strtolower($r->useras));
-                $r->area = '';
+            foreach ($allRecruiters as $r) {
+                $lower = strtolower(trim($r->useras));
+                if (isset($employeeLookup[$lower])) {
+                    $r->display_name = $employeeLookup[$lower]->nama_karyawan;
+                    $r->area = $employeeLookup[$lower]->area;
+                } elseif (str_contains($r->useras, '@')) {
+                    $parts = explode('@', $r->useras)[0];
+                    $name = preg_replace('/[0-9_.-]+/', ' ', $parts);
+                    $r->display_name = ucwords(trim($name)) ?: $r->useras;
+                    $r->area = '';
+                } else {
+                    $r->display_name = ucwords(strtolower($r->useras));
+                    $r->area = '';
+                }
             }
         }
 
@@ -243,12 +253,6 @@ class InterviewController extends Controller
                 $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
             });
 
-        $isAdmin = $user->isAdmin() || $user->role === 'admin';
-        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
-        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
-        $displayRecruiterName = $user->name;
-        $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
-        $displayRecruiterArea = $user->area ?? 'JAKARTA';
 
         if ($canViewAllRecruiters) {
             if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
@@ -390,10 +394,8 @@ class InterviewController extends Controller
             return $c;
         });
 
-        // Query 2: Data Kandidat Area (Hanya dieksekusi jika bukan admin / user all scope yang sedang melihat view nasional)
-        if (($isAdmin || $canViewAllRecruiters) && (empty($filterUser) || $filterUser === 'all')) {
-            $areaCandidates = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15, 1, ['path' => $request->url(), 'pageName' => 'page_area']);
-        } else {
+        // Query 2: Data Kandidat Area (Hanya jika admin sedang memfilter rekruter tertentu untuk melihat rekan area)
+        if ($canViewAllRecruiters && !empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
             $areaCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
                 ->whereNotIn('status', ['Arsip', 'archived'])
                 ->where(function ($q) {
@@ -450,6 +452,8 @@ class InterviewController extends Controller
                 $c->wa_url = $this->buildWaUrl($c, $user, $salam);
                 return $c;
             });
+        } else {
+            $areaCandidates = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15, 1, ['path' => $request->url(), 'pageName' => 'page_area']);
         }
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
@@ -1010,9 +1014,23 @@ class InterviewController extends Controller
             ]);
         }
 
-        if ($user->role !== 'admin') {
-            $query->where('area', $user->area ?? 'JAKARTA');
+        $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
+        if (!$isAdmin) {
+            $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
+            $query->where(function ($q) use ($user, $userIdentifiers) {
+                if (!empty($userIdentifiers)) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    if ($user && !empty($user->id)) {
+                        $q->orWhere('recruiter_id', $user->id);
+                    }
+                } elseif ($user && !empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
         }
+
 
         if ($search) {
             $query->where(function ($q) use ($search) {

@@ -294,7 +294,7 @@
 
             <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
                 <!-- Dropdown Filter Rekruter (Untuk Admin & User All Scope) -->
-                @if(!empty($isAdmin) || !empty($canViewAllRecruiters) || (Auth::check() && (Auth::user()->isAdmin() || Auth::user()->role === 'admin')))
+                @if((!empty($isAdmin) || !empty($canViewAllRecruiters)) && isset($allRecruiters) && count($allRecruiters) > 0)
                 <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-1.5 flex-shrink-0">
                     @if(request('search_my'))
                         <input type="hidden" name="search_my" value="{{ request('search_my') }}">
@@ -568,7 +568,7 @@
         </div>
     </div>
 
-    @if((empty($isAdmin) && empty($canViewAllRecruiters)) || (!empty($filterUser) && $filterUser !== 'all'))
+    @if((!empty($isAdmin) || !empty($canViewAllRecruiters)) && !empty($areaCandidates) && $areaCandidates->total() > 0)
     <!-- 4. TABLE 2: DATA KANDIDAT REKAN SE-AREA -->
     <div class="table-card">
         <div class="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">
