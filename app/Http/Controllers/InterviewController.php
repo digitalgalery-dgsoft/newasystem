@@ -1334,11 +1334,23 @@ class InterviewController extends Controller
 
         $search = $request->query('search');
         $kategori = $request->query('kategori');
-        $startDate = $request->query('start_date');
-        $endDate = $request->query('end_date');
         $perPage = (int) $request->query('per_page', 10);
         if (!in_array($perPage, [10, 25, 50, 100])) {
             $perPage = 10;
+        }
+
+        $today = Carbon::now('Asia/Jakarta')->toDateString();
+
+        // Default data yang tampil adalah data hari ini (tanggal berjalan) sesuai permintaan
+        if ($request->has('start_date') || $request->has('end_date')) {
+            $startDate = $request->query('start_date');
+            $endDate = $request->query('end_date');
+        } elseif ($request->query('all') == '1') {
+            $startDate = null;
+            $endDate = null;
+        } else {
+            $startDate = $today;
+            $endDate = $today;
         }
 
         // Base Walkin Query (data kandidat dengan jenis 'Walkin' sesuai sistem lama)
@@ -1501,8 +1513,22 @@ class InterviewController extends Controller
             'undangan' => 'nullable|string',
         ]);
 
-        $user = $this->getCurrentUser();
-        $userAsName = $user ? $user->name : 'Admin Rekrutmen';
+        $authUser = auth()->user();
+        if ($authUser) {
+            $userAsName = $authUser->name;
+            $userEmail = $authUser->email;
+            $recruiterId = $authUser->id;
+        } else {
+            // Pendaftaran Mandiri / Publik oleh Kandidat
+            $areaARO = User::where(function($q) use ($request) {
+                $q->where('area', 'like', "%{$request->area}%")
+                  ->orWhere('area', 'Nasional');
+            })->whereIn('role', ['karyawan_inhouse', 'recruiter'])->first();
+
+            $userAsName = $areaARO ? $areaARO->name : ('ARO ' . strtoupper($request->area));
+            $userEmail = $areaARO ? $areaARO->email : 'walkin@asystem.co.id';
+            $recruiterId = $areaARO ? $areaARO->id : null;
+        }
 
         $candidate = Candidate::updateOrCreate(
             ['nik' => $request->nik],
@@ -1520,7 +1546,7 @@ class InterviewController extends Controller
                 'status' => 'Active',
                 'status_kandidat' => 'Baru',
                 'useras' => $userAsName,
-                'recruiter_id' => $user ? $user->id : null,
+                'recruiter_id' => $recruiterId,
                 'is_profile_complete' => false,
             ]
         );
@@ -1543,7 +1569,7 @@ class InterviewController extends Controller
                         'status' => 'Active',
                         'status_kandidat' => 'Baru',
                         'nama_as' => $userAsName,
-                        'useras' => $user ? $user->email : 'admin@asystem.co.id',
+                        'useras' => $userEmail,
                     ]
                 );
             }
@@ -1561,9 +1587,14 @@ class InterviewController extends Controller
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
                 'success' => true,
-                'message' => "Kandidat Walkin Interview '{$candidate->full_name}' ({$candidate->nik}) berhasil didaftarkan dengan jenis Walkin!",
+                'message' => "Pendaftaran berhasil! Data Anda telah tersimpan sebagai kandidat Walk-in Interview.",
                 'candidate' => $candidate
             ]);
+        }
+
+        if (!auth()->check()) {
+            return redirect()->route('interview.walk.create')
+                ->with('success', "Pendaftaran Berhasil! Terima kasih {$candidate->full_name}, data Anda telah tersimpan. Silakan konfirmasi kehadiran Anda kepada petugas HRD / ARO di lokasi interview.");
         }
 
         return redirect()->route('interview.walk')
@@ -1577,8 +1608,18 @@ class InterviewController extends Controller
     {
         $search = $request->query('search');
         $kategori = $request->query('kategori');
-        $startDate = $request->query('start_date');
-        $endDate = $request->query('end_date');
+        $today = Carbon::now('Asia/Jakarta')->toDateString();
+
+        if ($request->has('start_date') || $request->has('end_date')) {
+            $startDate = $request->query('start_date');
+            $endDate = $request->query('end_date');
+        } elseif ($request->query('all') == '1') {
+            $startDate = null;
+            $endDate = null;
+        } else {
+            $startDate = $today;
+            $endDate = $today;
+        }
 
         $query = Candidate::where('jenis', 'Walkin');
 
