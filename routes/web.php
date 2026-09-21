@@ -495,6 +495,7 @@ Route::get('/prinsiple/ttdfileprinsiple/{filename}', function ($filename) {
 // ==========================================
 Route::middleware(['auth'])->group(function () {
     Route::get('/workplan', [WorkPlanController::class, 'index'])->name('workplan.index');
+    Route::get('/workplan/load-more', [WorkPlanController::class, 'loadMore'])->name('workplan.load_more');
     Route::post('/workplan', [WorkPlanController::class, 'store'])->name('workplan.store');
     Route::match(['put', 'post'], '/workplan/{id}', [WorkPlanController::class, 'update'])->name('workplan.update');
     Route::post('/workplan/{id}/move', [WorkPlanController::class, 'moveStatus'])->name('workplan.move');

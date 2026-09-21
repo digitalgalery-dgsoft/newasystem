@@ -114,42 +114,32 @@ class WorkPlanController extends Controller
     }
 
     /**
-     * Halaman Utama Kanban Board Work Plan & ToDoList
+     * Query dasar tasks yang sudah difilter sesuai hak akses dan parameter pencarian
      */
-    public function index(Request $request)
+    protected function getFilteredTasksQuery(Request $request, $user = null, &$isHead = false, &$teamMembers = [], &$userName = '')
     {
-        $user = $this->getCurrentUser();
         if (!$user) {
-            return redirect()->route('login');
+            $user = $this->getCurrentUser();
         }
-
-        $isAdmin = $user->isAdmin() || $user->role === 'admin';
         $userName = $this->getUserOfficialName($user);
-        $isHead = false;
-        $teamMembers = [];
 
         // Filter parameter dari request
         $search = trim($request->query('search', ''));
         $smartFilter = trim($request->query('smart', 'all')); // all, my, high, overdue
         $filterUser = trim($request->query('user_filter', 'all'));
 
-        // Query Dasar dengan Scope Hak Akses
-        $baseQuery = Task::with(['subtasks', 'comments']);
+        // Query Dasar dengan withCount untuk efisiensi memori & performa kilat
+        $baseQuery = Task::withCount([
+            'subtasks',
+            'subtasks as completed_subtasks_count' => function ($q) {
+                $q->where('is_completed', true);
+            },
+            'comments'
+        ]);
+
         $this->applyAccessScope($baseQuery, $user, $isHead, $teamMembers);
 
-        // Hitung Metrik Statistik Ringkasan Board
-        $statsTotal = (clone $baseQuery)->whereNotIn('status', ['archived'])->count();
-        $statsTodo = (clone $baseQuery)->where('status', 'todo')->count();
-        $statsInProgress = (clone $baseQuery)->where('status', 'inprogress')->count();
-        $statsReview = (clone $baseQuery)->where('status', 'review')->count();
-        $statsDone = (clone $baseQuery)->where('status', 'done')->count();
-        
         $today = Carbon::today()->toDateString();
-        $statsOverdue = (clone $baseQuery)
-            ->whereNotIn('status', ['done', 'archived'])
-            ->whereNotNull('due_date')
-            ->where('due_date', '<', $today)
-            ->count();
 
         // Terapkan Smart Filter
         if ($smartFilter === 'my') {
@@ -184,11 +174,52 @@ class WorkPlanController extends Controller
             });
         }
 
-        // Ambil Data Kartu per Kolom
-        $tasksTodo = (clone $baseQuery)->where('status', 'todo')->orderBy('id', 'desc')->get();
-        $tasksInProgress = (clone $baseQuery)->where('status', 'inprogress')->orderBy('id', 'desc')->get();
-        $tasksReview = (clone $baseQuery)->where('status', 'review')->orderBy('id', 'desc')->get();
-        $tasksDone = (clone $baseQuery)->where('status', 'done')->orderBy('date_completed', 'desc')->orderBy('id', 'desc')->get();
+        return $baseQuery;
+    }
+
+    /**
+     * Halaman Utama Kanban Board Work Plan & ToDoList
+     */
+    public function index(Request $request)
+    {
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $isAdmin = $user->isAdmin() || $user->role === 'admin';
+        $isHead = false;
+        $teamMembers = [];
+        $userName = '';
+
+        // Filter parameter dari request
+        $search = trim($request->query('search', ''));
+        $smartFilter = trim($request->query('smart', 'all')); // all, my, high, overdue
+        $filterUser = trim($request->query('user_filter', 'all'));
+
+        // Query Dasar dengan Scope Hak Akses & withCount
+        $baseQuery = $this->getFilteredTasksQuery($request, $user, $isHead, $teamMembers, $userName);
+
+        // Hitung Metrik Statistik Ringkasan Board
+        $statsTotal = (clone $baseQuery)->whereNotIn('status', ['archived'])->count();
+        $statsTodo = (clone $baseQuery)->where('status', 'todo')->count();
+        $statsInProgress = (clone $baseQuery)->where('status', 'inprogress')->count();
+        $statsReview = (clone $baseQuery)->where('status', 'review')->count();
+        $statsDone = (clone $baseQuery)->where('status', 'done')->count();
+        
+        $today = Carbon::today()->toDateString();
+        $statsOverdue = (clone $baseQuery)
+            ->whereNotIn('status', ['done', 'archived'])
+            ->whereNotNull('due_date')
+            ->where('due_date', '<', $today)
+            ->count();
+
+        // Ambil Data Kartu per Kolom (Maksimal 25 data awal untuk loading super cepat)
+        $perColumn = 25;
+        $tasksTodo = (clone $baseQuery)->where('status', 'todo')->orderBy('id', 'desc')->take($perColumn)->get();
+        $tasksInProgress = (clone $baseQuery)->where('status', 'inprogress')->orderBy('id', 'desc')->take($perColumn)->get();
+        $tasksReview = (clone $baseQuery)->where('status', 'review')->orderBy('id', 'desc')->take($perColumn)->get();
+        $tasksDone = (clone $baseQuery)->where('status', 'done')->orderBy('date_completed', 'desc')->orderBy('id', 'desc')->take($perColumn)->get();
 
         // Ambil Data Arsip (15 data terbaru yang diarsipkan)
         $tasksArchived = (clone $baseQuery)->where('status', 'archived')->orderBy('date_completed', 'desc')->orderBy('id', 'desc')->paginate(15);
@@ -259,6 +290,55 @@ class WorkPlanController extends Controller
             'employeesGrouped',
             'categories'
         ));
+    }
+
+    /**
+     * Muat kartu tugas berikutnya pada kolom tertentu (AJAX Load More)
+     */
+    public function loadMore(Request $request)
+    {
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json(['success' => false, 'message' => 'Sesi berakhir.'], 401);
+        }
+
+        $column = $request->query('column', 'todo');
+        if (!in_array($column, ['todo', 'inprogress', 'review', 'done'])) {
+            return response()->json(['success' => false, 'message' => 'Status kolom tidak valid.'], 400);
+        }
+
+        $offset = max(0, (int) $request->query('offset', 0));
+        $limit = max(1, min(50, (int) $request->query('limit', 25)));
+
+        $baseQuery = $this->getFilteredTasksQuery($request, $user);
+        $columnQuery = (clone $baseQuery)->where('status', $column);
+        $total = (clone $columnQuery)->count();
+
+        $tasks = (clone $columnQuery)
+            ->when($column === 'done', fn($q) => $q->orderBy('date_completed', 'desc'))
+            ->orderBy('id', 'desc')
+            ->skip($offset)
+            ->take($limit)
+            ->get();
+
+        $html = '';
+        foreach ($tasks as $task) {
+            $html .= view('workplan._card', ['task' => $task, 'column' => $column])->render();
+        }
+
+        $loadedSoFar = $offset + $tasks->count();
+        $hasMore = $loadedSoFar < $total;
+        $remaining = max(0, $total - $loadedSoFar);
+
+        return response()->json([
+            'success' => true,
+            'html' => $html,
+            'count' => $tasks->count(),
+            'loaded' => $loadedSoFar,
+            'total' => $total,
+            'has_more' => $hasMore,
+            'remaining' => $remaining,
+        ]);
     }
 
     /**

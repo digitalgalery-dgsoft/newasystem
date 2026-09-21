@@ -104,12 +104,12 @@ class Task extends Model
      */
     public function progressPercentage(): int
     {
-        $total = $this->subtasks->count();
+        $total = isset($this->subtasks_count) ? (int)$this->subtasks_count : ($this->relationLoaded('subtasks') ? $this->subtasks->count() : 0);
         if ($total === 0) {
-            return $this->status === 'done' || $this->status === 'archived' ? 100 : 0;
+            return in_array($this->status, ['done', 'archived']) ? 100 : 0;
         }
 
-        $completed = $this->subtasks->where('is_completed', true)->count();
+        $completed = isset($this->completed_subtasks_count) ? (int)$this->completed_subtasks_count : ($this->relationLoaded('subtasks') ? $this->subtasks->where('is_completed', true)->count() : 0);
         return (int) round(($completed / $total) * 100);
     }
 

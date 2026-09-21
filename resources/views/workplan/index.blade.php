@@ -291,8 +291,8 @@
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
                     <h3 class="text-xs font-black tracking-wider text-slate-800 uppercase">To Do</h3>
-                    <span class="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 text-[10px] font-extrabold">
-                        {{ $tasksTodo->count() }}
+                    <span class="px-2 py-0.5 rounded-full bg-slate-200/80 text-slate-700 text-[10px] font-extrabold" id="col-count-todo" title="Total Seluruh Tugas To Do">
+                        {{ number_format($statsTodo) }}
                     </span>
                 </div>
                 <button type="button" @click="openCreateModal('todo')" class="w-6 h-6 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-500 flex items-center justify-center text-xs transition-all" title="Tambah ke To Do">
@@ -310,12 +310,30 @@
                 @forelse($tasksTodo as $task)
                     @include('workplan._card', ['task' => $task, 'column' => 'todo'])
                 @empty
-                    <div class="h-40 flex flex-col items-center justify-center text-slate-400 text-center p-4 border border-dashed border-slate-200 rounded-xl pointer-events-none">
+                    <div class="h-40 flex flex-col items-center justify-center text-slate-400 text-center p-4 border border-dashed border-slate-200 rounded-xl pointer-events-none empty-state">
                         <i class="fa-solid fa-inbox text-2xl mb-1 text-slate-300"></i>
                         <span class="text-xs font-medium">Tidak ada tugas To Do</span>
                     </div>
                 @endforelse
             </div>
+
+            <!-- Tombol Muat Lebih Banyak (Load More) -->
+            @if($statsTodo > $tasksTodo->count())
+            <div class="pt-3 border-t border-slate-200/60 mt-3" id="load-more-wrapper-todo">
+                <button type="button" 
+                        @click="loadMoreColumn('todo')" 
+                        :disabled="loadingColumns.todo"
+                        class="w-full py-2 px-3 text-[11px] font-bold text-slate-600 hover:text-primary hover:bg-white bg-slate-100/80 border border-slate-200 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
+                    <template x-if="loadingColumns.todo">
+                        <i class="fa-solid fa-spinner fa-spin text-xs"></i>
+                    </template>
+                    <template x-if="!loadingColumns.todo">
+                        <i class="fa-solid fa-angles-down text-[10px]"></i>
+                    </template>
+                    <span>Muat 25 Tugas Lagi (<span id="remaining-count-todo">{{ number_format($statsTodo - $tasksTodo->count()) }}</span> tersisa)</span>
+                </button>
+            </div>
+            @endif
         </div>
 
         <!-- KOLOM 2: IN PROGRESS -->
@@ -325,8 +343,8 @@
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-pulse"></span>
                     <h3 class="text-xs font-black tracking-wider text-amber-900 uppercase">In Progress</h3>
-                    <span class="px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-800 text-[10px] font-extrabold">
-                        {{ $tasksInProgress->count() }}
+                    <span class="px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-800 text-[10px] font-extrabold" id="col-count-inprogress" title="Total Seluruh Tugas In Progress">
+                        {{ number_format($statsInProgress) }}
                     </span>
                 </div>
                 <button type="button" @click="openCreateModal('inprogress')" class="w-6 h-6 rounded-lg bg-white border border-amber-200 hover:bg-amber-100 text-amber-700 flex items-center justify-center text-xs transition-all" title="Tambah ke In Progress">
@@ -344,12 +362,30 @@
                 @forelse($tasksInProgress as $task)
                     @include('workplan._card', ['task' => $task, 'column' => 'inprogress'])
                 @empty
-                    <div class="h-40 flex flex-col items-center justify-center text-amber-400 text-center p-4 border border-dashed border-amber-200 rounded-xl pointer-events-none">
+                    <div class="h-40 flex flex-col items-center justify-center text-amber-400 text-center p-4 border border-dashed border-amber-200 rounded-xl pointer-events-none empty-state">
                         <i class="fa-solid fa-spinner text-2xl mb-1 text-amber-300"></i>
                         <span class="text-xs font-medium">Tidak ada tugas sedang dikerjakan</span>
                     </div>
                 @endforelse
             </div>
+
+            <!-- Tombol Muat Lebih Banyak (Load More) -->
+            @if($statsInProgress > $tasksInProgress->count())
+            <div class="pt-3 border-t border-amber-200/60 mt-3" id="load-more-wrapper-inprogress">
+                <button type="button" 
+                        @click="loadMoreColumn('inprogress')" 
+                        :disabled="loadingColumns.inprogress"
+                        class="w-full py-2 px-3 text-[11px] font-bold text-amber-800 hover:text-primary hover:bg-white bg-amber-100/60 border border-amber-200 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
+                    <template x-if="loadingColumns.inprogress">
+                        <i class="fa-solid fa-spinner fa-spin text-xs"></i>
+                    </template>
+                    <template x-if="!loadingColumns.inprogress">
+                        <i class="fa-solid fa-angles-down text-[10px]"></i>
+                    </template>
+                    <span>Muat 25 Tugas Lagi (<span id="remaining-count-inprogress">{{ number_format($statsInProgress - $tasksInProgress->count()) }}</span> tersisa)</span>
+                </button>
+            </div>
+            @endif
         </div>
 
         <!-- KOLOM 3: REVIEW -->
@@ -359,8 +395,8 @@
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span>
                     <h3 class="text-xs font-black tracking-wider text-indigo-900 uppercase">Review</h3>
-                    <span class="px-2 py-0.5 rounded-full bg-indigo-200/80 text-indigo-800 text-[10px] font-extrabold">
-                        {{ $tasksReview->count() }}
+                    <span class="px-2 py-0.5 rounded-full bg-indigo-200/80 text-indigo-800 text-[10px] font-extrabold" id="col-count-review" title="Total Seluruh Tugas Menunggu Review">
+                        {{ number_format($statsReview) }}
                     </span>
                 </div>
                 <span class="text-[10px] font-bold text-indigo-600 bg-indigo-100/80 px-2 py-0.5 rounded-md" title="Persetujuan Delegator/Pimpinan">
@@ -378,12 +414,30 @@
                 @forelse($tasksReview as $task)
                     @include('workplan._card', ['task' => $task, 'column' => 'review'])
                 @empty
-                    <div class="h-40 flex flex-col items-center justify-center text-indigo-400 text-center p-4 border border-dashed border-indigo-200 rounded-xl pointer-events-none">
+                    <div class="h-40 flex flex-col items-center justify-center text-indigo-400 text-center p-4 border border-dashed border-indigo-200 rounded-xl pointer-events-none empty-state">
                         <i class="fa-solid fa-check-double text-2xl mb-1 text-indigo-300"></i>
                         <span class="text-xs font-medium">Tidak ada tugas menunggu review</span>
                     </div>
                 @endforelse
             </div>
+
+            <!-- Tombol Muat Lebih Banyak (Load More) -->
+            @if($statsReview > $tasksReview->count())
+            <div class="pt-3 border-t border-indigo-200/60 mt-3" id="load-more-wrapper-review">
+                <button type="button" 
+                        @click="loadMoreColumn('review')" 
+                        :disabled="loadingColumns.review"
+                        class="w-full py-2 px-3 text-[11px] font-bold text-indigo-800 hover:text-primary hover:bg-white bg-indigo-100/60 border border-indigo-200 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
+                    <template x-if="loadingColumns.review">
+                        <i class="fa-solid fa-spinner fa-spin text-xs"></i>
+                    </template>
+                    <template x-if="!loadingColumns.review">
+                        <i class="fa-solid fa-angles-down text-[10px]"></i>
+                    </template>
+                    <span>Muat 25 Tugas Lagi (<span id="remaining-count-review">{{ number_format($statsReview - $tasksReview->count()) }}</span> tersisa)</span>
+                </button>
+            </div>
+            @endif
         </div>
 
         <!-- KOLOM 4: DONE -->
@@ -393,8 +447,8 @@
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     <h3 class="text-xs font-black tracking-wider text-emerald-900 uppercase">Done</h3>
-                    <span class="px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-800 text-[10px] font-extrabold">
-                        {{ $tasksDone->count() }}
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-800 text-[10px] font-extrabold" id="col-count-done" title="Total Seluruh Tugas Selesai">
+                        {{ number_format($statsDone) }}
                     </span>
                 </div>
                 <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
@@ -412,12 +466,30 @@
                 @forelse($tasksDone as $task)
                     @include('workplan._card', ['task' => $task, 'column' => 'done'])
                 @empty
-                    <div class="h-40 flex flex-col items-center justify-center text-emerald-400 text-center p-4 border border-dashed border-emerald-200 rounded-xl pointer-events-none">
+                    <div class="h-40 flex flex-col items-center justify-center text-emerald-400 text-center p-4 border border-dashed border-emerald-200 rounded-xl pointer-events-none empty-state">
                         <i class="fa-solid fa-award text-2xl mb-1 text-emerald-300"></i>
                         <span class="text-xs font-medium">Belum ada tugas selesai</span>
                     </div>
                 @endforelse
             </div>
+
+            <!-- Tombol Muat Lebih Banyak (Load More) -->
+            @if($statsDone > $tasksDone->count())
+            <div class="pt-3 border-t border-emerald-200/60 mt-3" id="load-more-wrapper-done">
+                <button type="button" 
+                        @click="loadMoreColumn('done')" 
+                        :disabled="loadingColumns.done"
+                        class="w-full py-2 px-3 text-[11px] font-bold text-emerald-800 hover:text-primary hover:bg-white bg-emerald-100/60 border border-emerald-200 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50">
+                    <template x-if="loadingColumns.done">
+                        <i class="fa-solid fa-spinner fa-spin text-xs"></i>
+                    </template>
+                    <template x-if="!loadingColumns.done">
+                        <i class="fa-solid fa-angles-down text-[10px]"></i>
+                    </template>
+                    <span>Muat 25 Tugas Lagi (<span id="remaining-count-done">{{ number_format($statsDone - $tasksDone->count()) }}</span> tersisa)</span>
+                </button>
+            </div>
+            @endif
         </div>
 
     </div>
@@ -521,12 +593,77 @@ function kanbanBoard() {
         isDraggingEdit: false,
         commentAttachment: null,
         isDraggingComment: false,
+        loadingColumns: {
+            todo: false,
+            inprogress: false,
+            review: false,
+            done: false
+        },
+        columnOffsets: {
+            todo: {{ $tasksTodo->count() }},
+            inprogress: {{ $tasksInProgress->count() }},
+            review: {{ $tasksReview->count() }},
+            done: {{ $tasksDone->count() }}
+        },
         editForm: {
             title: '',
             description: '',
             priority: 'Medium',
             due_date: '',
             assignee: ''
+        },
+
+        loadMoreColumn(column) {
+            if (this.loadingColumns[column]) return;
+            this.loadingColumns[column] = true;
+
+            const offset = this.columnOffsets[column] || 0;
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('column', column);
+            urlParams.set('offset', offset);
+            urlParams.set('limit', 25);
+
+            fetch(`{{ route('workplan.load_more') }}?${urlParams.toString()}`)
+                .then(res => res.json())
+                .then(data => {
+                    this.loadingColumns[column] = false;
+                    if (data.success && data.html) {
+                        const dropzone = document.getElementById(`col-${column}`);
+                        if (dropzone) {
+                            const emptyState = dropzone.querySelector('.empty-state');
+                            if (emptyState) emptyState.remove();
+
+                            const temp = document.createElement('div');
+                            temp.innerHTML = data.html;
+                            const cards = Array.from(temp.children);
+                            cards.forEach(card => {
+                                dropzone.appendChild(card);
+                                if (window.Alpine) {
+                                    Alpine.initTree(card);
+                                }
+                            });
+                        }
+
+                        this.columnOffsets[column] = data.loaded;
+
+                        const wrapper = document.getElementById(`load-more-wrapper-${column}`);
+                        if (wrapper) {
+                            if (!data.has_more) {
+                                wrapper.remove();
+                            } else {
+                                const remEl = document.getElementById(`remaining-count-${column}`);
+                                if (remEl) remEl.innerText = Number(data.remaining).toLocaleString('id-ID');
+                            }
+                        }
+                    } else if (!data.has_more) {
+                        const wrapper = document.getElementById(`load-more-wrapper-${column}`);
+                        if (wrapper) wrapper.remove();
+                    }
+                })
+                .catch(err => {
+                    this.loadingColumns[column] = false;
+                    console.error('Gagal memuat tugas:', err);
+                });
         },
         previewModal: {
             open: false,

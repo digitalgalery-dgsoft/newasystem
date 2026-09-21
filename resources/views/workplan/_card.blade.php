@@ -1,8 +1,9 @@
 @php
     $isOverdue = $task->isOverdue();
     $isDueToday = $task->isDueToday();
-    $totalSub = $task->subtasks->count();
-    $completedSub = $task->subtasks->where('is_completed', true)->count();
+    $totalSub = isset($task->subtasks_count) ? (int)$task->subtasks_count : ($task->relationLoaded('subtasks') ? $task->subtasks->count() : 0);
+    $completedSub = isset($task->completed_subtasks_count) ? (int)$task->completed_subtasks_count : ($task->relationLoaded('subtasks') ? $task->subtasks->where('is_completed', true)->count() : 0);
+    $commentsCount = isset($task->comments_count) ? (int)$task->comments_count : ($task->relationLoaded('comments') ? $task->comments->count() : 0);
     $progress = $task->progressPercentage();
     $priorityClass = match($task->priority) {
         'High' => 'bg-rose-50 text-rose-700 border-rose-200',
@@ -129,10 +130,10 @@
             </a>
             @endif
 
-            @if($task->comments->count() > 0)
+            @if($commentsCount > 0)
             <span class="flex items-center gap-1 text-[10px] font-bold text-slate-500">
                 <i class="fa-regular fa-comment text-slate-400"></i>
-                {{ $task->comments->count() }}
+                {{ $commentsCount }}
             </span>
             @endif
 
