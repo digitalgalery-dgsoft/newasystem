@@ -1186,7 +1186,7 @@
                     <!-- Warning jika ada kandidat lama dengan NIK sama -->
                     <div id="previewArchiveWarning" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-2">
                         <i class="fa-solid fa-circle-exclamation text-amber-500 text-xs shrink-0"></i>
-                        <span>NIK ini sebelumnya sudah pernah terdaftar di ASystem. Data lama otomatis diarsipkan agar pelamar dapat memulai proses seleksi baru.</span>
+                        <span>NIK ini sebelumnya sudah pernah terdaftar di ASystem. Data lama otomatis di-<strong>REPLACE</strong> dan seluruh data tes online di-<strong>RESET</strong> ke awal agar pelamar dapat memulai seleksi tes dari awal.</span>
                     </div>
                 </div>
 
@@ -1511,6 +1511,11 @@
             case 'archive':
                 badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">ARCHIVE</span>`;
                 msgColor = 'text-purple-200';
+                break;
+            case 'replace':
+                badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">REPLACE</span>`;
+                msgColor = 'text-cyan-200';
+                importSuccessCount++;
                 break;
             case 'experience':
                 badge = `<span class="px-1.5 py-0.2 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">WORK-EXP</span>`;

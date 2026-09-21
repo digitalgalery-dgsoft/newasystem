@@ -10,15 +10,22 @@ class CandidateEvaluationDataService
     public static function getEvaluationData(Candidate $candidate): array
     {
         // 1. Data Tes Kepribadian (DISC)
-        $rawPsikotes = DB::table('tb_hasilpsikotes')
-            ->where('id_kandidat', $candidate->id)
-            ->orWhere('id_kandidat', (string) $candidate->id)
-            ->orderBy('id_soal', 'asc')
-            ->get();
+        $isPsikoCompleted = !empty($candidate->tes_kepribadian) 
+            && $candidate->tes_kepribadian !== '00:00:00' 
+            && $candidate->tes_kepribadian !== '-';
+
+        $rawPsikotes = collect();
+        if ($isPsikoCompleted) {
+            $rawPsikotes = DB::table('tb_hasilpsikotes')
+                ->where('id_kandidat', $candidate->id)
+                ->orWhere('id_kandidat', (string) $candidate->id)
+                ->orderBy('id_soal', 'asc')
+                ->get();
+        }
 
         $psikotesItems = [];
         $psikotesCounts = ['A' => 0, 'B' => 0, 'C' => 0, 'D' => 0];
-        $psikotesDuration = '00:04:20';
+        $psikotesDuration = $candidate->tes_kepribadian ?? '00:04:20';
         $hasPsikotes = false;
 
         if ($rawPsikotes->isNotEmpty()) {
@@ -41,9 +48,9 @@ class CandidateEvaluationDataService
                     'text' => $choiceText,
                 ];
             }
-        } else {
+        } elseif ($isPsikoCompleted) {
             // Cek jika ada di testResults (dari modul CBT baru)
-            $cbtPsychology = $candidate->testResults->firstWhere('test_type', 'psychology');
+            $cbtPsychology = $candidate->testResults ? $candidate->testResults->firstWhere('test_type', 'psychology') : null;
             if ($cbtPsychology && !empty($cbtPsychology->test_details)) {
                 $hasPsikotes = true;
                 $details = is_array($cbtPsychology->test_details) ? $cbtPsychology->test_details : json_decode($cbtPsychology->test_details, true);
@@ -97,7 +104,9 @@ class CandidateEvaluationDataService
                 'summary' => 'Memiliki kepribadian Plegmatis. Tipe ini paling baik dalam hal pekerjaan yang menuntut ketenangan, kesabaran, konsistensi prosedur, diplomasi, serta membangun keharmonisan dan kerjasama tim yang solid. Kelemahan tipe ini adalah lambat dalam mengambil inisiatif mandiri, cenderung menghindari konflik, dan kurang menyukai perubahan mendadak.'
             ],
         ];
-        $dominantDisc = $discConclusions[$dominantKey] ?? $discConclusions['A'];
+        $dominantDisc = $hasPsikotes 
+            ? ($discConclusions[$dominantKey] ?? $discConclusions['A']) 
+            : ['type' => 'Belum Tes', 'summary' => 'Kandidat belum mengikuti Tes Kepribadian (DISC).'];
 
         // 2. Data Tes Matematika
         $mathItems = [];
@@ -217,10 +226,16 @@ class CandidateEvaluationDataService
         }
 
         // 3. Data Tes Komputer
-        $rawKompt = DB::table('hasil_kompt')
-            ->where('id_kandidat', $candidate->id)
-            ->orWhere('nomor_ktp', $candidate->nik)
-            ->first();
+        $isKomptCompleted = !empty($candidate->tes_komputer) 
+            && $candidate->tes_komputer !== '00:00:00' 
+            && $candidate->tes_komputer !== '-';
+
+        $rawKompt = null;
+        if ($isKomptCompleted) {
+            $rawKompt = DB::table('hasil_kompt')
+                ->where('id_kandidat', $candidate->id)
+                ->first();
+        }
 
         $compSkills = [
             'vlookup' => 'VLOOKUP',
@@ -236,15 +251,15 @@ class CandidateEvaluationDataService
 
         $savedComp = [];
         $hasKompt = false;
-        $komptDuration = $candidate->tes_komputer ?? '00:03:02';
+        $komptDuration = $isKomptCompleted ? ($candidate->tes_komputer ?? '00:03:02') : '-';
 
         if ($rawKompt) {
             $hasKompt = true;
             foreach ($compSkills as $k => $label) {
                 $savedComp[$k] = $rawKompt->$k ?? 'Cukup';
             }
-        } else {
-            $cTest = $candidate->testResults->firstWhere('test_type', 'computer');
+        } elseif ($isKomptCompleted) {
+            $cTest = $candidate->testResults ? $candidate->testResults->firstWhere('test_type', 'computer') : null;
             if ($cTest && !empty($cTest->test_details)) {
                 $hasKompt = true;
                 $savedComp = is_array($cTest->test_details) ? $cTest->test_details : json_decode($cTest->test_details, true);
@@ -279,8 +294,8 @@ class CandidateEvaluationDataService
             }
         }
 
-        $psikotestNama = $dominantDisc['type'] ?? 'Melankolis';
-        $isMelankolisOrPlegmatis = in_array(strtolower($psikotestNama), ['melankolis', 'plegmatis']);
+        $psikotestNama = $hasPsikotes ? ($dominantDisc['type'] ?? 'Belum Tes') : 'Belum Tes';
+        $isMelankolisOrPlegmatis = $hasPsikotes && in_array(strtolower($psikotestNama), ['melankolis', 'plegmatis']);
 
         // Syarat 1: Nilai Matematika tidak boleh C / D (minimal B untuk lolos)
         $isMathFailed = $hasMath && !in_array(strtoupper($mathGrade ?? ''), ['A', 'B']);

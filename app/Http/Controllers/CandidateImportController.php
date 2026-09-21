@@ -6,6 +6,10 @@ use App\Models\User;
 use App\Models\Candidate;
 use App\Models\Principle;
 use App\Models\OdooEntity;
+use App\Models\TestResult;
+use App\Models\InterviewAssessment;
+use App\Models\PrincipleApproval;
+use App\Models\WorkExperience;
 use App\Services\CandidateImportService;
 use App\Services\OdooSyncService;
 use Illuminate\Http\Request;
@@ -421,14 +425,10 @@ class CandidateImportController extends Controller
         try {
             DB::beginTransaction();
 
-            // 1. Arsipkan data lama dengan NIK sama
-            DB::table('candidates')->where('nik', $cleanNik)->where('status', '!=', 'Arsip')->update(['status' => 'Arsip']);
-            if (Schema::hasTable('tb_kandidat')) {
-                DB::table('tb_kandidat')->where('no_ktp', $cleanNik)->where('status', '!=', 'Arsip')->update(['status' => 'Arsip']);
-            }
+            $existingCandidates = Candidate::where('nik', $cleanNik)->orderBy('id')->get();
+            $isReplaced = $existingCandidates->isNotEmpty();
 
-            // 2. Simpan kandidat baru
-            $candidate = Candidate::create([
+            $candidatePayload = [
                 'nik'                      => $cleanNik,
                 'full_name'                => $name,
                 'birth_place'              => $foundApplicant['place_of_birth'] ?? null,
@@ -460,42 +460,119 @@ class CandidateImportController extends Controller
                 'odoo_entity'              => $foundEntity,
                 'odoo_synced_at'           => now(),
                 'is_profile_complete'      => false,
-                'created_at'               => now(),
-                'updated_at'               => now(),
-            ]);
 
-            // 3. Simpan juga ke tb_kandidat jika tabel legacy tersedia
+                // RESET DATA TES ONLINE & EVALUASI KE AWAL
+                'tes_kepribadian'          => null,
+                'tes_matematika'           => null,
+                'tes_komputer'             => null,
+                'tes_ke'                   => 1,
+                'buktikomputer'            => null,
+                'signature_path'           => null,
+                'statement_agreed'         => false,
+                'idprinsiple'              => null,
+                'ttd_prinsiple'            => null,
+                'time_prinsiple'           => null,
+                'note_principle'           => null,
+                'status_approval'          => null,
+                'ai_score'                 => null,
+                'ai_cv_analysis'           => null,
+                'jadwal_interview'         => null,
+                'status_interview'         => null,
+                'catatan_interview'        => null,
+                'hasil_interview'          => null,
+                'interviewer'              => null,
+                'updated_at'               => now(),
+            ];
+
+            if ($isReplaced) {
+                $candidate = $existingCandidates->last();
+                $allCandIds = $existingCandidates->pluck('id')->all();
+
+                // Bersihkan duplikat record jika ada dari import terdahulu
+                $duplicateIds = array_diff($allCandIds, [$candidate->id]);
+                if (!empty($duplicateIds)) {
+                    Candidate::whereIn('id', $duplicateIds)->delete();
+                }
+
+                // Hapus seluruh hasil tes online lama dan penilaian sebelumnya
+                TestResult::whereIn('candidate_id', $allCandIds)->delete();
+                if (Schema::hasTable('tb_hasilpsikotes')) {
+                    DB::table('tb_hasilpsikotes')->whereIn('id_kandidat', $allCandIds)->delete();
+                }
+                if (Schema::hasTable('tb_hasilmath')) {
+                    DB::table('tb_hasilmath')->whereIn('id_kandidat', $allCandIds)->delete();
+                }
+                if (Schema::hasTable('hasil_kompt')) {
+                    DB::table('hasil_kompt')->where(function($q) use ($allCandIds, $cleanNik) {
+                        $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanNik);
+                    })->delete();
+                }
+                if (Schema::hasTable('hasilinterview')) {
+                    DB::table('hasilinterview')->where(function($q) use ($allCandIds, $cleanNik) {
+                        $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanNik);
+                    })->delete();
+                }
+                InterviewAssessment::whereIn('candidate_id', $allCandIds)->delete();
+                PrincipleApproval::whereIn('candidate_id', $allCandIds)->delete();
+                WorkExperience::whereIn('candidate_id', $allCandIds)->delete();
+                if (Schema::hasTable('tb_pengalaman')) {
+                    DB::table('tb_pengalaman')->where(function($q) use ($allCandIds, $cleanNik) {
+                        $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanNik);
+                    })->delete();
+                }
+
+                $candidate->fill($candidatePayload);
+                $candidate->save();
+            } else {
+                $candidatePayload['created_at'] = now();
+                $candidate = Candidate::create($candidatePayload);
+            }
+
+            // 3. Simpan / Replace ke tb_kandidat jika tabel legacy tersedia
             if (Schema::hasTable('tb_kandidat')) {
-                try {
-                    DB::table('tb_kandidat')->insert([
-                        'id'                  => $candidate->id,
-                        'tanggal'             => date('Y-m-d'),
-                        'no_ktp'              => $cleanNik,
-                        'applicants_name'     => $name,
-                        'alamat_ktp'          => $foundApplicant['ktp_address'] ?? null,
-                        'alamat_domisili'     => $foundApplicant['ktp_address'] ?? null,
-                        'kota_lahir'          => $foundApplicant['place_of_birth'] ?? null,
-                        'tanggal_lahir'       => $birthDate ?: '1970-01-01',
-                        'height'              => (string)($foundApplicant['height'] ?? ''),
-                        'weight'              => (string)($foundApplicant['weight'] ?? ''),
-                        'religion'            => (string)($foundApplicant['religion'] ?? ''),
-                        'pendidikan_terakhir' => is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : (string)($foundApplicant['type_id'] ?? ''),
-                        'phone'               => $phone,
-                        'mobile'              => $phone,
-                        'area'                => $area,
-                        'principle'           => $prinName,
-                        'applied_job'         => $job,
-                        'status_kawin'        => (string)($foundApplicant['marital_status'] ?? ''),
-                        'password'            => $passwordHashed,
-                        'useras'              => $userEmail,
-                        'status'              => 'Active',
-                        'jenis'               => '',
-                        'info'                => 'WhatsApp',
-                        'undangan'            => 'WhatsApp',
-                        'waktukirim'          => now(),
-                    ]);
-                } catch (\Throwable $eTb) {
-                    // Abaikan duplikasi ID jika primary key berkonflik
+                $tbKandidatData = [
+                    'tanggal'             => date('Y-m-d'),
+                    'no_ktp'              => $cleanNik,
+                    'applicants_name'     => $name,
+                    'alamat_ktp'          => $foundApplicant['ktp_address'] ?? null,
+                    'alamat_domisili'     => $foundApplicant['ktp_address'] ?? null,
+                    'kota_lahir'          => $foundApplicant['place_of_birth'] ?? null,
+                    'tanggal_lahir'       => $birthDate ?: '1970-01-01',
+                    'height'              => (string)($foundApplicant['height'] ?? ''),
+                    'weight'              => (string)($foundApplicant['weight'] ?? ''),
+                    'religion'            => (string)($foundApplicant['religion'] ?? ''),
+                    'pendidikan_terakhir' => is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : (string)($foundApplicant['type_id'] ?? ''),
+                    'phone'               => $phone,
+                    'mobile'              => $phone,
+                    'area'                => $area,
+                    'principle'           => $prinName,
+                    'applied_job'         => $job,
+                    'status_kawin'        => (string)($foundApplicant['marital_status'] ?? ''),
+                    'password'            => $passwordHashed,
+                    'useras'              => $userEmail,
+                    'status'              => 'Active',
+                    'jenis'               => '',
+                    'info'                => 'WhatsApp',
+                    'undangan'            => 'WhatsApp',
+                    'waktukirim'          => now(),
+                    'tes_kepribadian'     => null,
+                    'tes_matematika'      => null,
+                    'tes_komputer'        => null,
+                    'tes_ke'              => 1,
+                    'idprinsiple'         => null,
+                    'ttd_prinsiple'       => null,
+                ];
+
+                $existingTb = DB::table('tb_kandidat')->where('no_ktp', $cleanNik)->first();
+                if ($existingTb) {
+                    DB::table('tb_kandidat')->where('no_ktp', $cleanNik)->update($tbKandidatData);
+                } else {
+                    $tbKandidatData['id'] = $candidate->id;
+                    try {
+                        DB::table('tb_kandidat')->insert($tbKandidatData);
+                    } catch (\Throwable $eTb) {
+                        DB::table('tb_kandidat')->where('no_ktp', $cleanNik)->update($tbKandidatData);
+                    }
                 }
             }
 
@@ -511,9 +588,13 @@ class CandidateImportController extends Controller
             $waText = "Halo {$name},\n\nAnda telah terdaftar untuk mengikuti tahapan seleksi tes online di ASystem ESA Groups ({$prinName} - {$job}).\n\nSilakan login untuk mengerjakan tes online (Psikotes DISC, Matematika, dan Profil):\n🔗 *Link Tes Online*: {$cbtLoginUrl}\n🆔 *Username (NIK)*: {$cleanNik}\n🔑 *Password*: {$passwordPlain}\n\nMohon segera menyelesaikan tes tersebut. Terima kasih.\n*Tim Rekrutmen ESA Groups*";
             $waLink = !empty($waPhone) ? "https://api.whatsapp.com/send?phone={$waPhone}&text=" . rawurlencode($waText) : null;
 
+            $successMsg = $isReplaced
+                ? "Data kandidat {$name} berhasil di-REPLACE dan tes online di-RESET ke awal!"
+                : "Kandidat {$name} berhasil ditarik dari Odoo [{$foundEntity}] dan siap diproses!";
+
             return response()->json([
                 'success'          => true,
-                'message'          => "Kandidat {$name} berhasil ditarik dari Odoo [{$foundEntity}] dan siap diproses!",
+                'message'          => $successMsg,
                 'candidate_id'     => $candidate->id,
                 'detail_url'       => route('interview.show', $candidate->id),
                 'cbt_login_url'    => $cbtLoginUrl,

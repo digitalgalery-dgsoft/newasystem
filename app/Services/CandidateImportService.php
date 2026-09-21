@@ -5,6 +5,9 @@ namespace App\Services;
 use App\Models\Candidate;
 use App\Models\Principle;
 use App\Models\WorkExperience;
+use App\Models\TestResult;
+use App\Models\InterviewAssessment;
+use App\Models\PrincipleApproval;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use ZipArchive;
@@ -292,18 +295,11 @@ class CandidateImportService
                 }
 
                 try {
-                    // 1. Sesuai skrip asli: Arsipkan data lama yang memiliki NIK sama
-                    $archivedCount = DB::table('candidates')->where('nik', $cleanKtp)->where('status', '!=', 'Arsip')->update(['status' => 'Arsip']);
-                    if ($hasTbKandidat) {
-                        DB::table('tb_kandidat')->where('no_ktp', $cleanKtp)->where('status', '!=', 'Arsip')->update(['status' => 'Arsip']);
-                    }
+                    // 1. Cek apakah kandidat dengan NIK ini sudah ada di database
+                    $existingCandidates = Candidate::where('nik', $cleanKtp)->orderBy('id')->get();
+                    $isReplaced = $existingCandidates->isNotEmpty();
 
-                    if ($archivedCount > 0) {
-                        $onEvent('archive', "Baris {$rowNumber}: NIK {$cleanKtp} sebelumnya telah terdaftar. Data lama otomatis diarsipkan.");
-                    }
-
-                    // 2. Buat Candidate Baru di tabel candidates (Eloquent)
-                    $candidateData = [
+                    $candidatePayload = [
                         'nik'                      => $cleanKtp,
                         'full_name'                => $applicantsName,
                         'birth_place'              => self::sanitizeInput($colKotaLahir),
@@ -332,25 +328,82 @@ class CandidateImportService
                         'npwp'                     => self::sanitizeInput($colNpwp),
                         'applied_job'              => $appliedJob ?: 'Kandidat Walkin',
                         'status'                   => 'Active',
-                        'jenis'                    => '', // Kosong agar langsung tampil di list interview utama
+                        'jenis'                    => '', // Kosong agar tampil di list interview utama
                         'source_type'              => 'walk_in',
                         'useras'                   => $userEmail,
                         'recruiter_id'             => $userId,
                         'password'                 => $passwordHashed,
-                        'is_profile_complete'      => false,
                         'odoo_stage_name'          => self::sanitizeInput($colStage) ?: null,
                         'odoo_synced_at'           => !empty(trim((string)$colStage)) ? now() : null,
-                        'created_at'               => now(),
-                        'updated_at'               => now(),
+
+                        // RESET DATA TEST ONLINE KE AWAL:
+                        'tes_kepribadian'          => null,
+                        'tes_matematika'           => null,
+                        'tes_komputer'             => null,
+                        'tes_ke'                   => 1,
+                        'buktikomputer'            => null,
+                        'is_profile_complete'      => false,
+                        'signature_path'           => null,
+                        'statement_agreed'         => false,
+                        'idprinsiple'              => null,
+                        'ttd_prinsiple'            => null,
+                        'time_prinsiple'           => null,
+                        'note_principle'           => null,
+                        'status_approval'          => null,
+                        'ai_score'                 => null,
+                        'ai_cv_analysis'           => null,
                     ];
 
-                    $candidate = Candidate::create($candidateData);
-                    $newId = $candidate->id;
+                    if ($isReplaced) {
+                        $candidate = $existingCandidates->last();
+                        $allCandIds = $existingCandidates->pluck('id')->all();
 
-                    // 3. Simpan juga ke tb_kandidat jika tabel legacy tersedia
+                        // Bersihkan duplikat record jika ada dari import terdahulu
+                        $duplicateIds = array_diff($allCandIds, [$candidate->id]);
+                        if (!empty($duplicateIds)) {
+                            Candidate::whereIn('id', $duplicateIds)->delete();
+                        }
+
+                        // Hapus seluruh hasil tes online lama dan penilaian sebelumnya
+                        TestResult::whereIn('candidate_id', $allCandIds)->delete();
+                        if (Schema::hasTable('tb_hasilpsikotes')) {
+                            DB::table('tb_hasilpsikotes')->whereIn('id_kandidat', $allCandIds)->delete();
+                        }
+                        if (Schema::hasTable('tb_hasilmath')) {
+                            DB::table('tb_hasilmath')->whereIn('id_kandidat', $allCandIds)->delete();
+                        }
+                        if (Schema::hasTable('hasil_kompt')) {
+                            DB::table('hasil_kompt')->where(function($q) use ($allCandIds, $cleanKtp) {
+                                $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanKtp);
+                            })->delete();
+                        }
+                        if (Schema::hasTable('hasilinterview')) {
+                            DB::table('hasilinterview')->where(function($q) use ($allCandIds, $cleanKtp) {
+                                $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanKtp);
+                            })->delete();
+                        }
+                        InterviewAssessment::whereIn('candidate_id', $allCandIds)->delete();
+                        PrincipleApproval::whereIn('candidate_id', $allCandIds)->delete();
+                        WorkExperience::whereIn('candidate_id', $allCandIds)->delete();
+                        if ($hasTbPengalaman) {
+                            DB::table('tb_pengalaman')->where(function($q) use ($allCandIds, $cleanKtp) {
+                                $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanKtp);
+                            })->delete();
+                        }
+
+                        // Replace data kandidat
+                        $candidate->fill($candidatePayload);
+                        $candidate->save();
+                        $newId = $candidate->id;
+                    } else {
+                        // Buat kandidat baru
+                        $candidate = Candidate::create($candidatePayload);
+                        $newId = $candidate->id;
+                    }
+
+                    // 2. Simpan / Replace ke tabel legacy tb_kandidat jika tabel tersedia
                     if ($hasTbKandidat) {
                         $tbKandidatData = [
-                            'id'                  => $newId,
                             'tanggal'             => date('Y-m-d'),
                             'no_ktp'              => $cleanKtp,
                             'applicants_name'     => $applicantsName,
@@ -384,11 +437,26 @@ class CandidateImportService
                             'info'                => 'WhatsApp',
                             'undangan'            => 'WhatsApp',
                             'waktukirim'          => now(),
+
+                            // Reset seluruh nilai tes online pada tabel legacy
+                            'tes_kepribadian'     => null,
+                            'tes_matematika'      => null,
+                            'tes_komputer'        => null,
+                            'tes_ke'              => 1,
+                            'idprinsiple'         => null,
+                            'ttd_prinsiple'       => null,
                         ];
-                        try {
-                            DB::table('tb_kandidat')->insert($tbKandidatData);
-                        } catch (Exception $eTb) {
-                            // Abaikan duplikasi id legacy jika primary key berkonflik
+
+                        $existingTb = DB::table('tb_kandidat')->where('no_ktp', $cleanKtp)->first();
+                        if ($existingTb) {
+                            DB::table('tb_kandidat')->where('no_ktp', $cleanKtp)->update($tbKandidatData);
+                        } else {
+                            $tbKandidatData['id'] = $newId;
+                            try {
+                                DB::table('tb_kandidat')->insert($tbKandidatData);
+                            } catch (Exception $eTb) {
+                                DB::table('tb_kandidat')->where('no_ktp', $cleanKtp)->update($tbKandidatData);
+                            }
                         }
                     }
 
@@ -397,12 +465,21 @@ class CandidateImportService
                     $lastCandidateName = $applicantsName;
 
                     $stats['success']++;
-                    $onEvent('success', "Baris {$rowNumber}: Berhasil import [{$applicantsName}] - NIK: {$cleanKtp} | Posisi: {$appliedJob} | Area: {$area}", [
-                        'row' => $rowNumber,
-                        'id' => $newId,
-                        'name' => $applicantsName,
-                        'nik' => $cleanKtp,
-                    ]);
+                    if ($isReplaced) {
+                        $onEvent('replace', "Baris {$rowNumber}: Data NIK {$cleanKtp} [{$applicantsName}] berhasil di-REPLACE & hasil tes online di-RESET ke awal.", [
+                            'row'  => $rowNumber,
+                            'id'   => $newId,
+                            'name' => $applicantsName,
+                            'nik'  => $cleanKtp,
+                        ]);
+                    } else {
+                        $onEvent('success', "Baris {$rowNumber}: Berhasil import [{$applicantsName}] - NIK: {$cleanKtp} | Posisi: {$appliedJob} | Area: {$area}", [
+                            'row'  => $rowNumber,
+                            'id'   => $newId,
+                            'name' => $applicantsName,
+                            'nik'  => $cleanKtp,
+                        ]);
+                    }
 
                     // 4. Jika ada data Pengalaman Kerja pada baris ini, masukkan ke database
                     if (!empty($namaPerusahaan)) {
