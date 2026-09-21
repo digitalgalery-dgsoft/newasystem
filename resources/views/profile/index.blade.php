@@ -3,7 +3,7 @@
 @section('title', 'Profil Akun Saya - ASystem Cloud')
 
 @section('content')
-<div class="space-y-6 max-w-7xl mx-auto" x-data="{ activeTab: 'info', showCurrentPass: false, showNewPass: false, showConfirmPass: false }">
+<div class="space-y-6 max-w-7xl mx-auto" x-data="{ activeTab: '{{ $errors->has('current_password') || $errors->has('password') || $errors->has('password_confirmation') || session('tab') === 'security' ? 'security' : (old('_tab', 'info')) }}', showCurrentPass: false, showNewPass: false, showConfirmPass: false }">
 
     <!-- 1. HEADER & BREADCRUMBS -->
     <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-6 rounded-3xl border border-slate-200/90 shadow-sm relative overflow-hidden">
@@ -236,6 +236,7 @@
                 <form action="{{ route('profile.update') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="_tab" value="info">
 
                     <!-- UPLOAD FOTO PROFIL DENGAN LIVE PREVIEW -->
                     <div class="p-5 rounded-2xl bg-slate-50/80 border border-slate-200 space-y-4">
@@ -392,9 +393,23 @@
                     </ul>
                 </div>
 
+                <!-- Success Alert Khusus Tab Keamanan -->
+                @if(session('success') && session('tab') === 'security')
+                    <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm font-semibold flex items-center gap-3 shadow-xs">
+                        <div class="w-8 h-8 rounded-xl bg-emerald-500 text-white flex items-center justify-center flex-shrink-0 text-sm shadow">
+                            <i class="fa-solid fa-circle-check"></i>
+                        </div>
+                        <div>
+                            <div class="font-bold text-emerald-900">Password Berhasil Diperbarui!</div>
+                            <div class="text-xs text-emerald-700 mt-0.5">{{ session('success') }}</div>
+                        </div>
+                    </div>
+                @endif
+
                 <form action="{{ route('profile.password') }}" method="POST" class="space-y-5">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="_tab" value="security">
 
                     <!-- Password Saat Ini -->
                     <div class="space-y-1.5">

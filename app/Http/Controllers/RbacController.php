@@ -389,6 +389,9 @@ class RbacController extends Controller
         $user->password = Hash::make($request->password);
         $user->save();
 
+        // Sinkronkan password ke seluruh data master employee terkait
+        $user->syncPasswordToEmployees($user->password);
+
         ActivityLogger::log('RESET_PASSWORD', 'RBAC & Hak Akses', "Reset password pengguna: {$user->name} ({$user->email})", $user);
 
         return redirect()->route('setting.rbac.index', ['tab' => 'users'])

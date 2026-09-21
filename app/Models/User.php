@@ -491,6 +491,55 @@ class User extends Authenticatable
     }
 
     /**
+     * Sinkronkan password ke seluruh data master employee yang terkait dengan user ini
+     */
+    public function syncPasswordToEmployees(string $hashedPassword): void
+    {
+        try {
+            $employeeIds = collect();
+
+            if (!empty($this->email)) {
+                $lowerEmail = strtolower(trim($this->email));
+                $byEmail = Employee::whereRaw('LOWER(TRIM(email)) = ?', [$lowerEmail])->pluck('id');
+                $employeeIds = $employeeIds->merge($byEmail);
+
+                if (str_contains($lowerEmail, '@')) {
+                    $noY = str_replace('y', '', $lowerEmail);
+                    $byNoY = Employee::whereRaw("LOWER(REPLACE(email, 'y', '')) = ?", [$noY])->pluck('id');
+                    $employeeIds = $employeeIds->merge($byNoY);
+                }
+
+                if (str_ends_with($lowerEmail, '@asystem.co.id')) {
+                    $nikPart = explode('@', $lowerEmail)[0];
+                    $byNik = Employee::where('nik', $nikPart)->pluck('id');
+                    $employeeIds = $employeeIds->merge($byNik);
+                }
+            }
+
+            if (!empty($this->phone)) {
+                $cleanPhone = preg_replace('/\D/', '', $this->phone);
+                if (strlen($cleanPhone) >= 8) {
+                    $byPhone = Employee::whereRaw("REPLACE(REPLACE(telepon, '-', ''), ' ', '') LIKE ?", ['%' . substr($cleanPhone, -8)])->pluck('id');
+                    $employeeIds = $employeeIds->merge($byPhone);
+                }
+            }
+
+            if (!empty($this->linked_employee?->id)) {
+                $employeeIds->push($this->linked_employee->id);
+            }
+
+            $uniqueIds = $employeeIds->unique()->filter()->values();
+            if ($uniqueIds->isNotEmpty()) {
+                Employee::whereIn('id', $uniqueIds)->update([
+                    'password' => $hashedPassword,
+                ]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Sinkronisasi password employee gagal: ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Mendapatkan data Employee terkait berdasarkan email
      */
     public function getLinkedEmployeeAttribute(): ?Employee
@@ -498,16 +547,26 @@ class User extends Authenticatable
         if (!empty($this->email)) {
             $emp = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($this->email))])
                 ->where('status', 'Aktiv')
+                ->orderByRaw("CASE WHEN tipe_karyawan = 'Inhouse' THEN 0 ELSE 1 END")
+                ->orderByDesc('akses_login')
+                ->orderByDesc('id')
                 ->first();
             if ($emp) return $emp;
 
-            $empAny = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($this->email))])->first();
+            $empAny = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($this->email))])
+                ->orderByRaw("CASE WHEN tipe_karyawan = 'Inhouse' THEN 0 ELSE 1 END")
+                ->orderByDesc('akses_login')
+                ->orderByDesc('id')
+                ->first();
             if ($empAny) return $empAny;
         }
 
         if (!empty($this->name)) {
             $emp = Employee::whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower(trim($this->name))])
                 ->where('status', 'Aktiv')
+                ->orderByRaw("CASE WHEN tipe_karyawan = 'Inhouse' THEN 0 ELSE 1 END")
+                ->orderByDesc('akses_login')
+                ->orderByDesc('id')
                 ->first();
             if ($emp) return $emp;
         }

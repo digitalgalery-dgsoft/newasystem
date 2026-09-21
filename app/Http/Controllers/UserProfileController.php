@@ -137,7 +137,22 @@ class UserProfileController extends Controller
             'password.confirmed' => 'Konfirmasi password baru tidak cocok.',
         ]);
 
-        if (!Hash::check($request->current_password, $user->password)) {
+        // Verifikasi password saat ini terhadap user atau data master employee
+        $currentPasswordMatches = false;
+        if (!empty($user->password) && Hash::check($request->current_password, $user->password)) {
+            $currentPasswordMatches = true;
+        } else {
+            // Cek juga ke data employee terkait (default password ddmmyyyy atau hash employee)
+            $empList = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($user->email))])->get();
+            foreach ($empList as $emp) {
+                if ($request->current_password === $emp->default_password || (!empty($emp->password) && Hash::check($request->current_password, $emp->password))) {
+                    $currentPasswordMatches = true;
+                    break;
+                }
+            }
+        }
+
+        if (!$currentPasswordMatches) {
             return back()->withErrors([
                 'current_password' => 'Password saat ini yang Anda masukkan salah.',
             ])->withInput();
@@ -147,20 +162,14 @@ class UserProfileController extends Controller
         $user->password = $newHashedPassword;
         $user->save();
 
-        // Sinkronkan password ke data employee jika ada
-        try {
-            $employee = $user->linked_employee;
-            if ($employee) {
-                $employee->password = $newHashedPassword;
-                $employee->save();
-            }
-        } catch (\Throwable $e) {
-            \Log::warning('Sinkronisasi password employee gagal: ' . $e->getMessage());
-        }
+        // Sinkronkan password ke seluruh data employee terkait
+        $user->syncPasswordToEmployees($newHashedPassword);
 
         ActivityLogger::log('UPDATE_PASSWORD', 'Profil Pengguna', "Memperbarui password akun: {$user->name} ({$user->email})", $user);
 
-        return redirect()->route('profile.index')->with('success', 'Password Anda berhasil diperbarui! Gunakan password baru ini saat login kembali.');
+        return redirect()->route('profile.index')
+            ->with('success', 'Password Anda berhasil diperbarui! Gunakan password baru ini saat login kembali.')
+            ->with('tab', 'security');
     }
 
     /**

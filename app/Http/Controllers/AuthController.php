@@ -64,16 +64,23 @@ class AuthController extends Controller
             $matchedEmployee = null;
             $hasValidPassword = false;
 
+            // Cek jika akun sudah terdaftar di tabel users
+            $existingUser = User::whereRaw('LOWER(email) = ?', [$lowerIdentifier])->first();
+            $userPasswordMatches = $existingUser && !empty($existingUser->password) && Hash::check($inputPassword, $existingUser->password);
+            $isAdminStaff = $existingUser && in_array($existingUser->role, ['admin', 'recruiter', 'head_hr', 'superadmin'], true);
+
             foreach ($employees as $empCandidate) {
                 if ($empCandidate->status === 'Resign') {
                     continue;
                 }
 
                 $defPwd = $empCandidate->default_password;
-                if ($inputPassword === $defPwd || (!empty($empCandidate->password) && Hash::check($inputPassword, $empCandidate->password))) {
+                $empPwdMatches = ($inputPassword === $defPwd) || (!empty($empCandidate->password) && Hash::check($inputPassword, $empCandidate->password));
+
+                if ($empPwdMatches || $userPasswordMatches) {
                     $matchedEmployee = $empCandidate;
                     $hasValidPassword = true;
-                    if ($empCandidate->hasLoginAccess()) {
+                    if ($empCandidate->hasLoginAccess() || $isAdminStaff) {
                         break; // Found matching employee with active login access!
                     }
                 }
@@ -84,8 +91,8 @@ class AuthController extends Controller
                 $matchedEmployee = $employees->first(fn($e) => $e->status !== 'Resign') ?: $employees->first();
             }
 
-            // Check status: Resigned employees cannot log in
-            if ($matchedEmployee->status === 'Resign') {
+            // Check status: Resigned employees cannot log in (kecuali staff admin/recruiter)
+            if ($matchedEmployee->status === 'Resign' && !$isAdminStaff) {
                 return back()
                     ->withInput($request->only('email', 'remember'))
                     ->withErrors([
@@ -94,7 +101,7 @@ class AuthController extends Controller
             }
 
             // Check Access Permission:
-            if (!$matchedEmployee->hasLoginAccess()) {
+            if (!$matchedEmployee->hasLoginAccess() && !$isAdminStaff) {
                 return back()
                     ->withInput($request->only('email', 'remember'))
                     ->withErrors([
@@ -103,6 +110,16 @@ class AuthController extends Controller
             }
 
             if ($hasValidPassword) {
+                $hashedInput = Hash::make($inputPassword);
+
+                // Sinkronkan password ke seluruh data master employee terkait yang masih aktif
+                foreach ($employees as $empToSync) {
+                    if ($empToSync->status !== 'Resign') {
+                        $empToSync->password = $hashedInput;
+                        $empToSync->save();
+                    }
+                }
+
                 // Ensure a User account exists in users table
                 $userRole = ($matchedEmployee->tipe_karyawan === 'Inhouse') ? 'karyawan_inhouse' : 'karyawan_ratecard';
                 $userEmail = !empty($matchedEmployee->email) ? $matchedEmployee->email : ($matchedEmployee->nik . '@asystem.co.id');
@@ -112,7 +129,7 @@ class AuthController extends Controller
                     $user = User::create([
                         'name' => $matchedEmployee->nama_karyawan,
                         'email' => $userEmail,
-                        'password' => Hash::make($inputPassword),
+                        'password' => $hashedInput,
                         'role' => $userRole,
                         'area' => $matchedEmployee->area,
                         'job_title' => $matchedEmployee->jabatan,
@@ -127,7 +144,7 @@ class AuthController extends Controller
 
                     $user->update([
                         'name' => $matchedEmployee->nama_karyawan,
-                        'password' => Hash::make($inputPassword),
+                        'password' => $hashedInput,
                         'role' => $assignedRole,
                         'area' => $matchedEmployee->area ?: $user->area,
                         'job_title' => $matchedEmployee->jabatan ?: $user->job_title,
