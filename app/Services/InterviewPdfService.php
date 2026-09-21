@@ -417,12 +417,36 @@ class InterviewPdfService
 
         // Candidate signature
         $candSig = $candidate->signature_path ?? null;
+        if (empty($candSig) && !empty($candidate->nik)) {
+            // Check donor candidate with same NIK
+            $donorCand = Candidate::where('nik', $candidate->nik)
+                ->whereNotNull('signature_path')
+                ->where('signature_path', '!=', '')
+                ->orderByDesc('id')
+                ->first();
+            if ($donorCand) {
+                $candSig = $donorCand->signature_path;
+            }
+        }
+        if (empty($candSig) && !empty($candidate->id)) {
+            // Check legacy tb_kandidat table if exists
+            if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+                $rawCand = \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                    ->where('id', $candidate->id)
+                    ->orWhere('no_ktp', $candidate->nik)
+                    ->orderByDesc('id')
+                    ->first();
+                if ($rawCand && !empty($rawCand->ttdfile)) {
+                    $candSig = $rawCand->ttdfile;
+                }
+            }
+        }
         if ($candSig && $candSig === ($assess?->interviewer_signature_path ?? '')) {
             $candSig = null;
         }
         $candSigResolved = $this->resolveImageForPdf($candSig, $tempDir);
         $candSigHtml = !empty($candSigResolved)
-            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $candSigResolved . '" style="height:45px; max-width:130px;"></div>'
+            ? '<div style="height:48px; text-align:center; margin:2px 0;"><img src="' . $candSigResolved . '" style="height:45px; max-width:130px; object-fit:contain;"></div>'
             : '<div style="height:48px; margin:2px 0;"></div>';
 
         // Pernyataan & Tanda Tangan
@@ -832,6 +856,14 @@ class InterviewPdfService
                 }
             }
             return null;
+        } elseif (strlen($path) > 200 && !str_contains($path, '/') && !str_contains($path, '\\') && !str_contains($path, '.')) {
+            // Raw base64 string without data URI prefix
+            $data = @base64_decode($path);
+            if ($data !== false && strlen($data) > 50) {
+                $tmpPath = $tempDir . DIRECTORY_SEPARATOR . 'sig_' . md5($path) . '.png';
+                @file_put_contents($tmpPath, $data);
+                return $tmpPath;
+            }
         }
 
         $base = basename(trim($path));
@@ -840,6 +872,8 @@ class InterviewPdfService
         $candidates = [
             $path,
             public_path($path),
+            public_path('lampiran/' . $path),
+            public_path('lampiran/' . $base),
             public_path('uploads/ttd/' . $path),
             public_path('uploads/ttd/' . $base),
             public_path('prinsiple/ttdfileprinsiple/' . $path),
@@ -847,9 +881,17 @@ class InterviewPdfService
             public_path('approval/' . $path),
             public_path('approval/' . $base),
             public_path('storage/' . $path),
+            public_path('storage/lampiran/' . $base),
+            public_path('storage/signatures/' . $base),
+            public_path('storage/approvals/' . $base),
             storage_path('app/public/' . $path),
             storage_path('app/public/signatures/' . $base),
             storage_path('app/public/approvals/' . $base),
+            storage_path('app/public/lampiran/' . $base),
+            '/www/wwwroot/asystem.co.id/interview/lampiran/' . $base,
+            '/www/wwwroot/asystem.co.id/lampiran/' . $base,
+            '/www/wwwroot/asystem.co.id/v3/lampiran/' . $base,
+            'd:/ASystem/v3/lampiran/' . $base,
             'd:/ASystem/v3/prinsiple/ttdfileprinsiple/' . $base,
             'd:/ASystem/v3/approval/' . $base,
         ];
@@ -857,6 +899,35 @@ class InterviewPdfService
         foreach ($candidates as $cand) {
             if (!empty($cand) && file_exists($cand) && !is_dir($cand) && filesize($cand) > 50) {
                 return $cand;
+            }
+        }
+
+        // Remote fallback: If file is hosted remotely on legacy server, download to tempDir
+        $remoteUrls = [
+            'https://new.asystem.co.id/lampiran/' . rawurlencode($base),
+            'https://asystem.co.id/interview/lampiran/' . rawurlencode($base),
+            'https://asystem.co.id/lampiran/' . rawurlencode($base),
+            'https://asystem.co.id/v3/lampiran/' . rawurlencode($base),
+            'https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($base),
+            'https://asystem.co.id/v3/approval/' . rawurlencode($base),
+        ];
+
+        foreach ($remoteUrls as $url) {
+            try {
+                $ctx = stream_context_create([
+                    'http' => ['timeout' => 4, 'ignore_errors' => true],
+                    'ssl'  => ['verify_peer' => false, 'verify_peer_name' => false]
+                ]);
+                $content = @file_get_contents($url, false, $ctx);
+                if (!empty($content) && strlen($content) > 100 && !str_contains(substr($content, 0, 50), '<html') && !str_contains(substr($content, 0, 50), '<!DOCTYPE')) {
+                    $tmpPath = $tempDir . DIRECTORY_SEPARATOR . 'rem_' . md5($url) . '_' . $base;
+                    @file_put_contents($tmpPath, $content);
+                    if (file_exists($tmpPath) && filesize($tmpPath) > 50) {
+                        return $tmpPath;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Continue to next URL
             }
         }
 

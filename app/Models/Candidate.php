@@ -153,6 +153,18 @@ class Candidate extends Model
         return self::getLampiranUrl($this->cv_path);
     }
 
+    public function getSignatureUrlAttribute(): ?string
+    {
+        $file = trim($this->signature_path ?? '');
+        if (empty($file)) {
+            return null;
+        }
+        if (str_starts_with($file, 'data:image')) {
+            return $file;
+        }
+        return self::getLampiranUrl($file);
+    }
+
     public function getApprovalProofUrlAttribute(): ?string
     {
         $val = trim($this->ttd_prinsiple ?? '');
