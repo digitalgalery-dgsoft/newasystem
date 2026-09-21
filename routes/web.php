@@ -337,7 +337,7 @@ Route::middleware(['admin'])->prefix('odoo-setting')->name('odoo.setting.')->gro
     Route::get('/{code}/stream-sync', [App\Http\Controllers\OdooSettingController::class, 'streamSync'])->name('stream-sync');
     Route::post('/{code}/sync', [App\Http\Controllers\OdooSettingController::class, 'sync'])->name('sync');
     Route::post('/sync-all', [App\Http\Controllers\OdooSettingController::class, 'syncAll'])->name('sync-all');
-    Route::post('/sync-by-nik', [App\Http\Controllers\OdooSettingController::class, 'syncByNik'])->name('sync-by-nik');
+    Route::match(['GET', 'POST'], '/sync-by-nik', [App\Http\Controllers\OdooSettingController::class, 'syncByNik'])->name('sync-by-nik');
     Route::post('/cleanup-duplicates', [App\Http\Controllers\OdooSettingController::class, 'cleanupDuplicates'])->name('cleanup-duplicates');
 });
 // Legacy shortcut alias

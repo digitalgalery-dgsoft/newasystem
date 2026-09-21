@@ -27,6 +27,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Paksa skema HTTPS pada production atau saat melalui reverse proxy HTTPS
+        if (app()->environment('production') 
+            || (isset($_SERVER['HTTP_X_FORWARDED_PROTO']) && $_SERVER['HTTP_X_FORWARDED_PROTO'] === 'https')
+            || (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on')
+            || str_starts_with((string)config('app.url'), 'https://')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
+
         // 1. Catat Sesi Login Otomatis
         Event::listen(Login::class, function (Login $event) {
             ActivityLogger::auth('LOGIN', "Pengguna {$event->user->name} berhasil masuk ke sistem.", $event->user);

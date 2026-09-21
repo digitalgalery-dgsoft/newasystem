@@ -45,7 +45,7 @@ class OdooEntitySeeder extends Seeder
             ],
             [
                 'code' => 'ABO',
-                'name' => 'PT Arina Bintang Operasional',
+                'name' => 'PT Abadi Berkat Odelia',
                 'odoo_url' => 'https://odoo.arinamultikarya.com',
                 'odoo_db' => 'ABO_LIVE',
                 'odoo_username' => '',
@@ -56,7 +56,7 @@ class OdooEntitySeeder extends Seeder
             ],
             [
                 'code' => 'ATB',
-                'name' => 'PT Anugrah Tri Berkah',
+                'name' => 'PT Anugrah Talenta Berkarya',
                 'odoo_url' => 'https://odoo.arinamultikarya.com',
                 'odoo_db' => 'ATB_LIVE',
                 'odoo_username' => '',

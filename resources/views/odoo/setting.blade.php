@@ -909,7 +909,7 @@ function handleSyncByNik(event) {
         </div>
     `;
 
-    fetch(`{{ route('odoo.setting.sync-by-nik') }}`, {
+    fetch(`{{ route('odoo.setting.sync-by-nik', [], false) }}`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',

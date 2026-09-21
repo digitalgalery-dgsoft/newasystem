@@ -1390,6 +1390,23 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 72. 🛠️ Perbaikan Sync Karyawan by NIK Odoo & Penyelarasan Nama Resmi Entitas ABO & ATB (21 September 2026)
+- **Akar Masalah**:
+  - Pada modal "Sync Data Karyawan by NIK (Odoo ERP)" di halaman Master Karyawan, pemanggilan `fetch(route('odoo.setting.sync-by-nik'))` menghasilkan URL absolut dengan protokol `http://`. Pada server produksi yang dilindungi HTTPS/Cloudflare, Nginx me-redirect permintaan `POST` tersebut dengan status 301/302 ke `https://`. Berdasarkan standar browser HTTP, pengalihan 301/302 mengubah metode `POST` menjadi `GET`, sehingga Laravel menolak permintaan dengan error: *"The GET method is not supported for route odoo-setting/sync-by-nik. Supported methods: POST, PUT."*
+  - Label nama entitas pada dropdown Master Karyawan keliru/usang: entitas ATB tertulis *"PT Anugrah Tri Berkah"* (seharusnya **PT ANUGRAH TALENTA BERKARYA**), dan entitas ABO tertulis *"PT Arina Bintang Operasional"* (seharusnya **PT ABADI BERKAT ODELIA**).
+- **Solusi & Implementasi Terpadu**:
+  1. **Penyempurnaan URL Pemanggilan & HTTPS Enforcement**:
+     - Mengubah pemanggilan `fetch` pada [master/karyawan/index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/karyawan/index.blade.php) dan [odoo/setting.blade.php](file:///d:/ASystem/newasystem/resources/views/odoo/setting.blade.php) menjadi URL relatif `route('odoo.setting.sync-by-nik', [], false)` (`/odoo-setting/sync-by-nik`) agar browser selalu menggunakan protokol halaman saat ini (`https://`) tanpa terpengaruh redirect skema.
+     - Menambahkan proteksi `URL::forceScheme('https')` pada [AppServiceProvider.php](file:///d:/ASystem/newasystem/app/Providers/AppServiceProvider.php) untuk lingkungan produksi atau saat terdeteksi reverse proxy HTTPS.
+     - Memperluas route `odoo.setting.sync-by-nik` di [routes/web.php](file:///d:/ASystem/newasystem/routes/web.php) dengan `Route::match(['GET', 'POST'], ...)` sehingga aman dari penolakan metode HTTP.
+  2. **Penyelarasan Nama Entitas ABO & ATB**:
+     - Memperbarui seluruh dropdown pada [resources/views/master/karyawan/index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/karyawan/index.blade.php) (Form Tambah Karyawan, Edit Karyawan, Bulk Edit Pimpinan, dan Modal Sync NIK):
+       - `ABO` diselaraskan menjadi **PT Abadi Berkat Odelia** (PT ABADI BERKAT ODELIA).
+       - `ATB` diselaraskan menjadi **PT Anugrah Talenta Berkarya** (PT ANUGRAH TALENTA BERKARYA).
+     - Memperbarui [OdooEntitySeeder.php](file:///d:/ASystem/newasystem/database/seeders/OdooEntitySeeder.php) agar default data seeder konsisten dengan master entitas.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |

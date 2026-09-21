@@ -817,12 +817,12 @@
                             <option value="PT Arina Multi Karya">PT Arina Multi Karya (AMK)</option>
                             <option value="PT Alva Karya Perkasa">PT Alva Karya Perkasa (AKP)</option>
                             <option value="PT Anugrah Terpercaya Kerja">PT Anugrah Terpercaya Kerja (ATK)</option>
-                            <option value="PT Arina Bintang Operasional">PT Arina Bintang Operasional (ABO)</option>
-                            <option value="PT Anugrah Tri Berkah">PT Anugrah Tri Berkah (ATB)</option>
+                            <option value="PT Abadi Berkat Odelia">PT Abadi Berkat Odelia (ABO)</option>
+                            <option value="PT Anugrah Talenta Berkarya">PT Anugrah Talenta Berkarya (ATB)</option>
                         </optgroup>
                         <optgroup label="Client Luar / Distributor (RateCard)">
                             @foreach($distinctPrinciples as $prin)
-                                @if(!in_array($prin->name, ['PT Arina Multi Karya', 'PT Alva Karya Perkasa', 'PT Anugrah Terpercaya Kerja', 'PT Arina Bintang Operasional', 'PT Anugrah Tri Berkah']))
+                                @if(!in_array($prin->name, ['PT Arina Multi Karya', 'PT Alva Karya Perkasa', 'PT Anugrah Terpercaya Kerja', 'PT Abadi Berkat Odelia', 'PT Anugrah Talenta Berkarya', 'PT Arina Bintang Operasional', 'PT Anugrah Tri Berkah', 'PT Arina Bintang Oetama']))
                                     <option value="{{ $prin->name }}">{{ $prin->name }}</option>
                                 @endif
                             @endforeach
@@ -1044,8 +1044,8 @@
                         <option value="AMK">AMK - PT Arina Multi Karya</option>
                         <option value="AKP">AKP - PT Alva Karya Perkasa</option>
                         <option value="ATK">ATK - PT Anugrah Terpercaya Kerja</option>
-                        <option value="ABO">ABO - PT Arina Bintang Operasional</option>
-                        <option value="ATB">ATB - PT Anugrah Tri Berkah</option>
+                        <option value="ABO">ABO - PT Abadi Berkat Odelia</option>
+                        <option value="ATB">ATB - PT Anugrah Talenta Berkarya</option>
                     </select>
                 </div>
             </div>
@@ -1311,8 +1311,8 @@
                             <option value="AMK">AMK - PT Arina Multi Karya</option>
                             <option value="AKP">AKP - PT Alva Karya Perkasa</option>
                             <option value="ATK">ATK - PT Anugrah Terpercaya Kerja</option>
-                            <option value="ABO">ABO - PT Arina Bintang Operasional</option>
-                            <option value="ATB">ATB - PT Anugrah Tri Berkah</option>
+                            <option value="ABO">ABO - PT Abadi Berkat Odelia</option>
+                            <option value="ATB">ATB - PT Anugrah Talenta Berkarya</option>
                         </select>
                     </div>
                     <div>
@@ -1489,7 +1489,7 @@
             </button>
         </div>
 
-        <form id="formKaryawanSyncNik" data-no-loader="true" onsubmit="handleKaryawanSyncNik(event)" class="p-6 space-y-4">
+        <form id="formKaryawanSyncNik" method="POST" action="javascript:void(0);" data-no-loader="true" onsubmit="handleKaryawanSyncNik(event)" class="p-6 space-y-4">
             @csrf
             <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1.5">
@@ -1518,8 +1518,8 @@
                             <option value="AMK">AMK &bull; PT Arina Multi Karya</option>
                             <option value="AKP">AKP &bull; PT Alva Karya Perkasa</option>
                             <option value="ATK">ATK &bull; PT Anugrah Terpercaya Kerja</option>
-                            <option value="ABO">ABO &bull; PT Arina Bintang Operasional</option>
-                            <option value="ATB">ATB &bull; PT Anugrah Tri Berkah</option>
+                            <option value="ABO">ABO &bull; PT Abadi Berkat Odelia</option>
+                            <option value="ATB">ATB &bull; PT Anugrah Talenta Berkarya</option>
                         </select>
                         <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none text-slate-400 text-xs">
                             <i class="fa-solid fa-chevron-down"></i>
@@ -1713,7 +1713,7 @@
             </div>
         `;
 
-        fetch(`{{ route('odoo.setting.sync-by-nik') }}`, {
+        fetch(`{{ route('odoo.setting.sync-by-nik', [], false) }}`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
