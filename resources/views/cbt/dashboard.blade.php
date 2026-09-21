@@ -69,20 +69,83 @@
                 </div>
             </div>
         @elseif(!$isProfileComplete)
-            <div class="bg-gradient-to-r from-rose-50 to-amber-50 border border-rose-200 text-rose-900 p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div class="flex items-start sm:items-center gap-3.5">
-                    <div class="w-12 h-12 rounded-2xl bg-rose-500 text-white flex items-center justify-center flex-shrink-0 shadow-md shadow-rose-500/30 mt-1 sm:mt-0">
-                        <i class="fa-solid fa-triangle-exclamation text-xl"></i>
+            @php
+                $missingList = $missingFields ?? $candidate->getMissingProfileFields();
+                $totalMissingFields = array_reduce($missingList, fn($carry, $item) => $carry + count($item['fields']), 0);
+            @endphp
+            <div class="bg-white border-2 border-rose-200 rounded-3xl shadow-sm overflow-hidden">
+                <!-- Alert Top Banner -->
+                <div class="bg-gradient-to-r from-rose-500 via-rose-600 to-amber-600 p-5 sm:p-6 text-white flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div class="flex items-start sm:items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white text-2xl flex-shrink-0 shadow-inner">
+                            <i class="fa-solid fa-triangle-exclamation"></i>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <h3 class="font-black text-base sm:text-lg tracking-tight">Data Profil Belum Lengkap!</h3>
+                                <span class="px-2.5 py-0.5 rounded-full bg-white text-rose-700 text-xs font-black shadow-sm">
+                                    {{ $totalMissingFields }} Kolom Belum Terisi
+                                </span>
+                            </div>
+                            <p class="text-xs text-rose-100 mt-1 leading-relaxed max-w-2xl">
+                                Seluruh modul tes online masih terkunci. Harap lengkapi rincian data pada daftar bagian di bawah ini agar akses pengerjaan tes dapat terbuka.
+                            </p>
+                        </div>
                     </div>
-                    <div>
-                        <h3 class="font-bold text-sm sm:text-base text-rose-950">Data Profil Belum Lengkap!</h3>
-                        <p class="text-xs text-rose-700 mt-0.5">Sesuai ketentuan, Anda wajib melengkapi data pribadi, keluarga, kontak darurat, rekening, dan tanda tangan digital sebelum modul tes dapat dibuka.</p>
+                    <a href="{{ route('cbt.profile', ['tab' => array_key_first($missingList) ?? 'pribadi']) }}" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-white text-rose-700 hover:bg-rose-50 text-xs font-bold shadow-md text-center transition-all flex items-center justify-center gap-2 flex-shrink-0">
+                        <span>Mulai Lengkapi</span>
+                        <i class="fa-solid fa-arrow-right text-xs"></i>
+                    </a>
+                </div>
+
+                <!-- Missing Fields Breakdown Grid -->
+                <div class="p-5 sm:p-6 bg-slate-50/50">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <h4 class="text-xs font-black text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-rose-500 text-sm"></i>
+                            <span>Daftar Bagian yang Wajib Dilengkapi ({{ count($missingList) }} Bagian):</span>
+                        </h4>
+                        <span class="text-[11px] text-slate-500 italic">Klik tombol "Isi Bagian Ini" untuk langsung menuju formulir terkait</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        @foreach($missingList as $secKey => $sec)
+                            <div class="bg-white rounded-2xl p-4 border border-rose-200/80 shadow-sm flex flex-col justify-between hover:border-rose-400 hover:shadow-md transition-all group">
+                                <div>
+                                    <div class="flex items-center justify-between gap-2 pb-2.5 mb-2.5 border-b border-slate-100">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <div class="w-7 h-7 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center text-xs flex-shrink-0">
+                                                <i class="{{ $sec['icon'] ?? 'fa-solid fa-circle-exclamation' }}"></i>
+                                            </div>
+                                            <span class="text-xs font-bold text-slate-800 truncate" title="{{ $sec['title'] }}">
+                                                {{ $sec['title'] }}
+                                            </span>
+                                        </div>
+                                        <span class="px-2 py-0.5 rounded-md bg-rose-100 text-rose-800 text-[10px] font-bold flex-shrink-0">
+                                            {{ count($sec['fields']) }} belum
+                                        </span>
+                                    </div>
+
+                                    <div class="flex flex-wrap gap-1.5">
+                                        @foreach($sec['fields'] as $fieldName)
+                                            <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-50 border border-rose-100 text-rose-700 text-[11px] font-medium leading-tight">
+                                                <i class="fa-solid fa-circle-xmark text-[9px] text-rose-500"></i>
+                                                <span>{{ $fieldName }}</span>
+                                            </span>
+                                        @endforeach
+                                    </div>
+                                </div>
+
+                                <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                                    <a href="{{ route('cbt.profile', ['tab' => $sec['tab']]) }}" class="inline-flex items-center gap-1.5 text-xs font-bold text-rose-600 hover:text-rose-800 group-hover:translate-x-1 transition-transform">
+                                        <span>Isi Bagian Ini</span>
+                                        <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        @endforeach
                     </div>
                 </div>
-                <a href="{{ route('cbt.profile') }}" class="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-md shadow-rose-600/20 text-center transition-all flex items-center justify-center gap-1.5 flex-shrink-0">
-                    <i class="fa-solid fa-arrow-right"></i>
-                    <span>Lengkapi Profil Sekarang</span>
-                </a>
             </div>
         @else
             <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 text-blue-900 p-5 rounded-2xl shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">

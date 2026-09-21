@@ -5,7 +5,8 @@
 @section('content')
 <div class="space-y-6" x-data="{ 
     activeTab: '{{ request('tab', 'pribadi') }}',
-    showExpModal: false 
+    showExpModal: false,
+    expStatus: '{{ in_array($candidate->experience_summary, ['Fresh Graduate', 'Belum Ada Pengalaman']) ? $candidate->experience_summary : ($candidate->workExperiences->count() > 0 ? 'Berpengalaman' : '') }}'
 }">
 
     <!-- TOP HEADER / BACK NAVIGATION & PROGRESS -->
@@ -491,59 +492,150 @@
         <div class="mb-6 pb-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
                 <h2 class="text-base font-bold text-slate-900">Bagian 5: Riwayat Pengalaman Kerja</h2>
-                <p class="text-xs text-slate-500">Wajib mencantumkan minimal 1 riwayat pekerjaan sebelumnya atau magang.</p>
+                <p class="text-xs text-slate-500">Pilih status pengalaman kerja Anda di bawah ini.</p>
             </div>
-            <button type="button" @click="showExpModal = true" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 self-start sm:self-auto">
+            <button type="button" x-show="expStatus === 'Berpengalaman'" @click="showExpModal = true" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold shadow-sm transition-all flex items-center gap-1.5 self-start sm:self-auto">
                 <i class="fa-solid fa-plus"></i>
                 <span>Tambah Pengalaman</span>
             </button>
         </div>
 
-        @if($candidate->workExperiences->count() > 0)
-            <div class="space-y-4">
-                @foreach($candidate->workExperiences as $exp)
-                    <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div class="flex items-start gap-3.5">
-                            <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-primary flex items-center justify-center text-base flex-shrink-0 shadow-sm">
-                                <i class="fa-solid fa-building"></i>
-                            </div>
-                            <div>
-                                <h4 class="text-sm font-bold text-slate-900">{{ $exp->company_name }}</h4>
-                                <p class="text-xs font-semibold text-primary mt-0.5">{{ $exp->position }}</p>
-                                <p class="text-[11px] text-slate-500 mt-1">
-                                    <i class="fa-regular fa-calendar text-[10px]"></i> {{ $exp->start_date ? $exp->start_date->format('M Y') : '-' }} s/d {{ $exp->end_date ? $exp->end_date->format('M Y') : 'Sekarang' }}
-                                    • Alasan Keluar: <span class="italic">{{ $exp->reason_for_leaving ?? '-' }}</span>
-                                </p>
-                            </div>
-                        </div>
-
-                        <form method="POST" action="{{ route('cbt.experience.destroy', $exp->id) }}" onsubmit="return confirm('Hapus riwayat pengalaman ini?');">
-                            @csrf
-                            @method('DELETE')
-                            <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-all flex items-center gap-1">
-                                <i class="fa-solid fa-trash-can text-[10px]"></i>
-                                <span>Hapus</span>
-                            </button>
-                        </form>
+        <!-- PILIHAN STATUS PENGALAMAN KERJA -->
+        <div class="mb-6">
+            <label class="block font-bold text-slate-700 mb-2 uppercase text-xs">Status Pengalaman Kerja Anda <span class="text-rose-500">*</span></label>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Pilihan 1: Fresh Graduate -->
+                <label class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all"
+                       :class="expStatus === 'Fresh Graduate' ? 'border-primary bg-blue-50/60 shadow-sm ring-2 ring-primary/20' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-xl bg-blue-100 text-primary flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-graduation-cap"></i>
+                        </span>
+                        <input type="radio" name="exp_choice" value="Fresh Graduate" x-model="expStatus" class="w-4 h-4 text-primary focus:ring-primary">
                     </div>
-                @endforeach
-            </div>
-        @else
-            <div class="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
-                <i class="fa-solid fa-briefcase text-4xl text-slate-300 mb-3 block"></i>
-                <p class="text-xs font-bold text-slate-700">Belum Ada Pengalaman Kerja Terdaftar</p>
-                <p class="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">Klik tombol di bawah ini untuk menambahkan riwayat kerja atau pengalaman magang/PKL Anda.</p>
-                <button type="button" @click="showExpModal = true" class="mt-4 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-md hover:bg-primary-700 transition-all">
-                    + Tambah Pengalaman Kerja
-                </button>
-            </div>
-        @endif
+                    <span class="text-xs font-bold text-slate-900">Fresh Graduate</span>
+                    <span class="text-[11px] text-slate-500 mt-1">Lulusan baru & belum memiliki riwayat kerja profesional.</span>
+                </label>
 
-        <div class="pt-6 mt-6 border-t border-slate-100 flex justify-end">
-            <button type="button" @click="activeTab = 'ttd'" class="px-6 py-3 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold shadow-md shadow-primary/20 transition-all flex items-center gap-2">
-                <span>Lanjut ke Tanda Tangan Digital</span>
-                <i class="fa-solid fa-arrow-right text-[10px]"></i>
-            </button>
+                <!-- Pilihan 2: Belum Ada Pengalaman -->
+                <label class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all"
+                       :class="expStatus === 'Belum Ada Pengalaman' ? 'border-primary bg-blue-50/60 shadow-sm ring-2 ring-primary/20' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-user-clock"></i>
+                        </span>
+                        <input type="radio" name="exp_choice" value="Belum Ada Pengalaman" x-model="expStatus" class="w-4 h-4 text-primary focus:ring-primary">
+                    </div>
+                    <span class="text-xs font-bold text-slate-900">Belum Ada Pengalaman</span>
+                    <span class="text-[11px] text-slate-500 mt-1">Belum pernah bekerja di perusahaan manapun.</span>
+                </label>
+
+                <!-- Pilihan 3: Pernah Bekerja / Berpengalaman -->
+                <label class="relative flex flex-col p-4 rounded-2xl border-2 cursor-pointer transition-all"
+                       :class="expStatus === 'Berpengalaman' ? 'border-primary bg-blue-50/60 shadow-sm ring-2 ring-primary/20' : 'border-slate-200 hover:border-slate-300 bg-white'">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center text-sm font-bold">
+                            <i class="fa-solid fa-briefcase"></i>
+                        </span>
+                        <input type="radio" name="exp_choice" value="Berpengalaman" x-model="expStatus" class="w-4 h-4 text-primary focus:ring-primary">
+                    </div>
+                    <span class="text-xs font-bold text-slate-900">Pernah Bekerja / Berpengalaman</span>
+                    <span class="text-[11px] text-slate-500 mt-1">Memiliki pengalaman kerja formal, kontrak, atau magang.</span>
+                </label>
+            </div>
+        </div>
+
+        <!-- JIKA MEMILIH FRESH GRADUATE ATAU BELUM ADA PENGALAMAN -->
+        <div x-show="expStatus === 'Fresh Graduate' || expStatus === 'Belum Ada Pengalaman'" class="p-5 rounded-2xl bg-emerald-50/80 border border-emerald-200 mb-6" x-cloak>
+            <div class="flex items-start gap-3.5">
+                <div class="w-10 h-10 rounded-xl bg-emerald-500 text-white flex items-center justify-center text-base flex-shrink-0 shadow-sm">
+                    <i class="fa-solid fa-circle-check"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 class="text-xs font-bold text-emerald-950">
+                        Status Terpilih: <span x-text="expStatus"></span>
+                    </h4>
+                    <p class="text-[11px] text-emerald-800 mt-0.5 leading-relaxed">
+                        Anda memilih status <strong x-text="expStatus"></strong>. Sesuai ketentuan, <strong>Anda tidak perlu mengisi formulir riwayat kerja lainnya</strong>. Klik tombol simpan di bawah ini untuk menyimpan status Anda dan membuka modul tes.
+                    </p>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ route('cbt.profile.update') }}" class="mt-4 pt-3 border-t border-emerald-200 flex justify-end">
+                @csrf
+                <input type="hidden" name="tab" value="pengalaman">
+                <input type="hidden" name="experience_status" :value="expStatus">
+                <button type="submit" class="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all flex items-center gap-2">
+                    <i class="fa-solid fa-floppy-disk"></i>
+                    <span>Simpan Status & Lanjut ke Tanda Tangan</span>
+                    <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                </button>
+            </form>
+        </div>
+
+        <!-- JIKA MEMILIH BERPENGALAMAN -->
+        <div x-show="expStatus === 'Berpengalaman'" x-cloak>
+            @if($candidate->workExperiences->count() > 0)
+                <div class="space-y-4">
+                    @foreach($candidate->workExperiences as $exp)
+                        <div class="p-4 rounded-2xl bg-slate-50 border border-slate-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div class="flex items-start gap-3.5">
+                                <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 text-primary flex items-center justify-center text-base flex-shrink-0 shadow-sm">
+                                    <i class="fa-solid fa-building"></i>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-bold text-slate-900">{{ $exp->company_name }}</h4>
+                                    <p class="text-xs font-semibold text-primary mt-0.5">{{ $exp->position }}</p>
+                                    <p class="text-[11px] text-slate-500 mt-1">
+                                        <i class="fa-regular fa-calendar text-[10px]"></i> {{ $exp->start_date ? $exp->start_date->format('M Y') : '-' }} s/d {{ $exp->end_date ? $exp->end_date->format('M Y') : 'Sekarang' }}
+                                        @if(!empty($exp->company_phone))
+                                            • <i class="fa-solid fa-phone text-[10px]"></i> Telp Kantor: <span class="font-medium text-slate-700">{{ $exp->company_phone }}</span>
+                                        @endif
+                                        • Alasan Keluar: <span class="italic">{{ $exp->reason_for_leaving ?? '-' }}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <form method="POST" action="{{ route('cbt.experience.destroy', $exp->id) }}" onsubmit="return confirm('Hapus riwayat pengalaman ini?');">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 border border-rose-200 transition-all flex items-center gap-1">
+                                    <i class="fa-solid fa-trash-can text-[10px]"></i>
+                                    <span>Hapus</span>
+                                </button>
+                            </form>
+                        </div>
+                    @endforeach
+                </div>
+
+                <div class="pt-6 mt-6 border-t border-slate-100 flex justify-between items-center">
+                    <button type="button" @click="showExpModal = true" class="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold transition-all flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus text-primary"></i>
+                        <span>Tambah Riwayat Lain</span>
+                    </button>
+                    <button type="button" @click="activeTab = 'ttd'" class="px-6 py-3 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold shadow-md shadow-primary/20 transition-all flex items-center gap-2">
+                        <span>Lanjut ke Tanda Tangan Digital</span>
+                        <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                    </button>
+                </div>
+            @else
+                <div class="text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
+                    <i class="fa-solid fa-briefcase text-4xl text-slate-300 mb-3 block"></i>
+                    <p class="text-xs font-bold text-slate-700">Belum Ada Pengalaman Kerja Terdaftar</p>
+                    <p class="text-[11px] text-slate-400 mt-1 max-w-sm mx-auto">Anda memilih memiliki pengalaman kerja. Klik tombol di bawah ini untuk menambahkan riwayat kerja atau pengalaman magang/PKL Anda.</p>
+                    <button type="button" @click="showExpModal = true" class="mt-4 px-4 py-2 rounded-xl bg-primary text-white text-xs font-bold shadow-md hover:bg-primary-700 transition-all inline-flex items-center gap-1.5">
+                        <i class="fa-solid fa-plus"></i>
+                        <span>Tambah Pengalaman Kerja</span>
+                    </button>
+                </div>
+            @endif
+        </div>
+
+        <!-- JIKA BELUM MEMILIH STATUS APAPUN -->
+        <div x-show="!expStatus" class="text-center py-8 border-2 border-dashed border-slate-200 rounded-2xl">
+            <i class="fa-solid fa-hand-pointer text-3xl text-slate-300 mb-2 block"></i>
+            <p class="text-xs font-bold text-slate-700">Silakan Pilih Salah Satu Opsi Status Pengalaman di Atas</p>
+            <p class="text-[11px] text-slate-400 mt-1">Pilih "Fresh Graduate" atau "Belum Ada Pengalaman" jika Anda belum pernah bekerja, atau pilih "Pernah Bekerja" jika memiliki pengalaman.</p>
         </div>
     </div>
 
@@ -632,6 +724,16 @@
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Jabatan / Posisi <span class="text-rose-500">*</span></label>
                     <input type="text" name="position" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:bg-white font-medium" placeholder="Sales Promotor / Admin / Staff">
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">No. Telepon Perusahaan / Kantor</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                            <i class="fa-solid fa-phone text-xs"></i>
+                        </span>
+                        <input type="text" name="company_phone" class="w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-primary focus:bg-white font-medium" placeholder="Contoh: 021-1234567 atau 08123456789">
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-2 gap-3">

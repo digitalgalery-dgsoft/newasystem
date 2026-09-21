@@ -433,42 +433,124 @@ class Candidate extends Model
     }
 
     /**
+     * Mengembalikan rincian field wajib yang belum terisi, dikelompokkan per bagian / tab formulir CBT.
+     */
+    public function getMissingProfileFields(): array
+    {
+        $missing = [];
+
+        // Bagian 1: Data Pribadi & Kontak
+        $pribadiMissing = [];
+        if (empty(trim($this->full_name ?? ''))) $pribadiMissing[] = 'Nama Lengkap';
+        if (empty(trim($this->nik ?? ''))) $pribadiMissing[] = 'NIK (No. KTP)';
+        if (empty(trim($this->birth_place ?? ''))) $pribadiMissing[] = 'Tempat Lahir';
+        if (empty($this->birth_date)) $pribadiMissing[] = 'Tanggal Lahir';
+        if (empty(trim($this->gender ?? ''))) $pribadiMissing[] = 'Jenis Kelamin';
+        if (empty(trim($this->religion ?? ''))) $pribadiMissing[] = 'Agama';
+        if (empty(trim($this->education ?? ''))) $pribadiMissing[] = 'Pendidikan Terakhir';
+        if (empty(trim($this->phone ?? '')) && empty(trim($this->whatsapp ?? ''))) $pribadiMissing[] = 'Nomor WhatsApp / HP';
+        if (empty($this->height) || floatval($this->height) <= 0) $pribadiMissing[] = 'Tinggi Badan (cm)';
+        if (empty($this->weight) || floatval($this->weight) <= 0) $pribadiMissing[] = 'Berat Badan (kg)';
+        if (empty(trim($this->marital_status ?? ''))) $pribadiMissing[] = 'Status Pernikahan';
+        if (empty(trim($this->address_ktp ?? ''))) $pribadiMissing[] = 'Alamat Sesuai KTP';
+        if (empty(trim($this->address_domicile ?? ''))) $pribadiMissing[] = 'Alamat Domisili';
+
+        if (!empty($pribadiMissing)) {
+            $missing['pribadi'] = [
+                'tab' => 'pribadi',
+                'title' => 'Bagian 1: Data Pribadi & Kontak',
+                'icon' => 'fa-solid fa-user',
+                'fields' => $pribadiMissing,
+            ];
+        }
+
+        // Bagian 2: Data Keluarga & Kontak Darurat
+        $keluargaMissing = [];
+        if (empty(trim($this->mother_name ?? ''))) $keluargaMissing[] = 'Nama Ibu Kandung';
+        if (empty(trim($this->emergency_contact_name ?? ''))) $keluargaMissing[] = 'Nama Kontak Darurat';
+        if (empty(trim($this->emergency_contact_phone ?? ''))) $keluargaMissing[] = 'Nomor HP Kontak Darurat';
+        if (empty(trim($this->emergency_contact_relation ?? ''))) $keluargaMissing[] = 'Hubungan Kontak Darurat';
+
+        if (!empty($keluargaMissing)) {
+            $missing['keluarga'] = [
+                'tab' => 'keluarga',
+                'title' => 'Bagian 2: Data Keluarga & Kontak Darurat',
+                'icon' => 'fa-solid fa-people-roof',
+                'fields' => $keluargaMissing,
+            ];
+        }
+
+        // Bagian 3: Data Keuangan & Rekening
+        $keuanganMissing = [];
+        if (empty(trim($this->bank_name ?? ''))) $keuanganMissing[] = 'Nama Bank';
+        if (empty(trim($this->bank_account_number ?? ''))) $keuanganMissing[] = 'Nomor Rekening Bank';
+        if (empty(trim($this->bank_account_holder ?? ''))) $keuanganMissing[] = 'Atas Nama Rekening';
+
+        if (!empty($keuanganMissing)) {
+            $missing['keuangan'] = [
+                'tab' => 'keuangan',
+                'title' => 'Bagian 3: Data Keuangan & Rekening',
+                'icon' => 'fa-solid fa-wallet',
+                'fields' => $keuanganMissing,
+            ];
+        }
+
+        // Bagian 4: Keterampilan & Karakter Kerja
+        $tambahanMissing = [];
+        if (empty(trim($this->work_motivation ?? ''))) $tambahanMissing[] = 'Motivasi Bekerja';
+        if (empty(trim($this->strengths ?? ''))) $tambahanMissing[] = 'Kelebihan / Kekuatan Diri';
+        if (empty(trim($this->weaknesses ?? ''))) $tambahanMissing[] = 'Kekurangan Diri';
+        if (empty(trim($this->current_activity ?? ''))) $tambahanMissing[] = 'Kegiatan Saat Ini';
+        if (empty(trim($this->vehicle ?? ''))) $tambahanMissing[] = 'Kendaraan yang Dimiliki';
+        if (empty(trim($this->driving_license ?? ''))) $tambahanMissing[] = 'Kepemilikan SIM';
+
+        if (!empty($tambahanMissing)) {
+            $missing['tambahan'] = [
+                'tab' => 'tambahan',
+                'title' => 'Bagian 4: Keterampilan & Karakter Kerja',
+                'icon' => 'fa-solid fa-sliders',
+                'fields' => $tambahanMissing,
+            ];
+        }
+
+        // Bagian 5: Riwayat Pengalaman Kerja
+        // Boleh memilih 'Fresh Graduate' / 'Belum Ada Pengalaman', ATAU memiliki minimal 1 riwayat pekerjaan
+        $isNoExp = in_array(trim($this->experience_summary ?? ''), ['Fresh Graduate', 'Belum Ada Pengalaman']);
+        $hasWorkExp = $this->workExperiences()->count() > 0;
+
+        if (!$isNoExp && !$hasWorkExp) {
+            $missing['pengalaman'] = [
+                'tab' => 'pengalaman',
+                'title' => 'Bagian 5: Riwayat Pengalaman Kerja',
+                'icon' => 'fa-solid fa-briefcase',
+                'fields' => ['Pilih status (Fresh Graduate / Belum Ada Pengalaman) atau Tambahkan Riwayat Kerja'],
+            ];
+        }
+
+        // Bagian 6: Tanda Tangan Digital & Pernyataan Integritas
+        $ttdMissing = [];
+        if (empty(trim($this->signature_path ?? ''))) $ttdMissing[] = 'Tanda Tangan Digital';
+        if (!($this->statement_agreed == 1 || $this->statement_agreed === true)) $ttdMissing[] = 'Persetujuan Surat Pernyataan';
+
+        if (!empty($ttdMissing)) {
+            $missing['ttd'] = [
+                'tab' => 'ttd',
+                'title' => 'Bagian 6: Tanda Tangan Digital & Pernyataan',
+                'icon' => 'fa-solid fa-signature',
+                'fields' => $ttdMissing,
+            ];
+        }
+
+        return $missing;
+    }
+
+    /**
      * Memeriksa kelengkapan profil kandidat sesuai standar interview ESA Groups.
      */
     public function checkProfileCompleteness(): bool
     {
-        $hasRequiredFields = !empty($this->full_name) &&
-            !empty($this->nik) &&
-            !empty($this->birth_place) &&
-            !empty($this->birth_date) &&
-            !empty($this->address_ktp) &&
-            !empty($this->address_domicile) &&
-            !empty($this->education) &&
-            (!empty($this->phone) || !empty($this->whatsapp)) &&
-            !empty($this->religion) &&
-            !empty($this->height) &&
-            !empty($this->weight) &&
-            !empty($this->marital_status) &&
-            !empty($this->mother_name) &&
-            !empty($this->emergency_contact_name) &&
-            !empty($this->emergency_contact_phone) &&
-            !empty($this->emergency_contact_relation) &&
-            !empty($this->bank_name) &&
-            !empty($this->bank_account_number) &&
-            !empty($this->bank_account_holder) &&
-            !empty($this->work_motivation) &&
-            !empty($this->strengths) &&
-            !empty($this->weaknesses) &&
-            !empty($this->current_activity) &&
-            !empty($this->vehicle) &&
-            !empty($this->driving_license) &&
-            !empty($this->signature_path) &&
-            ($this->statement_agreed == 1 || $this->statement_agreed === true);
-
-        // Jika pengalaman kerja wajib ada minimal 1
-        $hasExperience = $this->workExperiences()->count() > 0;
-
-        $isComplete = $hasRequiredFields && $hasExperience;
+        $missing = $this->getMissingProfileFields();
+        $isComplete = empty($missing);
 
         if ($this->is_profile_complete !== $isComplete) {
             $this->updateQuietly(['is_profile_complete' => $isComplete]);

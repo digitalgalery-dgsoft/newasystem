@@ -137,13 +137,16 @@ class CbtController extends Controller
         $mathResult = $candidate->testResults()->where('test_type', 'math')->latest()->first();
         $komputerResult = $candidate->testResults()->where('test_type', 'computer')->latest()->first();
 
+        $missingFields = $candidate->getMissingProfileFields();
+
         return view('cbt.dashboard', compact(
             'candidate',
             'isProfileComplete',
             'logs',
             'psikotesResult',
             'mathResult',
-            'komputerResult'
+            'komputerResult',
+            'missingFields'
         ));
     }
 
@@ -268,6 +271,28 @@ class CbtController extends Controller
             $candidate->save();
             $this->logActivity($candidate, 'Memperbarui Data Tambahan & Keterampilan', $request);
 
+        } elseif ($tab === 'pengalaman') {
+            $expStatus = $request->input('experience_status');
+            if (in_array($expStatus, ['Fresh Graduate', 'Belum Ada Pengalaman', 'Berpengalaman'])) {
+                $candidate->experience_summary = $expStatus;
+                $candidate->save();
+
+                // Dual sync ke kandidat lain dengan NIK sama & tb_kandidat jika ada
+                if (!empty($candidate->nik)) {
+                    Candidate::where('nik', $candidate->nik)
+                        ->where('id', '!=', $candidate->id)
+                        ->update(['experience_summary' => $expStatus]);
+
+                    if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+                        \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                            ->where('no_ktp', $candidate->nik)
+                            ->update(['experience_summary' => $expStatus]);
+                    }
+                }
+
+                $this->logActivity($candidate, 'Memperbarui Status Pengalaman Kerja: ' . $expStatus, $request);
+            }
+
         } elseif ($tab === 'ttd') {
             // Tanda tangan digital canvas (Base64 PNG)
             if ($request->filled('signature_base64')) {
@@ -304,6 +329,7 @@ class CbtController extends Controller
         $request->validate([
             'company_name' => 'required|string|max:150',
             'position' => 'required|string|max:100',
+            'company_phone' => 'nullable|string|max:50',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date',
             'reason_for_leaving' => 'nullable|string',
@@ -313,11 +339,27 @@ class CbtController extends Controller
             'candidate_id' => $candidate->id,
             'company_name' => $request->company_name,
             'position' => $request->position,
-            'phone' => $request->phone ?? '-',
+            'company_phone' => $request->company_phone ?? $request->phone ?? null,
             'start_date' => $request->start_date ?? now()->subYear()->format('Y-m-d'),
             'end_date' => $request->end_date ?? now()->format('Y-m-d'),
             'reason_for_leaving' => $request->reason_for_leaving ?? '-',
         ]);
+
+        // Perbarui status pengalaman kandidat menjadi Berpengalaman
+        $candidate->experience_summary = 'Berpengalaman';
+        $candidate->save();
+
+        if (!empty($candidate->nik)) {
+            Candidate::where('nik', $candidate->nik)
+                ->where('id', '!=', $candidate->id)
+                ->update(['experience_summary' => 'Berpengalaman']);
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+                \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                    ->where('no_ktp', $candidate->nik)
+                    ->update(['experience_summary' => 'Berpengalaman']);
+            }
+        }
 
         $candidate->checkProfileCompleteness();
         $this->logActivity($candidate, 'Menambahkan Riwayat Pengalaman Kerja: ' . $request->company_name, $request);
