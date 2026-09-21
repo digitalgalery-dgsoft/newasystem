@@ -274,15 +274,49 @@
     </div>
     @endif
 
-    <!-- 3. TABLE 1: DATA KANDIDAT MILIK REKRUTOR -->
+    <!-- TABS NAVIGATION (Kandidat Interview, Interview Selesai, Arsip Interview) -->
+    <div class="flex items-center gap-2 border-b border-slate-200/80 pb-1">
+        <!-- 1. Kandidat Interview -->
+        <a href="{{ route('interview.index', array_merge(request()->except('tab', 'page_my', 'page_area', 'page_done', 'page_arsip', 'page'), ['tab' => 'interview'])) }}" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 {{ $tab === 'interview' ? 'bg-primary text-white shadow-md shadow-primary-500/20' : 'text-slate-600 hover:text-primary hover:bg-slate-100' }}">
+            <i class="fa-solid fa-clipboard-user text-xs"></i>
+            <span>Kandidat Interview</span>
+            <span class="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold {{ $tab === 'interview' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700' }}">
+                {{ number_format($countActive) }}
+            </span>
+        </a>
+
+        <!-- 2. Interview Selesai -->
+        <a href="{{ route('interview.index', array_merge(request()->except('tab', 'page_my', 'page_area', 'page_done', 'page_arsip', 'page'), ['tab' => 'done'])) }}" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 {{ $tab === 'done' ? 'bg-primary text-white shadow-md shadow-primary-500/20' : 'text-slate-600 hover:text-primary hover:bg-slate-100' }}">
+            <i class="fa-solid fa-circle-check text-xs"></i>
+            <span>Interview Selesai</span>
+            <span class="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold {{ $tab === 'done' ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800' }}">
+                {{ number_format($countDone) }}
+            </span>
+        </a>
+
+        <!-- 3. Arsip Interview -->
+        <a href="{{ route('interview.index', array_merge(request()->except('tab', 'page_my', 'page_area', 'page_done', 'page_arsip', 'page'), ['tab' => 'arsip'])) }}" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 {{ $tab === 'arsip' ? 'bg-primary text-white shadow-md shadow-primary-500/20' : 'text-slate-600 hover:text-primary hover:bg-slate-100' }}">
+            <i class="fa-solid fa-box-archive text-xs"></i>
+            <span>Arsip Interview</span>
+            <span class="px-1.5 py-0.5 rounded-md text-[10px] font-extrabold {{ $tab === 'arsip' ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-800' }}">
+                {{ number_format($countArsip) }}
+            </span>
+        </a>
+    </div>
+
+    @if($tab === 'interview')
+    <!-- 3. TABLE 1: DATA KANDIDAT MILIK REKRUTOR / NASIONAL (SUPER ADMIN) -->
     <div class="table-card">
         <!-- Table Header & Search Bar (Clean Flex Layout - NO OVERLAPPING) -->
         <div class="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white">
             <div class="flex items-center gap-2.5 flex-wrap">
                 <span class="w-2.5 h-2.5 rounded-full bg-primary animate-pulse"></span>
                 <h2 class="text-sm font-bold text-slate-900">
-                    @if($filterUser === 'all')
-                        Data Kandidat &bull; Semua Rekruter (Nasional)
+                    @if($isAdmin || $filterUser === 'all')
+                        Data Kandidat Nasional &bull; Semua Rekruter
                     @elseif(!empty($filterUser) && $filterUser !== 'my')
                         Data Kandidat &bull; {{ $displayRecruiterName }} ({{ strtoupper($displayRecruiterTitle) }} - {{ strtoupper($displayRecruiterArea) }})
                     @else
@@ -290,7 +324,7 @@
                     @endif
                 </h2>
                 <span class="badge-pill bg-blue-50 text-primary border-blue-200">
-                    <i class="fa-solid fa-user-check text-[10px] mr-1"></i> {{ number_format($myCandidates->total()) }} Kandidat Milik Anda
+                    <i class="fa-solid fa-user-check text-[10px] mr-1"></i> {{ number_format($myCandidates->total()) }} {{ ($isAdmin || $filterUser === 'all') ? 'Kandidat Nasional' : 'Kandidat Milik Anda' }}
                 </span>
             </div>
 
@@ -298,6 +332,7 @@
                 <!-- Dropdown Filter Rekruter (Untuk Admin & User All Scope) -->
                 @if((!empty($isAdmin) || !empty($canViewAllRecruiters)) && isset($allRecruiters) && count($allRecruiters) > 0)
                 <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-1.5 flex-shrink-0">
+                    <input type="hidden" name="tab" value="interview">
                     @if(request('search_my'))
                         <input type="hidden" name="search_my" value="{{ request('search_my') }}">
                     @endif
@@ -323,6 +358,7 @@
 
                 <!-- Search Form -->
                 <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-2 flex-1 sm:flex-initial">
+                    <input type="hidden" name="tab" value="interview">
                     @if($filterUser)
                         <input type="hidden" name="filter_user" value="{{ $filterUser }}">
                     @endif
@@ -579,7 +615,7 @@
         </div>
     </div>
 
-    @if(isset($areaCandidates))
+    @if(!$isAdmin && isset($areaCandidates))
     <!-- 4. TABLE 2: DATA KANDIDAT REKAN SE-AREA -->
     <div class="table-card border-t-2 border-t-purple-500" id="table-rekan">
         <div class="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white">
@@ -602,6 +638,7 @@
 
             <!-- Search Area Form -->
             <form method="GET" action="{{ route('interview.index') }}#table-rekan" class="flex items-center gap-2 w-full lg:w-auto">
+                <input type="hidden" name="tab" value="interview">
                 @if(request('search_my'))
                     <input type="hidden" name="search_my" value="{{ request('search_my') }}">
                 @endif
@@ -791,6 +828,387 @@
             </div>
             <div>
                 {{ $areaCandidates->appends(request()->query())->fragment('table-rekan')->links() }}
+            </div>
+        </div>
+    </div>
+    @endif
+    @elseif($tab === 'done')
+    <!-- ========================================================================= -->
+    <!-- TAB CONTENT: INTERVIEW SELESAI                                            -->
+    <!-- ========================================================================= -->
+    <div class="table-card">
+        <div class="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white">
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                <h2 class="text-sm font-bold text-slate-900">
+                    Data Interview Selesai (Diterima / Ada TTD Prinsiple)
+                </h2>
+                <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">
+                    <i class="fa-solid fa-circle-check text-[10px] mr-1"></i> {{ number_format($doneCandidates->total()) }} Kandidat Selesai
+                </span>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+                <!-- Dropdown Filter Rekruter (Untuk Admin & User All Scope) -->
+                @if((!empty($isAdmin) || !empty($canViewAllRecruiters)) && isset($allRecruiters) && count($allRecruiters) > 0)
+                <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-1.5 flex-shrink-0">
+                    <input type="hidden" name="tab" value="done">
+                    @if(request('search'))
+                        <input type="hidden" name="search" value="{{ request('search') }}">
+                    @endif
+                    <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                        <i class="fa-solid fa-user-gear text-primary text-xs"></i>
+                        <select name="filter_user" onchange="this.form.submit()" class="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer">
+                            <option value="all" {{ ($filterUser === 'all' || empty($filterUser)) ? 'selected' : '' }}>🌐 Semua Rekruter (Nasional)</option>
+                            <option value="my" {{ $filterUser === 'my' ? 'selected' : '' }}>👤 Data Saya ({{ $user->name }})</option>
+                            <optgroup label="Pilih Rekruter Tertentu:">
+                                @foreach($allRecruiters as $rec)
+                                    <option value="{{ $rec->useras }}" {{ $filterUser === $rec->useras ? 'selected' : '' }}>
+                                        {{ $rec->display_name }} ({{ number_format($rec->total) }})
+                                    </option>
+                                @endforeach
+                            </optgroup>
+                        </select>
+                    </div>
+                </form>
+                @endif
+
+                <!-- Search Form Done -->
+                <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-2 flex-1 sm:flex-initial">
+                    <input type="hidden" name="tab" value="done">
+                    @if($filterUser)
+                        <input type="hidden" name="filter_user" value="{{ $filterUser }}">
+                    @endif
+
+                    <div class="relative w-full sm:w-64">
+                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" name="search" value="{{ request('search', $searchMy) }}" placeholder="Cari nama, NIK kandidat selesai..." 
+                               class="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50">
+                    </div>
+                    <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-700 shadow-sm flex-shrink-0">
+                        Cari
+                    </button>
+                    @if(request('search') || $searchMy || (!empty($filterUser) && $filterUser !== 'all'))
+                        <a href="{{ route('interview.index', ['tab' => 'done']) }}" class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200">
+                            Reset
+                        </a>
+                    @endif
+                </form>
+            </div>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-left custom-table">
+                <thead>
+                    <tr>
+                        <th class="w-12 text-center">NO</th>
+                        <th class="w-36">NO. KTP</th>
+                        <th>NAMA KANDIDAT</th>
+                        <th>JENIS KELAMIN</th>
+                        <th>TGL. LAHIR & USIA</th>
+                        <th>PENDIDIKAN</th>
+                        <th>PRINSIPLE & JABATAN</th>
+                        <th>NOTE PRINSIPLE</th>
+                        <th>REKRUTOR</th>
+                        <th class="text-center min-w-[100px]">ACTION</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($doneCandidates as $idx => $candidate)
+                        <tr class="hover:bg-slate-50/80 transition-colors">
+                            <td class="text-center text-slate-400 font-medium">{{ $doneCandidates->firstItem() + $idx }}</td>
+                            <td class="font-mono font-bold text-slate-900">{{ $candidate->nik }}</td>
+                            <td>
+                                <div class="font-bold text-slate-900">{{ $candidate->full_name }}</div>
+                                <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                    <i class="fa-solid fa-location-dot text-slate-400 text-[10px]"></i>
+                                    <span>{{ $candidate->area ?? 'JAKARTA' }}</span>
+                                </div>
+                            </td>
+                            <td>
+                                @if(in_array(strtolower($candidate->gender ?? ''), ['perempuan', 'female']))
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
+                                        <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
+                                    </span>
+                                @else
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                        <i class="fa-solid fa-mars text-[10px]"></i> Laki-laki
+                                    </span>
+                                @endif
+                            </td>
+                            <td>
+                                <div class="font-semibold text-slate-800">{{ $candidate->formatted_birth_date }}</div>
+                                <div class="text-[11px] text-slate-400">{{ $candidate->age }} Tahun</div>
+                            </td>
+                            <td>
+                                <span class="font-medium text-slate-700">{{ $candidate->education ?? '-' }}</span>
+                            </td>
+                            <td>
+                                <div class="font-bold text-primary">{{ $candidate->principle->name ?? '-' }}</div>
+                                <div class="text-[11px] text-slate-500 font-medium">{{ $candidate->applied_job }}</div>
+                            </td>
+                            <td>
+                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <i class="fa-solid fa-circle-check text-[10px]"></i>
+                                    <span>{{ $candidate->note_principle ?? 'Diterima / Disetujui' }}</span>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="font-bold text-slate-800 text-xs">
+                                    {{ $candidate->user_name_formatted ?? \App\Http\Controllers\InterviewController::resolveCandidateAsName($candidate) }}
+                                </div>
+                                @if(!empty($candidate->useras))
+                                    <div class="text-[10px] text-slate-400 font-mono">{{ $candidate->useras }}</div>
+                                @endif
+                            </td>
+                            <td class="text-center">
+                                <div class="flex items-center justify-center gap-1.5">
+                                    <a href="{{ route('interview.show', $candidate->id) }}" class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Lihat Detail Form Interview">
+                                        <i class="fa-solid fa-eye"></i>
+                                    </a>
+                                    <a href="{{ $candidate->wa_url }}" target="_blank" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-sm transition-all shadow-sm" title="Kirim Pesan WhatsApp">
+                                        <i class="fa-brands fa-whatsapp text-base"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="10" class="text-center py-10">
+                                <div class="w-12 h-12 rounded-full bg-emerald-50 text-emerald-400 flex items-center justify-center mx-auto mb-2.5 text-lg">
+                                    <i class="fa-solid fa-circle-check"></i>
+                                </div>
+                                <div class="text-sm font-bold text-slate-700">Belum ada kandidat berstatus selesai</div>
+                                <div class="text-xs text-slate-400 mt-1">Kandidat yang telah diterima atau disetujui oleh prinsiple akan muncul di sini.</div>
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="px-6 py-4 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-xs text-slate-500">
+                Menampilkan halaman <span class="font-bold text-slate-800">{{ $doneCandidates->currentPage() }}</span> dari <span class="font-bold text-slate-800">{{ $doneCandidates->lastPage() }}</span> (Total <span class="font-bold text-slate-800">{{ number_format($doneCandidates->total()) }}</span> Kandidat Selesai)
+            </div>
+            <div>
+                {{ $doneCandidates->appends(request()->query())->links() }}
+            </div>
+        </div>
+    </div>
+
+    @elseif($tab === 'arsip')
+    <!-- ========================================================================= -->
+    <!-- TAB CONTENT: ARSIP INTERVIEW                                              -->
+    <!-- ========================================================================= -->
+    <div class="space-y-4" x-data="{
+        selectedIds: [],
+        selectAll: false,
+        toggleAll() {
+            if (this.selectAll) {
+                this.selectedIds = Array.from(document.querySelectorAll('.candidate-arsip-checkbox')).map(cb => cb.value);
+            } else {
+                this.selectedIds = [];
+            }
+        },
+        updateSelectAll() {
+            const all = Array.from(document.querySelectorAll('.candidate-arsip-checkbox'));
+            this.selectAll = all.length > 0 && this.selectedIds.length === all.length;
+        }
+    }">
+        <!-- Floating / Top Action Bar Saat Checkbox Terpilih -->
+        <div x-show="selectedIds.length > 0" x-cloak class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-950 shadow-sm transition-all">
+            <div class="flex items-center gap-2.5">
+                <span class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                    <i class="fa-solid fa-check"></i>
+                </span>
+                <div>
+                    <span class="font-bold"><span x-text="selectedIds.length"></span> Kandidat Terpilih</span>
+                    <p class="text-[11px] text-emerald-700">Kandidat yang dipilih akan dikembalikan ke daftar interview aktif.</p>
+                </div>
+            </div>
+
+            <form action="{{ route('interview.bulk_unarchive') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mengaktifkan kembali ' + selectedIds.length + ' kandidat terpilih ke daftar Interview?');" class="flex items-center gap-2">
+                @csrf
+                <template x-for="id in selectedIds" :key="id">
+                    <input type="hidden" name="candidate_ids[]" :value="id">
+                </template>
+                <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition flex items-center gap-2 shadow-md shadow-emerald-600/20">
+                    <i class="fa-solid fa-box-open text-xs"></i>
+                    <span>Aktifkan Kembali Terpilih</span>
+                </button>
+            </form>
+        </div>
+
+        <div class="table-card">
+            <div class="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white">
+                <div class="flex items-center gap-2.5 flex-wrap">
+                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 animate-pulse"></span>
+                    <h2 class="text-sm font-bold text-slate-900">
+                        Data Arsip Interview (Status Arsip / Dibatalkan)
+                    </h2>
+                    <span class="badge-pill bg-rose-50 text-rose-700 border-rose-200">
+                        <i class="fa-solid fa-box-archive text-[10px] mr-1"></i> {{ number_format($arsipCandidates->total()) }} Kandidat Terarsip
+                    </span>
+                </div>
+
+                <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full lg:w-auto">
+                    <!-- Dropdown Filter Rekruter (Untuk Admin & User All Scope) -->
+                    @if((!empty($isAdmin) || !empty($canViewAllRecruiters)) && isset($allRecruiters) && count($allRecruiters) > 0)
+                    <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-1.5 flex-shrink-0">
+                        <input type="hidden" name="tab" value="arsip">
+                        @if(request('search'))
+                            <input type="hidden" name="search" value="{{ request('search') }}">
+                        @endif
+                        <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
+                            <i class="fa-solid fa-user-gear text-primary text-xs"></i>
+                            <select name="filter_user" onchange="this.form.submit()" class="bg-transparent text-xs font-bold text-slate-700 focus:outline-none cursor-pointer">
+                                <option value="all" {{ ($filterUser === 'all' || empty($filterUser)) ? 'selected' : '' }}>🌐 Semua Rekruter (Nasional)</option>
+                                <option value="my" {{ $filterUser === 'my' ? 'selected' : '' }}>👤 Data Saya ({{ $user->name }})</option>
+                                <optgroup label="Pilih Rekruter Tertentu:">
+                                    @foreach($allRecruiters as $rec)
+                                        <option value="{{ $rec->useras }}" {{ $filterUser === $rec->useras ? 'selected' : '' }}>
+                                            {{ $rec->display_name }} ({{ number_format($rec->total) }})
+                                        </option>
+                                    @endforeach
+                                </optgroup>
+                            </select>
+                        </div>
+                    </form>
+                    @endif
+
+                    <!-- Search Form Arsip -->
+                    <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-2 flex-1 sm:flex-initial">
+                        <input type="hidden" name="tab" value="arsip">
+                        @if($filterUser)
+                            <input type="hidden" name="filter_user" value="{{ $filterUser }}">
+                        @endif
+
+                        <div class="relative w-full sm:w-64">
+                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                            <input type="text" name="search" value="{{ request('search', $searchMy) }}" placeholder="Cari nama, NIK kandidat arsip..." 
+                                   class="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50">
+                        </div>
+                        <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-700 shadow-sm flex-shrink-0">
+                            Cari
+                        </button>
+                        @if(request('search') || $searchMy || (!empty($filterUser) && $filterUser !== 'all'))
+                            <a href="{{ route('interview.index', ['tab' => 'arsip']) }}" class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200">
+                                Reset
+                            </a>
+                        @endif
+                    </form>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left custom-table">
+                    <thead>
+                        <tr>
+                            <th class="w-10 text-center">
+                                <input type="checkbox" x-model="selectAll" @change="toggleAll()" class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" title="Pilih Semua di Halaman Ini">
+                            </th>
+                            <th class="w-12 text-center">NO</th>
+                            <th class="w-36">NO. KTP</th>
+                            <th>NAMA KANDIDAT</th>
+                            <th>JENIS KELAMIN</th>
+                            <th>TGL. LAHIR & USIA</th>
+                            <th>PRINSIPLE & JABATAN</th>
+                            <th>ALASAN ARSIP</th>
+                            <th>REKRUTOR</th>
+                            <th class="text-center min-w-[110px]">ACTION</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($arsipCandidates as $idx => $candidate)
+                            <tr class="hover:bg-slate-50/80 transition-colors">
+                                <td class="text-center">
+                                    <input type="checkbox" :value="'{{ $candidate->id }}'" x-model="selectedIds" @change="updateSelectAll()" class="candidate-arsip-checkbox w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                                </td>
+                                <td class="text-center text-slate-400 font-medium">{{ $arsipCandidates->firstItem() + $idx }}</td>
+                                <td class="font-mono font-bold text-slate-900">{{ $candidate->nik }}</td>
+                                <td>
+                                    <div class="font-bold text-slate-900">{{ $candidate->full_name }}</div>
+                                    <div class="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+                                        <i class="fa-solid fa-location-dot text-slate-400 text-[10px]"></i>
+                                        <span>{{ $candidate->area ?? 'JAKARTA' }}</span>
+                                    </div>
+                                </td>
+                                <td>
+                                    @if(in_array(strtolower($candidate->gender ?? ''), ['perempuan', 'female']))
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
+                                            <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                            <i class="fa-solid fa-mars text-[10px]"></i> Laki-laki
+                                        </span>
+                                    @endif
+                                </td>
+                                <td>
+                                    <div class="font-semibold text-slate-800">{{ $candidate->formatted_birth_date }}</div>
+                                    <div class="text-[11px] text-slate-400">{{ $candidate->age }} Tahun</div>
+                                </td>
+                                <td>
+                                    <div class="font-bold text-slate-700">{{ $candidate->principle->name ?? '-' }}</div>
+                                    <div class="text-[11px] text-slate-500 font-medium">{{ $candidate->applied_job }}</div>
+                                </td>
+                                <td>
+                                    <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                                        <i class="fa-solid fa-circle-exclamation text-[10px]"></i>
+                                        <span>{{ $candidate->archive_reason ?? 'Diarsipkan' }}</span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="font-bold text-slate-800 text-xs">
+                                        {{ $candidate->user_name_formatted ?? \App\Http\Controllers\InterviewController::resolveCandidateAsName($candidate) }}
+                                    </div>
+                                    @if(!empty($candidate->useras))
+                                        <div class="text-[10px] text-slate-400 font-mono">{{ $candidate->useras }}</div>
+                                    @endif
+                                </td>
+                                <td class="text-center">
+                                    <div class="flex items-center justify-center gap-1.5">
+                                        <!-- Detail Form Interview -->
+                                        <a href="{{ route('interview.show', $candidate->id) }}" class="w-8 h-8 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Lihat Detail Form Interview">
+                                            <i class="fa-solid fa-eye"></i>
+                                        </a>
+                                        <!-- Unarchive -->
+                                        <form action="{{ route('interview.unarchive', $candidate->id) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin mengaktifkan kembali kandidat {{ addslashes($candidate->full_name) }} ke daftar interview?');">
+                                            @csrf
+                                            <button type="submit" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" title="Aktifkan Kembali (Un-Archive) ke Interview">
+                                                <i class="fa-solid fa-box-open"></i>
+                                            </button>
+                                        </form>
+                                        <!-- WhatsApp -->
+                                        <a href="{{ $candidate->wa_url }}" target="_blank" class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-sm transition-all shadow-sm" title="Kirim Pesan WhatsApp">
+                                            <i class="fa-brands fa-whatsapp text-base"></i>
+                                        </a>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="10" class="text-center py-10">
+                                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2.5 text-lg">
+                                        <i class="fa-solid fa-box-archive"></i>
+                                    </div>
+                                    <div class="text-sm font-bold text-slate-700">Belum ada kandidat diarsipkan</div>
+                                    <div class="text-xs text-slate-400 mt-1">Kandidat yang tidak lolos atau diarsipkan akan ditampilkan pada tab ini.</div>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                <div class="text-xs text-slate-500">
+                    Menampilkan halaman <span class="font-bold text-slate-800">{{ $arsipCandidates->currentPage() }}</span> dari <span class="font-bold text-slate-800">{{ $arsipCandidates->lastPage() }}</span> (Total <span class="font-bold text-slate-800">{{ number_format($arsipCandidates->total()) }}</span> Kandidat Terarsip)
+                </div>
+                <div>
+                    {{ $arsipCandidates->appends(request()->query())->links() }}
+                </div>
             </div>
         </div>
     </div>

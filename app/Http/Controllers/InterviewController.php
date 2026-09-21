@@ -182,15 +182,19 @@ class InterviewController extends Controller
     }
 
     /**
-     * Halaman Utama: Replikasi interview.php
+     * Halaman Utama: Replikasi interview.php dengan Navigasi Tabs (Interview, Selesai, Arsip)
      */
     public function index(Request $request)
     {
         $user = $this->getCurrentUser();
         $salam = $this->getSalam();
-        $searchMy = $request->query('search_my');
+        $searchMy = $request->query('search_my', $request->query('search'));
         $searchArea = $request->query('search_area');
         $filterUser = $request->query('filter_user');
+        $tab = $request->query('tab', 'interview');
+        if (!in_array($tab, ['interview', 'done', 'arsip'])) {
+            $tab = 'interview';
+        }
 
         $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
         $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
@@ -253,9 +257,8 @@ class InterviewController extends Controller
             }
         }
 
-        // Query 1: Data Kandidat Milik Anda / Rekruter Terpilih (Tabel Atas)
-        $myCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
-            ->whereNotIn('status', ['Arsip', 'archived'])
+        // Hitung Tab Counters (Active, Done, Arsip)
+        $countActiveQuery = Candidate::whereNotIn('status', ['Arsip', 'archived'])
             ->where(function ($q) {
                 $q->whereNull('jenis')->orWhere('jenis', '');
             })
@@ -263,27 +266,138 @@ class InterviewController extends Controller
                 $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
             });
 
-        $excludedRecruiterForArea = null;
-        $excludedIdentifiersForArea = $userIdentifiers;
+        $countDoneQuery = Candidate::whereNotIn('status', ['Arsip', 'archived'])
+            ->where(function ($sq) {
+                $sq->where(function ($q2) {
+                    $q2->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
+                })->orWhere(function ($q2) {
+                    $q2->whereNotNull('note_principle')->where('note_principle', '!=', '');
+                });
+            });
+
+        $countArsipQuery = Candidate::where(function ($sq) {
+            $sq->where('status', 'Arsip')
+               ->orWhere('status', 'archived')
+               ->orWhere('status_kandidat', 'Arsip');
+        });
 
         if ($canViewAllRecruiters) {
             if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
-                // Filter rekruter terpilih dari selector
-                $myCandidatesQuery->where(function ($q) use ($filterUser) {
+                $filterCond = function ($q) use ($filterUser) {
                     $q->where('useras', $filterUser)
                       ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
-                });
-                $foundRec = $allRecruiters->firstWhere('useras', $filterUser);
-                $displayRecruiterName = $foundRec ? $foundRec->display_name : $filterUser;
-                $displayRecruiterArea = $foundRec ? ($foundRec->area ?: ($user->area ?? 'JAKARTA')) : ($user->area ?? 'JAKARTA');
-                $displayRecruiterTitle = 'REKRUTER TERPILIH';
-
-                $excludedRecruiterForArea = $filterUser;
-                $excludedIdentifiersForArea = [strtolower(trim($filterUser))];
-                if ($foundRec && !empty($foundRec->display_name)) {
-                    $excludedIdentifiersForArea[] = strtolower(trim($foundRec->display_name));
-                }
+                };
+                $countActiveQuery->where($filterCond);
+                $countDoneQuery->where($filterCond);
+                $countArsipQuery->where($filterCond);
             } elseif ($filterUser === 'my') {
+                $myFilter = function ($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    }
+                };
+                $countActiveQuery->where($myFilter);
+                $countDoneQuery->where($myFilter);
+                $countArsipQuery->where($myFilter);
+            }
+        } else {
+            $userFilter = function ($q) use ($user, $userIdentifiers) {
+                if (!empty($userIdentifiers)) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                } elseif ($user && !empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            };
+            $countActiveQuery->where($userFilter);
+            $countDoneQuery->where($userFilter);
+            $countArsipQuery->where($userFilter);
+        }
+
+        if ($user) {
+            $user->applyRoleScopeToCandidates($countActiveQuery);
+            $user->applyRoleScopeToCandidates($countDoneQuery);
+            $user->applyRoleScopeToCandidates($countArsipQuery);
+        }
+
+        $countActive = $countActiveQuery->count();
+        $countDone = $countDoneQuery->count();
+        $countArsip = $countArsipQuery->count();
+
+        // Variabel inisialisasi untuk tiap tab
+        $myCandidates = null;
+        $areaCandidates = null;
+        $doneCandidates = null;
+        $arsipCandidates = null;
+        $targetArea = null;
+        $statTotal = 0;
+        $statProfileComplete = 0;
+        $statTestDone = 0;
+        $odooStats = null;
+        $distinctOdooStages = [];
+        $odooStage = $request->query('odoo_stage');
+
+        if ($tab === 'interview') {
+            // Query 1: Data Kandidat Milik Anda / Rekruter Terpilih / Nasional (Tabel 1)
+            $myCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
+                ->whereNotIn('status', ['Arsip', 'archived'])
+                ->where(function ($q) {
+                    $q->whereNull('jenis')->orWhere('jenis', '');
+                })
+                ->where(function ($q) {
+                    $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
+                });
+
+            $excludedRecruiterForArea = null;
+            $excludedIdentifiersForArea = $userIdentifiers;
+
+            if ($canViewAllRecruiters) {
+                if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
+                    // Filter rekruter terpilih dari selector
+                    $myCandidatesQuery->where(function ($q) use ($filterUser) {
+                        $q->where('useras', $filterUser)
+                          ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
+                    });
+                    $foundRec = $allRecruiters->firstWhere('useras', $filterUser);
+                    $displayRecruiterName = $foundRec ? $foundRec->display_name : $filterUser;
+                    $displayRecruiterArea = $foundRec ? ($foundRec->area ?: ($user->area ?? 'JAKARTA')) : ($user->area ?? 'JAKARTA');
+                    $displayRecruiterTitle = 'REKRUTER TERPILIH';
+
+                    $excludedRecruiterForArea = $filterUser;
+                    $excludedIdentifiersForArea = [strtolower(trim($filterUser))];
+                    if ($foundRec && !empty($foundRec->display_name)) {
+                        $excludedIdentifiersForArea[] = strtolower(trim($foundRec->display_name));
+                    }
+                } elseif ($filterUser === 'my') {
+                    $myCandidatesQuery->where(function ($q) use ($user, $userIdentifiers) {
+                        if (!empty($userIdentifiers)) {
+                            $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                            if ($user && !empty($user->id)) {
+                                $q->orWhere('recruiter_id', $user->id);
+                            }
+                        } elseif ($user && !empty($user->id)) {
+                            $q->where('recruiter_id', $user->id);
+                        }
+                    });
+                    $displayRecruiterName = $user->name;
+                    $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
+                    $displayRecruiterArea = $user->area ?? 'JAKARTA';
+                    $excludedIdentifiersForArea = $userIdentifiers;
+                } else {
+                    // Default Admin / All-Scope: Tampilkan semua data kandidat nasional langsung
+                    $filterUser = 'all';
+                    $displayRecruiterName = 'Semua Rekruter (Nasional)';
+                    $displayRecruiterTitle = $isAdmin ? 'SUPER ADMIN - All' : 'ALL PRINCIPLE & AREA';
+                    $displayRecruiterArea = 'NASIONAL';
+                    $excludedIdentifiersForArea = $userIdentifiers;
+                }
+            } else {
+                // USER BIASA / REKRUTER: Tampilkan HANYA data milik user yang sedang login!
                 $myCandidatesQuery->where(function ($q) use ($user, $userIdentifiers) {
                     if (!empty($userIdentifiers)) {
                         $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
@@ -292,200 +406,298 @@ class InterviewController extends Controller
                         }
                     } elseif ($user && !empty($user->id)) {
                         $q->where('recruiter_id', $user->id);
+                    } else {
+                        $q->whereRaw('1 = 0');
                     }
                 });
-                $displayRecruiterName = $user->name;
-                $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
-                $displayRecruiterArea = $user->area ?? 'JAKARTA';
-                $excludedIdentifiersForArea = $userIdentifiers;
-            } else {
-                // Default Admin / All-Scope: Tampilkan semua data kandidat nasional
-                $displayRecruiterName = 'Semua Rekruter (Nasional)';
-                $displayRecruiterTitle = $isAdmin ? 'SUPER ADMIN - All' : 'ALL PRINCIPLE & AREA';
-                $displayRecruiterArea = 'NASIONAL';
                 $excludedIdentifiersForArea = $userIdentifiers;
             }
-        } else {
-            // USER BIASA / REKRUTER: Tampilkan HANYA data milik user yang sedang login!
-            $myCandidatesQuery->where(function ($q) use ($user, $userIdentifiers) {
-                if (!empty($userIdentifiers)) {
-                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                    if ($user && !empty($user->id)) {
-                        $q->orWhere('recruiter_id', $user->id);
-                    }
-                } elseif ($user && !empty($user->id)) {
-                    $q->where('recruiter_id', $user->id);
+
+            // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
+            if ($user) {
+                $user->applyRoleScopeToCandidates($myCandidatesQuery);
+            }
+
+            // Hitung Statistik Ringkas Step Odoo ERP
+            $odooBaseQuery = clone $myCandidatesQuery;
+            $odooStatsRaw = (clone $odooBaseQuery)->selectRaw("
+                SUM(CASE WHEN odoo_stage_name = 'Data Pelamar' THEN 1 ELSE 0 END) as data_pelamar,
+                SUM(CASE WHEN odoo_stage_name LIKE '%Interview%' THEN 1 ELSE 0 END) as interview,
+                SUM(CASE WHEN odoo_stage_name = 'Principal' THEN 1 ELSE 0 END) as principal,
+                SUM(CASE WHEN odoo_stage_name LIKE '%Learning%' THEN 1 ELSE 0 END) as elearning,
+                SUM(CASE WHEN odoo_stage_name LIKE '%PKWT%' THEN 1 ELSE 0 END) as pkwt,
+                SUM(CASE WHEN odoo_stage_name = 'Joined' THEN 1 ELSE 0 END) as joined,
+                SUM(CASE WHEN odoo_stage_name IS NULL OR odoo_stage_name = '' THEN 1 ELSE 0 END) as belum_odoo,
+                SUM(CASE WHEN odoo_stage_name IS NOT NULL AND odoo_stage_name != '' THEN 1 ELSE 0 END) as total_odoo
+            ")->first();
+
+            $odooStats = [
+                'data_pelamar' => (int) ($odooStatsRaw->data_pelamar ?? 0),
+                'interview'    => (int) ($odooStatsRaw->interview ?? 0),
+                'principal'    => (int) ($odooStatsRaw->principal ?? 0),
+                'elearning'    => (int) ($odooStatsRaw->elearning ?? 0),
+                'pkwt'         => (int) ($odooStatsRaw->pkwt ?? 0),
+                'joined'       => (int) ($odooStatsRaw->joined ?? 0),
+                'belum_odoo'   => (int) ($odooStatsRaw->belum_odoo ?? 0),
+                'total_odoo'   => (int) ($odooStatsRaw->total_odoo ?? 0),
+            ];
+
+            $distinctOdooStages = (clone $odooBaseQuery)
+                ->whereNotNull('odoo_stage_name')
+                ->where('odoo_stage_name', '!=', '')
+                ->distinct()
+                ->pluck('odoo_stage_name')
+                ->sort()
+                ->values()
+                ->all();
+
+            // Terapkan Filter Step Odoo pada Query 1
+            if (!empty($odooStage)) {
+                if ($odooStage === 'none') {
+                    $myCandidatesQuery->where(function($q) {
+                        $q->whereNull('odoo_stage_name')->orWhere('odoo_stage_name', '');
+                    });
+                } elseif ($odooStage === 'matched') {
+                    $myCandidatesQuery->whereNotNull('odoo_stage_name')->where('odoo_stage_name', '!=', '');
+                } elseif ($odooStage === 'interview') {
+                    $myCandidatesQuery->where('odoo_stage_name', 'like', '%Interview%');
+                } elseif ($odooStage === 'elearning') {
+                    $myCandidatesQuery->where('odoo_stage_name', 'like', '%Learning%');
+                } elseif ($odooStage === 'pkwt') {
+                    $myCandidatesQuery->where('odoo_stage_name', 'like', '%PKWT%');
                 } else {
-                    $q->whereRaw('1 = 0');
+                    $myCandidatesQuery->where('odoo_stage_name', $odooStage);
                 }
-            });
-            $excludedIdentifiersForArea = $userIdentifiers;
-        }
-
-        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
-        if ($user) {
-            $user->applyRoleScopeToCandidates($myCandidatesQuery);
-        }
-
-        $odooStage = $request->query('odoo_stage');
-
-        // Hitung Statistik Ringkas Step Odoo ERP
-        $odooBaseQuery = clone $myCandidatesQuery;
-        $odooStatsRaw = (clone $odooBaseQuery)->selectRaw("
-            SUM(CASE WHEN odoo_stage_name = 'Data Pelamar' THEN 1 ELSE 0 END) as data_pelamar,
-            SUM(CASE WHEN odoo_stage_name LIKE '%Interview%' THEN 1 ELSE 0 END) as interview,
-            SUM(CASE WHEN odoo_stage_name = 'Principal' THEN 1 ELSE 0 END) as principal,
-            SUM(CASE WHEN odoo_stage_name LIKE '%Learning%' THEN 1 ELSE 0 END) as elearning,
-            SUM(CASE WHEN odoo_stage_name LIKE '%PKWT%' THEN 1 ELSE 0 END) as pkwt,
-            SUM(CASE WHEN odoo_stage_name = 'Joined' THEN 1 ELSE 0 END) as joined,
-            SUM(CASE WHEN odoo_stage_name IS NULL OR odoo_stage_name = '' THEN 1 ELSE 0 END) as belum_odoo,
-            SUM(CASE WHEN odoo_stage_name IS NOT NULL AND odoo_stage_name != '' THEN 1 ELSE 0 END) as total_odoo
-        ")->first();
-
-        $odooStats = [
-            'data_pelamar' => (int) ($odooStatsRaw->data_pelamar ?? 0),
-            'interview'    => (int) ($odooStatsRaw->interview ?? 0),
-            'principal'    => (int) ($odooStatsRaw->principal ?? 0),
-            'elearning'    => (int) ($odooStatsRaw->elearning ?? 0),
-            'pkwt'         => (int) ($odooStatsRaw->pkwt ?? 0),
-            'joined'       => (int) ($odooStatsRaw->joined ?? 0),
-            'belum_odoo'   => (int) ($odooStatsRaw->belum_odoo ?? 0),
-            'total_odoo'   => (int) ($odooStatsRaw->total_odoo ?? 0),
-        ];
-
-        $distinctOdooStages = (clone $odooBaseQuery)
-            ->whereNotNull('odoo_stage_name')
-            ->where('odoo_stage_name', '!=', '')
-            ->distinct()
-            ->pluck('odoo_stage_name')
-            ->sort()
-            ->values()
-            ->all();
-
-        // Terapkan Filter Step Odoo pada Query 1 (Data Kandidat Saya / Terpilih)
-        if (!empty($odooStage)) {
-            if ($odooStage === 'none') {
-                $myCandidatesQuery->where(function($q) {
-                    $q->whereNull('odoo_stage_name')->orWhere('odoo_stage_name', '');
-                });
-            } elseif ($odooStage === 'matched') {
-                $myCandidatesQuery->whereNotNull('odoo_stage_name')->where('odoo_stage_name', '!=', '');
-            } elseif ($odooStage === 'interview') {
-                $myCandidatesQuery->where('odoo_stage_name', 'like', '%Interview%');
-            } elseif ($odooStage === 'elearning') {
-                $myCandidatesQuery->where('odoo_stage_name', 'like', '%Learning%');
-            } elseif ($odooStage === 'pkwt') {
-                $myCandidatesQuery->where('odoo_stage_name', 'like', '%PKWT%');
-            } else {
-                $myCandidatesQuery->where('odoo_stage_name', $odooStage);
             }
-        }
 
-        if ($searchMy) {
-            $myCandidatesQuery->where(function ($q) use ($searchMy) {
-                $q->where('full_name', 'like', "%{$searchMy}%")
-                  ->orWhere('nik', 'like', "%{$searchMy}%")
-                  ->orWhere('applied_job', 'like', "%{$searchMy}%");
+            if ($searchMy) {
+                $myCandidatesQuery->where(function ($q) use ($searchMy) {
+                    $q->where('full_name', 'like', "%{$searchMy}%")
+                      ->orWhere('nik', 'like', "%{$searchMy}%")
+                      ->orWhere('applied_job', 'like', "%{$searchMy}%");
+                });
+            }
+
+            // Hitung metrik ringkasan
+            $statTotal = (clone $myCandidatesQuery)->count();
+            $statProfileComplete = (clone $myCandidatesQuery)->where('is_profile_complete', true)->count();
+            $statTestDone = (clone $myCandidatesQuery)->where(function ($q) {
+                $q->where(function ($sq) {
+                    $sq->whereNotNull('tes_kepribadian')
+                       ->where('tes_kepribadian', '!=', '')
+                       ->where('tes_kepribadian', '!=', '00:00:00')
+                       ->where('tes_kepribadian', '!=', '-');
+                })->orWhere(function ($sq) {
+                    $sq->whereNotNull('tes_matematika')
+                       ->where('tes_matematika', '!=', '')
+                       ->where('tes_matematika', '!=', '00:00:00')
+                       ->where('tes_matematika', '!=', '-');
+                });
+            })->count();
+
+            $myCandidates = $myCandidatesQuery->orderBy('id', 'desc')->paginate(15, ['*'], 'page_my');
+            self::attachInhouseEmployeeNames($myCandidates);
+            $myCandidates->getCollection()->transform(function ($c) use ($user, $salam) {
+                $c->wa_url = $this->buildWaUrl($c, $user, $salam);
+                return $c;
             });
-        }
 
-        // Hitung metrik ringkasan akurat untuk filter aktif
-        $statTotal = (clone $myCandidatesQuery)->count();
-        $statProfileComplete = (clone $myCandidatesQuery)->where('is_profile_complete', true)->count();
-        $statTestDone = (clone $myCandidatesQuery)->where(function ($q) {
-            $q->where(function ($sq) {
-                $sq->whereNotNull('tes_kepribadian')
-                   ->where('tes_kepribadian', '!=', '')
-                   ->where('tes_kepribadian', '!=', '00:00:00')
-                   ->where('tes_kepribadian', '!=', '-');
-            })->orWhere(function ($sq) {
-                $sq->whereNotNull('tes_matematika')
-                   ->where('tes_matematika', '!=', '')
-                   ->where('tes_matematika', '!=', '00:00:00')
-                   ->where('tes_matematika', '!=', '-');
-            });
-        })->count();
+            // =========================================================================
+            // QUERY 2: DATA KANDIDAT REKAN SEAREA (TABEL 2)
+            // Khusus Non-Admin: Administrator HANYA menampilkan 1 tabel saja (langsung nasional)!
+            // =========================================================================
+            if (!$isAdmin) {
+                $targetArea = ($displayRecruiterArea && strtoupper($displayRecruiterArea) !== 'NASIONAL')
+                    ? $displayRecruiterArea
+                    : ($user->area ?? 'JAKARTA');
 
-        $myCandidates = $myCandidatesQuery->orderBy('id', 'desc')->paginate(15, ['*'], 'page_my');
-        self::attachInhouseEmployeeNames($myCandidates);
-
-        // Tambahkan atribut wa_url untuk setiap kandidat
-        $myCandidates->getCollection()->transform(function ($c) use ($user, $salam) {
-            $c->wa_url = $this->buildWaUrl($c, $user, $salam);
-            return $c;
-        });
-
-        // =========================================================================
-        // QUERY 2: DATA KANDIDAT MILIK REKAN LAIN YANG SEAREA (TABEL BAWAH)
-        // =========================================================================
-        $targetArea = ($displayRecruiterArea && strtoupper($displayRecruiterArea) !== 'NASIONAL')
-            ? $displayRecruiterArea
-            : ($user->area ?? 'JAKARTA');
-
-        if (empty($targetArea) || strtoupper($targetArea) === 'NASIONAL' || $targetArea === '-') {
-            $targetArea = 'JAKARTA';
-        }
-
-        $areaCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
-            ->whereNotIn('status', ['Arsip', 'archived'])
-            ->where(function ($q) {
-                $q->whereNull('jenis')->orWhere('jenis', '');
-            })
-            ->where(function ($q) {
-                $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
-            })
-            ->whereRaw('LOWER(TRIM(area)) = ?', [strtolower(trim($targetArea))])
-            ->where(function ($q) use ($excludedIdentifiersForArea) {
-                if (!empty($excludedIdentifiersForArea)) {
-                    $q->whereNotIn(DB::raw('LOWER(TRIM(useras))'), $excludedIdentifiersForArea)
-                      ->orWhereNull('useras');
+                if (empty($targetArea) || strtoupper($targetArea) === 'NASIONAL' || $targetArea === '-') {
+                    $targetArea = 'JAKARTA';
                 }
-            });
 
-        if ($user && !empty($user->id) && empty($excludedRecruiterForArea)) {
-            $areaCandidatesQuery->where(function ($q) use ($user) {
-                $q->where('recruiter_id', '!=', $user->id)->orWhereNull('recruiter_id');
-            });
-        }
+                $areaCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
+                    ->whereNotIn('status', ['Arsip', 'archived'])
+                    ->where(function ($q) {
+                        $q->whereNull('jenis')->orWhere('jenis', '');
+                    })
+                    ->where(function ($q) {
+                        $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
+                    })
+                    ->whereRaw('LOWER(TRIM(area)) = ?', [strtolower(trim($targetArea))])
+                    ->where(function ($q) use ($excludedIdentifiersForArea) {
+                        if (!empty($excludedIdentifiersForArea)) {
+                            $q->whereNotIn(DB::raw('LOWER(TRIM(useras))'), $excludedIdentifiersForArea)
+                              ->orWhereNull('useras');
+                        }
+                    });
 
-        // Terapkan Pembatasan Scope Role
-        if ($user) {
-            $user->applyRoleScopeToCandidates($areaCandidatesQuery);
-        }
+                if ($user && !empty($user->id) && empty($excludedRecruiterForArea)) {
+                    $areaCandidatesQuery->where(function ($q) use ($user) {
+                        $q->where('recruiter_id', '!=', $user->id)->orWhereNull('recruiter_id');
+                    });
+                }
 
-        // Terapkan Filter Step Odoo pada Area Candidates
-        if (!empty($odooStage)) {
-            if ($odooStage === 'none') {
-                $areaCandidatesQuery->where(function($q) {
-                    $q->whereNull('odoo_stage_name')->orWhere('odoo_stage_name', '');
+                // Terapkan Pembatasan Scope Role
+                if ($user) {
+                    $user->applyRoleScopeToCandidates($areaCandidatesQuery);
+                }
+
+                // Terapkan Filter Step Odoo pada Area Candidates
+                if (!empty($odooStage)) {
+                    if ($odooStage === 'none') {
+                        $areaCandidatesQuery->where(function($q) {
+                            $q->whereNull('odoo_stage_name')->orWhere('odoo_stage_name', '');
+                        });
+                    } elseif ($odooStage === 'matched') {
+                        $areaCandidatesQuery->whereNotNull('odoo_stage_name')->where('odoo_stage_name', '!=', '');
+                    } elseif ($odooStage === 'interview') {
+                        $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Interview%');
+                    } elseif ($odooStage === 'elearning') {
+                        $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Learning%');
+                    } elseif ($odooStage === 'pkwt') {
+                        $areaCandidatesQuery->where('odoo_stage_name', 'like', '%PKWT%');
+                    } else {
+                        $areaCandidatesQuery->where('odoo_stage_name', $odooStage);
+                    }
+                }
+
+                if ($searchArea) {
+                    $areaCandidatesQuery->where(function ($q) use ($searchArea) {
+                        $q->where('full_name', 'like', "%{$searchArea}%")
+                          ->orWhere('nik', 'like', "%{$searchArea}%")
+                          ->orWhere('applied_job', 'like', "%{$searchArea}%");
+                    });
+                }
+
+                $areaCandidates = $areaCandidatesQuery->orderBy('id', 'desc')->paginate(15, ['*'], 'page_area');
+                self::attachInhouseEmployeeNames($areaCandidates);
+                $areaCandidates->getCollection()->transform(function ($c) use ($user, $salam) {
+                    $c->wa_url = $this->buildWaUrl($c, $user, $salam);
+                    return $c;
                 });
-            } elseif ($odooStage === 'matched') {
-                $areaCandidatesQuery->whereNotNull('odoo_stage_name')->where('odoo_stage_name', '!=', '');
-            } elseif ($odooStage === 'interview') {
-                $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Interview%');
-            } elseif ($odooStage === 'elearning') {
-                $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Learning%');
-            } elseif ($odooStage === 'pkwt') {
-                $areaCandidatesQuery->where('odoo_stage_name', 'like', '%PKWT%');
             } else {
-                $areaCandidatesQuery->where('odoo_stage_name', $odooStage);
+                $areaCandidates = null;
             }
-        }
+        } elseif ($tab === 'done') {
+            // TAB 2: INTERVIEW SELESAI
+            $doneCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
+                ->whereNotIn('status', ['Arsip', 'archived'])
+                ->where(function ($sq) {
+                    $sq->where(function ($q2) {
+                        $q2->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
+                    })->orWhere(function ($q2) {
+                        $q2->whereNotNull('note_principle')->where('note_principle', '!=', '');
+                    });
+                });
 
-        if ($searchArea) {
-            $areaCandidatesQuery->where(function ($q) use ($searchArea) {
-                $q->where('full_name', 'like', "%{$searchArea}%")
-                  ->orWhere('nik', 'like', "%{$searchArea}%")
-                  ->orWhere('applied_job', 'like', "%{$searchArea}%");
+            if ($canViewAllRecruiters) {
+                if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
+                    $doneCandidatesQuery->where(function($q) use ($filterUser) {
+                        $q->where('useras', $filterUser)
+                          ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
+                    });
+                } elseif ($filterUser === 'my') {
+                    $doneCandidatesQuery->where(function($q) use ($user, $userIdentifiers) {
+                        if (!empty($userIdentifiers)) {
+                            $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                            if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                        } elseif ($user && !empty($user->id)) {
+                            $q->where('recruiter_id', $user->id);
+                        }
+                    });
+                }
+            } else {
+                $doneCandidatesQuery->where(function($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) {
+                            $q->orWhere('recruiter_id', $user->id);
+                        }
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    } else {
+                        $q->whereRaw('1 = 0');
+                    }
+                });
+            }
+
+            if ($user) {
+                $user->applyRoleScopeToCandidates($doneCandidatesQuery);
+            }
+
+            if ($searchMy) {
+                $doneCandidatesQuery->where(function ($q) use ($searchMy) {
+                    $q->where('full_name', 'like', "%{$searchMy}%")
+                      ->orWhere('nik', 'like', "%{$searchMy}%")
+                      ->orWhere('applied_job', 'like', "%{$searchMy}%");
+                });
+            }
+
+            $doneCandidates = $doneCandidatesQuery->orderBy('id', 'desc')->paginate(20, ['*'], 'page_done');
+            self::attachInhouseEmployeeNames($doneCandidates);
+            $doneCandidates->getCollection()->transform(function ($c) use ($user, $salam) {
+                $c->wa_url = $this->buildWaUrl($c, $user, $salam);
+                return $c;
+            });
+        } elseif ($tab === 'arsip') {
+            // TAB 3: ARSIP INTERVIEW
+            $arsipCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
+                ->where(function ($sq) {
+                    $sq->where('status', 'Arsip')
+                       ->orWhere('status', 'archived')
+                       ->orWhere('status_kandidat', 'Arsip');
+                });
+
+            if ($canViewAllRecruiters) {
+                if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
+                    $arsipCandidatesQuery->where(function($q) use ($filterUser) {
+                        $q->where('useras', $filterUser)
+                          ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
+                    });
+                } elseif ($filterUser === 'my') {
+                    $arsipCandidatesQuery->where(function($q) use ($user, $userIdentifiers) {
+                        if (!empty($userIdentifiers)) {
+                            $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                            if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                        } elseif ($user && !empty($user->id)) {
+                            $q->where('recruiter_id', $user->id);
+                        }
+                    });
+                }
+            } else {
+                $arsipCandidatesQuery->where(function($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) {
+                            $q->orWhere('recruiter_id', $user->id);
+                        }
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    } else {
+                        $q->whereRaw('1 = 0');
+                    }
+                });
+            }
+
+            if ($user) {
+                $user->applyRoleScopeToCandidates($arsipCandidatesQuery);
+            }
+
+            if ($searchMy) {
+                $arsipCandidatesQuery->where(function ($q) use ($searchMy) {
+                    $q->where('full_name', 'like', "%{$searchMy}%")
+                      ->orWhere('nik', 'like', "%{$searchMy}%")
+                      ->orWhere('applied_job', 'like', "%{$searchMy}%");
+                });
+            }
+
+            $arsipCandidates = $arsipCandidatesQuery->orderBy('id', 'desc')->paginate(20, ['*'], 'page_arsip');
+            self::attachInhouseEmployeeNames($arsipCandidates);
+            $arsipCandidates->getCollection()->transform(function ($c) use ($user, $salam) {
+                $c->wa_url = $this->buildWaUrl($c, $user, $salam);
+                return $c;
             });
         }
-
-        $areaCandidates = $areaCandidatesQuery->orderBy('id', 'desc')->paginate(15, ['*'], 'page_area');
-        self::attachInhouseEmployeeNames($areaCandidates);
-        $areaCandidates->getCollection()->transform(function ($c) use ($user, $salam) {
-            $c->wa_url = $this->buildWaUrl($c, $user, $salam);
-            return $c;
-        });
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
 
@@ -494,8 +706,14 @@ class InterviewController extends Controller
             'salam',
             'isAdmin',
             'canViewAllRecruiters',
+            'tab',
+            'countActive',
+            'countDone',
+            'countArsip',
             'myCandidates',
             'areaCandidates',
+            'doneCandidates',
+            'arsipCandidates',
             'principles',
             'searchMy',
             'searchArea',
@@ -1206,171 +1424,20 @@ class InterviewController extends Controller
 
     /**
      * Halaman Done (Replikasi table_done di dataint.php)
-     * Kriteria 1: Kandidat aktif yang telah diterima/disetujui oleh prinsiple
+     * Sekarang dialihkan ke tab 'done' pada interview.index
      */
     public function done(Request $request)
     {
-        $user = $this->getCurrentUser();
-        $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
-        $search = $request->query('search');
-        $filterUser = $request->query('filter_user');
-
-        $baseCondition = function ($q) {
-            $q->whereNotIn('status', ['Arsip', 'archived'])
-              ->where(function ($sq) {
-                  $sq->where(function ($q2) {
-                      $q2->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
-                  })->orWhere(function ($q2) {
-                      $q2->whereNotNull('note_principle')->where('note_principle', '!=', '');
-                  });
-              });
-        };
-
-        $recQuery = DB::table('candidates')->where($baseCondition);
-        if ($user && !$isAdmin) {
-            $user->applyRoleScopeToCandidates($recQuery);
-        }
-        $allRecruiters = $isAdmin ? $this->buildRecruitersSummary($recQuery) : collect();
-
-        $query = Candidate::with(['principle', 'recruiter', 'testResults'])
-            ->where($baseCondition);
-
-        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
-
-        if ($isAdmin) {
-            if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
-                $query->where(function($q) use ($filterUser) {
-                    $q->where('useras', $filterUser)
-                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
-                });
-            } elseif ($filterUser === 'my') {
-                $query->where(function($q) use ($user, $userIdentifiers) {
-                    if (!empty($userIdentifiers)) {
-                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
-                    } elseif ($user && !empty($user->id)) {
-                        $q->where('recruiter_id', $user->id);
-                    }
-                });
-            }
-            // Default Admin: Tampilkan semua data kandidat selesai
-        } else {
-            // USER BIASA / REKRUTER / AS: HANYA TAMPILKAN DATA MILIK SENDIRI!
-            $query->where(function($q) use ($user, $userIdentifiers) {
-                if (!empty($userIdentifiers)) {
-                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                    if ($user && !empty($user->id)) {
-                        $q->orWhere('recruiter_id', $user->id);
-                    }
-                } elseif ($user && !empty($user->id)) {
-                    $q->where('recruiter_id', $user->id);
-                } else {
-                    $q->whereRaw('1 = 0');
-                }
-            });
-        }
-
-        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
-        if ($user) {
-            $user->applyRoleScopeToCandidates($query);
-        }
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('full_name', 'like', "%{$search}%")
-                  ->orWhere('nik', 'like', "%{$search}%");
-            });
-        }
-
-        $candidates = $query->orderBy('id', 'desc')->paginate(20);
-        self::attachInhouseEmployeeNames($candidates);
-
-        $canViewAllRecruiters = $isAdmin;
-
-        return view('interview.done', compact('candidates', 'user', 'search', 'allRecruiters', 'filterUser', 'isAdmin', 'canViewAllRecruiters'));
+        return redirect()->route('interview.index', array_merge(['tab' => 'done'], $request->all()));
     }
 
     /**
      * Halaman Arsip (Replikasi interviewarsip.php)
-     * Kriteria 2: Arsip adalah data kandidat dengan status = Arsip / archived
+     * Sekarang dialihkan ke tab 'arsip' pada interview.index
      */
     public function arsip(Request $request)
     {
-        $user = $this->getCurrentUser();
-        $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
-        $search = $request->query('search');
-        $filterUser = $request->query('filter_user');
-
-        $baseCondition = function ($q) {
-            $q->where(function ($sq) {
-                $sq->where('status', 'Arsip')
-                   ->orWhere('status', 'archived')
-                   ->orWhere('status_kandidat', 'Arsip');
-            });
-        };
-
-        $recQuery = DB::table('candidates')->where($baseCondition);
-        if ($user && !$isAdmin) {
-            $user->applyRoleScopeToCandidates($recQuery);
-        }
-        $allRecruiters = $isAdmin ? $this->buildRecruitersSummary($recQuery) : collect();
-
-        $query = Candidate::with(['principle', 'recruiter', 'testResults'])
-            ->where($baseCondition);
-
-        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
-
-        if ($isAdmin) {
-            if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
-                $query->where(function($q) use ($filterUser) {
-                    $q->where('useras', $filterUser)
-                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
-                });
-            } elseif ($filterUser === 'my') {
-                $query->where(function($q) use ($user, $userIdentifiers) {
-                    if (!empty($userIdentifiers)) {
-                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
-                    } elseif ($user && !empty($user->id)) {
-                        $q->where('recruiter_id', $user->id);
-                    }
-                });
-            }
-            // Default Admin: Tampilkan semua data kandidat arsip
-        } else {
-            // USER BIASA / REKRUTER / AS: HANYA TAMPILKAN DATA MILIK SENDIRI!
-            $query->where(function($q) use ($user, $userIdentifiers) {
-                if (!empty($userIdentifiers)) {
-                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                    if ($user && !empty($user->id)) {
-                        $q->orWhere('recruiter_id', $user->id);
-                    }
-                } elseif ($user && !empty($user->id)) {
-                    $q->where('recruiter_id', $user->id);
-                } else {
-                    $q->whereRaw('1 = 0');
-                }
-            });
-        }
-
-        // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
-        if ($user) {
-            $user->applyRoleScopeToCandidates($query);
-        }
-
-        if ($search) {
-            $query->where(function ($q) use ($search) {
-                $q->where('full_name', 'like', "%{$search}%")
-                  ->orWhere('nik', 'like', "%{$search}%");
-            });
-        }
-
-        $candidates = $query->orderBy('id', 'desc')->paginate(20);
-        self::attachInhouseEmployeeNames($candidates);
-
-        $canViewAllRecruiters = $isAdmin;
-
-        return view('interview.arsip', compact('candidates', 'user', 'search', 'allRecruiters', 'filterUser', 'isAdmin', 'canViewAllRecruiters'));
+        return redirect()->route('interview.index', array_merge(['tab' => 'arsip'], $request->all()));
     }
     /**
      * Download / Stream Document Lengkap dalam format PDF (Replikasi printall.php)
