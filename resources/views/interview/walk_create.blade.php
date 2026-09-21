@@ -250,16 +250,40 @@
                            class="form-pill-input">
                 </div>
 
-                <!-- 3. Tanggal Lahir (dd/mm/tttt) -->
-                <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
-                        <i class="fa-regular fa-calendar text-base"></i>
+                <!-- 3. Tanggal Lahir (Dengan Label Profesional & Deteksi Usia Otomatis) -->
+                <div>
+                    <label for="birthDateInput" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-1.5 px-3 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-regular fa-calendar-days text-blue-600"></i>
+                            <span>Tanggal Lahir</span>
+                            <span class="text-rose-500 font-bold">*</span>
+                        </span>
+                        <span id="ageBadge" class="hidden text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full transition-all">
+                            Usia: <span id="ageText" class="font-bold"></span> th
+                        </span>
+                    </label>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-blue-500 z-10">
+                            <i class="fa-regular fa-calendar-check text-base"></i>
+                        </div>
+                        <input type="date" 
+                               id="birthDateInput"
+                               name="birth_date" 
+                               value="{{ old('birth_date') }}"
+                               min="1950-01-01"
+                               max="{{ date('Y-m-d', strtotime('-15 years')) }}"
+                               onclick="this.showPicker && this.showPicker()"
+                               required 
+                               class="form-pill-input font-medium text-slate-700 cursor-pointer hover:border-blue-300 transition"
+                               title="Pilih tanggal lahir anda">
                     </div>
-                    <input type="date" 
-                           name="birth_date" 
-                           value="{{ old('birth_date') }}"
-                           required 
-                           class="form-pill-input">
+                    <div class="flex items-center justify-between text-[11px] text-slate-400 mt-1 px-3">
+                        <span class="flex items-center gap-1">
+                            <i class="fa-solid fa-circle-info text-blue-500 text-[10px]"></i>
+                            Format: Hari / Bulan / Tahun
+                        </span>
+                        <span class="text-slate-400">Min. 17 tahun</span>
+                    </div>
                 </div>
 
                 <!-- 4. 2-Column: Tinggi (cm) & Berat (kg) (Sesuai Gambar 1) -->
@@ -512,10 +536,24 @@
                 placeholder: 'Pilih Kota Asal'
             });
 
-            // Inisialisasi TomSelect untuk Nama AS
+            // Inisialisasi TomSelect untuk Nama AS (Menampilkan Nama & Jabatan)
             tsAs = new TomSelect('#selectAs', {
                 create: false,
-                placeholder: 'Pilih Nama AS'
+                placeholder: 'Pilih Nama AS / Rekrutor',
+                searchField: ['name', 'text', 'value', 'jabatan'],
+                render: {
+                    option: function(data, escape) {
+                        const jabBadge = data.jabatan ? `<span class="text-[11px] font-semibold tracking-wide uppercase px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200 shrink-0 ml-2">${escape(data.jabatan)}</span>` : '';
+                        return `<div class="flex items-center justify-between py-1.5 px-2 w-full">
+                            <span class="font-medium text-slate-800 text-sm">${escape(data.name || data.text)}</span>
+                            ${jabBadge}
+                        </div>`;
+                    },
+                    item: function(data, escape) {
+                        const jabText = data.jabatan ? ` <span class="text-xs font-semibold text-blue-600">(${escape(data.jabatan)})</span>` : '';
+                        return `<div>${escape(data.name || data.text)}${jabText}</div>`;
+                    }
+                }
             });
 
             // Inisialisasi Dropdown Lainnya
@@ -530,6 +568,42 @@
                 onAreaChanged(currentArea, "{{ old('kota_asal') }}", "{{ old('nama_as') }}");
             }
         });
+
+        // Hitung Usia Otomatis dari Tanggal Lahir
+        const birthInput = document.getElementById('birthDateInput');
+        const ageBadge = document.getElementById('ageBadge');
+
+        function calculateAge() {
+            if (!birthInput || !birthInput.value) {
+                if (ageBadge) ageBadge.classList.add('hidden');
+                return;
+            }
+            const birthDate = new Date(birthInput.value);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--;
+            }
+
+            if (age >= 15 && age <= 65) {
+                ageBadge.className = 'text-[11px] font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all';
+                ageBadge.innerHTML = `<i class="fa-solid fa-circle-check text-[10px]"></i> Usia: <span class="font-bold">${age}</span> th`;
+                ageBadge.classList.remove('hidden');
+            } else if (age < 15) {
+                ageBadge.className = 'text-[11px] font-semibold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-0.5 rounded-full flex items-center gap-1 transition-all';
+                ageBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-[10px]"></i> Usia ${age} th (Cek tahun lahir)`;
+                ageBadge.classList.remove('hidden');
+            } else {
+                ageBadge.classList.add('hidden');
+            }
+        }
+
+        if (birthInput) {
+            birthInput.addEventListener('change', calculateAge);
+            birthInput.addEventListener('input', calculateAge);
+            if (birthInput.value) calculateAge();
+        }
 
         // Cascading Dropdown: saat Area dipilih
         function onAreaChanged(selectedArea, prefillKota = null, prefillAs = null) {
@@ -554,9 +628,14 @@
             // 2. Update Opsi Nama AS / Rekrutor berdasarkan Area
             tsAs.clear();
             tsAs.clearOptions();
-            const asList = asListByArea[selectedArea] || ['ARO ' + selectedArea.toUpperCase()];
-            asList.forEach(name => {
-                tsAs.addOption({ value: name, text: name });
+            const asList = asListByArea[selectedArea] || [
+                { name: 'ARO ' + selectedArea.toUpperCase(), jabatan: 'ARO', display: 'ARO ' + selectedArea.toUpperCase() + ' (ARO)' }
+            ];
+            asList.forEach(item => {
+                const val = typeof item === 'object' ? item.name : item;
+                const jab = typeof item === 'object' ? (item.jabatan || 'AS') : '';
+                const txt = typeof item === 'object' ? item.display : item;
+                tsAs.addOption({ value: val, text: txt, name: val, jabatan: jab });
             });
             if (prefillAs) {
                 tsAs.setValue(prefillAs);

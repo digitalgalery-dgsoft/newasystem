@@ -1508,8 +1508,15 @@ class InterviewController extends Controller
                     str_contains($eJab, ' - ' . $areaLower)
                 ) {
                     $cleanName = ucwords(strtolower(trim($e->nama_karyawan)));
+                    $jabCore = trim(explode(' - ', $e->jabatan ?? '')[0]);
+                    if (empty($jabCore)) $jabCore = 'AS OPS';
+
                     if (!empty($cleanName) && strlen($cleanName) > 2) {
-                        $matched->push($cleanName);
+                        $matched->push([
+                            'name' => $cleanName,
+                            'jabatan' => $jabCore,
+                            'display' => $cleanName . ' (' . $jabCore . ')',
+                        ]);
                     }
                 }
             }
@@ -1525,8 +1532,13 @@ class InterviewController extends Controller
                     str_contains($uJob, ' - ' . $areaLower)
                 ) {
                     $cleanName = ucwords(strtolower(trim($u->name)));
+                    $jabCore = trim($u->job_title ?: ($u->role === 'recruiter' ? 'Recruiter' : 'Inhouse'));
                     if (!empty($cleanName) && strlen($cleanName) > 2) {
-                        $matched->push($cleanName);
+                        $matched->push([
+                            'name' => $cleanName,
+                            'jabatan' => $jabCore,
+                            'display' => $cleanName . ' (' . $jabCore . ')',
+                        ]);
                     }
                 }
             }
@@ -1537,8 +1549,14 @@ class InterviewController extends Controller
                     $eArea = strtolower(trim($e->area ?? ''));
                     if (str_contains($eArea, 'surabaya')) {
                         $cleanName = ucwords(strtolower(trim($e->nama_karyawan)));
+                        $jabCore = trim(explode(' - ', $e->jabatan ?? '')[0]);
+                        if (empty($jabCore)) $jabCore = 'AS OPS';
                         if (!empty($cleanName) && strlen($cleanName) > 2) {
-                            $matched->push($cleanName);
+                            $matched->push([
+                                'name' => $cleanName,
+                                'jabatan' => $jabCore,
+                                'display' => $cleanName . ' (' . $jabCore . ')',
+                            ]);
                         }
                     }
                 }
@@ -1546,17 +1564,21 @@ class InterviewController extends Controller
 
             // Fallback jika tidak ada data lokal spesifik di area tersebut
             if ($matched->isEmpty()) {
-                $matched->push('ARO ' . strtoupper($a));
+                $matched->push([
+                    'name' => 'ARO ' . strtoupper($a),
+                    'jabatan' => 'ARO',
+                    'display' => 'ARO ' . strtoupper($a) . ' (ARO)',
+                ]);
             }
 
-            $uniqueNames = $matched
-                ->filter(fn($n) => !empty($n) && strlen($n) > 2 && !in_array(strtolower($n), ['publik', 'online', 'admin', '-']))
-                ->unique()
-                ->sort()
+            $uniqueList = $matched
+                ->filter(fn($item) => !empty($item['name']) && strlen($item['name']) > 2 && !in_array(strtolower($item['name']), ['publik', 'online', 'admin', '-']))
+                ->unique('name')
+                ->sortBy('name')
                 ->values()
                 ->all();
 
-            $result[$a] = $uniqueNames;
+            $result[$a] = $uniqueList;
         }
 
         return $result;
