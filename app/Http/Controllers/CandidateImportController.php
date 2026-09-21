@@ -224,24 +224,42 @@ class CandidateImportController extends Controller
                 }
                 $uid = $service->authenticate();
 
+                $applicantFields = [
+                    'id', 'name', 'partner_name', 'no_ktp', 'no_kk', 'email_from',
+                    'partner_phone', 'partner_mobile', 'birth', 'place_of_birth',
+                    'ktp_address', 'gender', 'height', 'weight', 'religion',
+                    'marital_status', 'type_id', 'job_id', 'principle_id',
+                    'area_id', 'department_id', 'stage_id', 'user_id',
+                    'write_date', 'create_date', 'active',
+                ];
+
+                // 1. Cari berdasarkan No. KTP
                 $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
                     $entity->odoo_db, $uid, $entity->odoo_api_key,
                     'hr.applicant', 'search_read',
                     [[['no_ktp', '=', $cleanNik]]],
                     [
-                        'fields' => [
-                            'id', 'name', 'partner_name', 'no_ktp', 'email_from',
-                            'partner_phone', 'partner_mobile', 'birth', 'place_of_birth',
-                            'ktp_address', 'gender', 'height', 'weight', 'religion',
-                            'marital_status', 'type_id', 'job_id', 'principle_id',
-                            'area_id', 'department_id', 'stage_id', 'user_id',
-                            'write_date', 'create_date', 'active',
-                        ],
+                        'fields' => $applicantFields,
                         'context' => ['active_test' => false],
                         'order' => 'write_date desc, id desc',
                         'limit' => 1,
                     ]
                 ]);
+
+                // 2. Jika tidak ditemukan, cari berdasarkan No. KK
+                if (!is_array($applicants) || empty($applicants)) {
+                    $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
+                        $entity->odoo_db, $uid, $entity->odoo_api_key,
+                        'hr.applicant', 'search_read',
+                        [[['no_kk', '=', $cleanNik]]],
+                        [
+                            'fields' => $applicantFields,
+                            'context' => ['active_test' => false],
+                            'order' => 'write_date desc, id desc',
+                            'limit' => 1,
+                        ]
+                    ]);
+                }
 
                 if (is_array($applicants) && !empty($applicants)) {
                     $foundApplicant = $applicants[0];
@@ -256,11 +274,17 @@ class CandidateImportController extends Controller
         if (!$foundApplicant) {
             return response()->json([
                 'success' => false,
-                'message' => "NIK {$cleanNik} tidak ditemukan di modul Rekrutmen Odoo ERP (AMK, AKP, ATK, ABO, ATB). Pastikan pelamar sudah diinput di Odoo atau periksa kembali nomor NIK.",
+                'message' => "NIK / No. KK {$cleanNik} tidak ditemukan di modul Rekrutmen Odoo ERP (AMK, AKP, ATK, ABO, ATB). Pastikan pelamar sudah diinput di Odoo atau periksa kembali nomor NIK/KK.",
             ], 200);
         }
 
         // Format data yang ditemukan
+        $rawFoundKtp = preg_replace('/\D/', '', (string)($foundApplicant['no_ktp'] ?? ''));
+        $rawFoundKk = preg_replace('/\D/', '', (string)($foundApplicant['no_kk'] ?? ''));
+        $targetNik = (strlen($rawFoundKtp) === 16) ? $rawFoundKtp : $cleanNik;
+        $targetKk = (strlen($rawFoundKk) === 16) ? $rawFoundKk : null;
+        $foundVia = ($cleanNik === $rawFoundKk && $cleanNik !== $rawFoundKtp) ? 'no_kk' : 'no_ktp';
+
         $name = ucwords(strtolower(trim((string)($foundApplicant['partner_name'] ?: $foundApplicant['name']))));
         $job = is_array($foundApplicant['job_id']) ? $foundApplicant['job_id'][1] : (string)($foundApplicant['job_id'] ?? '-');
         $principle = is_array($foundApplicant['principle_id']) ? $foundApplicant['principle_id'][1] : (string)($foundApplicant['principle_id'] ?? '-');
@@ -277,7 +301,8 @@ class CandidateImportController extends Controller
             $age = \Carbon\Carbon::parse($birth)->age;
         }
 
-        $existingCandidate = Candidate::where('nik', $cleanNik)
+        $allMatchNiks = array_values(array_unique(array_filter([$cleanNik, $targetNik, $targetKk])));
+        $existingCandidate = Candidate::whereIn('nik', $allMatchNiks)
             ->where(function($q) {
                 $q->whereNull('jenis')->orWhere('jenis', '');
             })
@@ -286,12 +311,16 @@ class CandidateImportController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "Data pelamar ditemukan di Odoo [{$foundEntity}]!",
+            'message' => "Data pelamar ditemukan di Odoo [{$foundEntity}]!" . ($foundVia === 'no_kk' ? " (via No. KK)" : ""),
             'applicant' => [
                 'odoo_id'      => $foundApplicant['id'],
                 'entity'       => $foundEntity,
                 'name'         => $name,
-                'nik'          => $cleanNik,
+                'nik'          => $targetNik,
+                'no_ktp'       => $targetNik,
+                'no_kk'        => $targetKk,
+                'searched_nik' => $cleanNik,
+                'found_via'    => $foundVia,
                 'job'          => $job,
                 'principle'    => $principle,
                 'area'         => $area,
@@ -320,6 +349,8 @@ class CandidateImportController extends Controller
     {
         $rawNik = trim((string)$request->input('nik'));
         $cleanNik = preg_replace('/\D/', '', $rawNik);
+        $rawSearched = trim((string)$request->input('searched_nik', ''));
+        $cleanSearched = preg_replace('/\D/', '', $rawSearched);
 
         if (empty($cleanNik) || strlen($cleanNik) !== 16) {
             return response()->json([
@@ -339,6 +370,17 @@ class CandidateImportController extends Controller
         $foundApplicant = null;
         $foundEntity = null;
 
+        $searchNiks = array_values(array_unique(array_filter([$cleanNik, $cleanSearched])));
+
+        $applicantFields = [
+            'id', 'name', 'partner_name', 'no_ktp', 'no_kk', 'email_from',
+            'partner_phone', 'partner_mobile', 'birth', 'place_of_birth',
+            'ktp_address', 'gender', 'height', 'weight', 'religion',
+            'marital_status', 'type_id', 'job_id', 'principle_id',
+            'area_id', 'department_id', 'stage_id', 'user_id',
+            'write_date', 'create_date', 'active',
+        ];
+
         foreach ($entities as $entity) {
             if (!$entity->isConfigured()) {
                 continue;
@@ -351,29 +393,44 @@ class CandidateImportController extends Controller
                 }
                 $uid = $service->authenticate();
 
-                $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
-                    $entity->odoo_db, $uid, $entity->odoo_api_key,
-                    'hr.applicant', 'search_read',
-                    [[['no_ktp', '=', $cleanNik]]],
-                    [
-                        'fields' => [
-                            'id', 'name', 'partner_name', 'no_ktp', 'email_from',
-                            'partner_phone', 'partner_mobile', 'birth', 'place_of_birth',
-                            'ktp_address', 'gender', 'height', 'weight', 'religion',
-                            'marital_status', 'type_id', 'job_id', 'principle_id',
-                            'area_id', 'department_id', 'stage_id', 'user_id',
-                            'write_date', 'create_date', 'active',
-                        ],
-                        'context' => ['active_test' => false],
-                        'order' => 'write_date desc, id desc',
-                        'limit' => 1,
-                    ]
-                ]);
+                // 1. Cari berdasarkan no_ktp
+                foreach ($searchNiks as $sNik) {
+                    $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
+                        $entity->odoo_db, $uid, $entity->odoo_api_key,
+                        'hr.applicant', 'search_read',
+                        [[['no_ktp', '=', $sNik]]],
+                        [
+                            'fields' => $applicantFields,
+                            'context' => ['active_test' => false],
+                            'order' => 'write_date desc, id desc',
+                            'limit' => 1,
+                        ]
+                    ]);
+                    if (is_array($applicants) && !empty($applicants)) {
+                        $foundApplicant = $applicants[0];
+                        $foundEntity = $entity->code;
+                        break 2;
+                    }
+                }
 
-                if (is_array($applicants) && !empty($applicants)) {
-                    $foundApplicant = $applicants[0];
-                    $foundEntity = $entity->code;
-                    break;
+                // 2. Cari berdasarkan no_kk
+                foreach ($searchNiks as $sNik) {
+                    $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
+                        $entity->odoo_db, $uid, $entity->odoo_api_key,
+                        'hr.applicant', 'search_read',
+                        [[['no_kk', '=', $sNik]]],
+                        [
+                            'fields' => $applicantFields,
+                            'context' => ['active_test' => false],
+                            'order' => 'write_date desc, id desc',
+                            'limit' => 1,
+                        ]
+                    ]);
+                    if (is_array($applicants) && !empty($applicants)) {
+                        $foundApplicant = $applicants[0];
+                        $foundEntity = $entity->code;
+                        break 2;
+                    }
                 }
             } catch (\Throwable $e) {
                 continue;
@@ -387,9 +444,14 @@ class CandidateImportController extends Controller
             ], 200);
         }
 
+        $rawFoundKtp = preg_replace('/\D/', '', (string)($foundApplicant['no_ktp'] ?? ''));
+        $rawFoundKk = preg_replace('/\D/', '', (string)($foundApplicant['no_kk'] ?? ''));
+        $targetNik = (strlen($rawFoundKtp) === 16) ? $rawFoundKtp : $cleanNik;
+        $targetKk = (strlen($rawFoundKk) === 16) ? $rawFoundKk : null;
+
         $name = ucwords(strtolower(trim((string)($foundApplicant['partner_name'] ?: $foundApplicant['name']))));
         if (empty($name)) {
-            $name = 'Kandidat NIK ' . $cleanNik;
+            $name = 'Kandidat NIK ' . $targetNik;
         }
 
         $job = is_array($foundApplicant['job_id']) ? $foundApplicant['job_id'][1] : (string)($foundApplicant['job_id'] ?? 'Kandidat Odoo');
@@ -425,11 +487,12 @@ class CandidateImportController extends Controller
         try {
             DB::beginTransaction();
 
-            $existingCandidates = Candidate::where('nik', $cleanNik)->orderBy('id')->get();
+            $allPossibleNiks = array_values(array_unique(array_filter([$cleanNik, $cleanSearched, $targetNik, $targetKk])));
+            $existingCandidates = Candidate::whereIn('nik', $allPossibleNiks)->orderBy('id')->get();
             $isReplaced = $existingCandidates->isNotEmpty();
 
             $candidatePayload = [
-                'nik'                      => $cleanNik,
+                'nik'                      => $targetNik,
                 'full_name'                => $name,
                 'birth_place'              => $foundApplicant['place_of_birth'] ?? null,
                 'birth_date'               => $birthDate,
@@ -459,6 +522,7 @@ class CandidateImportController extends Controller
                 'odoo_stage_name'          => $stage,
                 'odoo_entity'              => $foundEntity,
                 'odoo_synced_at'           => now(),
+                'odoo_applicant_data'      => $foundApplicant,
                 'is_profile_complete'      => false,
 
                 // RESET DATA TES ONLINE & EVALUASI KE AWAL
@@ -503,21 +567,21 @@ class CandidateImportController extends Controller
                     DB::table('tb_hasilmath')->whereIn('id_kandidat', $allCandIds)->delete();
                 }
                 if (Schema::hasTable('hasil_kompt')) {
-                    DB::table('hasil_kompt')->where(function($q) use ($allCandIds, $cleanNik) {
-                        $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanNik);
+                    DB::table('hasil_kompt')->where(function($q) use ($allCandIds, $allPossibleNiks) {
+                        $q->whereIn('id_kandidat', $allCandIds)->orWhereIn('nomor_ktp', $allPossibleNiks);
                     })->delete();
                 }
                 if (Schema::hasTable('hasilinterview')) {
-                    DB::table('hasilinterview')->where(function($q) use ($allCandIds, $cleanNik) {
-                        $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanNik);
+                    DB::table('hasilinterview')->where(function($q) use ($allCandIds, $allPossibleNiks) {
+                        $q->whereIn('id_kandidat', $allCandIds)->orWhereIn('nomor_ktp', $allPossibleNiks);
                     })->delete();
                 }
                 InterviewAssessment::whereIn('candidate_id', $allCandIds)->delete();
                 PrincipleApproval::whereIn('candidate_id', $allCandIds)->delete();
                 WorkExperience::whereIn('candidate_id', $allCandIds)->delete();
                 if (Schema::hasTable('tb_pengalaman')) {
-                    DB::table('tb_pengalaman')->where(function($q) use ($allCandIds, $cleanNik) {
-                        $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanNik);
+                    DB::table('tb_pengalaman')->where(function($q) use ($allCandIds, $allPossibleNiks) {
+                        $q->whereIn('id_kandidat', $allCandIds)->orWhereIn('nomor_ktp', $allPossibleNiks);
                     })->delete();
                 }
 
@@ -532,7 +596,7 @@ class CandidateImportController extends Controller
             if (Schema::hasTable('tb_kandidat')) {
                 $tbKandidatData = [
                     'tanggal'             => date('Y-m-d'),
-                    'no_ktp'              => $cleanNik,
+                    'no_ktp'              => $targetNik,
                     'applicants_name'     => $name,
                     'alamat_ktp'          => $foundApplicant['ktp_address'] ?? null,
                     'alamat_domisili'     => $foundApplicant['ktp_address'] ?? null,
@@ -563,15 +627,15 @@ class CandidateImportController extends Controller
                     'ttd_prinsiple'       => null,
                 ];
 
-                $existingTb = DB::table('tb_kandidat')->where('no_ktp', $cleanNik)->first();
+                $existingTb = DB::table('tb_kandidat')->whereIn('no_ktp', $allPossibleNiks)->first();
                 if ($existingTb) {
-                    DB::table('tb_kandidat')->where('no_ktp', $cleanNik)->update($tbKandidatData);
+                    DB::table('tb_kandidat')->where('id', $existingTb->id)->update($tbKandidatData);
                 } else {
                     $tbKandidatData['id'] = $candidate->id;
                     try {
                         DB::table('tb_kandidat')->insert($tbKandidatData);
                     } catch (\Throwable $eTb) {
-                        DB::table('tb_kandidat')->where('no_ktp', $cleanNik)->update($tbKandidatData);
+                        DB::table('tb_kandidat')->where('no_ktp', $targetNik)->update($tbKandidatData);
                     }
                 }
             }
@@ -585,7 +649,7 @@ class CandidateImportController extends Controller
                 $waPhone = '62' . substr($waPhone, 1);
             }
 
-            $waText = "Halo {$name},\n\nAnda telah terdaftar untuk mengikuti tahapan seleksi tes online di ASystem ESA Groups ({$prinName} - {$job}).\n\nSilakan login untuk mengerjakan tes online (Psikotes DISC, Matematika, dan Profil):\n🔗 *Link Tes Online*: {$cbtLoginUrl}\n🆔 *Username (NIK)*: {$cleanNik}\n🔑 *Password*: {$passwordPlain}\n\nMohon segera menyelesaikan tes tersebut. Terima kasih.\n*Tim Rekrutmen ESA Groups*";
+            $waText = "Halo {$name},\n\nAnda telah terdaftar untuk mengikuti tahapan seleksi tes online di ASystem ESA Groups ({$prinName} - {$job}).\n\nSilakan login untuk mengerjakan tes online (Psikotes DISC, Matematika, dan Profil):\n🔗 *Link Tes Online*: {$cbtLoginUrl}\n🆔 *Username (NIK)*: {$targetNik}\n🔑 *Password*: {$passwordPlain}\n\nMohon segera menyelesaikan tes tersebut. Terima kasih.\n*Tim Rekrutmen ESA Groups*";
             $waLink = !empty($waPhone) ? "https://api.whatsapp.com/send?phone={$waPhone}&text=" . rawurlencode($waText) : null;
 
             $successMsg = $isReplaced
@@ -599,7 +663,9 @@ class CandidateImportController extends Controller
                 'detail_url'       => route('interview.show', $candidate->id),
                 'cbt_login_url'    => $cbtLoginUrl,
                 'full_name'        => $name,
-                'nik'              => $cleanNik,
+                'nik'              => $targetNik,
+                'no_ktp'           => $targetNik,
+                'no_kk'            => $targetKk,
                 'phone'            => $phone,
                 'job'              => $job,
                 'principle'        => $prinName,

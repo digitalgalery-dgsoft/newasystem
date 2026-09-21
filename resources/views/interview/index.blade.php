@@ -1095,17 +1095,17 @@
             <div class="space-y-3.5">
                 <div>
                     <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center justify-between">
-                        <span>Nomor Induk Kependudukan (NIK / KTP)</span>
+                        <span>Nomor Identitas (NIK KTP / No. KK)</span>
                         <span id="odooNikCounter" class="text-[11px] font-semibold text-slate-400 font-mono">0 / 16 Digit</span>
                     </label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
                             <i class="fa-solid fa-address-card text-base"></i>
                         </div>
-                        <input type="text" id="odooNikInput" maxlength="16" placeholder="Masukkan 16 digit NIK pelamar..." 
-                               oninput="handleNikInput(this)" 
-                               onkeydown="if(event.key === 'Enter'){ event.preventDefault(); searchCandidateByNik(); }"
-                               class="w-full pl-10 pr-24 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 text-base font-bold text-slate-800 tracking-wider font-mono outline-none transition placeholder:font-sans placeholder:font-normal placeholder:text-xs">
+                        <input type="text" id="odooNikInput" maxlength="16" placeholder="Masukkan 16 digit NIK KTP atau No. KK pelamar..." 
+                                oninput="handleNikInput(this)" 
+                                onkeydown="if(event.key === 'Enter'){ event.preventDefault(); searchCandidateByNik(); }"
+                                class="w-full pl-10 pr-24 py-3 rounded-2xl border-2 border-slate-200 focus:border-indigo-600 focus:ring-4 focus:ring-indigo-100 text-base font-bold text-slate-800 tracking-wider font-mono outline-none transition placeholder:font-sans placeholder:font-normal placeholder:text-xs">
                         <button type="button" id="btnSearchOdoo" onclick="searchCandidateByNik()" 
                                 class="absolute right-1.5 top-1.5 bottom-1.5 px-4 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5 disabled:opacity-50 cursor-pointer">
                             <i class="fa-solid fa-magnifying-glass text-xs"></i>
@@ -1132,7 +1132,7 @@
             <div id="odooNikLoading" class="hidden p-6 rounded-2xl bg-indigo-50/50 border border-indigo-100 text-center space-y-3 animate-pulse">
                 <div class="w-10 h-10 rounded-full border-3 border-indigo-600 border-t-transparent animate-spin mx-auto"></div>
                 <div class="text-xs font-bold text-indigo-950">Memeriksa Database Rekrutmen Odoo ERP...</div>
-                <p class="text-[11px] text-indigo-700">Mencari data pelamar pada model hr.applicant lintas entitas ESA Groups</p>
+                <p class="text-[11px] text-indigo-700">Mencari data pelamar berdasarkan No. KTP maupun No. KK pada model hr.applicant</p>
             </div>
 
             <!-- STATE 2: PREVIEW CARD (DITEMUKAN DI ODOO) -->
@@ -1145,7 +1145,11 @@
                             </div>
                             <div>
                                 <h4 class="text-sm font-extrabold text-slate-900 leading-tight" id="previewName">Nama Pelamar</h4>
-                                <div class="text-[11px] font-mono text-slate-500 mt-0.5" id="previewNik">NIK: 1610065111980003</div>
+                                <div class="text-[11px] font-mono text-slate-500 mt-0.5 flex flex-wrap items-center gap-1.5">
+                                    <span id="previewNik">NIK: 1610065111980003</span>
+                                    <span id="previewKk" class="text-slate-400"></span>
+                                    <span id="previewFoundBadge" class="hidden text-[10px] font-sans font-bold px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300">Ditemukan via No. KK</span>
+                                </div>
                             </div>
                         </div>
                         <span id="previewEntityBadge" class="px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-600 text-white shadow-xs">
@@ -1765,6 +1769,19 @@
 
             document.getElementById('previewName').textContent = app.name || '-';
             document.getElementById('previewNik').textContent = `NIK: ${app.nik}`;
+            const kkEl = document.getElementById('previewKk');
+            if (kkEl) {
+                kkEl.textContent = app.no_kk ? `• No. KK: ${app.no_kk}` : '';
+            }
+            const foundBadge = document.getElementById('previewFoundBadge');
+            if (foundBadge) {
+                if (app.found_via === 'no_kk') {
+                    foundBadge.textContent = 'Ditemukan via No. KK';
+                    foundBadge.classList.remove('hidden');
+                } else {
+                    foundBadge.classList.add('hidden');
+                }
+            }
             document.getElementById('previewInitial').textContent = (app.name || 'KD').split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase();
             document.getElementById('previewEntityBadge').textContent = app.entity || 'Odoo';
             document.getElementById('previewJob').textContent = app.job || '-';
@@ -1802,6 +1819,7 @@
     async function saveCandidateFromOdoo() {
         if (!currentOdooApplicantData) return;
         const nik = currentOdooApplicantData.nik;
+        const searchedNik = currentOdooApplicantData.searched_nik || nik;
         const entity = currentOdooApplicantData.entity;
 
         const btnSave = document.getElementById('btnSaveCandidate');
@@ -1816,7 +1834,7 @@
                     'X-CSRF-TOKEN': '{{ csrf_token() }}',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({ nik: nik, entity: entity })
+                body: JSON.stringify({ nik: nik, searched_nik: searchedNik, entity: entity })
             });
 
             let data;

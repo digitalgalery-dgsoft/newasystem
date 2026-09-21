@@ -37,7 +37,13 @@ class CbtController extends Controller
         $nik = trim($request->nik);
         $password = trim($request->password);
 
-        $candidate = Candidate::where('nik', $nik)
+        $candidate = Candidate::where(function($q) use ($nik) {
+                $q->where('nik', $nik)
+                  ->orWhere('odoo_applicant_data->no_kk', $nik);
+                if (Schema::hasColumn('candidates', 'no_kk')) {
+                    $q->orWhere('no_kk', $nik);
+                }
+            })
             ->orderByRaw("CASE WHEN (status IS NULL OR status NOT IN ('Arsip', 'archived')) AND (jenis IS NULL OR jenis = '') THEN 0 ELSE 1 END")
             ->orderByDesc('id')
             ->first();
