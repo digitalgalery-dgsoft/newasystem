@@ -228,15 +228,7 @@ class WorkPlanController extends Controller
         $inhouseEmployeesQuery = Employee::where('status', 'Aktiv')
             ->where(function ($q) {
                 $q->where('tipe_karyawan', 'Inhouse')
-                  ->orWhere(DB::raw('LOWER(TRIM(tipe_karyawan))'), 'inhouse')
-                  ->orWhereIn('entity', ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'])
-                  ->orWhere('prinsiple', 'like', '%ARINA MULTI%')
-                  ->orWhere('prinsiple', 'like', '%ALVA KARYA%')
-                  ->orWhere('prinsiple', 'like', '%ANUGRAH TERPERCAYA%')
-                  ->orWhere('prinsiple', 'like', '%ABADI BERKAT%')
-                  ->orWhere('prinsiple', 'like', '%BINTANG OETAMA%')
-                  ->orWhere('prinsiple', 'like', '%TALENTA BERKARYA%')
-                  ->orWhere('prinsiple', 'like', '%TRI BERKAH%');
+                  ->orWhere(DB::raw('LOWER(TRIM(tipe_karyawan))'), 'inhouse');
             });
 
         $inhouseEmployees = (clone $inhouseEmployeesQuery)
@@ -245,7 +237,22 @@ class WorkPlanController extends Controller
             ->get();
 
         if ($isAdmin) {
-            $usersInView = $inhouseEmployees->pluck('nama_karyawan')->unique()->values()->toArray();
+            $taskUsers = Task::whereNotIn('status', ['archived'])
+                ->select('assignee')
+                ->distinct()
+                ->pluck('assignee')
+                ->filter()
+                ->values()
+                ->toArray();
+
+            $usersInView = $inhouseEmployees->pluck('nama_karyawan')
+                ->merge($taskUsers)
+                ->filter()
+                ->unique()
+                ->sort()
+                ->values()
+                ->toArray();
+
             if (empty($usersInView) && !empty($userName)) {
                 $usersInView = [$userName];
             }
