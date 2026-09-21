@@ -1254,10 +1254,24 @@
                                 <!-- 6. Kandidat Interview -->
                                 <a href="{{ route('interview.index') }}" 
                                    title="Kandidat Interview"
-                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interview.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ (request()->routeIs('interview.*') && !request()->routeIs('interview.walk*')) ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-clipboard-user text-[11px] w-4 text-center"></i>
                                     <span>Kandidat Interview</span>
-                                    @if(request()->routeIs('interview.*'))
+                                    @if(request()->routeIs('interview.*') && !request()->routeIs('interview.walk*'))
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
+                                    @endif
+                                </a>
+
+                                <!-- 6b. Kandidat Walkin -->
+                                <a href="{{ route('interview.walk') }}" 
+                                   title="Kandidat Walkin Interview"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interview.walk*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                    <i class="fa-solid fa-person-walking text-[11px] w-4 text-center"></i>
+                                    <span>Kandidat Walkin</span>
+                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('interview.walk*') ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700' }}">
+                                        WALK
+                                    </span>
+                                    @if(request()->routeIs('interview.walk*'))
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
                                 </a>

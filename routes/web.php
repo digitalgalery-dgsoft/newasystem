@@ -107,6 +107,9 @@ Route::post('/interview/{id}/sync-single-odoo', [InterviewController::class, 'sy
 
 // Submodule Pages
 Route::get('/walkinterview', [InterviewController::class, 'walkInterview'])->name('interview.walk');
+Route::get('/walkinterview/create', [InterviewController::class, 'createWalkInterview'])->name('interview.walk.create');
+Route::post('/walkinterview', [InterviewController::class, 'storeWalkInterview'])->name('interview.walk.store');
+Route::get('/walkinterview/export', [InterviewController::class, 'exportWalkInterview'])->name('interview.walk.export');
 Route::get('/interviewdone', [InterviewController::class, 'done'])->name('interview.done');
 Route::get('/interviewarsip', [InterviewController::class, 'arsip'])->name('interview.arsip');
 

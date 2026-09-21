@@ -1324,55 +1324,333 @@ class InterviewController extends Controller
     }
 
     /**
-     * Halaman Walk Interview (Replikasi walkinterview.php)
+     * Halaman Walk Interview (Replikasi walkinterview.php sesuai gambar sistem lama)
      */
     public function walkInterview(Request $request)
     {
         $user = $this->getCurrentUser();
-        $startDate = $request->query('start_date', Carbon::today()->toDateString());
-        $endDate = $request->query('end_date', Carbon::today()->toDateString());
-        $search = $request->query('search');
+        $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
+        $salam = $this->getSalam();
 
-        $query = Candidate::with(['principle', 'recruiter', 'testResults'])
-            ->where('status', 'Active')
-            ->where('source_type', 'walk_in');
+        $search = $request->query('search');
+        $kategori = $request->query('kategori');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+        $perPage = (int) $request->query('per_page', 10);
+        if (!in_array($perPage, [10, 25, 50, 100])) {
+            $perPage = 10;
+        }
+
+        // Base Walkin Query (data kandidat dengan jenis 'Walkin' sesuai sistem lama)
+        $baseWalkinQuery = Candidate::where('jenis', 'Walkin');
+
+        if (!$isAdmin && $user) {
+            $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
+            $baseWalkinQuery->where(function ($q) use ($user, $userIdentifiers) {
+                if (!empty($userIdentifiers)) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    if (!empty($user->id)) {
+                        $q->orWhere('recruiter_id', $user->id);
+                    }
+                } elseif (!empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                }
+            });
+            $user->applyRoleScopeToCandidates($baseWalkinQuery);
+        }
+
+        // Hitung Total All-Time per Kategori (untuk label kartu KPI: Total: X)
+        $totalGreenAll = (clone $baseWalkinQuery)->where('kategori_kandidat', 'Green')->count();
+        $totalYellowAll = (clone $baseWalkinQuery)->where('kategori_kandidat', 'Yellow')->count();
+        $totalRedAll = (clone $baseWalkinQuery)->where('kategori_kandidat', 'Red')->count();
+        $totalUncatAll = (clone $baseWalkinQuery)->where(function ($q) {
+            $q->whereNull('kategori_kandidat')->orWhere('kategori_kandidat', '')->orWhere('kategori_kandidat', 'Uncategorized');
+        })->count();
+
+        // Terapkan Filter Tanggal
+        $query = clone $baseWalkinQuery;
+        if ($startDate && $endDate) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ]);
+        } elseif ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        } elseif ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        // Hitung Count pada Filter Tanggal Aktif (angka besar di kartu KPI)
+        $dateFilteredBase = clone $query;
+        $totalDateFiltered = (clone $dateFilteredBase)->count();
+        $countGreenFiltered = (clone $dateFilteredBase)->where('kategori_kandidat', 'Green')->count();
+        $countYellowFiltered = (clone $dateFilteredBase)->where('kategori_kandidat', 'Yellow')->count();
+        $countRedFiltered = (clone $dateFilteredBase)->where('kategori_kandidat', 'Red')->count();
+        $countUncatFiltered = (clone $dateFilteredBase)->where(function ($q) {
+            $q->whereNull('kategori_kandidat')->orWhere('kategori_kandidat', '')->orWhere('kategori_kandidat', 'Uncategorized');
+        })->count();
+
+        $pctGreen = $totalDateFiltered > 0 ? round(($countGreenFiltered / $totalDateFiltered) * 100) : 0;
+        $pctYellow = $totalDateFiltered > 0 ? round(($countYellowFiltered / $totalDateFiltered) * 100) : 0;
+        $pctRed = $totalDateFiltered > 0 ? round(($countRedFiltered / $totalDateFiltered) * 100) : 0;
+
+        // Terapkan Filter Kategori
+        if (!empty($kategori) && $kategori !== 'Semua') {
+            if ($kategori === 'Uncategorized') {
+                $query->where(function ($q) {
+                    $q->whereNull('kategori_kandidat')->orWhere('kategori_kandidat', '')->orWhere('kategori_kandidat', 'Uncategorized');
+                });
+            } else {
+                $query->where('kategori_kandidat', $kategori);
+            }
+        }
+
+        // Terapkan Filter Pencarian
+        if ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->where('full_name', 'like', "%{$search}%")
+                  ->orWhere('nik', 'like', "%{$search}%")
+                  ->orWhere('applied_job', 'like', "%{$search}%")
+                  ->orWhere('area', 'like', "%{$search}%")
+                  ->orWhere('useras', 'like', "%{$search}%")
+                  ->orWhere('info', 'like', "%{$search}%")
+                  ->orWhere('undangan', 'like', "%{$search}%");
+            });
+        }
+
+        $candidates = $query->orderBy('id', 'desc')->paginate($perPage);
+        self::attachInhouseEmployeeNames($candidates);
+        $candidates->getCollection()->transform(function ($c) use ($user, $salam) {
+            $c->wa_url = $this->buildWaUrl($c, $user, $salam);
+            return $c;
+        });
+
+        // Daftar Pilihan Dropdown untuk Form Registrasi Walkin
+        $dropdownJobs = [
+            'SPG/SPB', 'Beauty Advisor', 'MD', 'Administrasi', 'Team Leader',
+            'Produksi', 'Sales', 'Promotor', 'Kasir', 'Helper', 'Driver', 'Store Supervisor'
+        ];
+        $dropdownAreas = [
+            'Surabaya', 'Denpasar', 'Jakarta', 'Bandung', 'Malang', 'Banyuwangi',
+            'Jember', 'Kediri', 'Madiun', 'Bojonegoro', 'TASIKMALAYA', 'Yogyakarta',
+            'Semarang', 'Medan', 'Makassar'
+        ];
+        $dropdownInfo = [
+            'WhatsApp', 'Teman', 'Teman / Relasi', 'Instagram', 'WA Group Lowker',
+            'TikTok', 'Telegram', 'LinkedIn', 'Jobstreet', 'Website', 'Walk in Langsung'
+        ];
+        $dropdownUndangan = [
+            'Walk Interview', 'WhatsApp', 'Email', 'Telepon', 'SMS'
+        ];
+        $dropdownEducation = [
+            'SMA / SMK', 'SMA', 'SMK', 'D3', 'S1', 'S2', 'SMP', 'Lainnya'
+        ];
+
+        return view('interview.walk', compact(
+            'candidates', 'user', 'isAdmin', 'startDate', 'endDate', 'search',
+            'kategori', 'perPage', 'totalGreenAll', 'totalYellowAll', 'totalRedAll',
+            'totalUncatAll', 'countGreenFiltered', 'countYellowFiltered', 'countRedFiltered',
+            'countUncatFiltered', 'totalDateFiltered', 'pctGreen', 'pctYellow', 'pctRed',
+            'dropdownJobs', 'dropdownAreas', 'dropdownInfo', 'dropdownUndangan', 'dropdownEducation'
+        ));
+    }
+
+    /**
+     * Halaman Form Registrasi Walkin Interview (Standalone)
+     */
+    public function createWalkInterview()
+    {
+        $dropdownJobs = [
+            'SPG/SPB', 'Beauty Advisor', 'MD', 'Administrasi', 'Team Leader',
+            'Produksi', 'Sales', 'Promotor', 'Kasir', 'Helper', 'Driver', 'Store Supervisor'
+        ];
+        $dropdownAreas = [
+            'Surabaya', 'Denpasar', 'Jakarta', 'Bandung', 'Malang', 'Banyuwangi',
+            'Jember', 'Kediri', 'Madiun', 'Bojonegoro', 'TASIKMALAYA', 'Yogyakarta',
+            'Semarang', 'Medan', 'Makassar'
+        ];
+        $dropdownInfo = [
+            'WhatsApp', 'Teman', 'Teman / Relasi', 'Instagram', 'WA Group Lowker',
+            'TikTok', 'Telegram', 'LinkedIn', 'Jobstreet', 'Website', 'Walk in Langsung'
+        ];
+        $dropdownUndangan = [
+            'Walk Interview', 'WhatsApp', 'Email', 'Telepon', 'SMS'
+        ];
+        $dropdownEducation = [
+            'SMA / SMK', 'SMA', 'SMK', 'D3', 'S1', 'S2', 'SMP', 'Lainnya'
+        ];
+
+        return view('interview.walk_create', compact(
+            'dropdownJobs', 'dropdownAreas', 'dropdownInfo', 'dropdownUndangan', 'dropdownEducation'
+        ));
+    }
+
+    /**
+     * Simpan Data Formulir Pendaftaran Walkin Interview (Tersimpan sebagai jenis 'Walkin')
+     */
+    public function storeWalkInterview(Request $request)
+    {
+        $request->validate([
+            'nik' => 'required|numeric|digits:16',
+            'full_name' => 'required|string|max:255',
+            'birth_date' => 'required|date',
+            'education' => 'required|string',
+            'applied_job' => 'required|string',
+            'area' => 'required|string',
+            'info' => 'nullable|string',
+            'undangan' => 'nullable|string',
+        ]);
+
+        $user = $this->getCurrentUser();
+        $userAsName = $user ? $user->name : 'Admin Rekrutmen';
+
+        $candidate = Candidate::updateOrCreate(
+            ['nik' => $request->nik],
+            [
+                'full_name' => trim($request->full_name),
+                'birth_date' => $request->birth_date,
+                'education' => $request->education,
+                'applied_job' => $request->applied_job,
+                'area' => $request->area,
+                'info' => $request->info ?: 'Walk in Langsung',
+                'info_lowongan' => $request->info ?: 'walk_in',
+                'undangan' => $request->undangan ?: 'Walk Interview',
+                'jenis' => 'Walkin', // Tersimpan eksplisit sebagai jenis 'Walkin'
+                'source_type' => 'walk_in',
+                'status' => 'Active',
+                'status_kandidat' => 'Baru',
+                'useras' => $userAsName,
+                'recruiter_id' => $user ? $user->id : null,
+                'is_profile_complete' => false,
+            ]
+        );
+
+        // Sinkronkan ke tabel legacy tb_kandidat jika ada
+        try {
+            if (Schema::hasTable('tb_kandidat')) {
+                DB::table('tb_kandidat')->updateOrInsert(
+                    ['no_ktp' => $candidate->nik],
+                    [
+                        'tanggal' => now()->toDateString(),
+                        'applicants_name' => $candidate->full_name,
+                        'tanggal_lahir' => $candidate->birth_date ? Carbon::parse($candidate->birth_date)->format('Y-m-d') : null,
+                        'pendidikan_terakhir' => $candidate->education,
+                        'applied_job' => $candidate->applied_job,
+                        'area' => $candidate->area,
+                        'info' => $candidate->info,
+                        'undangan' => $candidate->undangan,
+                        'jenis' => 'Walkin',
+                        'status' => 'Active',
+                        'status_kandidat' => 'Baru',
+                        'nama_as' => $userAsName,
+                        'useras' => $user ? $user->email : 'admin@asystem.co.id',
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {
+            // Abaikan error sinkronisasi
+        }
+
+        ActivityLogger::log('CREATE', 'Walk Interview', "Pendaftaran kandidat walkin interview baru: {$candidate->full_name} ({$candidate->nik})", $candidate, [
+            'nik' => $candidate->nik,
+            'job' => $candidate->applied_job,
+            'area' => $candidate->area,
+            'jenis' => 'Walkin',
+        ]);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Kandidat Walkin Interview '{$candidate->full_name}' ({$candidate->nik}) berhasil didaftarkan dengan jenis Walkin!",
+                'candidate' => $candidate
+            ]);
+        }
+
+        return redirect()->route('interview.walk')
+            ->with('success', "Kandidat Walkin Interview '{$candidate->full_name}' ({$candidate->nik}) berhasil didaftarkan dengan jenis Walkin!");
+    }
+
+    /**
+     * Export Data Walkin Interview ke format CSV
+     */
+    public function exportWalkInterview(Request $request)
+    {
+        $search = $request->query('search');
+        $kategori = $request->query('kategori');
+        $startDate = $request->query('start_date');
+        $endDate = $request->query('end_date');
+
+        $query = Candidate::where('jenis', 'Walkin');
 
         if ($startDate && $endDate) {
             $query->whereBetween('created_at', [
                 Carbon::parse($startDate)->startOfDay(),
                 Carbon::parse($endDate)->endOfDay()
             ]);
+        } elseif ($startDate) {
+            $query->whereDate('created_at', '>=', $startDate);
+        } elseif ($endDate) {
+            $query->whereDate('created_at', '<=', $endDate);
         }
 
-        $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
-        if (!$isAdmin) {
-            $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
-            $query->where(function ($q) use ($user, $userIdentifiers) {
-                if (!empty($userIdentifiers)) {
-                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                    if ($user && !empty($user->id)) {
-                        $q->orWhere('recruiter_id', $user->id);
-                    }
-                } elseif ($user && !empty($user->id)) {
-                    $q->where('recruiter_id', $user->id);
-                } else {
-                    $q->whereRaw('1 = 0');
-                }
-            });
+        if (!empty($kategori) && $kategori !== 'Semua') {
+            if ($kategori === 'Uncategorized') {
+                $query->where(function ($q) {
+                    $q->whereNull('kategori_kandidat')->orWhere('kategori_kandidat', '')->orWhere('kategori_kandidat', 'Uncategorized');
+                });
+            } else {
+                $query->where('kategori_kandidat', $kategori);
+            }
         }
-
 
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
-                  ->orWhere('nik', 'like', "%{$search}%");
+                  ->orWhere('nik', 'like', "%{$search}%")
+                  ->orWhere('applied_job', 'like', "%{$search}%")
+                  ->orWhere('area', 'like', "%{$search}%");
             });
         }
 
-        $candidates = $query->orderBy('id', 'desc')->paginate(20);
-        self::attachInhouseEmployeeNames($candidates);
+        $candidates = $query->orderBy('id', 'desc')->get();
+        $fileName = 'kandidat_walkin_' . date('Ymd_His') . '.csv';
 
-        return view('interview.walk', compact('candidates', 'user', 'startDate', 'endDate', 'search'));
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename={$fileName}",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $columns = ['NO', 'TANGGAL', 'NO KTP', 'NAMA KANDIDAT', 'TGL LAHIR', 'USIA', 'PENDIDIKAN', 'POSISI DILAMAR', 'AREA', 'REKRUTOR', 'INFO', 'INVITE BY', 'STATUS DATA'];
+
+        $callback = function() use ($candidates, $columns) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // BOM UTF-8
+            fputcsv($file, $columns);
+            $no = 1;
+            foreach ($candidates as $c) {
+                fputcsv($file, [
+                    $no++,
+                    $c->created_at ? $c->created_at->format('d M Y') : '-',
+                    "'" . $c->nik,
+                    $c->full_name,
+                    $c->formatted_birth_date,
+                    $c->age . ' Tahun',
+                    $c->education ?? '-',
+                    $c->applied_job,
+                    $c->area,
+                    $c->user_name_formatted ?? $c->useras ?? '-',
+                    $c->info ?? '-',
+                    $c->undangan ?? 'Walk interview',
+                    $c->is_profile_complete ? 'Lengkap' : 'Belum Lengkap',
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 
     /**

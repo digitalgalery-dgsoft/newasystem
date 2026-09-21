@@ -1,91 +1,615 @@
 @extends('layouts.app')
 
+@section('title', 'Kandidat Walkin Interview - ESA Groups')
+
 @section('content')
-<div class="space-y-6">
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-            <h2 class="text-xl font-bold text-slate-900">Walk Interview</h2>
-            <p class="text-xs text-slate-500 mt-0.5">Daftar kandidat walk-in dengan filter rentang tanggal registrasi</p>
+<div class="space-y-5" x-data="walkinPage()">
+    <!-- Top Action Bar & Title -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+        <div class="flex items-center gap-3">
+            <a href="{{ route('interview.index') }}" class="w-9 h-9 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center justify-center transition-colors shadow-xs" title="Kembali ke Kandidat Interview">
+                <i class="fa-solid fa-arrow-left text-sm"></i>
+            </a>
+            <div>
+                <h1 class="text-lg font-bold text-slate-900 uppercase tracking-wide flex items-center gap-2">
+                    <span>Kandidat Interview</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 font-bold tracking-normal normal-case">Walk-in</span>
+                </h1>
+                <p class="text-xs text-slate-500">Daftar kandidat walkin interview ESA Groups dan monitoring kelengkapan data</p>
+            </div>
         </div>
-        <a href="{{ route('interview.index') }}" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-900 text-white hover:bg-slate-800 transition">
-            <i class="ri-arrow-left-line"></i>
-            <span>Kembali ke Interview</span>
-        </a>
+
+        <div class="flex items-center flex-wrap gap-2">
+            <!-- 1. Export Data Button -->
+            <a href="{{ route('interview.walk.export', request()->query()) }}" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 transition shadow-xs">
+                <i class="fa-solid fa-file-excel text-xs"></i>
+                <span>Export Data</span>
+            </a>
+
+            <!-- 2. Data Supply Kandidat / Registrasi Walkin Button -->
+            <button @click="openRegisterModal = true" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-[#1e40af] hover:bg-blue-800 transition shadow-xs cursor-pointer">
+                <i class="fa-solid fa-user-plus text-xs"></i>
+                <span>Data Supply Kandidat</span>
+            </button>
+
+            <!-- 3. Sync Sharepoint Button (Mockup action with notification) -->
+            <button @click="syncSharepoint()" type="button" class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 transition shadow-xs cursor-pointer">
+                <i class="fa-solid fa-arrows-rotate text-xs"></i>
+                <span>Sync Sharepoint</span>
+            </button>
+        </div>
     </div>
 
-    <!-- Filter Form -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-4">
-        <form action="{{ route('interview.walk') }}" method="GET" class="flex flex-col md:flex-row md:items-end gap-3 text-xs">
-            <div class="flex-1">
-                <label class="block font-semibold text-slate-700 mb-1">Cari Data:</label>
-                <input type="text" name="search" value="{{ $search ?? '' }}" placeholder="Nama kandidat atau NIK..." class="w-full rounded-lg border-slate-300 py-1.5 px-3 bg-white text-xs">
-            </div>
-            <div class="w-full md:w-44">
-                <label class="block font-semibold text-slate-700 mb-1">Dari Tanggal:</label>
-                <input type="date" name="start_date" value="{{ $startDate }}" class="w-full rounded-lg border-slate-300 py-1.5 px-3 bg-white text-xs">
-            </div>
-            <div class="w-full md:w-44">
-                <label class="block font-semibold text-slate-700 mb-1">Sampai Tanggal:</label>
-                <input type="date" name="end_date" value="{{ $endDate }}" class="w-full rounded-lg border-slate-300 py-1.5 px-3 bg-white text-xs">
-            </div>
-            <div class="flex items-center gap-2">
-                <button type="submit" class="px-4 py-2 rounded-lg font-bold bg-amber-500 hover:bg-amber-400 text-slate-950 transition shadow-sm">
-                    Filter
-                </button>
-                <a href="{{ route('interview.walk') }}" class="px-3 py-2 rounded-lg font-semibold bg-slate-200 hover:bg-slate-300 text-slate-800 transition">
-                    Reset
-                </a>
+    <!-- Alert Success / Error -->
+    @if(session('success'))
+    <div class="p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs flex items-center justify-between gap-2 shadow-xs">
+        <div class="flex items-center gap-2">
+            <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i>
+            <span class="font-medium">{{ session('success') }}</span>
+        </div>
+        <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+    </div>
+    @endif
+
+    <!-- Card Filter: Data Calon: -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-4 sm:p-5">
+        <h2 class="text-sm font-bold text-slate-800 mb-3.5 flex items-center gap-2">
+            <span>Data Calon:</span>
+        </h2>
+
+        <form method="GET" action="{{ route('interview.walk') }}" id="filterForm">
+            <input type="hidden" name="per_page" value="{{ $perPage ?? 10 }}">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3.5 items-end">
+                <!-- Cari Data -->
+                <div class="lg:col-span-1">
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Cari Data:</label>
+                    <div class="relative">
+                        <input type="text" 
+                               name="search" 
+                               value="{{ $search ?? '' }}" 
+                               placeholder="Cari..." 
+                               class="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition">
+                    </div>
+                </div>
+
+                <!-- Kategori -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Kategori:</label>
+                    <select name="kategori" class="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition">
+                        <option value="Semua" {{ ($kategori ?? 'Semua') === 'Semua' ? 'selected' : '' }}>Semua</option>
+                        <option value="Green" {{ ($kategori ?? '') === 'Green' ? 'selected' : '' }}>Green</option>
+                        <option value="Yellow" {{ ($kategori ?? '') === 'Yellow' ? 'selected' : '' }}>Yellow</option>
+                        <option value="Red" {{ ($kategori ?? '') === 'Red' ? 'selected' : '' }}>Red</option>
+                        <option value="Uncategorized" {{ ($kategori ?? '') === 'Uncategorized' ? 'selected' : '' }}>Uncategorized</option>
+                    </select>
+                </div>
+
+                <!-- Dari Tanggal -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Dari Tanggal:</label>
+                    <input type="date" 
+                           name="start_date" 
+                           value="{{ $startDate ?? '' }}" 
+                           class="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition">
+                </div>
+
+                <!-- Sampai Tanggal -->
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 mb-1">Sampai Tanggal:</label>
+                    <input type="date" 
+                           name="end_date" 
+                           value="{{ $endDate ?? '' }}" 
+                           class="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/50 px-3 py-2 text-slate-800 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition">
+                </div>
+
+                <!-- Filter & Refresh Buttons -->
+                <div class="flex items-center gap-2">
+                    <button type="submit" class="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#334155] hover:bg-[#1e293b] transition shadow-xs cursor-pointer">
+                        <span>Filter</span>
+                    </button>
+                    <a href="{{ route('interview.walk') }}" class="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold text-white bg-[#2563eb] hover:bg-blue-700 transition shadow-xs text-center" title="Reset filter">
+                        <span>Refresh</span>
+                    </a>
+                </div>
             </div>
         </form>
     </div>
 
-    <!-- Table -->
-    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <!-- 4 Colored KPI Cards (Green, Yellow, Red, Uncategorized) -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <!-- Card Green -->
+        <a href="{{ route('interview.walk', array_merge(request()->except('kategori', 'page'), ['kategori' => 'Green'])) }}" 
+           class="p-4 rounded-2xl border transition-all duration-200 block shadow-xs hover:shadow-md cursor-pointer {{ ($kategori ?? '') === 'Green' ? 'ring-2 ring-emerald-500 bg-[#d1fae5] border-emerald-400' : 'bg-[#e6fbf2] border-[#a7f3d0] hover:bg-[#d8f9ea]' }}">
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="text-[11px] font-bold text-[#047857]">
+                        Green ({{ $pctGreen }}% / Total: {{ number_format($totalGreenAll) }})
+                    </div>
+                    <div class="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">
+                        {{ number_format($countGreenFiltered) }}
+                    </div>
+                </div>
+                <div class="w-9 h-9 rounded-full border border-emerald-400 flex items-center justify-center text-emerald-600 bg-white/60">
+                    <i class="fa-solid fa-check text-sm"></i>
+                </div>
+            </div>
+        </a>
+
+        <!-- Card Yellow -->
+        <a href="{{ route('interview.walk', array_merge(request()->except('kategori', 'page'), ['kategori' => 'Yellow'])) }}" 
+           class="p-4 rounded-2xl border transition-all duration-200 block shadow-xs hover:shadow-md cursor-pointer {{ ($kategori ?? '') === 'Yellow' ? 'ring-2 ring-amber-500 bg-[#fef3c7] border-amber-400' : 'bg-[#fff8e6] border-[#fde68a] hover:bg-[#fef1cb]' }}">
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="text-[11px] font-bold text-[#b45309]">
+                        Yellow ({{ $pctYellow }}% / Total: {{ number_format($totalYellowAll) }})
+                    </div>
+                    <div class="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">
+                        {{ number_format($countYellowFiltered) }}
+                    </div>
+                </div>
+                <div class="w-9 h-9 rounded-full border border-amber-400 flex items-center justify-center text-amber-600 bg-white/60">
+                    <i class="fa-solid fa-exclamation text-sm"></i>
+                </div>
+            </div>
+        </a>
+
+        <!-- Card Red -->
+        <a href="{{ route('interview.walk', array_merge(request()->except('kategori', 'page'), ['kategori' => 'Red'])) }}" 
+           class="p-4 rounded-2xl border transition-all duration-200 block shadow-xs hover:shadow-md cursor-pointer {{ ($kategori ?? '') === 'Red' ? 'ring-2 ring-rose-500 bg-[#fee2e2] border-rose-400' : 'bg-[#fff0f0] border-[#fecaca] hover:bg-[#fedcdc]' }}">
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="text-[11px] font-bold text-[#be123c]">
+                        Red ({{ $pctRed }}% / Total: {{ number_format($totalRedAll) }})
+                    </div>
+                    <div class="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">
+                        {{ number_format($countRedFiltered) }}
+                    </div>
+                </div>
+                <div class="w-9 h-9 rounded-full border border-rose-400 flex items-center justify-center text-rose-600 bg-white/60">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </div>
+            </div>
+        </a>
+
+        <!-- Card Uncategorized -->
+        <a href="{{ route('interview.walk', array_merge(request()->except('kategori', 'page'), ['kategori' => 'Uncategorized'])) }}" 
+           class="p-4 rounded-2xl border transition-all duration-200 block shadow-xs hover:shadow-md cursor-pointer {{ ($kategori ?? '') === 'Uncategorized' ? 'ring-2 ring-slate-500 bg-[#e2e8f0] border-slate-400' : 'bg-[#e5e7eb] border-[#cbd5e1] hover:bg-[#dadde2]' }}">
+            <div class="flex items-start justify-between">
+                <div>
+                    <div class="text-[11px] font-bold text-slate-700">
+                        Uncategorized (Total: {{ number_format($totalUncatAll) }})
+                    </div>
+                    <div class="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">
+                        {{ number_format($countUncatFiltered) }}
+                    </div>
+                </div>
+                <div class="w-9 h-9 rounded-full border border-slate-400 flex items-center justify-center text-slate-600 bg-white/60">
+                    <i class="fa-solid fa-question text-sm"></i>
+                </div>
+            </div>
+        </a>
+    </div>
+
+    <!-- Main Table Card -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+        <!-- Table Toolbar (Tampilkan X data & Search) -->
+        <div class="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="flex items-center gap-2 text-xs text-slate-600">
+                <span>Tampilkan</span>
+                <select onchange="changePerPage(this.value)" class="text-xs rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary">
+                    <option value="10" {{ ($perPage ?? 10) == 10 ? 'selected' : '' }}>10</option>
+                    <option value="25" {{ ($perPage ?? 10) == 25 ? 'selected' : '' }}>25</option>
+                    <option value="50" {{ ($perPage ?? 10) == 50 ? 'selected' : '' }}>50</option>
+                    <option value="100" {{ ($perPage ?? 10) == 100 ? 'selected' : '' }}>100</option>
+                </select>
+                <span>data</span>
+            </div>
+
+            <!-- Quick Table Search -->
+            <form method="GET" action="{{ route('interview.walk') }}" class="flex items-center gap-2">
+                <input type="hidden" name="kategori" value="{{ $kategori ?? 'Semua' }}">
+                <input type="hidden" name="start_date" value="{{ $startDate ?? '' }}">
+                <input type="hidden" name="end_date" value="{{ $endDate ?? '' }}">
+                <input type="hidden" name="per_page" value="{{ $perPage ?? 10 }}">
+                <div class="flex items-center gap-1.5 text-xs text-slate-600">
+                    <label for="tableSearchInput" class="font-medium">Search:</label>
+                    <input type="text" 
+                           id="tableSearchInput"
+                           name="search" 
+                           value="{{ $search ?? '' }}" 
+                           placeholder="" 
+                           class="w-40 sm:w-56 text-xs rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-slate-800 focus:outline-none focus:ring-1 focus:ring-primary transition">
+                </div>
+            </form>
+        </div>
+
+        <!-- Responsive Table Container -->
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
-                <thead class="bg-slate-100/80 text-slate-700 font-bold border-b border-slate-200">
+                <thead class="bg-slate-50/90 text-slate-700 font-bold border-b border-slate-200">
                     <tr>
-                        <th class="py-3 px-3 w-12 text-center">No</th>
-                        <th class="py-3 px-3 w-28">Tanggal</th>
-                        <th class="py-3 px-3 w-36">No. KTP</th>
-                        <th class="py-3 px-4">Nama Kandidat</th>
-                        <th class="py-3 px-3 w-24">Tgl. Lahir</th>
-                        <th class="py-3 px-3 w-20 text-center">Usia</th>
-                        <th class="py-3 px-3">Pendidikan</th>
-                        <th class="py-3 px-4">Posisi Dilamar</th>
-                        <th class="py-3 px-4">Area</th>
-                        <th class="py-3 px-3 text-center">Aksi</th>
+                        <th class="py-3 px-2.5 text-center w-10">No</th>
+                        <th class="py-3 px-3 w-28 whitespace-nowrap">Tanggal</th>
+                        <th class="py-3 px-3 w-36 whitespace-nowrap">No. KTP</th>
+                        <th class="py-3 px-4 min-w-[170px]">Nama Kandidat</th>
+                        <th class="py-3 px-3 w-28 whitespace-nowrap">Tgl. Lahir</th>
+                        <th class="py-3 px-2.5 text-center w-20 whitespace-nowrap">Usia</th>
+                        <th class="py-3 px-3 min-w-[110px]">Pendidikan Terakhir</th>
+                        <th class="py-3 px-3 min-w-[130px]">Posisi Dilamar</th>
+                        <th class="py-3 px-3 min-w-[100px]">Area</th>
+                        <th class="py-3 px-3 min-w-[150px]">Rekrutor / AS</th>
+                        <th class="py-3 px-3 min-w-[100px]">Info</th>
+                        <th class="py-3 px-3 min-w-[110px]">Invite By</th>
+                        <th class="py-3 px-3 text-center w-28 whitespace-nowrap">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-slate-800">
                     @forelse($candidates as $idx => $c)
-                    <tr class="hover:bg-amber-50/30">
-                        <td class="py-2.5 px-3 text-center text-slate-400">{{ $candidates->firstItem() + $idx }}</td>
-                        <td class="py-2.5 px-3 text-slate-600 font-mono">{{ $c->created_at->format('d/m/Y') }}</td>
-                        <td class="py-2.5 px-3 font-mono font-semibold">{{ $c->nik }}</td>
-                        <td class="py-2.5 px-4 font-bold text-slate-950">{{ $c->full_name }}</td>
-                        <td class="py-2.5 px-3">{{ $c->formatted_birth_date }}</td>
-                        <td class="py-2.5 px-3 text-center">{{ $c->age }} Thn</td>
-                        <td class="py-2.5 px-3">{{ $c->education ?? '-' }}</td>
-                        <td class="py-2.5 px-4 font-medium">{{ $c->applied_job }}</td>
-                        <td class="py-2.5 px-4">{{ $c->area }}</td>
-                        <td class="py-2.5 px-3 text-center">
-                            <a href="{{ route('interview.show', $c->id) }}" class="inline-flex items-center justify-center w-7 h-7 rounded bg-sky-600 hover:bg-sky-500 text-white font-bold transition">
-                                <i class="bx bx-check text-base"></i>
-                            </a>
+                    <tr class="hover:bg-blue-50/30 transition-colors">
+                        <!-- No -->
+                        <td class="py-3 px-2.5 text-center text-slate-400 font-mono">
+                            {{ $candidates->firstItem() + $idx }}
+                        </td>
+
+                        <!-- Tanggal -->
+                        <td class="py-3 px-3 text-slate-600 font-medium whitespace-nowrap">
+                            {{ $c->created_at ? $c->created_at->format('d M Y') : '-' }}
+                        </td>
+
+                        <!-- No. KTP -->
+                        <td class="py-3 px-3 font-mono font-semibold text-slate-800 whitespace-nowrap">
+                            {{ $c->nik }}
+                        </td>
+
+                        <!-- Nama Kandidat -->
+                        <td class="py-3 px-4">
+                            <span class="font-bold text-slate-900 block leading-tight">{{ $c->full_name }}</span>
+                            @if($c->kategori_kandidat)
+                                <span class="inline-block mt-0.5 text-[9px] px-1.5 py-0.2 rounded font-bold uppercase
+                                    {{ $c->kategori_kandidat === 'Green' ? 'bg-emerald-100 text-emerald-800' : '' }}
+                                    {{ $c->kategori_kandidat === 'Yellow' ? 'bg-amber-100 text-amber-800' : '' }}
+                                    {{ $c->kategori_kandidat === 'Red' ? 'bg-rose-100 text-rose-800' : '' }}
+                                ">
+                                    {{ $c->kategori_kandidat }}
+                                </span>
+                            @endif
+                        </td>
+
+                        <!-- Tgl. Lahir -->
+                        <td class="py-3 px-3 text-slate-600 whitespace-nowrap">
+                            {{ $c->birth_date ? \Carbon\Carbon::parse($c->birth_date)->format('d M Y') : '-' }}
+                        </td>
+
+                        <!-- Usia -->
+                        <td class="py-3 px-2.5 text-center whitespace-nowrap font-medium text-slate-700">
+                            {{ $c->birth_date ? \Carbon\Carbon::parse($c->birth_date)->age . ' Tahun' : '-' }}
+                        </td>
+
+                        <!-- Pendidikan Terakhir -->
+                        <td class="py-3 px-3 text-slate-700">
+                            {{ $c->education ?? '-' }}
+                        </td>
+
+                        <!-- Posisi Dilamar -->
+                        <td class="py-3 px-3 font-medium text-slate-800">
+                            {{ $c->applied_job ?? '-' }}
+                        </td>
+
+                        <!-- Area -->
+                        <td class="py-3 px-3 text-slate-700">
+                            {{ $c->area ?? '-' }}
+                        </td>
+
+                        <!-- Rekrutor / AS -->
+                        <td class="py-3 px-3 text-slate-800">
+                            <div class="font-medium text-slate-900 leading-tight">
+                                {{ $c->user_name_formatted ?? ($c->useras ?: ($c->recruiter->name ?? 'Admin')) }}
+                            </div>
+                            @if(!empty($c->user_subtitle_formatted))
+                                <div class="text-[10px] text-slate-400 mt-0.5 leading-tight">
+                                    {{ $c->user_subtitle_formatted }}
+                                </div>
+                            @endif
+                        </td>
+
+                        <!-- Info -->
+                        <td class="py-3 px-3 text-slate-600">
+                            {{ $c->info ?? ($c->info_lowongan ?? '-') }}
+                        </td>
+
+                        <!-- Invite By -->
+                        <td class="py-3 px-3 text-slate-600">
+                            {{ $c->undangan ?? 'Walk interview' }}
+                        </td>
+
+                        <!-- Status & Aksi -->
+                        <td class="py-3 px-3 text-center whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1.5">
+                                <!-- Status Indicator Dot (Red = Belum Lengkap, Green = Sudah Lengkap) -->
+                                @if($c->is_profile_complete)
+                                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block shadow-xs" title="Data Sudah Lengkap"></span>
+                                @else
+                                    <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block shadow-xs" title="Data Belum Lengkap"></span>
+                                @endif
+
+                                <!-- Tombol Centang Biru (Detail / Penilaian) -->
+                                <a href="{{ route('interview.show', $c->id) }}" 
+                                   class="w-6 h-6 rounded bg-[#0284c7] hover:bg-[#0369a1] text-white flex items-center justify-center transition shadow-xs" 
+                                   title="Buka Form Interview / Detail">
+                                    <i class="fa-solid fa-check text-[11px]"></i>
+                                </a>
+
+                                <!-- Tombol WhatsApp (jika nomor tersedia) -->
+                                @if(!empty($c->whatsapp) || !empty($c->phone))
+                                <a href="{{ $c->wa_url ?? ('https://wa.me/' . preg_replace('/[^0-9]/', '', $c->whatsapp ?: $c->phone)) }}" 
+                                   target="_blank" 
+                                   class="w-6 h-6 rounded bg-emerald-600 hover:bg-emerald-700 text-white flex items-center justify-center transition shadow-xs" 
+                                   title="Kirim Pesan WhatsApp">
+                                    <i class="fa-brands fa-whatsapp text-[12px]"></i>
+                                </a>
+                                @endif
+
+                                <!-- Tombol Silang Merah (Arsip / Tolak) -->
+                                <button type="button" 
+                                        @click="openArchiveModal('{{ $c->id }}', '{{ addslashes($c->full_name) }}')"
+                                        class="w-6 h-6 rounded bg-[#ef4444] hover:bg-[#dc2626] text-white flex items-center justify-center transition shadow-xs" 
+                                        title="Arsipkan / Tolak Kandidat">
+                                    <i class="fa-solid fa-xmark text-[11px]"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="py-8 text-center text-slate-400">Tidak ada data walk interview untuk rentang tanggal ini.</td>
+                        <td colspan="13" class="py-12 text-center text-slate-400">
+                            <div class="flex flex-col items-center justify-center gap-2">
+                                <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 text-xl">
+                                    <i class="fa-solid fa-person-walking"></i>
+                                </div>
+                                <div class="font-medium text-slate-600 text-sm">Tidak ada data kandidat walk interview yang ditemukan.</div>
+                                <p class="text-xs text-slate-400">Silakan sesuaikan filter tanggal atau kata kunci pencarian.</p>
+                            </div>
+                        </td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
-        <div class="p-4 border-t border-slate-100 bg-slate-50/50">
-            {{ $candidates->appends(['search' => $search, 'start_date' => $startDate, 'end_date' => $endDate])->links() }}
+
+        <!-- Table Pagination & Count Info -->
+        <div class="p-4 border-t border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div class="text-xs text-slate-500">
+                Menampilkan {{ $candidates->firstItem() ?? 0 }} hingga {{ $candidates->lastItem() ?? 0 }} dari {{ number_format($candidates->total()) }} data
+            </div>
+            <div>
+                {{ $candidates->appends(request()->query())->links() }}
+            </div>
+        </div>
+    </div>
+
+    <!-- Keterangan Legend at Bottom Left (sesuai gambar sistem lama) -->
+    <div class="p-3 bg-white rounded-xl border border-slate-200/80 shadow-xs max-w-sm space-y-1 text-xs">
+        <div class="font-bold text-slate-800 text-[11px] uppercase tracking-wider mb-1">Keterangan:</div>
+        <div class="flex items-center gap-2 text-slate-700">
+            <span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block flex-shrink-0"></span>
+            <span>: Data Belum Lengkap</span>
+        </div>
+        <div class="flex items-center gap-2 text-slate-700">
+            <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block flex-shrink-0"></span>
+            <span>: Data Sudah Lengkap</span>
+        </div>
+    </div>
+
+    <!-- =============================================================== -->
+    <!-- MODAL FORM REGISTRASI WALKIN INTERVIEW (Sesuai Gambar 2)       -->
+    <!-- =============================================================== -->
+    <div x-show="openRegisterModal" 
+         x-cloak 
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        
+        <div @click.away="openRegisterModal = false" 
+             x-transition:enter="ease-out duration-200"
+             x-transition:enter-start="opacity-0 scale-95"
+             x-transition:enter-end="opacity-100 scale-100"
+             x-transition:leave="ease-in duration-150"
+             x-transition:leave-start="opacity-100 scale-100"
+             x-transition:leave-end="opacity-0 scale-95"
+             class="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 sm:p-7 border border-slate-100 relative">
+
+            <!-- Close Button -->
+            <button @click="openRegisterModal = false" type="button" class="absolute top-5 right-5 text-slate-400 hover:text-slate-600 transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <!-- Form Subtitle -->
+            <div class="text-center mb-6 pt-1">
+                <h3 class="text-base font-semibold text-slate-700 tracking-tight">
+                    Isi formulir untuk mendaftar.
+                </h3>
+            </div>
+
+            <!-- Form Body -->
+            <form action="{{ route('interview.walk.store') }}" method="POST" class="space-y-3.5">
+                @csrf
+
+                <!-- 1. NIK / No. KTP -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-id-card text-sm"></i>
+                    </div>
+                    <input type="text" 
+                           name="nik" 
+                           required 
+                           maxlength="16" 
+                           minlength="16" 
+                           pattern="[0-9]{16}"
+                           placeholder="NIK / No. KTP" 
+                           class="w-full pl-10 pr-4 py-3 bg-[#f1f5f9]/80 border-0 rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
+                           title="Masukkan 16 digit NIK sesuai KTP">
+                </div>
+
+                <!-- 2. Nama Lengkap -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-user text-sm"></i>
+                    </div>
+                    <input type="text" 
+                           name="full_name" 
+                           required 
+                           placeholder="Nama Lengkap" 
+                           class="w-full pl-10 pr-4 py-3 bg-[#f1f5f9]/80 border-0 rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                </div>
+
+                <!-- 3. Tanggal Lahir (dd/mm/tttt) -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-calendar-days text-sm"></i>
+                    </div>
+                    <input type="date" 
+                           name="birth_date" 
+                           required 
+                           class="w-full pl-10 pr-4 py-3 bg-[#f1f5f9]/80 border-0 rounded-2xl text-xs sm:text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition">
+                </div>
+
+                <!-- 4. Pendidikan Terakhir -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-graduation-cap text-sm"></i>
+                    </div>
+                    <select name="education" required class="w-full pl-10 pr-8 py-3 bg-[#f1f5f9]/80 border-0 rounded-2xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition appearance-none">
+                        <option value="" disabled selected>Pendidikan Terakhir</option>
+                        @foreach($dropdownEducation as $edu)
+                            <option value="{{ $edu }}">{{ $edu }}</option>
+                        @endforeach
+                    </select>
+                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- 5. Jabatan Dilamar -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-briefcase text-sm"></i>
+                    </div>
+                    <select name="applied_job" required class="w-full pl-10 pr-8 py-3 bg-[#f1f5f9]/80 border-0 rounded-2xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition appearance-none">
+                        <option value="" disabled selected>Jabatan Dilamar</option>
+                        @foreach($dropdownJobs as $job)
+                            <option value="{{ $job }}">{{ $job }}</option>
+                        @endforeach
+                    </select>
+                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- 6. Area Interview -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-map-location-dot text-sm"></i>
+                    </div>
+                    <select name="area" required class="w-full pl-10 pr-8 py-3 bg-[#f1f5f9]/80 border-0 rounded-2xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition appearance-none">
+                        <option value="" disabled selected>Area Interview</option>
+                        @foreach($dropdownAreas as $area)
+                            <option value="{{ $area }}">{{ $area }}</option>
+                        @endforeach
+                    </select>
+                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- 7. Informasi Lowongan -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-bullhorn text-sm"></i>
+                    </div>
+                    <select name="info" required class="w-full pl-10 pr-8 py-3 bg-[#f1f5f9]/80 border-0 rounded-2xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition appearance-none">
+                        <option value="" disabled selected>Informasi Lowongan</option>
+                        @foreach($dropdownInfo as $inf)
+                            <option value="{{ $inf }}">{{ $inf }}</option>
+                        @endforeach
+                    </select>
+                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- 8. Jenis Undangan Interview -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-envelope text-sm"></i>
+                    </div>
+                    <select name="undangan" required class="w-full pl-10 pr-8 py-3 bg-[#f1f5f9]/80 border-0 rounded-2xl text-xs sm:text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition appearance-none">
+                        <option value="" disabled selected>Jenis Undangan Interview</option>
+                        @foreach($dropdownUndangan as $und)
+                            <option value="{{ $und }}">{{ $und }}</option>
+                        @endforeach
+                    </select>
+                    <div class="absolute inset-y-0 right-0 pr-3.5 flex items-center pointer-events-none text-slate-400">
+                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                    </div>
+                </div>
+
+                <!-- Submit Button: Register -->
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-3 px-6 rounded-full bg-[#2563eb] hover:bg-blue-700 text-white font-bold text-sm tracking-wide shadow-md shadow-blue-500/25 transition cursor-pointer">
+                        Register
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Archive Candidate -->
+    <div x-show="openArchive" 
+         x-cloak 
+         class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+        <div @click.away="openArchive = false" class="bg-white rounded-2xl shadow-xl max-w-sm w-full p-5 text-center">
+            <div class="w-12 h-12 rounded-full bg-rose-100 text-rose-600 flex items-center justify-center mx-auto mb-3 text-xl">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+            </div>
+            <h4 class="font-bold text-slate-900 text-sm">Arsipkan Kandidat?</h4>
+            <p class="text-xs text-slate-500 mt-1" x-text="'Kandidat ' + archiveName + ' akan diarsipkan dari daftar kandidat aktif.'"></p>
+            
+            <form :action="'{{ url('/interview/archive') }}/' + archiveId" method="POST" class="mt-4">
+                @csrf
+                <input type="hidden" name="alasanarsip" value="Diarsipkan dari Kandidat Walkin">
+                <div class="flex items-center gap-2 justify-center">
+                    <button type="button" @click="openArchive = false" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200">Batal</button>
+                    <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-rose-600 hover:bg-rose-700">Ya, Arsipkan</button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
+
+<script>
+function walkinPage() {
+    return {
+        openRegisterModal: false,
+        openArchive: false,
+        archiveId: '',
+        archiveName: '',
+        openArchiveModal(id, name) {
+            this.archiveId = id;
+            this.archiveName = name;
+            this.openArchive = true;
+        },
+        syncSharepoint() {
+            alert('Fitur sinkronisasi SharePoint sedang berjalan di latar belakang.');
+        }
+    }
+}
+
+function changePerPage(val) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('per_page', val);
+    url.searchParams.delete('page');
+    window.location.href = url.toString();
+}
+</script>
 @endsection
