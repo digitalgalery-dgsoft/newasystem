@@ -80,7 +80,13 @@ class PublicJobController extends Controller
      */
     public function show($id)
     {
-        $job = JobSpec::findOrFail($id);
+        $job = is_numeric($id) 
+            ? JobSpec::find($id) 
+            : JobSpec::where('slug', $id)->first();
+
+        if (!$job) {
+            $job = JobSpec::findOrFail($id);
+        }
 
         // Hitung total pelamar
         $totalApplicants = Candidate::where('applied_job', $job->job_title)
@@ -107,7 +113,13 @@ class PublicJobController extends Controller
      */
     public function applyForm($id)
     {
-        $job = JobSpec::findOrFail($id);
+        $job = is_numeric($id) 
+            ? JobSpec::find($id) 
+            : JobSpec::where('slug', $id)->first();
+
+        if (!$job) {
+            $job = JobSpec::findOrFail($id);
+        }
 
         $provinces = \App\Services\IndonesiaRegionService::getProvinces();
         $regions = \App\Services\IndonesiaRegionService::getProvincesWithCities();
@@ -120,7 +132,13 @@ class PublicJobController extends Controller
      */
     public function submitApply(Request $request, $id)
     {
-        $job = JobSpec::findOrFail($id);
+        $job = is_numeric($id) 
+            ? JobSpec::find($id) 
+            : JobSpec::where('slug', $id)->first();
+
+        if (!$job) {
+            $job = JobSpec::findOrFail($id);
+        }
 
         $request->validate([
             'nik' => 'required|string|min:16|max:16',

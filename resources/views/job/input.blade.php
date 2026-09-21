@@ -490,7 +490,7 @@
                                     <div class="flex items-start gap-2.5">
                                         <!-- QR Code Trigger -->
                                         <button type="button" 
-                                                @click="showQR('{{ addslashes($job->job_title) }}', '{{ $job->slug }}')"
+                                                @click="showQR('{{ addslashes($job->job_title) }}', '{{ route('job.detail', $job->id) }}')"
                                                 class="w-9 h-9 rounded-lg border border-slate-200 bg-slate-50 hover:bg-primary-50 hover:border-primary-300 text-slate-600 hover:text-primary flex items-center justify-center flex-shrink-0 transition-all text-sm"
                                                 title="Lihat & Unduh QR Code Lowongan">
                                             <i class="fa-solid fa-qrcode"></i>
@@ -574,7 +574,7 @@
                                         @endif
 
                                         <button type="button" 
-                                                @click="copyJobShareLink('{{ addslashes($job->job_title) }}', '{{ addslashes($job->job_area) }}', '{{ addslashes($job->job_prinsiple) }}')"
+                                                @click="copyJobShareLink('{{ addslashes($job->job_title) }}', '{{ addslashes($job->job_area) }}', '{{ addslashes($job->job_prinsiple) }}', '{{ route('job.detail', $job->id) }}', '{{ addslashes(implode(', ', $job->skills_array)) }}')"
                                                 class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 flex items-center justify-center transition-all"
                                                 title="Copy Broadcast Lowongan untuk WhatsApp">
                                             <i class="fa-brands fa-whatsapp text-xs"></i>
@@ -639,14 +639,25 @@
                             <tr class="hover:bg-slate-50/80 transition-colors opacity-80">
                                 <td class="text-center font-bold text-slate-400">{{ $index + 1 }}</td>
                                 <td>
-                                    <div class="font-bold text-slate-600 line-through">
-                                        {{ $exp->job_title }}
-                                    </div>
-                                    <div class="flex items-center gap-1.5 mt-1">
-                                        <span class="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded" title="Dibuat oleh">
-                                            <i class="fa-solid fa-user-pen text-[9px] text-slate-400"></i>
-                                            {{ $exp->created_by ?: 'System' }}
-                                        </span>
+                                    <div class="flex items-start gap-2.5">
+                                        <!-- QR Code Trigger -->
+                                        <button type="button" 
+                                                @click="showQR('{{ addslashes($exp->job_title) }}', '{{ route('job.detail', $exp->id) }}')"
+                                                class="w-8 h-8 rounded-lg border border-slate-200 bg-slate-50 hover:bg-primary-50 hover:border-primary-300 text-slate-500 hover:text-primary flex items-center justify-center flex-shrink-0 transition-all text-xs"
+                                                title="Lihat & Unduh QR Code Lowongan">
+                                            <i class="fa-solid fa-qrcode"></i>
+                                        </button>
+                                        <div class="min-w-0">
+                                            <div class="font-bold text-slate-600 line-through">
+                                                {{ $exp->job_title }}
+                                            </div>
+                                            <div class="flex items-center gap-1.5 mt-1">
+                                                <span class="inline-flex items-center gap-1 text-[10px] font-medium text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded" title="Dibuat oleh">
+                                                    <i class="fa-solid fa-user-pen text-[9px] text-slate-400"></i>
+                                                    {{ $exp->created_by ?: 'System' }}
+                                                </span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </td>
                                 <td>
@@ -674,6 +685,13 @@
                                            title="Perpanjang / Edit Tanggal Expired">
                                             <i class="fa-solid fa-clock-rotate-left text-xs"></i>
                                         </a>
+
+                                        <button type="button" 
+                                                @click="copyJobShareLink('{{ addslashes($exp->job_title) }}', '{{ addslashes($exp->job_area) }}', '{{ addslashes($exp->job_prinsiple) }}', '{{ route('job.detail', $exp->id) }}')"
+                                                class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 flex items-center justify-center transition-all"
+                                                title="Copy Broadcast Lowongan untuk WhatsApp">
+                                            <i class="fa-brands fa-whatsapp text-xs"></i>
+                                        </button>
 
                                         <form action="{{ route('job.destroy', $exp->id) }}" method="POST" onsubmit="return confirm('Hapus lowongan expired ini secara permanen?');" class="inline">
                                             @csrf
@@ -715,7 +733,7 @@
             
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div class="text-left">
-                    <h4 class="text-sm font-extrabold text-slate-900">QR Code Lowongan</h4>
+                    <h4 class="text-sm font-extrabold text-slate-900">QR Code Lowongan Kerja</h4>
                     <p class="text-[11px] text-slate-500 truncate max-w-[220px]" x-text="qrJobTitle"></p>
                 </div>
                 <button @click="qrModalOpen = false" class="text-slate-400 hover:text-slate-600 text-base p-1">
@@ -724,15 +742,41 @@
             </div>
 
             <!-- QR Code Container -->
-            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-center">
+            <div class="p-4 bg-slate-50 rounded-xl border border-slate-200 flex flex-col items-center justify-center">
                 <img :src="qrImageUrl" alt="Job QR Code" class="w-48 h-48 rounded-lg shadow-sm">
+                <p class="text-[11px] text-slate-400 mt-2">Scan QR untuk membuka detail lowongan langsung</p>
             </div>
 
-            <div class="space-y-2">
-                <a :href="qrImageUrl" download="qrcode-job.png" target="_blank" class="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-700 transition-all shadow-md shadow-primary-500/20">
-                    <i class="fa-solid fa-download"></i>
-                    <span>Download QR Code</span>
-                </a>
+            <!-- Tautan Langsung Job Detail -->
+            <div class="bg-slate-50 rounded-xl p-3 border border-slate-200 text-left space-y-1.5">
+                <div class="flex items-center justify-between">
+                    <span class="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                        <i class="fa-solid fa-link text-primary text-[10px]"></i>
+                        <span>Link Langsung Lowongan</span>
+                    </span>
+                    <button type="button" @click="copyJobUrl()" class="text-[11px] font-bold text-primary hover:text-blue-700 flex items-center gap-1 transition">
+                        <i class="fa-regular fa-copy"></i> Salin Link
+                    </button>
+                </div>
+                <div class="bg-white px-2.5 py-1.5 rounded-lg border border-slate-200 flex items-center justify-between gap-2">
+                    <a :href="qrJobUrl" target="_blank" class="text-xs font-semibold text-primary hover:underline truncate max-w-[240px]" x-text="qrJobUrl"></a>
+                    <a :href="qrJobUrl" target="_blank" class="text-slate-400 hover:text-primary transition shrink-0 p-1" title="Buka di tab baru">
+                        <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                    </a>
+                </div>
+            </div>
+
+            <div class="space-y-2 pt-1">
+                <div class="grid grid-cols-2 gap-2">
+                    <a :href="qrImageUrl" download="qrcode-job.png" target="_blank" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-sm">
+                        <i class="fa-solid fa-download text-xs"></i>
+                        <span>Download QR</span>
+                    </a>
+                    <button type="button" @click="copyJobUrl()" class="w-full inline-flex items-center justify-center gap-1.5 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 text-xs font-bold transition-all">
+                        <i class="fa-regular fa-copy text-xs"></i>
+                        <span>Salin Link</span>
+                    </button>
+                </div>
                 <button @click="qrModalOpen = false" type="button" class="w-full py-2 rounded-xl text-xs font-semibold text-slate-500 hover:bg-slate-100 transition-all">
                     Tutup
                 </button>
@@ -1081,13 +1125,31 @@
             qrModalOpen: false,
             presetModalOpen: false,
             qrJobTitle: '',
+            qrJobUrl: '',
             qrImageUrl: '',
 
-            showQR(title, slug) {
+            showQR(title, jobUrl) {
                 this.qrJobTitle = title;
-                const encodedUrl = encodeURIComponent('https://asystem.co.id/v3/job_detail.php?slug=' + slug);
-                this.qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodedUrl}&color=0F52BA`;
+                this.qrJobUrl = jobUrl;
+                const encodedUrl = encodeURIComponent(jobUrl);
+                this.qrImageUrl = `https://api.qrserver.com/v1/create-qr-code/?size=350x350&data=${encodedUrl}&color=0F52BA`;
                 this.qrModalOpen = true;
+            },
+
+            copyJobUrl() {
+                if (!this.qrJobUrl) return;
+                navigator.clipboard.writeText(this.qrJobUrl).then(() => {
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Tautan langsung lowongan berhasil disalin!',
+                        showConfirmButton: false,
+                        timer: 2500
+                    });
+                }).catch(() => {
+                    prompt('Salin link lowongan berikut:', this.qrJobUrl);
+                });
             },
 
             openPresetModal() {
@@ -1118,10 +1180,32 @@
                 }
             },
 
-            copyJobShareLink(title, area, prinsiple) {
-                const text = `*LOWONGAN KERJA TERBARU*\nPosisi: *${title}*\nArea: ${area || '-'}\nPrinsiple: ${prinsiple || '-'}\n\nSilakan apply melalui portal resmi PT Arina Multi Karya.`;
+            copyJobShareLink(title, area, prinsiple, jobUrl, skills = '') {
+                let text = `📢 *LOWONGAN KERJA TERBARU*\n\n` +
+                           `💼 *Posisi:* ${title}\n` +
+                           `🏢 *Prinsiple / Perusahaan:* ${prinsiple || '-'}\n` +
+                           `📍 *Area Penempatan:* ${area || '-'}\n`;
+
+                if (skills && skills.trim()) {
+                    text += `⚡ *Keahlian / Skill:* ${skills}\n`;
+                }
+
+                text += `\n🔗 *Link Detail & Lamar Lowongan:*\n` +
+                        `${jobUrl}\n\n` +
+                        `📲 _Silakan klik link di atas untuk melihat detail lengkap dan langsung melamar online._`;
+
                 navigator.clipboard.writeText(text).then(() => {
-                    alert('Format pesan lowongan kerja berhasil disalin ke clipboard! Siap di-paste ke WhatsApp.');
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: 'Pesan WhatsApp & Link Job berhasil disalin!',
+                        text: 'Siap di-paste ke WhatsApp',
+                        showConfirmButton: false,
+                        timer: 3000
+                    });
+                }).catch(() => {
+                    prompt('Salin pesan broadcast lowongan berikut:', text);
                 });
             }
         };
