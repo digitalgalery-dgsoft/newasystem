@@ -995,6 +995,86 @@ class InterviewController extends Controller
     }
 
     /**
+     * Mengaktifkan kembali kandidat yang diarsipkan (Un-Archive) ke daftar interview
+     */
+    public function unarchive(Request $request, $id)
+    {
+        $candidate = Candidate::findOrFail($id);
+
+        $candidate->status = 'Active';
+        if ($candidate->status_kandidat === 'Arsip') {
+            $candidate->status_kandidat = 'Interview';
+        }
+        $oldReason = $candidate->archive_reason;
+        $candidate->archive_reason = null;
+        $candidate->save();
+
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+            $tbData = ['status' => 'Active'];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
+                $tbData['status_kandidat'] = 'Interview';
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'archive_reason')) {
+                $tbData['archive_reason'] = null;
+            }
+            \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                ->where('id', $candidate->id)
+                ->orWhere('no_ktp', $candidate->nik)
+                ->update($tbData);
+        }
+
+        ActivityLogger::log('UNARCHIVE', 'Interview', "Mengaktifkan kembali kandidat {$candidate->full_name} ({$candidate->id}) dari arsip ke daftar interview aktif.", $candidate, [
+            'alasan_arsip_sebelumnya' => $oldReason,
+        ]);
+
+        return redirect()->back()
+            ->with('success', "Kandidat {$candidate->full_name} berhasil diaktifkan kembali ke daftar Interview!");
+    }
+
+    /**
+     * Mengaktifkan kembali kandidat secara massal (Bulk Un-Archive)
+     */
+    public function bulkUnarchive(Request $request)
+    {
+        $ids = $request->input('candidate_ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return redirect()->back()->with('error', 'Silakan pilih minimal 1 kandidat yang ingin diaktifkan kembali.');
+        }
+
+        $candidates = Candidate::whereIn('id', $ids)->get();
+        $count = 0;
+
+        foreach ($candidates as $cand) {
+            $cand->status = 'Active';
+            if ($cand->status_kandidat === 'Arsip') {
+                $cand->status_kandidat = 'Interview';
+            }
+            $cand->archive_reason = null;
+            $cand->save();
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+                $tbData = ['status' => 'Active'];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
+                    $tbData['status_kandidat'] = 'Interview';
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'archive_reason')) {
+                    $tbData['archive_reason'] = null;
+                }
+                \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                    ->where('id', $cand->id)
+                    ->orWhere('no_ktp', $cand->nik)
+                    ->update($tbData);
+            }
+
+            ActivityLogger::log('UNARCHIVE', 'Interview', "Mengaktifkan kembali kandidat {$cand->full_name} ({$cand->id}) dari arsip ke daftar interview via multi-select.", $cand);
+            $count++;
+        }
+
+        return redirect()->back()
+            ->with('success', "Berhasil mengaktifkan kembali {$count} kandidat ke daftar Interview!");
+    }
+
+    /**
      * Halaman Walk Interview (Replikasi walkinterview.php)
      */
     public function walkInterview(Request $request)

@@ -97,6 +97,8 @@ Route::post('/interview/{id}/refcek', [InterviewController::class, 'storeRefcek'
 Route::post('/interview/{id}/kompt', [InterviewController::class, 'storeComputerTest'])->name('interview.kompt');
 Route::post('/interview/{id}/remidi', [InterviewController::class, 'setRemidi'])->name('interview.remidi');
 Route::post('/interview/{id}/archive', [InterviewController::class, 'archive'])->name('interview.archive');
+Route::post('/interview/{id}/unarchive', [InterviewController::class, 'unarchive'])->name('interview.unarchive');
+Route::post('/interview/bulk-unarchive', [InterviewController::class, 'bulkUnarchive'])->name('interview.bulk_unarchive');
 Route::post('/interview/{id}/edit-principle', [InterviewController::class, 'editPrinciple'])->name('interview.editPrinciple');
 Route::post('/interview/{id}/ganti-area', [InterviewController::class, 'gantiArea'])->name('interview.ganti-area');
 Route::post('/interview/{id}/alihkan', [InterviewController::class, 'alihkanAS'])->name('interview.alihkan');
@@ -251,6 +253,7 @@ Route::get('/cetak_ai_result.php', function(\Illuminate\Http\Request $request) {
 Route::post('/kandidatportal/{id}/alihkan', [KandidatPortalController::class, 'alihkanAS'])->name('kandidatportal.alihkan');
 Route::post('/kandidatportal/{id}/ganti-area', [KandidatPortalController::class, 'gantiArea'])->name('kandidatportal.ganti_area');
 Route::post('/kandidatportal/{id}/arsipkan', [KandidatPortalController::class, 'arsipkan'])->name('kandidatportal.arsipkan');
+Route::post('/kandidatportal/{id}/unarchive', [KandidatPortalController::class, 'unarchive'])->name('kandidatportal.unarchive');
 Route::post('/kandidatportal/{id}/attachments', [KandidatPortalController::class, 'uploadAttachments'])->name('kandidatportal.attachments.update');
 Route::post('/kandidatportal/{id}/analyze-cv', [KandidatPortalController::class, 'analyzeCv'])->name('kandidatportal.analyze_cv');
 

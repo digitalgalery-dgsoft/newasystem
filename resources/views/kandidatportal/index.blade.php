@@ -725,6 +725,18 @@
                                         title="Kirim Undangan / Info via WhatsApp">
                                     <i class="fa-brands fa-whatsapp text-xs"></i>
                                 </button>
+
+                                @if($tab === 'arsip' || in_array($cand->status, ['Arsip', 'archived']) || $cand->status_kandidat === 'Arsip')
+                                <!-- 4. Un-Archive Button -->
+                                <form action="{{ route('kandidatportal.unarchive', $cand->id) }}" method="POST" class="inline" onsubmit="return confirm('Aktifkan kembali kandidat {{ addslashes($cand->full_name) }} dari arsip?');">
+                                    @csrf
+                                    <button type="submit" 
+                                            class="w-7 h-7 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 flex items-center justify-center transition-all shadow-sm"
+                                            title="Aktifkan Kembali (Un-Archive) dari Arsip">
+                                        <i class="fa-solid fa-box-open text-xs"></i>
+                                    </button>
+                                </form>
+                                @endif
                             </div>
                         </td>
                     </tr>

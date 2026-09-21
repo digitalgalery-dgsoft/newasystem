@@ -62,11 +62,21 @@
                 <span>Ganti Area / Prinsiple</span>
             </button>
 
-            <!-- Arsipkan -->
-            <button @click="arsipModalOpen = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-sm transition-all">
-                <i class="fa-solid fa-box-archive"></i>
-                <span>Arsipkan</span>
-            </button>
+            <!-- Arsipkan / Aktifkan Kembali -->
+            @if(in_array($candidate->status, ['Arsip', 'archived']) || $candidate->status_kandidat === 'Arsip')
+                <form action="{{ route('kandidatportal.unarchive', $candidate->id) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin mengaktifkan kembali kandidat {{ addslashes($candidate->full_name) }} dari arsip?');">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 shadow-sm transition-all" title="Aktifkan kembali kandidat dari arsip">
+                        <i class="fa-solid fa-box-open text-emerald-600"></i>
+                        <span>Aktifkan Kembali</span>
+                    </button>
+                </form>
+            @else
+                <button @click="arsipModalOpen = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 shadow-sm transition-all">
+                    <i class="fa-solid fa-box-archive"></i>
+                    <span>Arsipkan</span>
+                </button>
+            @endif
 
             <!-- Download PDF -->
             @if(!empty($isUserPrinsipleDisabled))
@@ -86,6 +96,31 @@
             @endif
         </div>
     </div>
+
+    <!-- NOTIFIKASI KANDIDAT BERSTATUS ARSIP -->
+    @if(in_array($candidate->status, ['Arsip', 'archived']) || $candidate->status_kandidat === 'Arsip')
+    <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 text-xs text-amber-900 shadow-sm">
+        <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center text-lg flex-shrink-0 shadow-sm">
+                <i class="fa-solid fa-box-archive"></i>
+            </div>
+            <div>
+                <h4 class="font-bold text-sm text-amber-950">Kandidat Ini Sedang Berada di Arsip</h4>
+                <p class="text-[11px] text-amber-800 mt-0.5">
+                    Alasan Diarsipkan: <span class="font-semibold italic text-rose-700">{{ $candidate->archive_reason ?? 'Tidak ada catatan alasan' }}</span>
+                </p>
+            </div>
+        </div>
+
+        <form action="{{ route('kandidatportal.unarchive', $candidate->id) }}" method="POST" onsubmit="return confirm('Aktifkan kembali kandidat {{ addslashes($candidate->full_name) }} dari arsip?');">
+            @csrf
+            <button type="submit" class="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition flex items-center gap-2 shadow-md shadow-emerald-600/20 whitespace-nowrap">
+                <i class="fa-solid fa-box-open text-xs"></i>
+                <span>Aktifkan Kembali Kandidat</span>
+            </button>
+        </form>
+    </div>
+    @endif
 
     <!-- STATUS REKRUTMEN ODOO ERP BANNER -->
     @php $odooBadge = $candidate->odoo_badge_info; @endphp

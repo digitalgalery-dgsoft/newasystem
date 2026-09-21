@@ -1,7 +1,21 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="space-y-6">
+<div class="space-y-6" x-data="{
+    selectedIds: [],
+    selectAll: false,
+    toggleAll() {
+        if (this.selectAll) {
+            this.selectedIds = Array.from(document.querySelectorAll('.candidate-checkbox')).map(cb => cb.value);
+        } else {
+            this.selectedIds = [];
+        }
+    },
+    updateSelectAll() {
+        const all = Array.from(document.querySelectorAll('.candidate-checkbox'));
+        this.selectAll = all.length > 0 && this.selectedIds.length === all.length;
+    }
+}">
     <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
             <h2 class="text-xl font-bold text-slate-900">Arsip Kandidat</h2>
@@ -53,12 +67,39 @@
         </form>
     </div>
 
+    <!-- Floating / Top Action Bar Saat Checkbox Terpilih -->
+    <div x-show="selectedIds.length > 0" x-cloak class="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs text-emerald-950 shadow-sm transition-all">
+        <div class="flex items-center gap-2.5">
+            <span class="w-8 h-8 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                <i class="fa-solid fa-check"></i>
+            </span>
+            <div>
+                <span class="font-bold"><span x-text="selectedIds.length"></span> Kandidat Terpilih</span>
+                <p class="text-[11px] text-emerald-700">Kandidat yang dipilih akan dikembalikan ke daftar interview aktif.</p>
+            </div>
+        </div>
+
+        <form action="{{ route('interview.bulk_unarchive') }}" method="POST" onsubmit="return confirm('Apakah Anda yakin ingin mengaktifkan kembali ' + selectedIds.length + ' kandidat terpilih ke daftar Interview?');" class="flex items-center gap-2">
+            @csrf
+            <template x-for="id in selectedIds" :key="id">
+                <input type="hidden" name="candidate_ids[]" :value="id">
+            </template>
+            <button type="submit" class="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold transition flex items-center gap-2 shadow-md shadow-emerald-600/20">
+                <i class="fa-solid fa-box-open text-xs"></i>
+                <span>Aktifkan Kembali Terpilih</span>
+            </button>
+        </form>
+    </div>
+
     <!-- Table -->
     <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs border-collapse">
                 <thead class="bg-slate-100/80 text-slate-700 font-bold border-b border-slate-200">
                     <tr>
+                        <th class="py-3 px-3 w-10 text-center">
+                            <input type="checkbox" x-model="selectAll" @change="toggleAll()" class="w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer" title="Pilih Semua di Halaman Ini">
+                        </th>
                         <th class="py-3 px-3 w-12 text-center">NO</th>
                         <th class="py-3 px-3 w-36">NO. KTP</th>
                         <th class="py-3 px-4">NAMA KANDIDAT</th>
@@ -68,12 +109,15 @@
                         <th class="py-3 px-4">PRINSIPLE</th>
                         <th class="py-3 px-3">JABATAN</th>
                         <th class="py-3 px-4">ALASAN ARSIP</th>
-                        <th class="py-3 px-3 text-center">AKSI</th>
+                        <th class="py-3 px-3 text-center w-28">AKSI</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100 text-slate-800">
                     @forelse($candidates as $idx => $c)
                     <tr class="hover:bg-amber-50/30">
+                        <td class="py-2.5 px-3 text-center">
+                            <input type="checkbox" :value="'{{ $c->id }}'" x-model="selectedIds" @change="updateSelectAll()" class="candidate-checkbox w-4 h-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                        </td>
                         <td class="py-2.5 px-3 text-center text-slate-400">{{ $candidates->firstItem() + $idx }}</td>
                         <td class="py-2.5 px-3 font-mono font-semibold">{{ $c->nik }}</td>
                         <td class="py-2.5 px-4 font-bold text-slate-950">{{ $c->full_name }}</td>
@@ -94,14 +138,24 @@
                         <td class="py-2.5 px-3">{{ $c->applied_job }}</td>
                         <td class="py-2.5 px-4 text-rose-700 italic">{{ $c->archive_reason ?? '-' }}</td>
                         <td class="py-2.5 px-3 text-center">
-                            <a href="{{ route('interview.show', $c->id) }}" class="inline-flex items-center justify-center w-7 h-7 rounded bg-sky-600 hover:bg-sky-500 text-white font-bold transition">
-                                <i class="bx bx-check text-base"></i>
-                            </a>
+                            <div class="flex items-center justify-center gap-1.5">
+                                <!-- Tombol Lihat Detail -->
+                                <a href="{{ route('interview.show', $c->id) }}" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold transition shadow-sm" title="Lihat Detail Interview">
+                                    <i class="bx bx-show text-base"></i>
+                                </a>
+                                <!-- Tombol Aktifkan Kembali (Un-Archive) -->
+                                <form action="{{ route('interview.unarchive', $c->id) }}" method="POST" class="inline" onsubmit="return confirm('Apakah Anda yakin ingin mengaktifkan kembali kandidat {{ addslashes($c->full_name) }} ke daftar interview?');">
+                                    @csrf
+                                    <button type="submit" class="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold transition shadow-sm" title="Aktifkan Kembali (Un-Archive) ke Interview">
+                                        <i class="fa-solid fa-box-open text-xs"></i>
+                                    </button>
+                                </form>
+                            </div>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="py-8 text-center text-slate-400">Belum ada kandidat diarsipkan.</td>
+                        <td colspan="11" class="py-8 text-center text-slate-400">Belum ada kandidat diarsipkan.</td>
                     </tr>
                     @endforelse
                 </tbody>

@@ -994,6 +994,41 @@ class KandidatPortalController extends Controller
     }
 
     /**
+     * Mengaktifkan kembali kandidat yang diarsipkan (Un-Archive)
+     */
+    public function unarchive(Request $request, $id)
+    {
+        $candidate = Candidate::findOrFail($id);
+
+        $candidate->status = 'Active';
+        $candidate->status_kandidat = 'Interview';
+        $oldReason = $candidate->archive_reason;
+        $candidate->archive_reason = null;
+        $candidate->save();
+
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+            $tbData = ['status' => 'Active'];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
+                $tbData['status_kandidat'] = 'Interview';
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'archive_reason')) {
+                $tbData['archive_reason'] = null;
+            }
+            \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                ->where('id', $candidate->id)
+                ->orWhere('no_ktp', $candidate->nik)
+                ->update($tbData);
+        }
+
+        ActivityLogger::log('UNARCHIVE', 'Kandidat Portal', "Mengaktifkan kembali kandidat {$candidate->full_name} ({$candidate->id}) dari arsip.", $candidate, [
+            'alasan_arsip_sebelumnya' => $oldReason,
+        ]);
+
+        return redirect()->back()
+            ->with('success', "Kandidat {$candidate->full_name} berhasil diaktifkan kembali!");
+    }
+
+    /**
      * Export Data Pelamar Job Portal ke XLSX Profesional (Filtered by User, Tanggal, Kategori, Status, dan Area)
      */
     public function exportExcel(Request $request)
