@@ -51,10 +51,10 @@
                 <span>Alihkan ke AS</span>
             </button>
 
-            <!-- Ganti Area -->
-            <button @click="gantiAreaModalOpen = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 shadow-sm transition-all">
+            <!-- Ganti Area / Prinsiple -->
+            <button @click="gantiAreaModalOpen = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 shadow-sm transition-all" title="Ganti Area & Prinsiple Penempatan">
                 <i class="fa-solid fa-location-dot text-amber-600"></i>
-                <span>Ganti Area</span>
+                <span>Ganti Area / Prinsiple</span>
             </button>
 
             <!-- Arsipkan -->
@@ -1228,16 +1228,16 @@
         </div>
     </div>
 
-    <!-- MODAL GANTI AREA -->
+    <!-- MODAL GANTI AREA & PRINSIPLE -->
     <div x-show="gantiAreaModalOpen" 
          x-cloak 
          class="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
         <div @click.away="gantiAreaModalOpen = false" 
-             class="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+             class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
                 <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
                     <i class="fa-solid fa-location-dot text-amber-600"></i>
-                    Ganti Area Penempatan
+                    Ganti Area & Prinsiple Penempatan
                 </h4>
                 <button @click="gantiAreaModalOpen = false" class="text-slate-400 hover:text-slate-600">
                     <i class="fa-solid fa-xmark text-base"></i>
@@ -1247,14 +1247,20 @@
             <form action="{{ route('interview.ganti-area', $candidate->id) }}" method="POST" class="space-y-4">
                 @csrf
                 <div>
-                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Pilih Area Baru</label>
-                    <select name="area" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-amber-100 focus:border-amber-500 outline-none" required>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-map-pin text-amber-600"></i>
+                        <span>Area Penempatan</span>
+                    </label>
+                    <select name="area" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-amber-100 focus:border-amber-500 outline-none cursor-pointer" required>
                         @php
                             $allAreas = $areas ?? [
                                 'JAKARTA', 'SURABAYA', 'BANDUNG', 'SEMARANG', 'MEDAN', 
                                 'MAKASSAR', 'DENPASAR', 'PALEMBANG', 'BALIKPAPAN', 'YOGYAKARTA',
                                 'MALANG', 'BOGOR', 'BEKASI', 'TANGERANG', 'DEPOK'
                             ];
+                            if (!empty($candidate->area) && !in_array($candidate->area, $allAreas)) {
+                                $allAreas[] = $candidate->area;
+                            }
                         @endphp
                         @foreach($allAreas as $ar)
                             <option value="{{ $ar }}" {{ ($candidate->area == $ar) ? 'selected' : '' }}>{{ $ar }}</option>
@@ -1262,12 +1268,32 @@
                     </select>
                 </div>
 
+                <div>
+                    <label class="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1.5">
+                        <i class="fa-solid fa-building text-amber-600"></i>
+                        <span>Prinsiple Penempatan</span>
+                    </label>
+                    <select name="principle_id" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-amber-100 focus:border-amber-500 outline-none cursor-pointer" required>
+                        <option value="">-- Pilih Prinsiple --</option>
+                        @foreach($principles as $p)
+                            @php
+                                $isSelected = ($candidate->principle_id == $p->id)
+                                    || ($candidate->principle && is_object($candidate->principle) && $candidate->principle->id == $p->id)
+                                    || (is_string($candidate->principle) && strtolower(trim($candidate->principle)) === strtolower(trim($p->name)));
+                            @endphp
+                            <option value="{{ $p->id }}" {{ $isSelected ? 'selected' : '' }}>
+                                {{ $p->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
                 <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                    <button @click="gantiAreaModalOpen = false" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100">
+                    <button @click="gantiAreaModalOpen = false" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
                         Batal
                     </button>
-                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm">
-                        Perbarui Area
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition cursor-pointer">
+                        Simpan Perubahan
                     </button>
                 </div>
             </form>

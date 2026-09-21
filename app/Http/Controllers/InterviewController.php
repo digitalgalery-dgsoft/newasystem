@@ -15,6 +15,7 @@ use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class InterviewController extends Controller
@@ -1391,22 +1392,47 @@ class InterviewController extends Controller
     }
 
     /**
-     * Ganti Area Penempatan Kandidat
+     * Ganti Area & Prinsiple Penempatan Kandidat
      */
     public function gantiArea(Request $request, $id)
     {
         $candidate = Candidate::findOrFail($id);
         $oldArea = $candidate->area;
-        $candidate->area = $request->area;
+        $oldPrincipleName = $candidate->principle?->name ?? $candidate->principle ?? '-';
+
+        $updates = [];
+        if ($request->filled('area')) {
+            $candidate->area = trim($request->area);
+            $updates['area'] = $candidate->area;
+        }
+
+        if ($request->filled('principle_id')) {
+            $principle = Principle::find($request->principle_id);
+            if ($principle) {
+                $candidate->principle_id = $principle->id;
+                $candidate->principle = $principle->name;
+                $updates['principle'] = $principle->name;
+            }
+        }
+
         $candidate->save();
 
-        ActivityLogger::log('UPDATE', 'Interview', "Mengubah area penempatan kandidat {$candidate->full_name} dari '{$oldArea}' ke '{$candidate->area}'", $candidate, [
+        if (Schema::hasTable('tb_kandidat')) {
+            DB::table('tb_kandidat')
+                ->where('no_ktp', $candidate->nik)
+                ->update($updates);
+        }
+
+        $newPrincipleName = $candidate->principle?->name ?? $candidate->principle ?? '-';
+        ActivityLogger::log('UPDATE', 'Interview', "Mengubah area/prinsiple kandidat {$candidate->full_name}. Area: '{$oldArea}' -> '{$candidate->area}', Prinsiple: '{$oldPrincipleName}' -> '{$newPrincipleName}'", $candidate, [
             'old_area' => $oldArea,
             'new_area' => $candidate->area,
+            'old_principle' => $oldPrincipleName,
+            'new_principle' => $newPrincipleName,
         ]);
 
-        return redirect()->route('interview.show', $candidate->id)
-            ->with('success', 'Area penempatan kandidat berhasil diubah menjadi: ' . $candidate->area);
+        return redirect()->back()
+            ->with('success', 'Area dan Prinsiple kandidat ' . $candidate->full_name . ' berhasil diperbarui.');
     }
 
     /**

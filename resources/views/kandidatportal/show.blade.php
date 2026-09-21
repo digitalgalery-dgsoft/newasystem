@@ -56,10 +56,10 @@
                 </button>
             </form>
 
-            <!-- Ganti Area -->
-            <button @click="gantiAreaModalOpen = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm transition-all">
+            <!-- Ganti Area / Prinsiple -->
+            <button @click="gantiAreaModalOpen = true" type="button" class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 shadow-sm transition-all" title="Ganti Area & Prinsiple Penempatan">
                 <i class="fa-solid fa-location-dot text-amber-600"></i>
-                <span>Ganti Area</span>
+                <span>Ganti Area / Prinsiple</span>
             </button>
 
             <!-- Arsipkan -->
@@ -1662,26 +1662,59 @@
         </div>
     </div>
 
-    <!-- MODAL GANTI AREA -->
+    <!-- MODAL GANTI AREA & PRINSIPLE -->
     <div x-show="gantiAreaModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 border border-slate-200 space-y-4" @click.away="gantiAreaModalOpen = false">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 space-y-4" @click.away="gantiAreaModalOpen = false">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h4 class="text-sm font-extrabold text-slate-900">Ganti Area Penempatan</h4>
+                <h4 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-location-dot text-amber-600"></i>
+                    Ganti Area & Prinsiple Penempatan
+                </h4>
                 <button @click="gantiAreaModalOpen = false" class="text-slate-400 hover:text-slate-600 text-base">✕</button>
             </div>
-            <form action="{{ route('kandidatportal.ganti_area', $candidate->id) }}" method="POST" class="space-y-3 text-xs">
+            <form action="{{ route('kandidatportal.ganti_area', $candidate->id) }}" method="POST" class="space-y-3.5 text-xs">
                 @csrf
                 <div>
-                    <label class="block text-slate-700 font-bold mb-1">Pilih Area Baru</label>
-                    <select name="area" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs">
-                        @foreach($areas as $a)
+                    <label class="block text-slate-700 font-bold mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-map-pin text-amber-600"></i>
+                        <span>Area Penempatan</span>
+                    </label>
+                    <select name="area" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" required>
+                        @php
+                            $allAreas = $areas ?? [];
+                            if (!empty($candidate->area) && !in_array($candidate->area, $allAreas)) {
+                                $allAreas[] = $candidate->area;
+                            }
+                        @endphp
+                        @foreach($allAreas as $a)
                             <option value="{{ $a }}" {{ ($candidate->area ?? '') === $a ? 'selected' : '' }}>{{ $a }}</option>
                         @endforeach
                     </select>
                 </div>
-                <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" @click="gantiAreaModalOpen = false" class="px-3 py-2 rounded-xl border border-slate-300 font-semibold">Batal</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-amber-600 text-white font-bold">Simpan Perubahan Area</button>
+
+                <div>
+                    <label class="block text-slate-700 font-bold mb-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-building text-amber-600"></i>
+                        <span>Prinsiple Penempatan</span>
+                    </label>
+                    <select name="principle_id" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" required>
+                        <option value="">-- Pilih Prinsiple --</option>
+                        @foreach($principles as $p)
+                            @php
+                                $isSelected = ($candidate->principle_id == $p->id)
+                                    || ($candidate->principle && is_object($candidate->principle) && $candidate->principle->id == $p->id)
+                                    || (is_string($candidate->principle) && strtolower(trim($candidate->principle)) === strtolower(trim($p->name)));
+                            @endphp
+                            <option value="{{ $p->id }}" {{ $isSelected ? 'selected' : '' }}>
+                                {{ $p->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" @click="gantiAreaModalOpen = false" class="px-3.5 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 transition cursor-pointer">Batal</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold transition shadow-sm cursor-pointer">Simpan Perubahan</button>
                 </div>
             </form>
         </div>
