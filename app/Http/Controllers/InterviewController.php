@@ -197,7 +197,16 @@ class InterviewController extends Controller
         $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
         $displayRecruiterName = $user ? $user->name : 'User';
         $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
-        $displayRecruiterArea = $user->area ?? 'JAKARTA';
+        $displayRecruiterArea = $user->area ?? null;
+        if (empty($displayRecruiterArea) && $user) {
+            $emp = Employee::where('email', $user->email)->orWhere('nama_karyawan', $user->name)->first();
+            if ($emp && !empty($emp->area)) {
+                $displayRecruiterArea = $emp->area;
+            }
+        }
+        if (empty($displayRecruiterArea)) {
+            $displayRecruiterArea = 'JAKARTA';
+        }
 
         // Ambil daftar rekruter dengan jumlah kandidat aktif (Hanya untuk Admin / All-Scope switcher)
         $allRecruiters = collect();
@@ -244,7 +253,7 @@ class InterviewController extends Controller
             }
         }
 
-        // Query 1: Data Kandidat Milik Anda (Tampil Sesuai User / Karyawan yang Login)
+        // Query 1: Data Kandidat Milik Anda / Rekruter Terpilih (Tabel Atas)
         $myCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
             ->whereNotIn('status', ['Arsip', 'archived'])
             ->where(function ($q) {
@@ -254,6 +263,8 @@ class InterviewController extends Controller
                 $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
             });
 
+        $excludedRecruiterForArea = null;
+        $excludedIdentifiersForArea = $userIdentifiers;
 
         if ($canViewAllRecruiters) {
             if (!empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
@@ -264,8 +275,14 @@ class InterviewController extends Controller
                 });
                 $foundRec = $allRecruiters->firstWhere('useras', $filterUser);
                 $displayRecruiterName = $foundRec ? $foundRec->display_name : $filterUser;
-                $displayRecruiterArea = $foundRec ? ($foundRec->area ?: 'INDONESIA') : 'INDONESIA';
+                $displayRecruiterArea = $foundRec ? ($foundRec->area ?: ($user->area ?? 'JAKARTA')) : ($user->area ?? 'JAKARTA');
                 $displayRecruiterTitle = 'REKRUTER TERPILIH';
+
+                $excludedRecruiterForArea = $filterUser;
+                $excludedIdentifiersForArea = [strtolower(trim($filterUser))];
+                if ($foundRec && !empty($foundRec->display_name)) {
+                    $excludedIdentifiersForArea[] = strtolower(trim($foundRec->display_name));
+                }
             } elseif ($filterUser === 'my') {
                 $myCandidatesQuery->where(function ($q) use ($user, $userIdentifiers) {
                     if (!empty($userIdentifiers)) {
@@ -280,11 +297,13 @@ class InterviewController extends Controller
                 $displayRecruiterName = $user->name;
                 $displayRecruiterTitle = $user->job_title ?? 'REKRUTMEN';
                 $displayRecruiterArea = $user->area ?? 'JAKARTA';
+                $excludedIdentifiersForArea = $userIdentifiers;
             } else {
                 // Default Admin / All-Scope: Tampilkan semua data kandidat nasional
                 $displayRecruiterName = 'Semua Rekruter (Nasional)';
                 $displayRecruiterTitle = $isAdmin ? 'SUPER ADMIN - All' : 'ALL PRINCIPLE & AREA';
                 $displayRecruiterArea = 'NASIONAL';
+                $excludedIdentifiersForArea = $userIdentifiers;
             }
         } else {
             // USER BIASA / REKRUTER: Tampilkan HANYA data milik user yang sedang login!
@@ -300,6 +319,7 @@ class InterviewController extends Controller
                     $q->whereRaw('1 = 0');
                 }
             });
+            $excludedIdentifiersForArea = $userIdentifiers;
         }
 
         // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
@@ -395,67 +415,77 @@ class InterviewController extends Controller
             return $c;
         });
 
-        // Query 2: Data Kandidat Area (Hanya jika admin sedang memfilter rekruter tertentu untuk melihat rekan area)
-        if ($canViewAllRecruiters && !empty($filterUser) && $filterUser !== 'all' && $filterUser !== 'my') {
-            $areaCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
-                ->whereNotIn('status', ['Arsip', 'archived'])
-                ->where(function ($q) {
-                    $q->whereNull('jenis')->orWhere('jenis', '');
-                })
-                ->where(function ($q) {
-                    $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
-                })
-                ->where('area', $displayRecruiterArea ?? $user->area ?? 'JAKARTA')
-                ->where(function ($q) use ($user, $userIdentifiers) {
-                    if ($user && !empty($user->id)) {
-                        $q->where('recruiter_id', '!=', $user->id)->orWhereNull('recruiter_id');
-                    }
-                    if (!empty($userIdentifiers)) {
-                        $q->whereNotIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers)->orWhereNull('useras');
-                    }
-                });
+        // =========================================================================
+        // QUERY 2: DATA KANDIDAT MILIK REKAN LAIN YANG SEAREA (TABEL BAWAH)
+        // =========================================================================
+        $targetArea = ($displayRecruiterArea && strtoupper($displayRecruiterArea) !== 'NASIONAL')
+            ? $displayRecruiterArea
+            : ($user->area ?? 'JAKARTA');
 
-            // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
-            if ($user) {
-                $user->applyRoleScopeToCandidates($areaCandidatesQuery);
-            }
-
-            // Terapkan Filter Step Odoo pada Area Candidates
-            if (!empty($odooStage)) {
-                if ($odooStage === 'none') {
-                    $areaCandidatesQuery->where(function($q) {
-                        $q->whereNull('odoo_stage_name')->orWhere('odoo_stage_name', '');
-                    });
-                } elseif ($odooStage === 'matched') {
-                    $areaCandidatesQuery->whereNotNull('odoo_stage_name')->where('odoo_stage_name', '!=', '');
-                } elseif ($odooStage === 'interview') {
-                    $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Interview%');
-                } elseif ($odooStage === 'elearning') {
-                    $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Learning%');
-                } elseif ($odooStage === 'pkwt') {
-                    $areaCandidatesQuery->where('odoo_stage_name', 'like', '%PKWT%');
-                } else {
-                    $areaCandidatesQuery->where('odoo_stage_name', $odooStage);
-                }
-            }
-
-            if ($searchArea) {
-                $areaCandidatesQuery->where(function ($q) use ($searchArea) {
-                    $q->where('full_name', 'like', "%{$searchArea}%")
-                      ->orWhere('nik', 'like', "%{$searchArea}%")
-                      ->orWhere('applied_job', 'like', "%{$searchArea}%");
-                });
-            }
-
-            $areaCandidates = $areaCandidatesQuery->orderBy('id', 'desc')->paginate(15, ['*'], 'page_area');
-            self::attachInhouseEmployeeNames($areaCandidates);
-            $areaCandidates->getCollection()->transform(function ($c) use ($user, $salam) {
-                $c->wa_url = $this->buildWaUrl($c, $user, $salam);
-                return $c;
-            });
-        } else {
-            $areaCandidates = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15, 1, ['path' => $request->url(), 'pageName' => 'page_area']);
+        if (empty($targetArea) || strtoupper($targetArea) === 'NASIONAL' || $targetArea === '-') {
+            $targetArea = 'JAKARTA';
         }
+
+        $areaCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
+            ->whereNotIn('status', ['Arsip', 'archived'])
+            ->where(function ($q) {
+                $q->whereNull('jenis')->orWhere('jenis', '');
+            })
+            ->where(function ($q) {
+                $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
+            })
+            ->whereRaw('LOWER(TRIM(area)) = ?', [strtolower(trim($targetArea))])
+            ->where(function ($q) use ($excludedIdentifiersForArea) {
+                if (!empty($excludedIdentifiersForArea)) {
+                    $q->whereNotIn(DB::raw('LOWER(TRIM(useras))'), $excludedIdentifiersForArea)
+                      ->orWhereNull('useras');
+                }
+            });
+
+        if ($user && !empty($user->id) && empty($excludedRecruiterForArea)) {
+            $areaCandidatesQuery->where(function ($q) use ($user) {
+                $q->where('recruiter_id', '!=', $user->id)->orWhereNull('recruiter_id');
+            });
+        }
+
+        // Terapkan Pembatasan Scope Role
+        if ($user) {
+            $user->applyRoleScopeToCandidates($areaCandidatesQuery);
+        }
+
+        // Terapkan Filter Step Odoo pada Area Candidates
+        if (!empty($odooStage)) {
+            if ($odooStage === 'none') {
+                $areaCandidatesQuery->where(function($q) {
+                    $q->whereNull('odoo_stage_name')->orWhere('odoo_stage_name', '');
+                });
+            } elseif ($odooStage === 'matched') {
+                $areaCandidatesQuery->whereNotNull('odoo_stage_name')->where('odoo_stage_name', '!=', '');
+            } elseif ($odooStage === 'interview') {
+                $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Interview%');
+            } elseif ($odooStage === 'elearning') {
+                $areaCandidatesQuery->where('odoo_stage_name', 'like', '%Learning%');
+            } elseif ($odooStage === 'pkwt') {
+                $areaCandidatesQuery->where('odoo_stage_name', 'like', '%PKWT%');
+            } else {
+                $areaCandidatesQuery->where('odoo_stage_name', $odooStage);
+            }
+        }
+
+        if ($searchArea) {
+            $areaCandidatesQuery->where(function ($q) use ($searchArea) {
+                $q->where('full_name', 'like', "%{$searchArea}%")
+                  ->orWhere('nik', 'like', "%{$searchArea}%")
+                  ->orWhere('applied_job', 'like', "%{$searchArea}%");
+            });
+        }
+
+        $areaCandidates = $areaCandidatesQuery->orderBy('id', 'desc')->paginate(15, ['*'], 'page_area');
+        self::attachInhouseEmployeeNames($areaCandidates);
+        $areaCandidates->getCollection()->transform(function ($c) use ($user, $salam) {
+            $c->wa_url = $this->buildWaUrl($c, $user, $salam);
+            return $c;
+        });
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
 
@@ -474,6 +504,7 @@ class InterviewController extends Controller
             'displayRecruiterName',
             'displayRecruiterTitle',
             'displayRecruiterArea',
+            'targetArea',
             'statTotal',
             'statProfileComplete',
             'statTestDone',

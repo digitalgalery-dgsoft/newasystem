@@ -283,12 +283,14 @@
                 <h2 class="text-sm font-bold text-slate-900">
                     @if($filterUser === 'all')
                         Data Kandidat &bull; Semua Rekruter (Nasional)
+                    @elseif(!empty($filterUser) && $filterUser !== 'my')
+                        Data Kandidat &bull; {{ $displayRecruiterName }} ({{ strtoupper($displayRecruiterTitle) }} - {{ strtoupper($displayRecruiterArea) }})
                     @else
-                        Data Kandidat &bull; {{ $displayRecruiterName ?? $user->name }} ({{ strtoupper($displayRecruiterTitle ?? ($user->job_title ?? 'REKRUTMEN')) }} - {{ strtoupper($displayRecruiterArea ?? ($user->area ?? 'JAKARTA')) }})
+                        Data Kandidat Milik Anda &bull; {{ $user->name }} ({{ strtoupper($displayRecruiterTitle ?? ($user->job_title ?? 'REKRUTMEN')) }} - {{ strtoupper($displayRecruiterArea ?? ($user->area ?? 'JAKARTA')) }})
                     @endif
                 </h2>
                 <span class="badge-pill bg-blue-50 text-primary border-blue-200">
-                    <i class="fa-solid fa-user-check text-[10px] mr-1"></i> {{ number_format($myCandidates->total()) }} Kandidat
+                    <i class="fa-solid fa-user-check text-[10px] mr-1"></i> {{ number_format($myCandidates->total()) }} Kandidat Milik Anda
                 </span>
             </div>
 
@@ -298,6 +300,9 @@
                 <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-1.5 flex-shrink-0">
                     @if(request('search_my'))
                         <input type="hidden" name="search_my" value="{{ request('search_my') }}">
+                    @endif
+                    @if(request('search_area'))
+                        <input type="hidden" name="search_area" value="{{ request('search_area') }}">
                     @endif
                     <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
                         <i class="fa-solid fa-user-gear text-primary text-xs"></i>
@@ -321,6 +326,12 @@
                     @if($filterUser)
                         <input type="hidden" name="filter_user" value="{{ $filterUser }}">
                     @endif
+                    @if(request('search_area'))
+                        <input type="hidden" name="search_area" value="{{ request('search_area') }}">
+                    @endif
+                    @if(request('page_area'))
+                        <input type="hidden" name="page_area" value="{{ request('page_area') }}">
+                    @endif
 
                     <!-- Filter Step Odoo -->
                     <div class="flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
@@ -342,7 +353,7 @@
                     <div class="relative w-full sm:w-64">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                         <input type="text" name="search_my" value="{{ request('search_my') }}" placeholder="Cari nama, NIK, jabatan..." 
-                               class="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50">
+                                class="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-slate-50">
                     </div>
                     <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-700 shadow-sm flex-shrink-0">
                         Cari
@@ -568,30 +579,55 @@
         </div>
     </div>
 
-    @if((!empty($isAdmin) || !empty($canViewAllRecruiters)) && !empty($areaCandidates) && $areaCandidates->total() > 0)
+    @if(isset($areaCandidates))
     <!-- 4. TABLE 2: DATA KANDIDAT REKAN SE-AREA -->
-    <div class="table-card">
-        <div class="px-6 py-4 border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-white">
-            <div class="flex items-center gap-2.5">
-                <span class="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-                <h2 class="text-sm font-bold text-slate-900">
-                    Data Kandidat Rekan Se-Area &bull; {{ strtoupper($user->area ?? 'JAKARTA') }}
-                </h2>
-                <span class="badge-pill bg-purple-50 text-purple-700 border-purple-200">
-                    {{ $areaCandidates->total() }} Kandidat
-                </span>
+    <div class="table-card border-t-2 border-t-purple-500" id="table-rekan">
+        <div class="px-6 py-4 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center justify-between gap-3 bg-white">
+            <div class="flex items-center gap-2.5 flex-wrap">
+                <span class="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse"></span>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h2 class="text-sm font-bold text-slate-900">
+                            Data Kandidat Rekan Se-Area &bull; {{ strtoupper($targetArea ?? ($displayRecruiterArea ?? ($user->area ?? 'JAKARTA'))) }}
+                        </h2>
+                        <span class="badge-pill bg-purple-50 text-purple-700 border-purple-200">
+                            <i class="fa-solid fa-users text-[10px] mr-1"></i> {{ number_format($areaCandidates->total()) }} Kandidat Rekan Area
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-500 mt-0.5">
+                        Menampilkan kandidat yang diproses oleh rekan kerja lain di wilayah operasional yang sama ({{ strtoupper($targetArea ?? ($displayRecruiterArea ?? ($user->area ?? 'JAKARTA'))) }}).
+                    </p>
+                </div>
             </div>
 
             <!-- Search Area Form -->
-            <form method="GET" action="{{ route('interview.index') }}" class="flex items-center gap-2 w-full md:w-auto">
-                <div class="relative w-full md:w-72">
+            <form method="GET" action="{{ route('interview.index') }}#table-rekan" class="flex items-center gap-2 w-full lg:w-auto">
+                @if(request('search_my'))
+                    <input type="hidden" name="search_my" value="{{ request('search_my') }}">
+                @endif
+                @if(request('filter_user'))
+                    <input type="hidden" name="filter_user" value="{{ request('filter_user') }}">
+                @endif
+                @if(request('odoo_stage'))
+                    <input type="hidden" name="odoo_stage" value="{{ request('odoo_stage') }}">
+                @endif
+                @if(request('page_my'))
+                    <input type="hidden" name="page_my" value="{{ request('page_my') }}">
+                @endif
+
+                <div class="relative w-full sm:w-64">
                     <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-                    <input type="text" name="search_area" value="{{ request('search_area') }}" placeholder="Cari kandidat rekan area..." 
+                    <input type="text" name="search_area" value="{{ request('search_area') }}" placeholder="Cari nama, NIK rekan area..." 
                            class="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600 bg-slate-50">
                 </div>
                 <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-purple-600 text-white text-xs font-bold hover:bg-purple-700 shadow-sm flex-shrink-0">
                     Cari
                 </button>
+                @if(request('search_area'))
+                    <a href="{{ route('interview.index', request()->except('search_area')) }}#table-rekan" class="px-2.5 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-semibold hover:bg-slate-200">
+                        Reset
+                    </a>
+                @endif
             </form>
         </div>
 
@@ -616,7 +652,7 @@
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @forelse($areaCandidates as $index => $candidate)
-                        <tr class="hover:bg-slate-50/80 transition-colors">
+                        <tr class="hover:bg-purple-50/30 transition-colors">
                             <td class="text-center font-bold text-slate-400 text-xs">
                                 {{ $areaCandidates->firstItem() + $index }}
                             </td>
@@ -624,8 +660,21 @@
                                 <span class="font-mono text-xs font-bold text-slate-700">{{ $candidate->nik }}</span>
                             </td>
                             <td>
-                                <div class="font-bold text-xs text-slate-900">{{ $candidate->full_name }}</div>
-                                <div class="text-[10px] text-slate-400">Area: {{ $candidate->area }}</div>
+                                <div class="flex items-center gap-2.5">
+                                    @if($candidate->photo_path)
+                                        <img src="{{ $candidate->photo_url }}" alt="{{ $candidate->full_name }}" class="w-8 h-8 rounded-lg object-cover flex-shrink-0 border border-slate-200" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($candidate->full_name) }}&background=8B5CF6&color=fff';">
+                                    @else
+                                        <div class="w-8 h-8 rounded-lg bg-purple-50 text-purple-700 font-bold text-xs flex items-center justify-center flex-shrink-0 border border-purple-200">
+                                            {{ strtoupper(substr($candidate->full_name, 0, 1)) }}
+                                        </div>
+                                    @endif
+                                    <div>
+                                        <div class="font-bold text-xs text-slate-900 leading-tight">{{ $candidate->full_name }}</div>
+                                        <div class="text-[10px] text-slate-400 mt-0.5">
+                                            <span>WhatsApp: {{ $candidate->phone ?? '-' }}</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                             <td>
                                 @if(in_array(strtolower($candidate->gender ?? ''), ['perempuan', 'female']))
@@ -640,14 +689,17 @@
                             </td>
                             <td>
                                 <div class="text-xs font-semibold text-slate-800">{{ $candidate->formatted_birth_date }}</div>
-                                <div class="text-[11px] text-slate-500">{{ $candidate->age }} Thn</div>
+                                <div class="text-[11px] text-slate-500 font-medium">{{ $candidate->age }} Thn</div>
                             </td>
                             <td>
-                                <div class="text-xs text-slate-800">{{ $candidate->education ?? '-' }}</div>
+                                <div class="text-xs font-semibold text-slate-800">{{ $candidate->education ?? '-' }}</div>
+                                @if($candidate->major)
+                                    <div class="text-[10px] text-slate-400 truncate max-w-[120px]">{{ $candidate->major }}</div>
+                                @endif
                             </td>
                             <td>
-                                <div class="font-bold text-xs text-slate-900">{{ strtoupper($candidate->principle->name ?? '-') }}</div>
-                                <div class="text-[11px] text-primary">{{ $candidate->applied_job ?? '-' }}</div>
+                                <div class="font-bold text-xs text-slate-900">{{ strtoupper($candidate->principle->name ?? 'NON PRINSIPLE') }}</div>
+                                <div class="text-[11px] text-primary font-semibold mt-0.5">{{ $candidate->applied_job ?? '-' }}</div>
                             </td>
 
                             <!-- STEP ODOO -->
@@ -678,49 +730,68 @@
                             @endphp
                             <td class="text-center">
                                 @if($candidate->is_psikotes_done)
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold" title="Sudah Tes Psikotes"><i class="fa-solid fa-check"></i></span>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold shadow-sm" title="Sudah Tes Psikotes ({{ $candidate->tes_kepribadian ?? 'Selesai' }})"><i class="fa-solid fa-check"></i></span>
                                 @else
                                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold" title="Belum Selesai"><i class="fa-solid fa-xmark"></i></span>
                                 @endif
                             </td>
                             <td class="text-center">
                                 @if($candidate->is_math_done)
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold"><i class="fa-solid fa-check"></i></span>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold shadow-sm" title="Sudah Tes Matematika ({{ $areaMath?->score ? 'Score: ' . $areaMath->score : ($candidate->tes_matematika ?? 'Selesai') }})"><i class="fa-solid fa-check"></i></span>
                                 @else
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold"><i class="fa-solid fa-xmark"></i></span>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold" title="Belum Selesai"><i class="fa-solid fa-xmark"></i></span>
                                 @endif
                             </td>
                             <td class="text-center">
                                 @if($candidate->is_komputer_done)
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold"><i class="fa-solid fa-check"></i></span>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold shadow-sm" title="Sudah Tes Komputer"><i class="fa-solid fa-check"></i></span>
                                 @else
-                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold"><i class="fa-solid fa-xmark"></i></span>
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold" title="Belum Selesai"><i class="fa-solid fa-xmark"></i></span>
                                 @endif
                             </td>
                             <td>
-                                <div class="font-semibold text-xs text-slate-700">{{ $candidate->user_name_formatted ?? $candidate->user_display_name }}</div>
+                                <div class="font-bold text-xs text-slate-800">{{ $candidate->user_name_formatted ?? $candidate->user_display_name }}</div>
                                 <div class="text-[10px] text-slate-400 uppercase font-semibold">{{ $candidate->user_subtitle_formatted ?? ('ARO ' . ($candidate->area ?? 'JAKARTA')) }}</div>
                             </td>
                             <td class="text-center">
                                 <div class="inline-flex items-center gap-1.5 justify-center">
-                                    <a href="{{ route('interview.show', $candidate->id) }}" class="w-8 h-8 rounded-lg bg-blue-50 text-primary hover:bg-primary hover:text-white flex items-center justify-center text-sm shadow-sm" title="Lihat Hasil">
+                                    <a href="{{ route('interview.show', $candidate->id) }}" class="w-8 h-8 rounded-lg bg-blue-50 text-primary hover:bg-primary hover:text-white flex items-center justify-center text-sm transition-all shadow-sm" title="Hasil Interview & Form Penilaian">
                                         <i class="fa-solid fa-clipboard-check"></i>
                                     </a>
-                                    <a href="{{ $candidate->wa_url }}" target="_blank" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-sm shadow-sm" title="Kirim WA">
+                                    <a href="{{ $candidate->wa_url }}" target="_blank" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-600 hover:text-white flex items-center justify-center text-sm transition-all shadow-sm" title="Kirim Pesan WhatsApp">
                                         <i class="fa-brands fa-whatsapp text-base"></i>
                                     </a>
+                                    <button onclick="openEditPrincipleModal({{ $candidate->id }}, '{{ $candidate->full_name }}', '{{ $candidate->principle_id }}')" 
+                                            class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center text-xs transition-all shadow-sm" 
+                                            title="Ubah Prinsiple">
+                                        <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="13" class="text-center py-8 text-xs text-slate-400">
-                                Belum ada kandidat lain di area {{ strtoupper($user->area ?? 'JAKARTA') }}.
+                            <td colspan="13" class="text-center py-10">
+                                <div class="w-12 h-12 rounded-full bg-purple-50 text-purple-400 flex items-center justify-center mx-auto mb-2.5 text-lg">
+                                    <i class="fa-solid fa-users-slash"></i>
+                                </div>
+                                <div class="text-sm font-bold text-slate-700">Belum ada kandidat rekan lain di area {{ strtoupper($targetArea ?? ($displayRecruiterArea ?? ($user->area ?? 'JAKARTA'))) }}</div>
+                                <div class="text-xs text-slate-400 mt-1">Data kandidat milik rekan lain dalam satu area operasional akan otomatis muncul di sini.</div>
                             </td>
                         </tr>
                     @endforelse
                 </tbody>
             </table>
+        </div>
+
+        <!-- Pagination Bar Table 2 -->
+        <div class="px-6 py-4 border-t border-slate-200 bg-slate-50/50 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-xs text-slate-500">
+                Menampilkan halaman <span class="font-bold text-slate-800">{{ $areaCandidates->currentPage() }}</span> dari <span class="font-bold text-slate-800">{{ $areaCandidates->lastPage() }}</span> (Total <span class="font-bold text-slate-800">{{ number_format($areaCandidates->total()) }}</span> Kandidat Rekan)
+            </div>
+            <div>
+                {{ $areaCandidates->appends(request()->query())->fragment('table-rekan')->links() }}
+            </div>
         </div>
     </div>
     @endif
