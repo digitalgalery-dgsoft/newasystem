@@ -750,7 +750,7 @@
                     <span>Informasi Pencocokan Tahapan</span>
                 </div>
                 <p>
-                    Sistem akan mencocokkan nomor KTP/NIK kandidat interview dengan data pelamar di <b>Odoo ERP (hr.applicant)</b> pada entitas aktif (AMK, AKP, ATK, ATB, dll.).
+                    Sistem akan mencocokkan nomor KTP/NIK kandidat interview dengan data pelamar di <b>Odoo ERP (hr.applicant)</b> pada entitas aktif (AMK, AKP, ATK, ABO, ATB).
                 </p>
                 <ul class="list-disc list-inside space-y-0.5 text-[11px] text-purple-800 pt-1">
                     <li>Kandidat tahap interview di Odoo akan otomatis diperbarui status dan stepnya.</li>
@@ -1120,10 +1120,10 @@
                     <select id="odooNikEntity" class="flex-1 px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-semibold text-slate-700 bg-slate-50/60 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer">
                         <option value="all" selected>Semua Entitas Odoo ERP (AMK, AKP, ATK, ABO, ATB)</option>
                         <option value="AKP">AKP - PT Alva Karya Perkasa</option>
-                        <option value="AMK">AMK - PT Arina Multikarya</option>
-                        <option value="ATK">ATK - PT Anugrah Talenta Berkarya</option>
+                        <option value="AMK">AMK - PT Arina Multi Karya</option>
+                        <option value="ATK">ATK - PT Anugrah Terpercaya Kerja</option>
                         <option value="ABO">ABO - PT Abadi Berkat Odelia</option>
-                        <option value="ATB">ATB - PT Arina Talenta Berkarya</option>
+                        <option value="ATB">ATB - PT Anugrah Talenta Berkarya</option>
                     </select>
                 </div>
             </div>
