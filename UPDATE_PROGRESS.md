@@ -1435,6 +1435,32 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 74. ⚡ Optimalisasi Performa Master Karyawan & Perbaikan Logika Sync by NIK (21 September 2026)
+- **Akar Masalah**:
+  1. **Logika Pengecekan Hasil Sync Single Employee**:
+     - Pada [OdooSettingController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/OdooSettingController.php) baris 328, pengecekan respon sync menggunakan kondisi:
+       `if (!empty($res['success']) && !empty($res['data']))`
+     - Padahal [OdooSyncService.php](file:///d:/ASystem/newasystem/app/Services/OdooSyncService.php) mengembalikan model `Employee` di dalam key `'employee'`, bukan `'data'`.
+     - Akibatnya, meskipun sinkronisasi data karyawan (contoh: NIK Selviani di AMK) berhasil dilakukan dan tersimpan di database lokal, kondisi `!empty($res['data'])` bernilai `false`, sehingga sistem:
+       - Mengabaikan status sukses dan tidak mengeksekusi `break;`.
+       - Pada pencarian **"Cari Otomatis di Semua Entitas"**, loop terus berlanjut hingga entitas terakhir (ATB) di mana NIK tersebut tidak ada, sehingga pesan error yang ditampilkan ke pengguna adalah: *"NIK tidak ditemukan di server Odoo ATB"*.
+       - Pada pencarian langsung entitas **"AMK"**, sistem memasukkan pesan sukses ke variabel error fallback dengan status `'success' => false`, sehingga antarmuka menampilkannya di dalam kotak merah bertuliskan *"Karyawan Tidak Ditemukan di Odoo"*.
+  2. **Beban Loading Berat dari Line Chart Pertumbuhan Employee 12 Jam**:
+     - Halaman Master Karyawan mengeksekusi query database intensif dan iterasi 24 slot waktu (per 30 menit) serta memuat library eksternal `chart.js` via CDN, menyebabkan waktu loading halaman terasa lambat dan berat.
+- **Solusi & Implementasi Terpadu**:
+  1. **Perbaikan Logika Respon Sync by NIK ([OdooSettingController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/OdooSettingController.php) & [OdooSyncService.php](file:///d:/ASystem/newasystem/app/Services/OdooSyncService.php))**:
+     - Mengubah verifikasi hasil menjadi `if (!empty($res['success']))` dan mengekstrak data dari `$res['employee']` maupun `$res['data']`.
+     - Menambahkan key `'data' => $employee->toArray()` pada `syncSingleEmployee` di [OdooSyncService.php](file:///d:/ASystem/newasystem/app/Services/OdooSyncService.php).
+     - Memastikan perintah `break;` langsung tereksekusi saat NIK ditemukan di salah satu entitas (contoh: AMK), sehingga pencarian pada entitas lain dihentikan seketika dan respon sukses langsung dikembalikan ke frontend.
+     - Kartu hijau (*"Data Berhasil Diperbarui"*) dengan rincian karyawan, jabatan, divisi, dan status Inhouse/RateCard kini tampil dengan benar saat NIK ditemukan.
+  2. **Pembersihan Line Chart Berat ([EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php) & [resources/views/master/karyawan/index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/karyawan/index.blade.php))**:
+     - Menghilangkan kalkulasi 12-hour growth progress chart data dan query time-window di [EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php).
+     - Menghapus pemanggilan `@include('master.karyawan._growth_chart')` dan script CDN `chart.js` dari tampilan.
+     - Mempertahankan bilah **Filter Cepat** (*Quick Filter Badges*: Semua, Aktif, Resign, Inhouse, RateCard) yang ringan, cepat, dan fungsional.
+     - Halaman Master Karyawan kini terbuka secara instan (*lightning fast*).
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |

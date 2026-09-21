@@ -51,9 +51,6 @@
         </div>
     </div>
 
-    <!-- 12-HOUR EMPLOYEE GROWTH PROGRESS CHART & STAT CARDS -->
-    @include('master.karyawan._growth_chart')
-
     <!-- Quick Filter Badges -->
     <div class="flex flex-wrap items-center justify-between gap-2 text-xs font-semibold px-1">
         <div class="flex items-center gap-1.5 flex-wrap">

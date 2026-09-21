@@ -325,12 +325,26 @@ class OdooSettingController extends Controller
 
                     $res = $service->syncSingleEmployee($targetEntity, $nik);
 
-                    if (!empty($res['success']) && !empty($res['data'])) {
-                        $empData = $res['data'];
+                    if (!empty($res['success'])) {
+                        $empModel = $res['employee'] ?? ($res['data'] ?? null);
+                        $empData = [];
+                        if ($empModel instanceof \App\Models\Employee) {
+                            $empData = $empModel->toArray();
+                        } elseif (is_array($empModel)) {
+                            $empData = $empModel;
+                        }
+
                         $employeePayload = array_merge($empData, [
-                            'departemen' => $empData['divisi'] ?? '-',
-                            'entitas'    => $empData['entity'] ?? $targetEntity->code,
+                            'nama_karyawan' => $empData['nama_karyawan'] ?? '-',
+                            'jabatan'       => $empData['jabatan'] ?? '-',
+                            'divisi'        => $empData['divisi'] ?? ($empData['departemen'] ?? '-'),
+                            'departemen'    => $empData['departemen'] ?? ($empData['divisi'] ?? '-'),
+                            'entitas'       => $empData['entity'] ?? ($empData['entitas'] ?? $targetEntity->code),
+                            'entity'        => $empData['entity'] ?? $targetEntity->code,
+                            'prinsiple'     => $empData['prinsiple'] ?? '-',
+                            'tipe_karyawan' => $empData['tipe_karyawan'] ?? '-',
                         ]);
+
                         $results[] = [
                             'nik'      => $nik,
                             'success'  => true,
@@ -338,7 +352,7 @@ class OdooSettingController extends Controller
                             'entity'   => $targetEntity->code,
                             'data'     => $empData,
                             'employee' => $employeePayload,
-                            'action'   => ($empData['is_new'] ?? false) ? 'created' : 'updated',
+                            'action'   => $res['action'] ?? (($empData['is_new'] ?? false) ? 'created' : 'updated'),
                         ];
                         $nikFound = true;
                         $foundCount++;

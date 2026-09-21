@@ -865,6 +865,7 @@ class OdooSyncService
             'is_active' => ($status === 'Aktiv'),
             'message'   => ($isNew ? 'Berhasil menambahkan' : 'Berhasil memperbarui') . " data karyawan [{$nama}] (NIK: {$finalNik}) dari Odoo {$entity->code} ({$tipeKaryawan}).",
             'employee'  => $employee,
+            'data'      => $employee->toArray(),
             'odoo_raw'  => [
                 'id'            => $odooId,
                 'nama'          => $nama,
