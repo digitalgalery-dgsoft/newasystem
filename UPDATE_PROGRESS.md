@@ -1439,6 +1439,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `5ffff92` | fix(odoo-sync): eliminate unexpected token '<' error by enforcing JSON on middleware, returning HTTP 200 payload-driven responses, and safe parsing in frontend |
 | `b2433a1` | fix(odoo-sync): fix sync-by-nik HTTP 405 MethodNotAllowed and align ABO & ATB official company names in employee dropdowns |
 | `2a6c91a` | docs: sinkronisasi riwayat commit dan pembaruan Milestone 71 di UPDATE_PROGRESS.md |
 | `fd3d15a` | fix(interview): replace existing candidate NIK on import, reset online test CBT data, and eliminate auto-donor copying |
