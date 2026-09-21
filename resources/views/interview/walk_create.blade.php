@@ -554,7 +554,7 @@
             // 2. Update Opsi Nama AS / Rekrutor berdasarkan Area
             tsAs.clear();
             tsAs.clearOptions();
-            const asList = asListByArea[selectedArea] || ['ARO ' + selectedArea.toUpperCase(), 'Recruiter Team'];
+            const asList = asListByArea[selectedArea] || ['ARO ' + selectedArea.toUpperCase()];
             asList.forEach(name => {
                 tsAs.addOption({ value: name, text: name });
             });

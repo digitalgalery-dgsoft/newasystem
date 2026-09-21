@@ -1469,76 +1469,92 @@ class InterviewController extends Controller
 
     /**
      * Helper to resolve AS / Rekrutor names for each area
-     * Karyawan inhouse dengan jabatan AS/AM/RM/Rekrutor/Admin sesuai area yang dipilih
+     * Hanya karyawan inhouse yang jabatannya AS / AM / RM / Rekrutor / Rekrutmen
      */
     public static function getAsListByArea(): array
     {
         $areas = DB::table('tb_area')->orderBy('area')->pluck('area');
         $result = [];
 
-        // 1. Users dengan role rekrutmen / inhouse / admin
-        $users = User::where(function($q) {
-            $q->whereIn('role', ['karyawan_inhouse', 'recruiter', 'admin'])
-              ->orWhere('job_title', 'like', '%AS%')
-              ->orWhere('job_title', 'like', '%AM%')
-              ->orWhere('job_title', 'like', '%RM%')
-              ->orWhere('job_title', 'like', '%Rekrut%')
-              ->orWhere('job_title', 'like', '%Admin%');
-        })->get(['name', 'area', 'job_title']);
+        // Regex jabatan: hanya AS, AM, SAM, RM, ARO, Rekrutor, Rekrutmen, Recruiter, Recruitment
+        $pattern = '/\b(AS|AM|SAM|RM|ARO|Rekrutor|Rekrutmen|Recruiter|Recruitment|Area Supervisor|Account Supervisor|Area Manager|Account Manager|Regional Manager)\b/i';
 
-        // 2. Karyawan inhouse aktif
-        $employees = Employee::where('status', 'Aktiv')
+        // 1. Karyawan Inhouse Aktif dengan jabatan AS/AM/RM/Rekrutor/Rekrutmen
+        $employees = Employee::where('tipe_karyawan', 'Inhouse')
             ->where(function($q) {
-                $q->where('tipe_karyawan', 'Inhouse')
-                  ->orWhere('jabatan', 'like', '%AS%')
-                  ->orWhere('jabatan', 'like', '%AM%')
-                  ->orWhere('jabatan', 'like', '%RM%')
-                  ->orWhere('jabatan', 'like', '%Rekrut%')
-                  ->orWhere('jabatan', 'like', '%Admin%');
-            })->get(['nama_karyawan', 'area', 'jabatan']);
+                $q->where('status', 'Aktiv')
+                  ->orWhere('status', 'Aktif');
+            })
+            ->get(['nama_karyawan', 'jabatan', 'area'])
+            ->filter(fn($e) => preg_match($pattern, $e->jabatan ?? ''));
 
-        // 3. Rekaman historis nama_as pada tb_kandidat
-        $historicalAs = DB::table('tb_kandidat')
-            ->whereNotNull('nama_as')
-            ->whereNotIn('nama_as', ['', 'Publik', '-', 'Online'])
-            ->select('area', 'nama_as')
-            ->distinct()
-            ->get();
+        // 2. Users internal rekrutmen / inhouse dengan jabatan terkait rekrutmen/AS
+        $users = User::whereIn('role', ['karyawan_inhouse', 'recruiter', 'admin'])
+            ->get(['name', 'job_title', 'area', 'role'])
+            ->filter(fn($u) => preg_match($pattern, ($u->job_title ?? '') . ' ' . ($u->role ?? '')));
 
         foreach ($areas as $a) {
             $areaLower = strtolower(trim($a));
             $matched = collect();
 
-            foreach ($users as $u) {
-                $uArea = strtolower(trim($u->area ?? ''));
-                if (str_contains($uArea, $areaLower) || str_contains($areaLower, $uArea) || empty($uArea) || $uArea === 'nasional') {
-                    $matched->push($u->name);
-                }
-            }
-
+            // Match Karyawan Inhouse berdasarkan area atau teks jabatan (contoh: "AS OPS - Surabaya")
             foreach ($employees as $e) {
                 $eArea = strtolower(trim($e->area ?? ''));
-                if (str_contains($eArea, $areaLower) || str_contains($areaLower, $eArea) || empty($eArea) || $eArea === 'nasional') {
-                    $matched->push($e->nama_karyawan);
+                $eJab = strtolower(trim($e->jabatan ?? ''));
+                if (
+                    strcasecmp($eArea, $areaLower) === 0 ||
+                    str_contains($eArea, $areaLower) ||
+                    str_contains($areaLower, $eArea) ||
+                    str_contains($eJab, ' - ' . $areaLower)
+                ) {
+                    $cleanName = ucwords(strtolower(trim($e->nama_karyawan)));
+                    if (!empty($cleanName) && strlen($cleanName) > 2) {
+                        $matched->push($cleanName);
+                    }
                 }
             }
 
-            foreach ($historicalAs as $h) {
-                if (strcasecmp(trim($h->area), $a) === 0) {
-                    $matched->push(trim($h->nama_as));
+            // Match Users rekrutmen / AS se-area
+            foreach ($users as $u) {
+                $uArea = strtolower(trim($u->area ?? ''));
+                $uJob = strtolower(trim($u->job_title ?? ''));
+                if (
+                    strcasecmp($uArea, $areaLower) === 0 ||
+                    str_contains($uArea, $areaLower) ||
+                    str_contains($areaLower, $uArea) ||
+                    str_contains($uJob, ' - ' . $areaLower)
+                ) {
+                    $cleanName = ucwords(strtolower(trim($u->name)));
+                    if (!empty($cleanName) && strlen($cleanName) > 2) {
+                        $matched->push($cleanName);
+                    }
                 }
             }
 
-            $uniqueNames = $matched->map(fn($n) => ucwords(strtolower(trim($n))))
+            // Area khusus sub-wilayah Sidoarjo / Surabaya (seperti Buduran, Medaeng)
+            if ($matched->isEmpty() && in_array($a, ['Buduran', 'Medaeng'])) {
+                foreach ($employees as $e) {
+                    $eArea = strtolower(trim($e->area ?? ''));
+                    if (str_contains($eArea, 'surabaya')) {
+                        $cleanName = ucwords(strtolower(trim($e->nama_karyawan)));
+                        if (!empty($cleanName) && strlen($cleanName) > 2) {
+                            $matched->push($cleanName);
+                        }
+                    }
+                }
+            }
+
+            // Fallback jika tidak ada data lokal spesifik di area tersebut
+            if ($matched->isEmpty()) {
+                $matched->push('ARO ' . strtoupper($a));
+            }
+
+            $uniqueNames = $matched
                 ->filter(fn($n) => !empty($n) && strlen($n) > 2 && !in_array(strtolower($n), ['publik', 'online', 'admin', '-']))
                 ->unique()
                 ->sort()
                 ->values()
                 ->all();
-
-            if (empty($uniqueNames)) {
-                $uniqueNames = ['ARO ' . strtoupper($a), 'Recruiter Team', 'Administrator HR'];
-            }
 
             $result[$a] = $uniqueNames;
         }
