@@ -1,58 +1,37 @@
 <?php
 
-namespace App\Console\Commands;
-
-use Illuminate\Console\Command;
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
-use App\Models\Principle;
 
-class ImportOfficialPrinciplesCommand extends Command
+return new class extends Migration
 {
-    protected $signature = 'asystem:import-principles {--force : Force import without confirmation}';
-    protected $description = 'Hapus data dummy dan impor 157 data master prinsiple resmi 5 entitas inhouse';
-
-    public function handle()
+    /**
+     * Run the migrations.
+     * Safe non-destructive upsert of 157 official master principles from Master Prinsiple.rar
+     * across 5 entities (AMK, AKP, ATK, ABO, ATB) preserving all existing foreign key relationships.
+     */
+    public function up(): void
     {
-        $this->info('Memulai pembersihan data dummy dan import master data prinsiple resmi...');
-
-        // 1. Bersihkan file migrasi usang 2026_07_02_* jika ada di server
-        $obsoleteFiles = glob(database_path('migrations/2026_07_02_*.php'));
-        if (!empty($obsoleteFiles)) {
-            foreach ($obsoleteFiles as $f) {
-                @unlink($f);
-                $this->line('Menghapus file migrasi usang: ' . basename($f));
-            }
-            try {
-                DB::table('migrations')->where('migration', 'like', '2026_07_02_%')->delete();
-            } catch (\Throwable $e) {}
+        if (!Schema::hasTable('principles')) {
+            return;
         }
 
-        // 2. Pastikan kolom 'entity' ada di tabel principles
-        if (Schema::hasTable('principles')) {
-            if (!Schema::hasColumn('principles', 'entity')) {
-                Schema::table('principles', function ($table) {
-                    $table->string('entity', 20)->nullable()->after('parent_company');
-                });
-                $this->info('Kolom entity berhasil ditambahkan ke tabel principles.');
-            }
+        if (!Schema::hasColumn('principles', 'entity')) {
+            Schema::table('principles', function (Blueprint $table) {
+                $table->string('entity', 20)->nullable()->after('parent_company');
+            });
+        }
 
-            $driver = DB::connection()->getDriverName();
+        if (!Schema::hasColumn('principles', 'code')) {
+            Schema::table('principles', function (Blueprint $table) {
+                $table->string('code', 50)->nullable()->after('id');
+            });
+        }
 
-            // 3. Drop single unique constraint on 'name'
-            try {
-                if ($driver === 'sqlite') {
-                    DB::statement("DROP INDEX IF EXISTS principles_name_unique");
-                } else {
-                    DB::statement("ALTER TABLE principles DROP INDEX principles_name_unique");
-                }
-            } catch (\Throwable $e) {}
-
-            // 4. Sinkronisasi data master prinsiple resmi (Safe Non-Destructive Upsert)
-            $this->info('Sinkronisasi data 157 master prinsiple resmi (AMK, AKP, ATK, ABO, ATB)...');
-
-            // 5. Masukkan 157 data resmi
-            $principlesData = array (
+        // Official 157 Master Principles Data from Master Prinsiple.rar (5 Entities)
+        $principlesData = array (
   0 => 
   array (
     'code' => 'PRN-AMK-001',
@@ -1154,138 +1133,101 @@ class ImportOfficialPrinciplesCommand extends Command
   ),
 );
 
-            $now = now();
-            $inserted = 0;
-            $updated = 0;
+        $now = now();
+        $inserted = 0;
+        $updated = 0;
 
-            foreach ($principlesData as $p) {
-                $existing = DB::table('principles')
-                    ->where('entity', $p['entity'])
+        foreach ($principlesData as $p) {
+            // 1. Check if exact (entity, name) exists
+            $existing = DB::table('principles')
+                ->where('entity', $p['entity'])
+                ->where('name', $p['name'])
+                ->first();
+
+            if ($existing) {
+                DB::table('principles')->where('id', $existing->id)->update([
+                    'code'           => $p['code'],
+                    'parent_company' => $p['parent_company'],
+                    'is_active'      => true,
+                    'updated_at'     => $now,
+                ]);
+                $updated++;
+            } else {
+                // 2. Check if a record exists with matching name but entity is null/empty
+                $existingNull = DB::table('principles')
+                    ->where(function($q) {
+                        $q->whereNull('entity')->orWhere('entity', '');
+                    })
                     ->where('name', $p['name'])
                     ->first();
 
-                if ($existing) {
-                    DB::table('principles')->where('id', $existing->id)->update([
+                if ($existingNull) {
+                    DB::table('principles')->where('id', $existingNull->id)->update([
                         'code'           => $p['code'],
+                        'entity'         => $p['entity'],
                         'parent_company' => $p['parent_company'],
                         'is_active'      => true,
                         'updated_at'     => $now,
                     ]);
                     $updated++;
                 } else {
-                    $existingNull = DB::table('principles')
-                        ->where(function($q) {
-                            $q->whereNull('entity')->orWhere('entity', '');
-                        })
-                        ->where('name', $p['name'])
-                        ->first();
-
-                    if ($existingNull) {
-                        DB::table('principles')->where('id', $existingNull->id)->update([
-                            'code'           => $p['code'],
-                            'entity'         => $p['entity'],
-                            'parent_company' => $p['parent_company'],
-                            'is_active'      => true,
-                            'updated_at'     => $now,
-                        ]);
-                        $updated++;
-                    } else {
-                        DB::table('principles')->insert([
-                            'code'           => $p['code'],
-                            'name'           => $p['name'],
-                            'parent_company' => $p['parent_company'],
-                            'entity'         => $p['entity'],
-                            'pic_name'       => null,
-                            'pic_email'      => null,
-                            'pic_phone'      => null,
-                            'is_active'      => true,
-                            'created_at'     => $now,
-                            'updated_at'     => $now,
-                        ]);
-                        $inserted++;
-                    }
-                }
-            }
-
-            $totalPrinciples = DB::table('principles')->count();
-            $this->info("Sinkronisasi selesai! Total: {$totalPrinciples} prinsiple (Baru: {$inserted}, Diperbarui: {$updated})");
-
-            // 6. Hubungkan kembali candidates.principle_id
-            if (Schema::hasTable('candidates')) {
-                $this->info('Menautkan kembali data kandidat ke prinsiple resmi...');
-                $allNew = DB::table('principles')->get();
-
-                foreach ($allNew as $np) {
-                    DB::table('candidates')
-                        ->where('principle', $np->name)
-                        ->update(['principle_id' => $np->id]);
-
-                    $withEntity = $np->name . ' (' . $np->entity . ')';
-                    DB::table('candidates')
-                        ->where('principle', $withEntity)
-                        ->update(['principle_id' => $np->id]);
-                }
-
-                $aliases = [
-                    'PT SAYAP MAS' => 'PT SAYAP MAS UTAMA',
-                    'PT SAYAP MAS (ATB)' => 'PT SAYAP MAS UTAMA',
-                    'PT ICI PAINT ALVA' => 'PT ICI PAINTS INDONESIA',
-                    'PT ICI PAINT ARINA' => 'PT ICI PAINTS INDONESIA',
-                    'PT VINDA INTERNATIONAL INDONESIA' => 'PT VINDA INTERNASIONAL INDONESIA',
-                    'PT SANGHIANG PERKASA (AMK)' => 'PT SANGHIANG PERKASA',
-                    'PT SANGHIANG PERKASA (ATK)' => 'PT SANGHIANG PERKASA',
-                    'PT SUNTONE WISDOM INDONESIA (ABO)' => 'PT SUNTONE WISDOM INDONESIA',
-                    'PT LENOVO INDONESIA (ABO)' => 'PT LENOVO INDONESIA',
-                    'PT MAY SUN YVAN (ABO)' => 'PT MAY SUN YVAN',
-                    'PT SEMESTA DISTRIBUSI INDONESIA (ABO)' => 'PT SEMESTA DISTRIBUSI INDONESIA',
-                    'PT DELIGHT CONNECTION COSMETICS INDONESIA (ATK)' => 'PT DELIGHT CONNECTION COSMETICS INDONESIA',
-                ];
-
-                foreach ($aliases as $alias => $officialName) {
-                    $target = DB::table('principles')->where('name', $officialName)->first();
-                    if ($target) {
-                        DB::table('candidates')
-                            ->where('principle', $alias)
-                            ->whereNull('principle_id')
-                            ->update(['principle_id' => $target->id]);
-                    }
-                }
-
-                $linkedCount = DB::table('candidates')->whereNotNull('principle_id')->count();
-                $this->info("Total kandidat yang terhubung dengan prinsiple resmi: {$linkedCount}");
-            }
-
-            // 7. Hubungkan kembali user_prinsiples
-            if (Schema::hasTable('user_prinsiples') && Schema::hasColumn('user_prinsiples', 'prinsiple_id')) {
-                $allNew = DB::table('principles')->get();
-                foreach ($allNew as $np) {
-                    DB::table('user_prinsiples')
-                        ->where('prinsiple', $np->name)
-                        ->update(['prinsiple_id' => $np->id]);
-
-                    $withEntity = $np->name . ' (' . $np->entity . ')';
-                    DB::table('user_prinsiples')
-                        ->where('prinsiple', $withEntity)
-                        ->update(['prinsiple_id' => $np->id]);
-                }
-            }
-
-            // 8. Catat migrasi sebagai selesai di tabel migrations jika belum tercatat
-            try {
-                $migName = '2026_09_18_070000_import_official_master_principles';
-                $hasMigration = DB::table('migrations')->where('migration', $migName)->exists();
-                if (!$hasMigration) {
-                    $batch = (DB::table('migrations')->max('batch') ?? 0) + 1;
-                    DB::table('migrations')->insert([
-                        'migration' => $migName,
-                        'batch' => $batch,
+                    // 3. Insert new record with official entity code
+                    DB::table('principles')->insert([
+                        'code'           => $p['code'],
+                        'name'           => $p['name'],
+                        'parent_company' => $p['parent_company'],
+                        'entity'         => $p['entity'],
+                        'pic_name'       => null,
+                        'pic_email'      => null,
+                        'pic_phone'      => null,
+                        'is_active'      => true,
+                        'created_at'     => $now,
+                        'updated_at'     => $now,
                     ]);
-                    $this->line("Dicatat di tabel migrations dengan batch {$batch}");
+                    $inserted++;
                 }
-            } catch (\Throwable $e) {}
+            }
         }
 
-        $this->info('Selesai! Seluruh data master prinsiple resmi telah berhasil diimpor.');
-        return 0;
+        // Link candidates & employees where principle_id is null or principle name matches
+        if (Schema::hasTable('candidates')) {
+            $allPrinciples = DB::table('principles')->get();
+            foreach ($allPrinciples as $prin) {
+                DB::table('candidates')
+                    ->whereNull('principle_id')
+                    ->where('principle', $prin->name)
+                    ->update(['principle_id' => $prin->id]);
+
+                $withEntity = $prin->name . ' (' . $prin->entity . ')';
+                DB::table('candidates')
+                    ->whereNull('principle_id')
+                    ->where('principle', $withEntity)
+                    ->update(['principle_id' => $prin->id]);
+            }
+        }
+
+        if (Schema::hasTable('employees')) {
+            $allPrinciples = DB::table('principles')->get();
+            foreach ($allPrinciples as $prin) {
+                DB::table('employees')
+                    ->whereNull('principle_id')
+                    ->where('prinsiple', $prin->name)
+                    ->update(['principle_id' => $prin->id]);
+
+                $withEntity = $prin->name . ' (' . $prin->entity . ')';
+                DB::table('employees')
+                    ->whereNull('principle_id')
+                    ->where('prinsiple', $withEntity)
+                    ->update(['principle_id' => $prin->id]);
+            }
+        }
     }
-}
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        // Safe: keep principles intact to preserve foreign keys
+    }
+};

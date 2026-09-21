@@ -236,7 +236,16 @@ class OdooSyncService
 
                     $principleId = null;
                     if (!empty($principleName)) {
-                        $p = Principle::firstOrCreate(['name' => $principleName]);
+                        $p = Principle::where('name', $principleName)->where('entity', $entity->code)->first()
+                            ?: Principle::where('name', $principleName)->first();
+                        if (!$p) {
+                            $p = Principle::create([
+                                'name'           => $principleName,
+                                'entity'         => $entity->code,
+                                'parent_company' => $entity->name,
+                                'is_active'      => true,
+                            ]);
+                        }
                         $principleId = $p->id;
                     }
 
@@ -605,7 +614,16 @@ class OdooSyncService
 
                         $principleId = null;
                         if (!empty($principleName)) {
-                            $p = Principle::firstOrCreate(['name' => $principleName]);
+                            $p = Principle::where('name', $principleName)->where('entity', $entity->code)->first()
+                                ?: Principle::where('name', $principleName)->first();
+                            if (!$p) {
+                                $p = Principle::create([
+                                    'name'           => $principleName,
+                                    'entity'         => $entity->code,
+                                    'parent_company' => $entity->name,
+                                    'is_active'      => true,
+                                ]);
+                            }
                             $principleId = $p->id;
                         }
 
@@ -811,7 +829,16 @@ class OdooSyncService
 
         $principleId = null;
         if (!empty($principleName)) {
-            $p = Principle::firstOrCreate(['name' => $principleName]);
+            $p = Principle::where('name', $principleName)->where('entity', $entity->code)->first()
+                ?: Principle::where('name', $principleName)->first();
+            if (!$p) {
+                $p = Principle::create([
+                    'name'           => $principleName,
+                    'entity'         => $entity->code,
+                    'parent_company' => $entity->name,
+                    'is_active'      => true,
+                ]);
+            }
             $principleId = $p->id;
         }
 
