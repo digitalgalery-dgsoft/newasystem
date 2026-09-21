@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 20 September 2026*
+*Terakhir diperbarui: 21 September 2026*
 
 ---
 
@@ -1465,6 +1465,16 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `fe69c99` | feat(job): sesuaikan QR Code dan format broadcast WhatsApp dengan link langsung detail lowongan |
+| `61d9fab` | feat(walkin): tampilkan jabatan pada dropdown Nama AS dan perbagus input Tanggal Lahir dengan label dan deteksi usia |
+| `99ed017` | fix(walkin): filter dropdown nama AS hanya karyawan inhouse dengan jabatan AS/AM/RM/Rekrutor/Rekrutmen |
+| `08efd69` | feat(walkin): form register kandidat walkin profesional sesuai sistem lama, searchable dropdown TomSelect, tb_area, tb_kota region cascade, dan nama AS sesuai area |
+| `0e0572b` | feat(walkin): default data hari ini tgl berjalan, form registrasi publik tanpa dashboard, hilangkan sync sharepoint |
+| `c496138` | feat(walkin): modul Kandidat Walkin Interview sesuai sistem lama, 4 kartu KPI, tabel filter data calon, dan formulir registrasi walkin (jenis Walkin) |
+| `845f9a2` | feat(interview): tab navigasi interview selesai & arsip dan 1 tabel nasional untuk admin |
+| `c1a1085` | feat(interview): pisahkan 2 tabel di halaman kandidat interview (kandidat sendiri dan rekan searea) |
+| `a8d3cd5` | docs: simpan panduan implementasi WhatsApp Official Coex ke WHATSAPPCOEX.md |
+| `a488c6d` | fix(auth): perbaiki fitur ganti password di edit profile dan sinkronisasi password karyawan |
 | `d955b4e` | fix(master-karyawan): fix sync by NIK success condition and break loop on match, remove heavy line chart for faster page load |
 | `5ffff92` | fix(odoo-sync): eliminate unexpected token '<' error by enforcing JSON on middleware, returning HTTP 200 payload-driven responses, and safe parsing in frontend |
 | `b2433a1` | fix(odoo-sync): fix sync-by-nik HTTP 405 MethodNotAllowed and align ABO & ATB official company names in employee dropdowns |
@@ -1648,6 +1658,83 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 26. 👥 Pemisahan 2 Tabel Kandidat Interview (Milik Sendiri & Rekan Se-Area) & Tab Terintegrasi Administrator
+- **Dua Tabel untuk User Recruiter / AS**:
+  - **Tabel 1 (Atas)**: Menampilkan data kandidat milik user sendiri berdasarkan identitas AS akun yang login (`useras` / `recruiter_id`).
+  - **Tabel 2 (Bawah)**: Menampilkan data kandidat milik rekan kerja satu area penempatan yang sama, memudahkan koordinasi antar-rekruter di wilayah yang sama tanpa mencampuradukkan data pribadi.
+- **Tampilan Khusus Administrator**:
+  - Untuk akun dengan hak akses **Administrator HR**, halaman kandidat interview langsung menampilkan **1 tabel data nasional terpadu** tanpa pembagian 2 tabel.
+  - Bagian **Interview Selesai** dan **Arsip Interview** dibuat menjadi **Tab Terintegrasi** di bagian atas (seperti pada modul Kandidat Portal), sehingga admin dapat beralih antar status kandidat secara instan tanpa perlu berpindah URL halaman.
+
+---
+
+### 27. 🚶 Modul & Halaman Kandidat Walk-in Interview (`/walkinterview`) Sesuai Sistem Lama
+- **Replikasi Sempurna Modul Legacy**:
+  - Membangun halaman daftar kandidat walkin interview yang selaras dengan antarmuka sistem lama.
+  - Menyaring kandidat dengan kategori khusus `jenis = 'Walkin'`.
+- **Fitur Dashboard Walk-in**:
+  - **Filter Tanggal Default**: Otomatis menampilkan data kandidat pada **hari ini (tanggal berjalan WIB)**.
+  - **4 Kartu Metrik KPI Berwarna**:
+    - *Total Walk-in*: Menghitung akumulasi seluruh pendaftar walkin.
+    - *Proses Interview*: Menghitung kandidat yang sedang dalam tahap seleksi/wawancara.
+    - *Lolos Seleksi*: Menghitung kandidat yang disetujui/lolos ke tahap berikutnya.
+    - *Pending / Menunggu*: Menghitung pendaftar baru yang belum diproses.
+  - **Legenda Status di Footer**: Menampilkan petunjuk warna status kandidat yang informatif di bagian bawah tabel.
+  - **Pembersihan Tombol Sync Sharepoint**: Menghilangkan tombol sinkronisasi SharePoint yang sudah tidak digunakan.
+
+---
+
+### 28. 📝 Formulir Registrasi Walkin Interview Publik, Cascading Master Data (`tb_area` & `tb_kota`), dan Searchable TomSelect
+- **Halaman Formulir Publik Mandiri (`/walkinterview/register`)**:
+  - Halaman pendaftaran publik yang dapat diakses langsung oleh calon kandidat / pelamar umum di luar dashboard internal (tanpa login).
+  - Desain modern bernuansa profesional dengan header gradasi navy-biru, avatar photo uploader dengan *live preview*, CV attachment, serta 16+ field data diri lengkap.
+- **Master Data `tb_area` (43 Area) & `tb_kota` (513 Kota)**:
+  - Migrasi `2026_09_21_210000_create_tb_area_and_tb_kota_tables.php` mengimpor seluruh master area dan kabupaten/kota se-Indonesia.
+  - **Relasi Cascading Dinamis**: Saat pelamar memilih Area (contoh: *Aceh* di *Region 6*), pilihan Kota Asal secara instan menyaring dan hanya memunculkan kota-kota di Region 6 (contoh: *Aceh Barat, Aceh Besar, Banda Aceh, dll.*).
+- **Searchable Dropdown (TomSelect)**:
+  - Seluruh field dropdown (Pendidikan, Jabatan Dilamar, Area, Kota Asal, Nama AS, Info Lowongan, Jenis Undangan) dilengkapi fitur pencarian (*type-to-search*) dengan styling rounded pill yang konsisten.
+
+---
+
+### 29. 🎯 Filter Ketat Personel Inhouse pada Dropdown Nama AS / Rekrutor Beserta Tampilan Badge Jabatan
+- **Aturan Filter Ketat**:
+  - Mengeliminasi seluruh nama acak historis dari tabel `tb_kandidat` dan divisi non-rekrutmen (driver, helper, gudang, kasir, OB, IT support, dll.).
+  - Hanya memunculkan karyawan internal aktif (`tipe_karyawan = 'Inhouse'` dan `status = 'Aktiv'`) yang memiliki jabatan spesifik:
+    - **AS**: `AS OPS`, `AS FACTORY`, `AS SENIOR OPS`, `Account Supervisor`, `Area Supervisor`, `ARO`.
+    - **AM**: `AM OPS`, `SAM OPS`, `SAM FACTORY`, `Area Manager`, `Account Manager`.
+    - **RM**: `RM OPS`, `Regional Manager`.
+    - **Rekrutor / Rekrutmen**: `RECRUITMENT HRD`, `RECRUITMENT-HRD`, `Head of Recruitment`, `HR Recruiter`.
+  - Pemetaan otomatis sesuai area penempatan yang dipilih pelamar.
+- **Tampilan Jabatan dengan Pill Badge**:
+  - Pada dropdown TomSelect, setiap opsi menampilkan **Nama Personel** di kiri dan **Pill Badge Jabatan** berwarna biru di kanan (contoh: `Ayu Putri Islamiah [RECRUITMENT HRD]`, `Fajar Bagus Sasmita [AM OPS]`, `Taufikur Rahman [AS OPS]`).
+  - Saat dipilih, input menampilkan format ringkas: `Nama Karyawan (JABATAN)`.
+  - Nilai tersimpan ke database tetap nama bersih karyawan sehingga sinkron dengan dashboard interview.
+  - Mendukung pencarian ganda: kandidat dapat mengetik nama orang maupun nama jabatannya.
+
+---
+
+### 30. 📅 Penyempurnaan Input Tanggal Lahir Profesional dengan Indikator Usia Otomatis & Proteksi Input
+- **Label Eksplisit**: Dilengkapi label `TANGGAL LAHIR *` dengan ikon kalender biru di atas field.
+- **Kalkulasi & Indikator Usia Otomatis (*Real-time*)**:
+  - Menghitung tanggal lahir seketika dan memunculkan badge usia otomatis di samping label (contoh: `✓ Usia: 24 th`).
+  - Memberi peringatan visual dini jika kandidat tidak sengaja memilih tahun berjalan (`⚠ Usia 0 th (Cek tahun lahir)`).
+- **Batasan Usia Kerja Realistis**: Diberikan batasan tanggal input (`min="1950-01-01"` dan `max="{{ date('Y-m-d', strtotime('-15 years')) }}"`) sehingga browser tidak membuka tahun berjalan (2026).
+- **One-Click Calendar Picker**: Mengklik di mana saja pada field tanggal langsung membuka pemilih tanggal kalender (`showPicker()`).
+- **Petunjuk Format**: Format `Hari / Bulan / Tahun` dan keterangan `Min. 17 tahun` di bawah input.
+
+---
+
+### 31. 📲 QR Code Khusus per Job & Salin Pesan Broadcast WhatsApp dengan Tautan Langsung Detail Lowongan
+- **QR Code Unik per Lowongan**:
+  - Tombol QR Code di setiap baris lowongan (aktif & expired) menghasilkan QR Code yang mengarah langsung ke tautan detail publik lowongan kerja (`https://new.asystem.co.id/job/{id}`).
+  - Modal pop-up QR Code menampilkan pratinjau jernih 350x350px, box tautan langsung lengkap dengan tombol **Salin Link**, tombol **Buka Detail** di tab baru, dan tombol **Download QR Code**.
+- **Salin Pesan Broadcast WhatsApp**:
+  - Tombol WhatsApp (ikon hijau) di kolom Aksi menyalin format teks broadcast lowongan lengkap: Posisi, Prinsiple, Area Penempatan, Skill, serta **Link Detail & Lamar Lowongan** langsung (`https://new.asystem.co.id/job/...`).
+  - Teks siap disebarkan ke grup percakapan dan calon kandidat dengan tautan yang dapat langsung diklik untuk melamar online.
+- **Fleksibilitas Routing Job Detail**:
+  - Endpoint `PublicJobController@show`, `@applyForm`, dan `@submitApply` kini mendukung pemanggilan baik menggunakan ID numerik maupun slug judul lowongan.
+
+---
 
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
