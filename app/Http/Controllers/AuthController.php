@@ -40,12 +40,21 @@ class AuthController extends Controller
         $identifier = trim($request->input('email'));
         $inputPassword = $request->input('password');
         $remember = $request->has('remember');
+        $lowerIdentifier = strtolower($identifier);
 
         // 1. Check if an Employee exists with Email, NIK, or NIP
         // Prioritize: Inhouse / active login access first, then newest ID
-        $employees = Employee::where('email', $identifier)
+        $employeesQuery = Employee::whereRaw('LOWER(email) = ?', [$lowerIdentifier])
             ->orWhere('nik', $identifier)
-            ->orWhere('nip', $identifier)
+            ->orWhere('nip', $identifier);
+
+        if (str_contains($lowerIdentifier, '@')) {
+            // Also check fuzzy variation without 'y' (e.g. cannyamerilsecaesar@gmail.com vs cannyamerilysecaesar@gmail.com)
+            $noY = str_replace('y', '', $lowerIdentifier);
+            $employeesQuery->orWhereRaw("LOWER(REPLACE(email, 'y', '')) = ?", [$noY]);
+        }
+
+        $employees = $employeesQuery
             ->orderByRaw("CASE WHEN tipe_karyawan = 'Inhouse' THEN 0 ELSE 1 END")
             ->orderByDesc('akses_login')
             ->orderByDesc('id')
@@ -98,7 +107,7 @@ class AuthController extends Controller
                 $userRole = ($matchedEmployee->tipe_karyawan === 'Inhouse') ? 'karyawan_inhouse' : 'karyawan_ratecard';
                 $userEmail = !empty($matchedEmployee->email) ? $matchedEmployee->email : ($matchedEmployee->nik . '@asystem.co.id');
 
-                $user = User::where('email', $userEmail)->first();
+                $user = User::whereRaw('LOWER(email) = ?', [strtolower($userEmail)])->first();
                 if (!$user) {
                     $user = User::create([
                         'name' => $matchedEmployee->nama_karyawan,
@@ -142,22 +151,17 @@ class AuthController extends Controller
         }
 
         // 2. Fallback to standard Admin/Recruiter User authentication
-        $credentials = [
-            'email' => $identifier,
-            'password' => $inputPassword,
-        ];
-
-        if (Auth::attempt($credentials, $remember)) {
+        $user = User::whereRaw('LOWER(email) = ?', [$lowerIdentifier])->first();
+        if ($user && Hash::check($inputPassword, $user->password)) {
+            Auth::login($user, $remember);
             $request->session()->regenerate();
-
-            $user = Auth::user();
             return redirect()->intended(route('fitur.index'))
                 ->with('success', "Selamat datang kembali, {$user->name}!");
         }
 
         // 3. Fallback pencocokan alias user (misal: abdurrahman2330@gmail.com -> jamil@asystem.co.id)
         $aliasUser = null;
-        if (str_contains($email, 'abdurrahman') || str_contains($email, 'jamil')) {
+        if (str_contains($lowerIdentifier, 'abdurrahman') || str_contains($lowerIdentifier, 'jamil')) {
             $aliasUser = User::where('email', 'jamil@asystem.co.id')->first();
         }
         if ($aliasUser && Hash::check($inputPassword, $aliasUser->password)) {
