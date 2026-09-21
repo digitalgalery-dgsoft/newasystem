@@ -1740,13 +1740,19 @@
                 body: JSON.stringify({ nik: nik, entity: entity })
             });
 
-            const data = await resp.json();
+            let data;
+            try {
+                data = await resp.json();
+            } catch (e) {
+                data = { success: false, message: 'Gagal memproses respon dari server (Status ' + resp.status + ').' };
+            }
+
             document.getElementById('odooNikLoading').classList.add('hidden');
             document.getElementById('btnSearchOdoo').disabled = false;
 
             if (!data.success) {
                 Swal.fire({
-                    icon: 'error',
+                    icon: 'warning',
                     title: 'Tidak Ditemukan di Odoo',
                     text: data.message || 'Data pelamar tidak ditemukan di Odoo ERP.',
                 });
@@ -1813,7 +1819,13 @@
                 body: JSON.stringify({ nik: nik, entity: entity })
             });
 
-            const data = await resp.json();
+            let data;
+            try {
+                data = await resp.json();
+            } catch (e) {
+                data = { success: false, message: 'Gagal memproses respon dari server (Status ' + resp.status + ').' };
+            }
+
             btnSave.disabled = false;
             btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> <span>Tarik & Proses Kandidat ke ASystem</span>`;
 

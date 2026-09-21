@@ -191,7 +191,7 @@ class CandidateImportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Nomor NIK / KTP harus terdiri dari 16 digit angka.',
-            ], 422);
+            ], 200);
         }
 
         $entityCode = strtoupper(trim((string)$request->input('entity', 'all')));
@@ -206,7 +206,7 @@ class CandidateImportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Tidak ada entitas Odoo ERP yang aktif.',
-            ], 404);
+            ], 200);
         }
 
         $foundApplicant = null;
@@ -257,7 +257,7 @@ class CandidateImportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => "NIK {$cleanNik} tidak ditemukan di modul Rekrutmen Odoo ERP (AMK, AKP, ATK, ABO, ATB). Pastikan pelamar sudah diinput di Odoo atau periksa kembali nomor NIK.",
-            ], 404);
+            ], 200);
         }
 
         // Format data yang ditemukan
@@ -325,7 +325,7 @@ class CandidateImportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Nomor NIK / KTP harus terdiri dari 16 digit angka.',
-            ], 422);
+            ], 200);
         }
 
         $entityCode = strtoupper(trim((string)$request->input('entity', 'all')));
@@ -384,7 +384,7 @@ class CandidateImportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => "NIK {$cleanNik} tidak ditemukan di modul Rekrutmen Odoo ERP.",
-            ], 404);
+            ], 200);
         }
 
         $name = ucwords(strtolower(trim((string)($foundApplicant['partner_name'] ?: $foundApplicant['name']))));
@@ -617,7 +617,7 @@ class CandidateImportController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Gagal menyimpan kandidat ke database: ' . $e->getMessage(),
-            ], 500);
+            ], 200);
         }
     }
 }
