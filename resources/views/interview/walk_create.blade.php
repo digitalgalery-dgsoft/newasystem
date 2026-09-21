@@ -3,16 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Formulir Pendaftaran Walk-in Interview - ESA Groups</title>
+    <title>Form Register Kandidat - ESA Groups</title>
     
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     
     <!-- Font Awesome 6 Pro & Boxicons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css">
+
+    <!-- TomSelect Searchable Dropdown CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.css" rel="stylesheet">
 
     <!-- Tailwind CSS Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -30,6 +33,7 @@
                             500: '#3b82f6',
                             600: '#2563eb',
                             700: '#1d4ed8',
+                            900: '#0f172a',
                         }
                     }
                 }
@@ -42,56 +46,119 @@
             font-family: 'Outfit', sans-serif;
         }
         body {
-            background-color: #f1f5f9;
+            background-color: #e2e8f0;
         }
-        /* Custom styling for inputs */
+
+        /* Pill Inputs Styling matching Old System */
         .form-pill-input {
             background-color: #f1f5f9;
+            border: 1px solid #e2e8f0;
             border-radius: 9999px;
-            padding-top: 0.85rem;
-            padding-bottom: 0.85rem;
+            padding: 0.85rem 1.25rem 0.85rem 3rem;
             font-size: 0.875rem;
             color: #1e293b;
             transition: all 0.2s ease;
+            width: 100%;
         }
         .form-pill-input:focus {
             background-color: #ffffff;
-            box-shadow: 0 0 0 2px #2563eb;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
             outline: none;
+        }
+
+        /* Textarea with Rounded 2XL corners */
+        .form-textarea-input {
+            background-color: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 1.25rem;
+            padding: 0.85rem 1.25rem 0.85rem 3rem;
+            font-size: 0.875rem;
+            color: #1e293b;
+            transition: all 0.2s ease;
+            width: 100%;
+            min-height: 85px;
+            resize: vertical;
+        }
+        .form-textarea-input:focus {
+            background-color: #ffffff;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+            outline: none;
+        }
+
+        /* TomSelect Custom Styling to match Pill Inputs */
+        .ts-wrapper {
+            width: 100%;
+        }
+        .ts-control {
+            background-color: #f1f5f9 !important;
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 9999px !important;
+            padding: 0.75rem 1.25rem 0.75rem 3rem !important;
+            font-size: 0.875rem !important;
+            color: #1e293b !important;
+            box-shadow: none !important;
+            min-height: 48px !important;
+            display: flex !important;
+            align-items: center !important;
+        }
+        .ts-control.focus {
+            background-color: #ffffff !important;
+            border-color: #2563eb !important;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15) !important;
+        }
+        .ts-control input {
+            font-size: 0.875rem !important;
+            color: #1e293b !important;
+        }
+        .ts-control input::placeholder {
+            color: #94a3b8 !important;
+        }
+        .ts-dropdown {
+            border-radius: 1.25rem !important;
+            border: 1px solid #cbd5e1 !important;
+            box-shadow: 0 12px 30px -4px rgba(15, 23, 42, 0.15) !important;
+            padding: 0.5rem !important;
+            margin-top: 6px !important;
+            z-index: 999 !important;
+            max-height: 240px !important;
+        }
+        .ts-dropdown .option {
+            padding: 0.6rem 1rem !important;
+            border-radius: 0.75rem !important;
+            font-size: 0.875rem !important;
+            color: #334155 !important;
+            cursor: pointer !important;
+            transition: background 0.15s ease !important;
+        }
+        .ts-dropdown .option.active, .ts-dropdown .option:hover {
+            background-color: #eff6ff !important;
+            color: #1d4ed8 !important;
+            font-weight: 600 !important;
         }
     </style>
 </head>
-<body class="min-h-screen flex flex-col justify-between py-6 px-4 sm:px-6">
+<body class="min-h-screen flex flex-col justify-between py-6 px-3 sm:px-6">
 
-    <!-- Header Logo & Branding -->
-    <header class="w-full max-w-md mx-auto text-center mb-3">
-        <div class="inline-flex items-center justify-center gap-2.5 mb-1.5">
-            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-700 to-blue-500 text-white flex items-center justify-center text-lg font-black shadow-md shadow-blue-500/20">
-                <i class="fa-solid fa-briefcase"></i>
-            </div>
-            <div class="text-left">
-                <h1 class="text-base font-extrabold text-slate-800 tracking-tight leading-none">ESA GROUPS</h1>
-                <p class="text-[10px] text-slate-400 font-medium tracking-wide uppercase mt-0.5">Recruitment & Career Portal</p>
-            </div>
-        </div>
-    </header>
-
-    <!-- Main Card Container (Sesuai Desain Gambar 2 Sistem Lama) -->
-    <main class="w-full max-w-md mx-auto">
+    <main class="w-full max-w-lg mx-auto">
         
         <!-- Notifikasi Sukses Pendaftaran -->
         @if(session('success'))
-        <div class="mb-4 p-5 bg-emerald-500 text-white rounded-3xl shadow-lg shadow-emerald-500/20 text-center animate-fade-in">
-            <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-2 text-2xl">
+        <div class="mb-5 p-6 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-3xl shadow-xl text-center animate-fade-in">
+            <div class="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3 text-3xl shadow-inner">
                 <i class="fa-solid fa-circle-check"></i>
             </div>
-            <h3 class="font-bold text-base">Pendaftaran Berhasil!</h3>
-            <p class="text-xs text-emerald-50 mt-1 leading-relaxed">
+            <h3 class="font-bold text-lg">Pendaftaran Berhasil!</h3>
+            <p class="text-xs text-emerald-50 mt-1.5 leading-relaxed">
                 {{ session('success') }}
             </p>
-            <div class="mt-3">
-                <a href="{{ route('interview.walk.create') }}" class="inline-block px-4 py-1.5 rounded-full bg-white text-emerald-800 text-xs font-bold shadow-xs hover:bg-emerald-50 transition">
-                    Daftar Lagi / Kandidat Lain
+            <div class="mt-4 flex items-center justify-center gap-2">
+                <a href="{{ route('interview.walk.create') }}" class="px-5 py-2 rounded-full bg-white text-emerald-800 text-xs font-bold shadow-md hover:bg-emerald-50 transition">
+                    + Daftar Kandidat Lain
+                </a>
+                <a href="{{ route('login') }}" class="px-4 py-2 rounded-full bg-emerald-700/60 text-white text-xs font-bold hover:bg-emerald-700 transition">
+                    Ke Halaman Login
                 </a>
             </div>
         </div>
@@ -99,12 +166,12 @@
 
         <!-- Error Validation Alerts -->
         @if(isset($errors) && $errors->any())
-        <div class="mb-4 p-4 bg-rose-50 border border-rose-200 rounded-2xl text-rose-800 text-xs space-y-1 shadow-xs">
-            <div class="font-bold flex items-center gap-1.5">
-                <i class="fa-solid fa-circle-exclamation text-rose-600"></i>
-                <span>Mohon periksa kembali formulir Anda:</span>
+        <div class="mb-5 p-5 bg-rose-50 border border-rose-200 rounded-3xl text-rose-800 text-xs space-y-1.5 shadow-sm">
+            <div class="font-bold flex items-center gap-2 text-sm text-rose-700">
+                <i class="fa-solid fa-circle-exclamation text-base"></i>
+                <span>Terdapat kolom formulir yang perlu dilengkapi:</span>
             </div>
-            <ul class="list-disc list-inside space-y-0.5 text-[11px] text-rose-700 pl-1">
+            <ul class="list-disc list-inside space-y-1 text-xs text-rose-600 pl-1">
                 @foreach($errors->all() as $err)
                     <li>{{ $err }}</li>
                 @endforeach
@@ -112,23 +179,49 @@
         </div>
         @endif
 
-        <!-- Card Form Putih Bersih Sesuai Gambar 2 -->
-        <div class="bg-white rounded-3xl shadow-xl p-6 sm:p-8 border border-slate-100">
+        <!-- Main Card Container Sesuai Gambar 1 & Gambar 2 -->
+        <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200/80">
             
-            <!-- Judul Formulir Sesuai Gambar 2 -->
-            <div class="text-center mb-6">
-                <h2 class="text-base font-semibold text-slate-700 tracking-tight">
-                    Isi formulir untuk mendaftar.
-                </h2>
+            <!-- Top Header Banner (Sesuai Gambar 1) -->
+            <div class="bg-gradient-to-r from-[#0f172a] via-[#1e3a8a] to-[#2563eb] py-6 px-6 text-center text-white relative">
+                <h1 class="text-xl sm:text-2xl font-black uppercase tracking-wider leading-tight">
+                    FORM REGISTER KANDIDAT
+                </h1>
+                <p class="text-xs text-blue-100/90 font-medium mt-1">
+                    Silahkan Lengkapi Data & Berkas
+                </p>
             </div>
 
-            <!-- Form Pendaftaran Mandiri -->
-            <form action="{{ route('interview.walk.store') }}" method="POST" class="space-y-4">
+            <!-- Form Body -->
+            <form action="{{ route('interview.walk.store') }}" method="POST" enctype="multipart/form-data" class="p-6 sm:p-8 space-y-5" id="formWalkin">
                 @csrf
+
+                <!-- Section Foto Profil (Sesuai Gambar 1) -->
+                <div class="text-center pt-2 pb-2">
+                    <label class="block text-xs font-bold text-slate-700 mb-3 uppercase tracking-wider">
+                        Foto Profil
+                    </label>
+                    
+                    <div class="relative inline-block">
+                        <!-- Circle Avatar Preview -->
+                        <div class="w-28 h-28 sm:w-32 sm:h-32 rounded-full border-4 border-slate-100 shadow-md bg-slate-100 flex items-center justify-center overflow-hidden mx-auto" id="avatarContainer">
+                            <img id="avatarPreview" src="" alt="Preview Foto" class="w-full h-full object-cover hidden">
+                            <i id="avatarIcon" class="fa-solid fa-camera text-3xl text-slate-400"></i>
+                        </div>
+
+                        <!-- Tombol Pilih Foto -->
+                        <div class="mt-3">
+                            <button type="button" onclick="document.getElementById('photoInput').click()" class="px-5 py-1.5 rounded-full bg-[#334155] hover:bg-[#1e293b] text-white text-xs font-bold shadow-sm transition active:scale-95 cursor-pointer">
+                                Pilih Foto
+                            </button>
+                            <input type="file" name="foto_profil" id="photoInput" accept="image/*" class="hidden" onchange="previewAvatar(this)">
+                        </div>
+                    </div>
+                </div>
 
                 <!-- 1. NIK / No. KTP -->
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
                         <i class="fa-regular fa-id-card text-base"></i>
                     </div>
                     <input type="text" 
@@ -140,13 +233,13 @@
                            pattern="[0-9]{16}"
                            inputmode="numeric"
                            placeholder="NIK / No. KTP" 
-                           class="w-full pl-11 pr-4 form-pill-input border-0 placeholder-slate-400"
+                           class="form-pill-input"
                            title="Masukkan 16 digit NIK sesuai KTP">
                 </div>
 
                 <!-- 2. Nama Lengkap -->
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
                         <i class="fa-regular fa-user text-base"></i>
                     </div>
                     <input type="text" 
@@ -154,121 +247,357 @@
                            value="{{ old('full_name') }}"
                            required 
                            placeholder="Nama Lengkap" 
-                           class="w-full pl-11 pr-4 form-pill-input border-0 placeholder-slate-400">
+                           class="form-pill-input">
                 </div>
 
                 <!-- 3. Tanggal Lahir (dd/mm/tttt) -->
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
                         <i class="fa-regular fa-calendar text-base"></i>
                     </div>
                     <input type="date" 
                            name="birth_date" 
                            value="{{ old('birth_date') }}"
                            required 
-                           class="w-full pl-11 pr-4 form-pill-input border-0 text-slate-700">
+                           class="form-pill-input">
                 </div>
 
-                <!-- 4. Pendidikan Terakhir -->
+                <!-- 4. 2-Column: Tinggi (cm) & Berat (kg) (Sesuai Gambar 1) -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
+                            <i class="fa-solid fa-ruler-vertical text-base"></i>
+                        </div>
+                        <input type="number" 
+                               name="height" 
+                               value="{{ old('height') }}"
+                               min="50" 
+                               max="250" 
+                               placeholder="Tinggi (cm)" 
+                               class="form-pill-input">
+                    </div>
+                    <div class="relative">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
+                            <i class="fa-solid fa-weight-scale text-base"></i>
+                        </div>
+                        <input type="number" 
+                               name="weight" 
+                               value="{{ old('weight') }}"
+                               min="20" 
+                               max="250" 
+                               placeholder="Berat (kg)" 
+                               class="form-pill-input">
+                    </div>
+                </div>
+
+                <!-- 5. Alamat KTP (Sesuai Gambar 1) -->
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <div class="absolute top-3.5 left-0 pl-4 pointer-events-none text-slate-400 z-10">
+                        <i class="fa-solid fa-location-dot text-base"></i>
+                    </div>
+                    <textarea name="address_ktp" 
+                              rows="2" 
+                              id="addressKtp"
+                              placeholder="Alamat KTP" 
+                              class="form-textarea-input">{{ old('address_ktp') }}</textarea>
+                </div>
+
+                <!-- 6. Alamat Domisili (Sesuai Gambar 1) -->
+                <div class="relative">
+                    <div class="absolute top-3.5 left-0 pl-4 pointer-events-none text-slate-400 z-10">
+                        <i class="fa-solid fa-location-dot text-base"></i>
+                    </div>
+                    <textarea name="address_domicile" 
+                              rows="2" 
+                              id="addressDomicile"
+                              placeholder="Alamat Domisili" 
+                              class="form-textarea-input">{{ old('address_domicile') }}</textarea>
+                    
+                    <div class="flex items-center justify-end mt-1 px-2">
+                        <button type="button" onclick="copyKtpToDomisili()" class="text-[11px] font-semibold text-blue-600 hover:text-blue-800 transition flex items-center gap-1">
+                            <i class="fa-regular fa-copy text-[10px]"></i>
+                            <span>Sama dengan alamat KTP</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 7. Nomor WhatsApp (Sesuai Gambar 1) -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
+                        <i class="fa-brands fa-whatsapp text-lg text-emerald-600"></i>
+                    </div>
+                    <input type="tel" 
+                           name="whatsapp" 
+                           value="{{ old('whatsapp') }}"
+                           required 
+                           placeholder="Nomor WhatsApp" 
+                           class="form-pill-input">
+                </div>
+
+                <!-- 8. Pendidikan Terakhir (Searchable Dropdown) (Sesuai Gambar 2) -->
+                <div class="relative">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
                         <i class="fa-solid fa-graduation-cap text-base"></i>
                     </div>
-                    <select name="education" required class="w-full pl-11 pr-10 form-pill-input border-0 appearance-none text-slate-700">
-                        <option value="" disabled {{ old('education') ? '' : 'selected' }}>Pendidikan Terakhir</option>
+                    <select name="education" id="selectEducation" required>
+                        <option value="" disabled selected>Pendidikan Terakhir</option>
                         @foreach($dropdownEducation as $edu)
                             <option value="{{ $edu }}" {{ old('education') == $edu ? 'selected' : '' }}>{{ $edu }}</option>
                         @endforeach
                     </select>
-                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
-                        <i class="fa-solid fa-chevron-down text-xs"></i>
-                    </div>
                 </div>
 
-                <!-- 5. Jabatan Dilamar -->
+                <!-- 9. Jabatan Dilamar (Searchable Dropdown) (Sesuai Gambar 2) -->
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
                         <i class="fa-solid fa-briefcase text-base"></i>
                     </div>
-                    <select name="applied_job" required class="w-full pl-11 pr-10 form-pill-input border-0 appearance-none text-slate-700">
-                        <option value="" disabled {{ old('applied_job') ? '' : 'selected' }}>Jabatan Dilamar</option>
+                    <select name="applied_job" id="selectJob" required>
+                        <option value="" disabled selected>Jabatan Dilamar</option>
                         @foreach($dropdownJobs as $job)
                             <option value="{{ $job }}" {{ old('applied_job') == $job ? 'selected' : '' }}>{{ $job }}</option>
                         @endforeach
                     </select>
-                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
-                        <i class="fa-solid fa-chevron-down text-xs"></i>
-                    </div>
                 </div>
 
-                <!-- 6. Area Interview -->
+                <!-- 10. Area (Searchable Dropdown sesuai tb_area) (Sesuai Gambar 2) -->
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
                         <i class="fa-solid fa-map-location-dot text-base"></i>
                     </div>
-                    <select name="area" required class="w-full pl-11 pr-10 form-pill-input border-0 appearance-none text-slate-700">
-                        <option value="" disabled {{ old('area') ? '' : 'selected' }}>Area Interview</option>
-                        @foreach($dropdownAreas as $area)
-                            <option value="{{ $area }}" {{ old('area') == $area ? 'selected' : '' }}>{{ $area }}</option>
+                    <select name="area" id="selectArea" required>
+                        <option value="" disabled selected>Area</option>
+                        @foreach($areas as $ar)
+                            <option value="{{ $ar->area }}" {{ old('area') == $ar->area ? 'selected' : '' }}>
+                                {{ $ar->area }}
+                            </option>
                         @endforeach
                     </select>
-                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
-                        <i class="fa-solid fa-chevron-down text-xs"></i>
-                    </div>
                 </div>
 
-                <!-- 7. Informasi Lowongan -->
+                <!-- 11. Kota Asal (Searchable Dropdown sesuai region tb_kota) (Sesuai Gambar 2) -->
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                        <i class="fa-solid fa-bullhorn text-base"></i>
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
+                        <i class="fa-solid fa-city text-base"></i>
                     </div>
-                    <select name="info" required class="w-full pl-11 pr-10 form-pill-input border-0 appearance-none text-slate-700">
-                        <option value="" disabled {{ old('info') ? '' : 'selected' }}>Informasi Lowongan</option>
-                        @foreach($dropdownInfo as $inf)
-                            <option value="{{ $inf }}" {{ old('info') == $inf ? 'selected' : '' }}>{{ $inf }}</option>
-                        @endforeach
+                    <select name="kota_asal" id="selectKota">
+                        <option value="" disabled selected>Pilih Kota Asal</option>
+                        @if(old('kota_asal'))
+                            <option value="{{ old('kota_asal') }}" selected>{{ old('kota_asal') }}</option>
+                        @endif
                     </select>
-                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
-                        <i class="fa-solid fa-chevron-down text-xs"></i>
-                    </div>
                 </div>
 
-                <!-- 8. Jenis Undangan Interview -->
+                <!-- 12. Pilih Nama AS / Rekrutor (Searchable Dropdown karyawan inhouse) (Sesuai Gambar 2) -->
                 <div class="relative">
-                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
-                        <i class="fa-regular fa-envelope text-base"></i>
+                    <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 z-10">
+                        <i class="fa-solid fa-user-tie text-base"></i>
                     </div>
-                    <select name="undangan" required class="w-full pl-11 pr-10 form-pill-input border-0 appearance-none text-slate-700">
-                        <option value="" disabled {{ old('undangan') ? '' : 'selected' }}>Jenis Undangan Interview</option>
-                        @foreach($dropdownUndangan as $und)
-                            <option value="{{ $und }}" {{ old('undangan') == $und ? 'selected' : '' }}>{{ $und }}</option>
-                        @endforeach
+                    <select name="nama_as" id="selectAs">
+                        <option value="" disabled selected>Pilih Nama AS</option>
+                        @if(old('nama_as'))
+                            <option value="{{ old('nama_as') }}" selected>{{ old('nama_as') }}</option>
+                        @endif
                     </select>
-                    <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
-                        <i class="fa-solid fa-chevron-down text-xs"></i>
+                </div>
+
+                <!-- 13. Motivasi Kerja (Sesuai Gambar 2) -->
+                <div class="relative">
+                    <div class="absolute top-3.5 left-0 pl-4 pointer-events-none text-slate-400 z-10">
+                        <i class="fa-regular fa-comment-dots text-base"></i>
+                    </div>
+                    <textarea name="work_motivation" 
+                              rows="2" 
+                              placeholder="Tuliskan motivasi kerja anda..." 
+                              class="form-textarea-input">{{ old('work_motivation') }}</textarea>
+                </div>
+
+                <!-- 14. Kelebihan Anda (Sesuai Gambar 2) -->
+                <div class="relative">
+                    <div class="absolute top-3.5 left-0 pl-4 pointer-events-none text-slate-400 z-10">
+                        <i class="fa-solid fa-user-plus text-base"></i>
+                    </div>
+                    <textarea name="strengths" 
+                              rows="2" 
+                              placeholder="Tuliskan kelebihan anda..." 
+                              class="form-textarea-input">{{ old('strengths') }}</textarea>
+                </div>
+
+                <!-- 15. 2-Column: Info Lowongan & Jenis Undangan (Sesuai Gambar 2) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div class="relative">
+                        <select name="info" id="selectInfo">
+                            <option value="" disabled selected>Info Lowongan</option>
+                            @foreach($dropdownInfo as $inf)
+                                <option value="{{ $inf }}" {{ old('info') == $inf ? 'selected' : '' }}>{{ $inf }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="relative">
+                        <select name="undangan" id="selectUndangan">
+                            <option value="" disabled selected>Jenis Undangan</option>
+                            @foreach($dropdownUndangan as $und)
+                                <option value="{{ $und }}" {{ old('undangan') == $und ? 'selected' : '' }}>{{ $und }}</option>
+                            @endforeach
+                        </select>
                     </div>
                 </div>
 
-                <!-- Tombol Submit: Register (Biru Pill Besar Sesuai Gambar 2) -->
-                <div class="pt-3">
-                    <button type="submit" class="w-full py-3.5 px-6 rounded-full bg-[#2563eb] hover:bg-blue-700 text-white font-bold text-sm tracking-wide shadow-lg shadow-blue-500/25 active:scale-[0.98] transition cursor-pointer">
-                        Register
+                <!-- 16. Box Upload File CV (Image/PDF) (Sesuai Gambar 2) -->
+                <div class="p-4 bg-[#eff6ff] border border-[#bfdbfe] rounded-2xl">
+                    <label class="block text-xs font-bold text-[#1e40af] uppercase tracking-wider mb-2.5">
+                        UPLOAD FILE CV (IMAGE)
+                    </label>
+                    <div class="flex items-center gap-3">
+                        <button type="button" onclick="document.getElementById('cvInput').click()" class="px-4 py-2 rounded-full bg-[#2563eb] hover:bg-blue-700 text-white text-xs font-bold shadow-sm transition active:scale-95 cursor-pointer">
+                            Pilih File
+                        </button>
+                        <span id="cvFileName" class="text-xs text-slate-500 truncate max-w-[240px]">
+                            Tidak ada file yang dipilih
+                        </span>
+                        <input type="file" name="file_cv" id="cvInput" accept="image/*,.pdf" class="hidden" onchange="updateCvFileName(this)">
+                    </div>
+                </div>
+
+                <!-- 17. Tombol Submit: Daftar Sekarang (Sesuai Gambar 2) -->
+                <div class="pt-2">
+                    <button type="submit" class="w-full py-4 px-6 rounded-full bg-[#2563eb] hover:bg-blue-700 text-white font-bold text-sm tracking-wide shadow-xl shadow-blue-500/25 active:scale-[0.98] transition cursor-pointer">
+                        Daftar Sekarang
                     </button>
+                </div>
+
+                <!-- 18. Link Login Disini (Sesuai Gambar 2) -->
+                <div class="text-center pt-2 pb-1">
+                    <p class="text-xs text-slate-500 font-medium">
+                        Sudah Pernah Register? 
+                        <a href="{{ route('login') }}" class="font-bold text-blue-600 hover:text-blue-800 transition">
+                            Login Disini
+                        </a>
+                    </p>
                 </div>
             </form>
 
         </div>
 
-        <!-- Catatan & Informasi untuk Pelamar -->
-        <div class="mt-4 text-center text-xs text-slate-400">
-            <p>Pastikan NIK dan data yang dimasukkan sesuai dengan identitas KTP asli Anda.</p>
-        </div>
+        <!-- Footer -->
+        <footer class="w-full text-center mt-6 text-[11px] text-slate-500">
+            &copy; {{ date('Y') }} ESA Groups &bull; All rights reserved.
+        </footer>
     </main>
 
-    <!-- Footer -->
-    <footer class="w-full max-w-md mx-auto text-center mt-6 text-[11px] text-slate-400">
-        &copy; {{ date('Y') }} ESA Groups &bull; All rights reserved.
-    </footer>
+    <!-- TomSelect JS -->
+    <script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 
+    <!-- Data Master untuk Dependensi Cascading Dropdown -->
+    <script>
+        const areaRegions = @json($areaRegions);
+        const citiesByRegion = @json($citiesByRegion);
+        const asListByArea = @json($asListByArea);
+
+        let tsArea, tsKota, tsAs;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Inisialisasi TomSelect untuk Area
+            tsArea = new TomSelect('#selectArea', {
+                create: false,
+                placeholder: 'Pilih Area',
+                onChange: function(val) {
+                    onAreaChanged(val);
+                }
+            });
+
+            // Inisialisasi TomSelect untuk Kota Asal
+            tsKota = new TomSelect('#selectKota', {
+                create: false,
+                placeholder: 'Pilih Kota Asal'
+            });
+
+            // Inisialisasi TomSelect untuk Nama AS
+            tsAs = new TomSelect('#selectAs', {
+                create: false,
+                placeholder: 'Pilih Nama AS'
+            });
+
+            // Inisialisasi Dropdown Lainnya
+            new TomSelect('#selectEducation', { create: false, placeholder: 'Pendidikan Terakhir' });
+            new TomSelect('#selectJob', { create: false, placeholder: 'Jabatan Dilamar' });
+            new TomSelect('#selectInfo', { create: false, placeholder: 'Info Lowongan' });
+            new TomSelect('#selectUndangan', { create: false, placeholder: 'Jenis Undangan' });
+
+            // Jika ada old value area (misal setelah submit validasi gagal), trigger cascade
+            const currentArea = tsArea.getValue();
+            if (currentArea) {
+                onAreaChanged(currentArea, "{{ old('kota_asal') }}", "{{ old('nama_as') }}");
+            }
+        });
+
+        // Cascading Dropdown: saat Area dipilih
+        function onAreaChanged(selectedArea, prefillKota = null, prefillAs = null) {
+            if (!selectedArea) return;
+
+            // 1. Dapatkan Region dari Area yang dipilih
+            const region = areaRegions[selectedArea];
+
+            // Update Opsi Kota Asal berdasarkan Region tb_kota
+            tsKota.clear();
+            tsKota.clearOptions();
+            if (region && citiesByRegion[region]) {
+                citiesByRegion[region].forEach(city => {
+                    tsKota.addOption({ value: city, text: city });
+                });
+                if (prefillKota) {
+                    tsKota.setValue(prefillKota);
+                }
+                tsKota.refreshOptions(false);
+            }
+
+            // 2. Update Opsi Nama AS / Rekrutor berdasarkan Area
+            tsAs.clear();
+            tsAs.clearOptions();
+            const asList = asListByArea[selectedArea] || ['ARO ' + selectedArea.toUpperCase(), 'Recruiter Team'];
+            asList.forEach(name => {
+                tsAs.addOption({ value: name, text: name });
+            });
+            if (prefillAs) {
+                tsAs.setValue(prefillAs);
+            }
+            tsAs.refreshOptions(false);
+        }
+
+        // Preview Foto Profil
+        function previewAvatar(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = document.getElementById('avatarPreview');
+                    const icon = document.getElementById('avatarIcon');
+                    img.src = e.target.result;
+                    img.classList.remove('hidden');
+                    icon.classList.add('hidden');
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        // Update Label File CV
+        function updateCvFileName(input) {
+            const label = document.getElementById('cvFileName');
+            if (input.files && input.files[0]) {
+                label.innerText = input.files[0].name;
+                label.classList.remove('text-slate-500');
+                label.classList.add('text-blue-700', 'font-medium');
+            } else {
+                label.innerText = 'Tidak ada file yang dipilih';
+                label.classList.remove('text-blue-700', 'font-medium');
+                label.classList.add('text-slate-500');
+            }
+        }
+
+        // Salin Alamat KTP ke Domisili
+        function copyKtpToDomisili() {
+            const ktp = document.getElementById('addressKtp').value;
+            document.getElementById('addressDomicile').value = ktp;
+        }
+    </script>
 </body>
 </html>

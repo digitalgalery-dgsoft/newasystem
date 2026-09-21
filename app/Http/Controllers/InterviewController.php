@@ -1468,18 +1468,100 @@ class InterviewController extends Controller
     }
 
     /**
+     * Helper to resolve AS / Rekrutor names for each area
+     * Karyawan inhouse dengan jabatan AS/AM/RM/Rekrutor/Admin sesuai area yang dipilih
+     */
+    public static function getAsListByArea(): array
+    {
+        $areas = DB::table('tb_area')->orderBy('area')->pluck('area');
+        $result = [];
+
+        // 1. Users dengan role rekrutmen / inhouse / admin
+        $users = User::where(function($q) {
+            $q->whereIn('role', ['karyawan_inhouse', 'recruiter', 'admin'])
+              ->orWhere('job_title', 'like', '%AS%')
+              ->orWhere('job_title', 'like', '%AM%')
+              ->orWhere('job_title', 'like', '%RM%')
+              ->orWhere('job_title', 'like', '%Rekrut%')
+              ->orWhere('job_title', 'like', '%Admin%');
+        })->get(['name', 'area', 'job_title']);
+
+        // 2. Karyawan inhouse aktif
+        $employees = Employee::where('status', 'Aktiv')
+            ->where(function($q) {
+                $q->where('tipe_karyawan', 'Inhouse')
+                  ->orWhere('jabatan', 'like', '%AS%')
+                  ->orWhere('jabatan', 'like', '%AM%')
+                  ->orWhere('jabatan', 'like', '%RM%')
+                  ->orWhere('jabatan', 'like', '%Rekrut%')
+                  ->orWhere('jabatan', 'like', '%Admin%');
+            })->get(['nama_karyawan', 'area', 'jabatan']);
+
+        // 3. Rekaman historis nama_as pada tb_kandidat
+        $historicalAs = DB::table('tb_kandidat')
+            ->whereNotNull('nama_as')
+            ->whereNotIn('nama_as', ['', 'Publik', '-', 'Online'])
+            ->select('area', 'nama_as')
+            ->distinct()
+            ->get();
+
+        foreach ($areas as $a) {
+            $areaLower = strtolower(trim($a));
+            $matched = collect();
+
+            foreach ($users as $u) {
+                $uArea = strtolower(trim($u->area ?? ''));
+                if (str_contains($uArea, $areaLower) || str_contains($areaLower, $uArea) || empty($uArea) || $uArea === 'nasional') {
+                    $matched->push($u->name);
+                }
+            }
+
+            foreach ($employees as $e) {
+                $eArea = strtolower(trim($e->area ?? ''));
+                if (str_contains($eArea, $areaLower) || str_contains($areaLower, $eArea) || empty($eArea) || $eArea === 'nasional') {
+                    $matched->push($e->nama_karyawan);
+                }
+            }
+
+            foreach ($historicalAs as $h) {
+                if (strcasecmp(trim($h->area), $a) === 0) {
+                    $matched->push(trim($h->nama_as));
+                }
+            }
+
+            $uniqueNames = $matched->map(fn($n) => ucwords(strtolower(trim($n))))
+                ->filter(fn($n) => !empty($n) && strlen($n) > 2 && !in_array(strtolower($n), ['publik', 'online', 'admin', '-']))
+                ->unique()
+                ->sort()
+                ->values()
+                ->all();
+
+            if (empty($uniqueNames)) {
+                $uniqueNames = ['ARO ' . strtoupper($a), 'Recruiter Team', 'Administrator HR'];
+            }
+
+            $result[$a] = $uniqueNames;
+        }
+
+        return $result;
+    }
+
+    /**
      * Halaman Form Registrasi Walkin Interview (Standalone)
      */
     public function createWalkInterview()
     {
+        $areas = DB::table('tb_area')->orderBy('area')->get();
+        $areaRegions = $areas->pluck('region', 'area')->toArray();
+
+        $cities = DB::table('tb_kota')->orderBy('kota')->get();
+        $citiesByRegion = $cities->groupBy('region')->map(fn($g) => $g->pluck('kota')->values())->toArray();
+
+        $asListByArea = self::getAsListByArea();
+
         $dropdownJobs = [
             'SPG/SPB', 'Beauty Advisor', 'MD', 'Administrasi', 'Team Leader',
             'Produksi', 'Sales', 'Promotor', 'Kasir', 'Helper', 'Driver', 'Store Supervisor'
-        ];
-        $dropdownAreas = [
-            'Surabaya', 'Denpasar', 'Jakarta', 'Bandung', 'Malang', 'Banyuwangi',
-            'Jember', 'Kediri', 'Madiun', 'Bojonegoro', 'TASIKMALAYA', 'Yogyakarta',
-            'Semarang', 'Medan', 'Makassar'
         ];
         $dropdownInfo = [
             'WhatsApp', 'Teman', 'Teman / Relasi', 'Instagram', 'WA Group Lowker',
@@ -1493,7 +1575,8 @@ class InterviewController extends Controller
         ];
 
         return view('interview.walk_create', compact(
-            'dropdownJobs', 'dropdownAreas', 'dropdownInfo', 'dropdownUndangan', 'dropdownEducation'
+            'areas', 'areaRegions', 'cities', 'citiesByRegion', 'asListByArea',
+            'dropdownJobs', 'dropdownInfo', 'dropdownUndangan', 'dropdownEducation'
         ));
     }
 
@@ -1506,71 +1589,136 @@ class InterviewController extends Controller
             'nik' => 'required|numeric|digits:16',
             'full_name' => 'required|string|max:255',
             'birth_date' => 'required|date',
+            'height' => 'nullable|numeric|min:50|max:250',
+            'weight' => 'nullable|numeric|min:20|max:250',
+            'address_ktp' => 'nullable|string|max:500',
+            'address_domicile' => 'nullable|string|max:500',
+            'whatsapp' => 'required|string|max:30',
             'education' => 'required|string',
             'applied_job' => 'required|string',
             'area' => 'required|string',
+            'kota_asal' => 'nullable|string',
+            'nama_as' => 'nullable|string',
+            'work_motivation' => 'nullable|string|max:1000',
+            'strengths' => 'nullable|string|max:1000',
             'info' => 'nullable|string',
             'undangan' => 'nullable|string',
+            'foto_profil' => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
+            'file_cv' => 'nullable|file|mimes:pdf,jpeg,png,jpg,webp|max:10240',
         ]);
 
         $authUser = auth()->user();
-        if ($authUser) {
-            $userAsName = $authUser->name;
-            $userEmail = $authUser->email;
-            $recruiterId = $authUser->id;
-        } else {
-            // Pendaftaran Mandiri / Publik oleh Kandidat
-            $areaARO = User::where(function($q) use ($request) {
-                $q->where('area', 'like', "%{$request->area}%")
-                  ->orWhere('area', 'Nasional');
-            })->whereIn('role', ['karyawan_inhouse', 'recruiter'])->first();
+        $userAsName = $request->nama_as;
+        if (empty($userAsName)) {
+            if ($authUser) {
+                $userAsName = $authUser->name;
+            } else {
+                $userAsName = 'ARO ' . strtoupper($request->area);
+            }
+        }
+        $userEmail = $authUser ? $authUser->email : 'walkin@asystem.co.id';
+        $recruiterId = $authUser ? $authUser->id : null;
 
-            $userAsName = $areaARO ? $areaARO->name : ('ARO ' . strtoupper($request->area));
-            $userEmail = $areaARO ? $areaARO->email : 'walkin@asystem.co.id';
-            $recruiterId = $areaARO ? $areaARO->id : null;
+        // Folder lampiran
+        $lampiranPath = public_path('lampiran');
+        if (!\Illuminate\Support\Facades\File::exists($lampiranPath)) {
+            \Illuminate\Support\Facades\File::makeDirectory($lampiranPath, 0777, true, true);
+        }
+
+        $photoPath = null;
+        if ($request->hasFile('foto_profil')) {
+            $foto = $request->file('foto_profil');
+            $fotoName = 'foto_' . $request->nik . '_' . time() . '.' . $foto->getClientOriginalExtension();
+            $foto->move($lampiranPath, $fotoName);
+            $photoPath = $fotoName;
+        }
+
+        $cvPath = null;
+        if ($request->hasFile('file_cv')) {
+            $cv = $request->file('file_cv');
+            $cvName = 'cv_' . $request->nik . '_' . time() . '.' . $cv->getClientOriginalExtension();
+            $cv->move($lampiranPath, $cvName);
+            $cvPath = $cvName;
+        }
+
+        $candidatePayload = [
+            'full_name' => trim($request->full_name),
+            'birth_date' => $request->birth_date,
+            'height' => $request->height,
+            'weight' => $request->weight,
+            'address_ktp' => $request->address_ktp,
+            'address_domicile' => $request->address_domicile ?: $request->address_ktp,
+            'phone' => $request->whatsapp,
+            'whatsapp' => $request->whatsapp,
+            'education' => $request->education,
+            'applied_job' => $request->applied_job,
+            'area' => $request->area,
+            'city_domicile' => $request->kota_asal,
+            'useras' => $userAsName,
+            'work_motivation' => $request->work_motivation,
+            'strengths' => $request->strengths,
+            'info' => $request->info ?: 'Walk in Langsung',
+            'info_lowongan' => $request->info ?: 'walk_in',
+            'undangan' => $request->undangan ?: 'Walk Interview',
+            'jenis' => 'Walkin', // Tersimpan eksplisit sebagai jenis 'Walkin'
+            'source_type' => 'walk_in',
+            'status' => 'Active',
+            'status_kandidat' => 'Baru',
+            'recruiter_id' => $recruiterId,
+            'is_profile_complete' => true,
+        ];
+
+        if ($photoPath) {
+            $candidatePayload['photo_path'] = $photoPath;
+        }
+        if ($cvPath) {
+            $candidatePayload['cv_path'] = $cvPath;
         }
 
         $candidate = Candidate::updateOrCreate(
             ['nik' => $request->nik],
-            [
-                'full_name' => trim($request->full_name),
-                'birth_date' => $request->birth_date,
-                'education' => $request->education,
-                'applied_job' => $request->applied_job,
-                'area' => $request->area,
-                'info' => $request->info ?: 'Walk in Langsung',
-                'info_lowongan' => $request->info ?: 'walk_in',
-                'undangan' => $request->undangan ?: 'Walk Interview',
-                'jenis' => 'Walkin', // Tersimpan eksplisit sebagai jenis 'Walkin'
-                'source_type' => 'walk_in',
-                'status' => 'Active',
-                'status_kandidat' => 'Baru',
-                'useras' => $userAsName,
-                'recruiter_id' => $recruiterId,
-                'is_profile_complete' => false,
-            ]
+            $candidatePayload
         );
 
         // Sinkronkan ke tabel legacy tb_kandidat jika ada
         try {
             if (Schema::hasTable('tb_kandidat')) {
+                $tbData = [
+                    'tanggal' => now()->toDateString(),
+                    'applicants_name' => $candidate->full_name,
+                    'tanggal_lahir' => $candidate->birth_date ? Carbon::parse($candidate->birth_date)->format('Y-m-d') : null,
+                    'height' => $candidate->height,
+                    'weight' => $candidate->weight,
+                    'alamat_ktp' => $candidate->address_ktp,
+                    'alamat_domisili' => $candidate->address_domicile,
+                    'phone' => $candidate->phone,
+                    'mobile' => $candidate->whatsapp,
+                    'pendidikan_terakhir' => $candidate->education,
+                    'applied_job' => $candidate->applied_job,
+                    'area' => $candidate->area,
+                    'city_domicile' => $candidate->city_domicile,
+                    'secondary_city' => $candidate->city_domicile,
+                    'nama_as' => $userAsName,
+                    'useras' => $userEmail,
+                    'motivasi_kerja' => $candidate->work_motivation,
+                    'kelebihan' => $candidate->strengths,
+                    'info' => $candidate->info,
+                    'undangan' => $candidate->undangan,
+                    'jenis' => 'Walkin',
+                    'status' => 'Active',
+                    'status_kandidat' => 'Baru',
+                ];
+
+                if ($photoPath) {
+                    $tbData['fotoprofil'] = $photoPath;
+                }
+                if ($cvPath) {
+                    $tbData['filecv'] = $cvPath;
+                }
+
                 DB::table('tb_kandidat')->updateOrInsert(
                     ['no_ktp' => $candidate->nik],
-                    [
-                        'tanggal' => now()->toDateString(),
-                        'applicants_name' => $candidate->full_name,
-                        'tanggal_lahir' => $candidate->birth_date ? Carbon::parse($candidate->birth_date)->format('Y-m-d') : null,
-                        'pendidikan_terakhir' => $candidate->education,
-                        'applied_job' => $candidate->applied_job,
-                        'area' => $candidate->area,
-                        'info' => $candidate->info,
-                        'undangan' => $candidate->undangan,
-                        'jenis' => 'Walkin',
-                        'status' => 'Active',
-                        'status_kandidat' => 'Baru',
-                        'nama_as' => $userAsName,
-                        'useras' => $userEmail,
-                    ]
+                    $tbData
                 );
             }
         } catch (\Throwable $e) {
@@ -1594,7 +1742,7 @@ class InterviewController extends Controller
 
         if (!auth()->check()) {
             return redirect()->route('interview.walk.create')
-                ->with('success', "Pendaftaran Berhasil! Terima kasih {$candidate->full_name}, data Anda telah tersimpan. Silakan konfirmasi kehadiran Anda kepada petugas HRD / ARO di lokasi interview.");
+                ->with('success', "Pendaftaran Berhasil! Terima kasih {$candidate->full_name}, data formulir Anda telah tersimpan. Silakan konfirmasi kehadiran Anda kepada petugas HRD / ARO di lokasi interview.");
         }
 
         return redirect()->route('interview.walk')
