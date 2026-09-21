@@ -511,7 +511,10 @@ function openEditModal(q) {
     if (q.question_type === 'multiple_choice') {
         document.getElementById('edit_type_mc').checked = true;
         toggleChoiceFields('edit', 'multiple_choice');
-        const choices = (typeof q.choices === 'string') ? JSON.parse(q.choices || '{}') : (q.choices || {});
+        let choices = q.parsed_choices || q.choices || {};
+        if (typeof choices === 'string') {
+            try { choices = JSON.parse(choices); } catch(e) { choices = {}; }
+        }
         document.getElementById('edit_choice_A').value = choices.A || choices.a || '';
         document.getElementById('edit_choice_B').value = choices.B || choices.b || '';
         document.getElementById('edit_choice_C').value = choices.C || choices.c || '';

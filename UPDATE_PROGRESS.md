@@ -1583,6 +1583,36 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 23. 🧮 Perbaikan Opsi Pilihan Ganda CBT Matematika & Normalisasi Master Soal
+- **Akar Masalah (Double-Escaped JSON pada `tb_math`)**:
+  - Kolom `choices` pada tabel `tb_math` untuk soal pilihan ganda (ID 4, 5, 7, 8) tersimpan dengan format JSON ter-escape ganda (`{\\"A\\":\\"66,937\\",...}`).
+  - Cast `'choices' => 'array'` pada `MathQuestion.php` gagal melakukan `json_decode`, mengembalikan `null`, sehingga accessor `parsed_choices` menghasilkan array kosong `[]`.
+  - Di tampilan ujian `cbt/tests/matematika.blade.php`, kondisi `@if($q['question_type'] === 'multiple_choice' && !empty($q['choices']))` bernilai `false`, menyebabkan sistem jatuh ke blok fallback input teks angka.
+- **Solusi & Implementasi**:
+  1. **Model `MathQuestion.php`**:
+     - Menghapus cast array mentah dan menambahkan fungsi statis `parseChoices($value)` yang kebal terhadap semua format (JSON standar, string ter-escape ganda, array PHP, dsb).
+     - Menambahkan accessor `getChoicesAttribute` dan `getParsedChoicesAttribute`.
+     - Menambahkan mutator `setChoicesAttribute` yang memastikan data selalu tersimpan sebagai JSON rapi (`JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES`).
+     - Mendaftarkan `parsed_choices` ke `$appends`.
+  2. **Migrasi Pembersihan Database (`2026_09_21_110000_fix_tb_math_choices_json.php`)**:
+     - Menormalisasi seluruh data `choices` di `tb_math` agar tersimpan sebagai JSON valid di tingkat database.
+  3. **Tampilan Ujian & Master Soal**:
+     - Fallback pilihan default legacy pada `CbtQuestionService::getMathQuestions()`.
+     - Peningkatan styling radio button pada `matematika.blade.php`: badge opsi (A, B, C, D, E) otomatis terisi warna biru solid saat dipilih kandidat.
+     - Penyesuaian `MathQuestionController.php` dan modal edit di `master/math/index.blade.php`.
+
+---
+
+### 24. 🔄 Penyempurnaan Sinkronisasi NIK Odoo Seluruh Entitas
+- **Prioritisasi Kontrak Karyawan Aktif**:
+  - Pada `OdooSyncService::syncSingleEmployee()`, record hasil query diurutkan agar kontrak aktif (`active = true` dan `departure_date` kosong) selalu diprioritaskan di atas kontrak lama yang sudah resign.
+  - Penanganan entitas PT BUDGET kini mengembalikan array terstruktur `['success' => false, 'message' => ..., 'data' => null]` alih-alih `null`.
+- **Notifikasi Pencarian Lintas Seluruh Entitas (`entity_code = 'ALL'`)**:
+  - Jika satu entitas mengembalikan data resign namun entitas lain memiliki data aktif, sistem otomatis memprioritaskan data aktif.
+  - Jika karyawan tidak ditemukan di seluruh entitas, notifikasi kini menampilkan pesan informatif: *"Karyawan dengan NIK / NIP '...' tidak ditemukan di seluruh entitas Odoo yang aktif (AMK, AKP, ATK, ABO, ATB)"* tanpa lagi secara keliru menyebut entitas terakhir yang diperiksa (ATB).
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
@@ -1594,6 +1624,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
    - Portal CBT & Test Online Kandidat: `http://127.0.0.1:8000/cbt/login`
    - Master Karyawan: `http://127.0.0.1:8000/master/karyawan`
    - Master Prinsiple: `http://127.0.0.1:8000/master/prinsiple`
+   - Master Soal Matematika CBT: `http://127.0.0.1:8000/master/math`
    - Sinkronisasi Odoo: `http://127.0.0.1:8000/odoo-setting`
    - Talent Pool Rekrutmen: `http://127.0.0.1:8000/interview`
    - AI Ranking: `http://127.0.0.1:8000/airanking`
@@ -1602,3 +1633,4 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 *Dikembangkan dengan standar modern arsitektur Laravel 12, UI responsif TailwindCSS, dan integrasi ESA Groups.*
+

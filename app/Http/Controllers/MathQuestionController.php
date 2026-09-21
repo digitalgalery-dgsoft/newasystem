@@ -83,7 +83,7 @@ class MathQuestionController extends Controller
         $question = MathQuestion::create([
             'question_text' => trim($request->question_text),
             'question_type' => $request->question_type,
-            'choices' => $choices ? json_encode($choices) : null,
+            'choices' => $choices,
             'correct_answer' => trim($request->correct_answer),
             'is_active' => $request->has('is_active') ? 1 : 0,
         ]);
@@ -122,7 +122,7 @@ class MathQuestionController extends Controller
 
         $question->question_text = trim($request->question_text);
         $question->question_type = $request->question_type;
-        $question->choices = $choices ? json_encode($choices) : null;
+        $question->choices = $choices;
         $question->correct_answer = trim($request->correct_answer);
         $question->is_active = $request->has('is_active') ? 1 : 0;
         $question->save();

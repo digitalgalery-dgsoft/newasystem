@@ -376,12 +376,20 @@ class CbtQuestionService
             if (\Illuminate\Support\Facades\Schema::hasTable('tb_math')) {
                 $dbQuestions = \App\Models\MathQuestion::active()->orderBy('id')->get();
                 if ($dbQuestions->isNotEmpty()) {
-                    return $dbQuestions->map(function ($q) {
+                    $legacyDefaults = collect(self::getDefaultLegacyMathQuestions())->keyBy('id');
+
+                    return $dbQuestions->map(function ($q) use ($legacyDefaults) {
+                        $choices = $q->parsed_choices;
+                        // Jika soal bertipe multiple_choice tapi choices kosong, fallback ke pilihan default legacy
+                        if ($q->question_type === 'multiple_choice' && empty($choices) && isset($legacyDefaults[$q->id])) {
+                            $choices = $legacyDefaults[$q->id]['choices'] ?? [];
+                        }
+
                         return [
                             'id' => $q->id,
                             'question_text' => $q->question_text,
                             'question_type' => $q->question_type,
-                            'choices' => $q->parsed_choices,
+                            'choices' => $choices,
                             'correct_answer' => $q->correct_answer,
                             'explanation' => '',
                         ];

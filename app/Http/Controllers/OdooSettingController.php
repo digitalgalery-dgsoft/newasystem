@@ -313,8 +313,7 @@ class OdooSettingController extends Controller
         $notFoundCount = 0;
 
         foreach ($niks as $nik) {
-            $nikFound = false;
-            $lastMessage = '';
+            $bestResult = null;
 
             foreach ($entities as $targetEntity) {
                 try {
@@ -345,7 +344,7 @@ class OdooSettingController extends Controller
                             'tipe_karyawan' => $empData['tipe_karyawan'] ?? '-',
                         ]);
 
-                        $results[] = [
+                        $candidateResult = [
                             'nik'      => $nik,
                             'success'  => true,
                             'message'  => $res['message'],
@@ -354,22 +353,37 @@ class OdooSettingController extends Controller
                             'employee' => $employeePayload,
                             'action'   => $res['action'] ?? (($empData['is_new'] ?? false) ? 'created' : 'updated'),
                         ];
-                        $nikFound = true;
-                        $foundCount++;
-                        break;
-                    } else {
-                        $lastMessage = $res['message'] ?? "NIK '{$nik}' tidak ditemukan di entitas {$targetEntity->code}.";
+
+                        $isEmployeeActive = strtolower($empData['status'] ?? '') === 'aktiv' || strtolower($empData['status'] ?? '') === 'active';
+
+                        // Jika pencarian pada entitas spesifik ATAU karyawan berstatus AKTIF di entitas ini, langsung jadikan hasil final
+                        if ($entityCode !== 'ALL' || $isEmployeeActive) {
+                            $bestResult = $candidateResult;
+                            break;
+                        }
+
+                        // Jika pencarian ALL dan karyawan berstatus non-aktif/resign, simpan sebagai kandidat dan lanjutkan pencarian entitas lain
+                        if ($bestResult === null) {
+                            $bestResult = $candidateResult;
+                        }
                     }
                 } catch (\Throwable $e) {
-                    $lastMessage = "[{$targetEntity->code}] " . $e->getMessage();
+                    // Abaikan exception koneksi parsial per entitas
                 }
             }
 
-            if (!$nikFound) {
+            if ($bestResult !== null) {
+                $results[] = $bestResult;
+                $foundCount++;
+            } else {
+                $notFoundMsg = ($entityCode === 'ALL')
+                    ? "Karyawan dengan NIK / NIP '{$nik}' tidak ditemukan di seluruh entitas Odoo yang aktif (" . $entities->pluck('code')->implode(', ') . ")."
+                    : "Karyawan dengan NIK / NIP '{$nik}' tidak ditemukan di server Odoo [{$entityCode}].";
+
                 $results[] = [
                     'nik'     => $nik,
                     'success' => false,
-                    'message' => $lastMessage ?: "NIK '{$nik}' tidak ditemukan di " . ($entityCode === 'ALL' ? "semua entitas Odoo yang aktif." : "entitas {$entityCode}."),
+                    'message' => $notFoundMsg,
                     'data'    => null,
                 ];
                 $notFoundCount++;

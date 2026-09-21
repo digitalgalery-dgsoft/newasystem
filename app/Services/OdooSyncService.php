@@ -774,6 +774,16 @@ class OdooSyncService
             ];
         }
 
+        // Prioritaskan record karyawan yang masih aktif (active=true dan departure_date kosong), lalu ID terbesar
+        usort($records, function ($a, $b) {
+            $aActive = ((bool)($a['active'] ?? true)) && empty($a['departure_date']);
+            $bActive = ((bool)($b['active'] ?? true)) && empty($b['departure_date']);
+            if ($aActive !== $bActive) {
+                return $bActive ? 1 : -1;
+            }
+            return ($b['id'] ?? 0) <=> ($a['id'] ?? 0);
+        });
+
         $rec = $records[0];
         $odooId = $rec['id'];
         $rawNik = trim((string)($rec['identification_id'] ?: $rec['registration_number'] ?: ''));
@@ -792,7 +802,11 @@ class OdooSyncService
 
         // Filter: Abaikan karyawan dengan prinsiple PT BUDGET (AMK, AKP, ATK)
         if (!empty($principleName) && stripos($principleName, 'BUDGET') !== false) {
-            return null;
+            return [
+                'success' => false,
+                'message' => "Karyawan '{$nama}' ({$cleanNik}) terdaftar pada Prinsiple BUDGET di entitas [{$entity->code}], dilewati.",
+                'data'    => null,
+            ];
         }
 
         $principleId = null;

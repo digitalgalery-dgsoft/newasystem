@@ -5,11 +5,16 @@
 @push('styles')
 <style>
     input[type="radio"]:checked + label {
-        border-color: #2563eb;
-        background-color: #eff6ff;
-        color: #1e40af;
-        font-weight: 700;
-        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12);
+        border-color: #2563eb !important;
+        background-color: #eff6ff !important;
+        color: #1e40af !important;
+        font-weight: 700 !important;
+        box-shadow: 0 4px 12px rgba(37, 99, 235, 0.12) !important;
+    }
+    input[type="radio"]:checked + label .choice-badge {
+        border-color: #2563eb !important;
+        background-color: #2563eb !important;
+        color: #ffffff !important;
     }
 </style>
 @endpush
@@ -44,7 +49,7 @@
             <div>
                 <strong class="text-slate-900 block mb-1">Petunjuk Pengisian Jawaban:</strong>
                 <ul class="list-disc list-inside space-y-1 text-[11px] text-slate-600">
-                    <li>Untuk soal <strong>Pilihan Ganda</strong>: klik opsi jawaban A, B, C, atau D yang paling benar.</li>
+                    <li>Untuk soal <strong>Pilihan Ganda</strong>: klik opsi jawaban A, B, C, D, atau E yang paling benar.</li>
                     <li>Untuk soal <strong>Isian Singkat</strong>: ketik <strong>angka saja</strong> tanpa titik pemisah ribuan (contoh: <code class="bg-blue-100 px-1 rounded text-primary font-bold">150000</code>).</li>
                     <li>Jika jawaban berupa angka desimal, gunakan <strong>tanda titik (.)</strong> (contoh: <code class="bg-blue-100 px-1 rounded text-primary font-bold">10.5</code>).</li>
                     <li>Jawaban Anda tersimpan otomatis di perangkat ini. Jawaban akan dikirim otomatis saat waktu habis.</li>
@@ -80,8 +85,8 @@
                                     <input type="radio" name="answers[{{ $q['id'] }}]" id="m_{{ $q['id'] }}_{{ $key }}" value="{{ $key }}" class="hidden">
                                     <label for="m_{{ $q['id'] }}_{{ $key }}" class="block p-3.5 border-2 border-slate-200 rounded-2xl cursor-pointer hover:bg-slate-50 transition-all font-medium">
                                         <div class="flex items-center gap-2.5">
-                                            <span class="w-5 h-5 rounded-full border-2 border-slate-400 flex items-center justify-center text-[10px] font-bold uppercase flex-shrink-0">{{ $key }}</span>
-                                            <span>{{ $choice }}</span>
+                                            <span class="choice-badge w-6 h-6 rounded-full border-2 border-slate-400 flex items-center justify-center text-[10px] font-bold uppercase flex-shrink-0 transition-colors">{{ $key }}</span>
+                                            <span class="text-slate-800">{{ $choice }}</span>
                                         </div>
                                     </label>
                                 </div>
