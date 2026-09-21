@@ -1360,10 +1360,42 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 71. 🔄 Perbaikan Import Kandidat Interview: Replace Data NIK Eksisting & Reset Menyeluruh Data Tes Online CBT (21 September 2026)
+- **Akar Masalah**:
+  - Pada alur import kandidat interview (baik via Excel Walkin maupun Tarik NIK Odoo ERP), ketika ada NIK pelamar yang sama, sistem lama melakukan `update(['status' => 'Arsip'])` dan membuat baris record baru (`Candidate::create`), sehingga menimbulkan penumpukan data duplikat (tercatat 16.955 record duplikat historis).
+  - Model [Candidate.php](file:///d:/ASystem/newasystem/app/Models/Candidate.php) memiliki model listener `booted()` `static::created` yang otomatis mencari record lama dengan NIK sama sebagai `$donor`, lalu menyalin seluruh nilai tes lama (`tes_kepribadian`, `tes_matematika`, `tes_komputer`, `signature_path`) dan mengkloning entri `TestResult`. Akibatnya, kandidat baru yang diimport tetap terbaca telah menyelesaikan tes dan menyerap nilai/jawaban tes sebelumnya.
+  - [CandidateEvaluationDataService.php](file:///d:/ASystem/newasystem/app/Services/CandidateEvaluationDataService.php) melakukan query pada tabel legacy `hasil_kompt` dengan klausa `orWhere('nomor_ktp', $candidate->nik)` tanpa memeriksa status kelulusan/pengerjaan tes, sehingga data tes komputer lama tetap muncul di tab evaluasi.
+- **Solusi & Implementasi Terpadu**:
+  1. **Penonaktifan Auto-Donor Listener ([app/Models/Candidate.php](file:///d:/ASystem/newasystem/app/Models/Candidate.php))**:
+     - Menghapus event listener `booted()` `static::created` yang menyalin hasil tes dari donor NIK lama, memastikan record kandidat baru atau ter-replace benar-benar bersih dan independen.
+  2. **Mekanisme Replace & Test Reset pada CandidateImportService ([app/Services/CandidateImportService.php](file:///d:/ASystem/newasystem/app/Services/CandidateImportService.php))**:
+     - Ketika NIK ditemukan pada database lokal, sistem mempertahankan 1 record utama dan menghapus sisa ID duplikat historis.
+     - Menghapus seluruh riwayat tes lama pada relasi child: `TestResult`, `tb_hasilpsikotes`, `tb_hasilmath`, `hasil_kompt`, `hasilinterview`, `InterviewAssessment`, `PrincipleApproval`, `WorkExperience`, dan `tb_pengalaman`.
+     - Meng-update record kandidat dengan data baru dari file Excel, menyetel status `Active`, `jenis = ''` (agar muncul di list interview aktif), serta me-reset seluruh indikator tes online ke `null`: `tes_kepribadian = null`, `tes_matematika = null`, `tes_komputer = null`, `tes_ke = 1`, `buktikomputer = null`, `signature_path = null`.
+     - Menyelaraskan tabel legacy `tb_kandidat` dengan data baru dan nilai tes ter-reset.
+     - Mengirimkan SSE event `'replace'` dengan pesan informatif pada streaming terminal log.
+  3. **Penyelarasan Tarik NIK Odoo ERP ([app/Http/Controllers/CandidateImportController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CandidateImportController.php))**:
+     - Menggantikan logika archiving dan duplikasi dengan mekanisme replace & reset menyeluruh yang identik pada fungsi `importOdooByNik`.
+     - Menghapus relasi tes lama dan mereset nilai tes ke `null`.
+     - Mengembalikan respons sukses terpadu: `"Data kandidat {Nama} berhasil di-REPLACE dan tes online di-RESET ke awal!"`.
+  4. **Proteksi Stale Data pada CandidateEvaluationDataService ([app/Services/CandidateEvaluationDataService.php](file:///d:/ASystem/newasystem/app/Services/CandidateEvaluationDataService.php))**:
+     - Menambahkan guard check `$isPsikoCompleted` dan `$isKomptCompleted` (memverifikasi nilai tidak kosong, bukan `'00:00:00'`, dan bukan `'-'`).
+     - Mengeliminasi fallback query `orWhere('nomor_ktp', ...)` pada `hasil_kompt` saat kandidat belum menyelesaikan tes.
+     - Mengembalikan status `hasPsikotes = false`, `hasMath = false`, `hasKompt = false`, serta kesimpulan `'Belum Tes'` secara konsisten saat kandidat belum mengerjakan tes.
+  5. **Penyempurnaan UI Modal & Terminal Log ([resources/views/interview/index.blade.php](file:///d:/ASystem/newasystem/resources/views/interview/index.blade.php))**:
+     - Menambahkan badge styling `case 'replace':` berlatar cyan transparan (`bg-cyan-500/20 text-cyan-300 border-cyan-500/30`) pada terminal log JavaScript.
+     - Memperbarui teks peringatan deteksi NIK eksisting pada modal tarik Odoo (`previewArchiveWarning`): `"NIK ini sebelumnya sudah pernah terdaftar di ASystem. Data lama otomatis di-REPLACE dan seluruh data tes online di-RESET ke awal agar pelamar dapat memulai seleksi tes dari awal."`
+  6. **Artisan Command Deduplikasi Historis ([app/Console/Commands/CleanDuplicateCandidatesCommand.php](file:///d:/ASystem/newasystem/app/Console/Commands/CleanDuplicateCandidatesCommand.php))**:
+     - Menyediakan command `php artisan candidates:clean-duplicates {--dry-run}` untuk mengonsolidasikan ribuan record duplikat historis secara aman kapan saja dibutuhkan oleh administrator sistem.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `fd3d15a` | fix(interview): replace existing candidate NIK on import, reset online test CBT data, and eliminate auto-donor copying |
+| `3c13760` | docs: sinkronisasi riwayat commit dan pembaruan Milestone 70 di UPDATE_PROGRESS.md |
 | `88f4183` | fix(export): resolve Class PhpOffice\PhpSpreadsheet\Spreadsheet not found by migrating WorkPlan and ActivityLog exports to native ZipArchive OpenXML |
 | `b924940` | docs: sinkronisasi progres pembaruan sistem dan riwayat commit ke UPDATE_PROGRESS.md |
 | `ea0d004` | feat(audit): implementasi sistem audit trail terpusat, activity logs viewer, diff modal, dan export excel di seluruh sistem |
