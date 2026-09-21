@@ -3,6 +3,46 @@
 @section('title', 'Input Job Requirement - Attendance Admin Portal')
 
 @section('content')
+<link href="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.css" rel="stylesheet">
+<style>
+    .note-editor.note-frame {
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 0.75rem !important;
+        overflow: hidden;
+        background: #ffffff;
+        box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+    }
+    .note-toolbar {
+        background-color: #f8fafc !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        padding: 5px 8px !important;
+    }
+    .note-btn {
+        border-radius: 0.375rem !important;
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        color: #334155 !important;
+        padding: 3px 8px !important;
+        font-size: 11px !important;
+    }
+    .note-btn:hover {
+        background: #f1f5f9 !important;
+        color: #0f172a !important;
+    }
+    .note-editable {
+        font-size: 12px !important;
+        line-height: 1.6 !important;
+        color: #1e293b !important;
+        min-height: 90px !important;
+        font-family: inherit !important;
+        background: #ffffff;
+    }
+    .note-placeholder {
+        font-size: 12px !important;
+        color: #94a3b8 !important;
+    }
+</style>
+
 <div class="space-y-6" x-data="jobManager()">
     
     <!-- PAGE TITLE & HEADER CARD -->
@@ -109,7 +149,7 @@
             <div class="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
                 
                 <!-- Card Header -->
-                <div class="px-5 py-4 border-b border-slate-200 bg-slate-50/70 flex items-center justify-between">
+                <div class="px-5 py-4 border-b border-slate-200 bg-slate-50/70 flex flex-wrap items-center justify-between gap-2.5">
                     <div class="flex items-center gap-2.5">
                         <div class="w-8 h-8 rounded-lg {{ $editData ? 'bg-amber-100 text-amber-700' : 'bg-primary-100 text-primary' }} flex items-center justify-center font-bold text-sm">
                             <i class="fa-solid {{ $editData ? 'fa-pen-to-square' : 'fa-plus' }}"></i>
@@ -126,11 +166,27 @@
                         </div>
                     </div>
 
-                    @if($editData)
-                    <a href="{{ route('job.input') }}" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all">
-                        <i class="fa-solid fa-xmark"></i> Batal Edit
-                    </a>
-                    @endif
+                    <div class="flex items-center gap-2">
+                        <button type="button" 
+                                id="btnGenerateAI" 
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-[#1e293b] hover:bg-slate-900 border border-slate-700 shadow-sm transition-all">
+                            <i class="fa-solid fa-wand-magic-sparkles text-amber-400"></i>
+                            <span>Generate Job by AI</span>
+                        </button>
+
+                        <button type="button" 
+                                id="btnCopyPrompt" 
+                                class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-white bg-[#2563eb] hover:bg-blue-700 border border-blue-600 shadow-sm transition-all">
+                            <i class="fa-regular fa-image"></i>
+                            <span>Generate Image Prompt</span>
+                        </button>
+
+                        @if($editData)
+                        <a href="{{ route('job.input') }}" class="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-rose-600 bg-rose-50 hover:bg-rose-100 border border-rose-200 transition-all">
+                            <i class="fa-solid fa-xmark"></i> Batal Edit
+                        </a>
+                        @endif
+                    </div>
                 </div>
 
                 <!-- Fast Template Pills -->
@@ -166,124 +222,130 @@
                                    name="job_title" 
                                    required 
                                    value="{{ old('job_title', $editData->job_title ?? '') }}"
-                                   placeholder="Contoh: Admin Operasional & Back Office" 
+                                   placeholder="Contoh: Senior Fullstack Developer" 
                                    class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none transition-all placeholder:text-slate-400 font-semibold text-slate-800">
                         </div>
                         <p class="text-[11px] text-slate-400 mt-1">Nama posisi harus unik untuk lowongan yang sedang aktif.</p>
                     </div>
 
-                    <!-- Prinsiple & Area (Grid 2 cols) -->
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        <div>
-                            <label for="job_prinsiple" class="block text-xs font-bold text-slate-700 mb-1">Prinsiple</label>
-                            <select id="job_prinsiple" name="job_prinsiple" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
-                                <option value="">-- Pilih Prinsiple --</option>
-                                @if($editData && $editData->job_prinsiple && !$principles->contains('name', $editData->job_prinsiple))
-                                    <option value="{{ $editData->job_prinsiple }}" selected>{{ $editData->job_prinsiple }}</option>
-                                @endif
-                                @foreach($principles as $prin)
-                                    <option value="{{ $prin->name }}" {{ old('job_prinsiple', $editData->job_prinsiple ?? '') == $prin->name ? 'selected' : '' }}>
-                                        {{ $prin->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
+                    <!-- Prinsiple -->
+                    <div>
+                        <label for="job_prinsiple" class="block text-xs font-bold text-slate-700 mb-1">Prinsiple</label>
+                        <select id="job_prinsiple" name="job_prinsiple" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+                            <option value="">Pilih Prinsiple</option>
+                            @if($editData && $editData->job_prinsiple && !$principles->contains('name', $editData->job_prinsiple))
+                                <option value="{{ $editData->job_prinsiple }}" selected>{{ $editData->job_prinsiple }}</option>
+                            @endif
+                            @foreach($principles as $prin)
+                                <option value="{{ $prin->name }}" {{ old('job_prinsiple', $editData->job_prinsiple ?? '') == $prin->name ? 'selected' : '' }}>
+                                    {{ $prin->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                        <div>
-                            <label for="job_area" class="block text-xs font-bold text-slate-700 mb-1">Area Penempatan</label>
-                            <select id="job_area" name="job_area" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
-                                <option value="">-- Pilih Area --</option>
-                                @if($editData && $editData->job_area && !$areas->contains(fn($a) => strcasecmp($a, $editData->job_area) === 0))
-                                    <option value="{{ $editData->job_area }}" selected>{{ $editData->job_area }}</option>
-                                @endif
+                    <!-- Area (Mengikuti Sesuai Area User) -->
+                    <div>
+                        <label for="job_area" class="block text-xs font-bold text-slate-700 mb-1">Area</label>
+                        @if($isAdmin)
+                            <select id="job_area" name="job_area" class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+                                <option value="">Pilih Area</option>
                                 @foreach($areas as $ar)
-                                    <option value="{{ $ar }}" {{ strcasecmp(old('job_area', $editData->job_area ?? ''), $ar) === 0 ? 'selected' : '' }}>
+                                    <option value="{{ $ar }}" {{ strcasecmp(old('job_area', $editData->job_area ?? $userArea), $ar) === 0 ? 'selected' : '' }}>
                                         {{ $ar }}
                                     </option>
                                 @endforeach
                             </select>
-                        </div>
+                        @else
+                            <input type="text" 
+                                   id="job_area" 
+                                   name="job_area" 
+                                   value="{{ old('job_area', $editData->job_area ?? $userArea) }}" 
+                                   readonly 
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 bg-slate-100/90 text-xs font-bold text-slate-800 cursor-not-allowed outline-none shadow-inner"
+                                   title="Area mengikuti profil penempatan Anda">
+                        @endif
                     </div>
 
-                    <!-- Provinsi & Kota -->
+                    <!-- Provinsi Penempatan & Kota Penempatan (Pilihan Se-Indonesia) -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                            <label for="province" class="block text-xs font-bold text-slate-700 mb-1">Provinsi</label>
-                            <input type="text" 
-                                   id="province" 
-                                   name="province" 
-                                   value="{{ old('province', $editData->province ?? '') }}"
-                                   placeholder="Contoh: DKI Jakarta" 
-                                   class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">
+                            <label for="province" class="block text-xs font-bold text-slate-700 mb-1">Provinsi Penempatan</label>
+                            <select id="province" 
+                                    name="province" 
+                                    class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+                                <option value="">Pilih Provinsi</option>
+                                @foreach($provinces as $prov)
+                                    <option value="{{ $prov }}" {{ old('province', $editData->province ?? '') == $prov ? 'selected' : '' }}>
+                                        {{ $prov }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </div>
 
                         <div>
-                            <label for="city" class="block text-xs font-bold text-slate-700 mb-1">Kota / Kabupaten</label>
-                            <input type="text" 
-                                   id="city" 
-                                   name="city" 
-                                   value="{{ old('city', $editData->city ?? '') }}"
-                                   placeholder="Contoh: Jakarta Pusat" 
-                                   class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">
+                            <label for="city" class="block text-xs font-bold text-slate-700 mb-1">Kota Penempatan</label>
+                            <select id="city" 
+                                    name="city" 
+                                    class="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+                                <option value="">Pilih Kota</option>
+                            </select>
                         </div>
                     </div>
 
                     <!-- Tanggal Expired -->
                     <div>
                         <label for="tgl_expired" class="block text-xs font-bold text-slate-700 mb-1">
-                            Tanggal Expired (Deadline Lowongan)
+                            Tanggal Expired
                         </label>
                         <div class="relative">
                             <input type="date" 
                                    id="tgl_expired" 
                                    name="tgl_expired" 
                                    value="{{ old('tgl_expired', $editData && $editData->tgl_expired ? $editData->tgl_expired->format('Y-m-d') : '') }}"
-                                   class="w-full px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">
+                                   class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">
                         </div>
                         <p class="text-[11px] text-slate-400 mt-1">Kosongkan jika lowongan berlaku terus tanpa batas waktu.</p>
                     </div>
 
                     <!-- Pendidikan & Kualifikasi Umum -->
                     <div>
-                        <label for="job_quals" class="block text-xs font-bold text-slate-700 mb-1">Pendidikan & Kualifikasi Umum</label>
+                        <label for="job_quals" class="block text-xs font-bold text-slate-700 mb-1">Pendidikan &amp; Kualifikasi Umum</label>
                         <textarea id="job_quals" 
                                   name="job_quals" 
-                                  rows="3" 
-                                  placeholder="- Pendidikan minimal S1 Akuntansi / Manajemen&#10;- Usia maksimal 28 tahun&#10;- Berpenampilan rapi dan komunikatif"
-                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none leading-relaxed">{{ old('job_quals', $editData ? $editData->plain_quals : '') }}</textarea>
+                                  class="summernote"
+                                  placeholder="Contoh: S1 Teknik Informatika, IPK min 3.25, Usia Maks 30 Tahun">{!! old('job_quals', $editData ? $editData->job_quals : '') !!}</textarea>
                     </div>
 
                     <!-- Spesialisasi Keterampilan (Skills) -->
                     <div>
                         <div class="flex items-center justify-between mb-1">
-                            <label for="job_skills" class="block text-xs font-bold text-slate-700">Keterampilan (Skills)</label>
+                            <label for="job_skills" class="block text-xs font-bold text-slate-700">Spesialisasi Keterampilan (Skills)</label>
                             <span class="text-[10px] text-primary font-semibold">Pisahkan dengan koma</span>
                         </div>
                         <textarea id="job_skills" 
                                   name="job_skills" 
                                   rows="2" 
-                                  placeholder="Microsoft Excel, VLOOKUP, Administrasi Kantor, Typing Speed"
-                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">{{ old('job_skills', $editData ? $editData->plain_skills : '') }}</textarea>
+                                  placeholder="Contoh: React, Node.js, REST API, MySQL, Unit Testing, AWS"
+                                  class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">{{ old('job_skills', $editData ? $editData->plain_skills : '') }}</textarea>
                     </div>
 
-                    <!-- Pengalaman Kerja -->
+                    <!-- Ringkasan Pengalaman yang Dibutuhkan -->
                     <div>
-                        <label for="job_exp" class="block text-xs font-bold text-slate-700 mb-1">Pengalaman yang Dibutuhkan</label>
+                        <label for="job_exp" class="block text-xs font-bold text-slate-700 mb-1">Ringkasan Pengalaman yang Dibutuhkan</label>
                         <textarea id="job_exp" 
                                   name="job_exp" 
-                                  rows="2" 
-                                  placeholder="Minimal 1 tahun pengalaman di bidang administrasi perkantoran / retail."
-                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none">{{ old('job_exp', $editData ? $editData->plain_exp : '') }}</textarea>
+                                  class="summernote"
+                                  placeholder="Contoh: Minimal 3 tahun memimpin tim tech developer atau sejenis.">{!! old('job_exp', $editData ? $editData->job_exp : '') !!}</textarea>
                     </div>
 
-                    <!-- Deskripsi Pekerjaan (Job Desc) -->
+                    <!-- Deskripsi Tugas Pekerjaan (Job Description) -->
                     <div>
-                        <label for="job_desc" class="block text-xs font-bold text-slate-700 mb-1">Deskripsi Tugas (Job Description)</label>
+                        <label for="job_desc" class="block text-xs font-bold text-slate-700 mb-1">Deskripsi Tugas Pekerjaan (Job Description)</label>
                         <textarea id="job_desc" 
                                   name="job_desc" 
-                                  rows="3" 
-                                  placeholder="- Menginput data harian operasional cabang&#10;- Melakukan rekonsiliasi arsip dokumen&#10;- Menyusun laporan berkala ke manajemen"
-                                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 focus:ring-2 focus:ring-primary-500 outline-none leading-relaxed">{{ old('job_desc', $editData ? $editData->plain_desc : '') }}</textarea>
+                                  class="summernote"
+                                  placeholder="Tuliskan detail tanggung jawab harian serta target KPI jika ada...">{!! old('job_desc', $editData ? $editData->job_desc : '') !!}</textarea>
                     </div>
 
                     <!-- Informasi Tambahan (Internal HR Only) -->
@@ -737,7 +799,283 @@
 @endsection
 
 @section('scripts')
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/summernote@0.8.18/dist/summernote-lite.min.js"></script>
+
 <script>
+    const provincesWithCities = @json($provincesWithCities ?? []);
+    const initialProvince = @json(old('province', $editData->province ?? ''));
+    const initialCity = @json(old('city', $editData->city ?? ''));
+
+    function populateCities(provName, preselectedCity = '') {
+        const citySelect = document.getElementById('city');
+        if (!citySelect) return;
+
+        citySelect.innerHTML = '<option value="">Pilih Kota</option>';
+
+        if (!provName || !provincesWithCities[provName]) {
+            citySelect.setAttribute('disabled', 'disabled');
+            citySelect.classList.add('bg-slate-50');
+            return;
+        }
+
+        citySelect.removeAttribute('disabled');
+        citySelect.classList.remove('bg-slate-50');
+
+        const cities = provincesWithCities[provName] || [];
+        let matched = false;
+
+        cities.forEach(city => {
+            const opt = document.createElement('option');
+            opt.value = city;
+            opt.textContent = city;
+            if (preselectedCity && (city.toLowerCase() === preselectedCity.toLowerCase())) {
+                opt.selected = true;
+                matched = true;
+            }
+            citySelect.appendChild(opt);
+        });
+
+        if (preselectedCity && !matched) {
+            const customOpt = document.createElement('option');
+            customOpt.value = preselectedCity;
+            customOpt.textContent = preselectedCity;
+            customOpt.selected = true;
+            citySelect.appendChild(customOpt);
+        }
+    }
+
+    $(document).ready(function() {
+        // Init Summernote WYSIWYG
+        const summernoteConfig = {
+            height: 130,
+            toolbar: [
+                ['style', ['style']],
+                ['font', ['bold', 'italic']],
+                ['para', ['ul', 'ol', 'paragraph']],
+                ['insert', ['link', 'picture', 'table', 'video']],
+                ['misc', ['undo', 'redo']]
+            ]
+        };
+
+        $('#job_quals').summernote($.extend({}, summernoteConfig, {
+            placeholder: 'Contoh: S1 Teknik Informatika, IPK min 3.25, Usia Maks 30 Tahun'
+        }));
+
+        $('#job_exp').summernote($.extend({}, summernoteConfig, {
+            placeholder: 'Contoh: Minimal 3 tahun memimpin tim tech developer atau sejenis.'
+        }));
+
+        $('#job_desc').summernote($.extend({}, summernoteConfig, {
+            placeholder: 'Tuliskan detail tanggung jawab harian serta target KPI jika ada...'
+        }));
+
+        // Dependent dropdown Provinsi -> Kota
+        const provSelect = document.getElementById('province');
+        if (provSelect) {
+            provSelect.addEventListener('change', function() {
+                populateCities(this.value);
+            });
+        }
+
+        if (initialProvince) {
+            populateCities(initialProvince, initialCity);
+        } else {
+            populateCities('');
+        }
+
+        // Sinkronisasi textarea Summernote sebelum form submit
+        const jobForm = document.getElementById('jobForm');
+        if (jobForm) {
+            jobForm.addEventListener('submit', function() {
+                if ($('#job_quals').length) $('#job_quals').val($('#job_quals').summernote('code'));
+                if ($('#job_exp').length) $('#job_exp').val($('#job_exp').summernote('code'));
+                if ($('#job_desc').length) $('#job_desc').val($('#job_desc').summernote('code'));
+            });
+        }
+
+        // Handler Generate Job by AI
+        const btnAi = document.getElementById('btnGenerateAI');
+        if (btnAi) {
+            btnAi.addEventListener('click', function() {
+                const titleInput = document.getElementById('job_title');
+                const jobTitle = titleInput ? titleInput.value.trim() : '';
+                if (!jobTitle) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Posisi Belum Diisi',
+                        text: 'Silakan isi Posisi / Nama Jabatan terlebih dahulu untuk digenerate oleh AI.',
+                        confirmButtonColor: '#0F52BA'
+                    });
+                    return;
+                }
+
+                const origHtml = btnAi.innerHTML;
+                btnAi.disabled = true;
+                btnAi.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Generating AI...</span>';
+
+                fetch('{{ route("job.generate_ai") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ job_title: jobTitle })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    btnAi.disabled = false;
+                    btnAi.innerHTML = origHtml;
+
+                    if (res.status === 'success' && res.data) {
+                        if (res.data.quals) {
+                            $('#job_quals').summernote('code', res.data.quals);
+                        }
+                        if (res.data.skills && document.getElementById('job_skills')) {
+                            document.getElementById('job_skills').value = res.data.skills;
+                        }
+                        if (res.data.exp) {
+                            $('#job_exp').summernote('code', res.data.exp);
+                        }
+                        if (res.data.desc) {
+                            $('#job_desc').summernote('code', res.data.desc);
+                        }
+                        if (res.data.additional_info && document.getElementById('additional_info')) {
+                            document.getElementById('additional_info').value = res.data.additional_info;
+                        }
+
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Berhasil Digenerate!',
+                            text: 'Kualifikasi, skills, pengalaman, dan job description berhasil diisi otomatis oleh AI.',
+                            timer: 2500,
+                            showConfirmButton: false
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Generate',
+                            text: res.message || 'Terjadi kesalahan saat memproses generator AI.'
+                        });
+                    }
+                })
+                .catch(err => {
+                    btnAi.disabled = false;
+                    btnAi.innerHTML = origHtml;
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Kesalahan Sistem',
+                        text: 'Gagal menghubungi server generator AI.'
+                    });
+                });
+            });
+        }
+
+        // Handler Generate Image Prompt
+        let generatedPromptData = null;
+        const btnPrompt = document.getElementById('btnCopyPrompt');
+        if (btnPrompt) {
+            btnPrompt.addEventListener('click', function() {
+                if (generatedPromptData) {
+                    showPromptModal(generatedPromptData);
+                    return;
+                }
+
+                const titleInput = document.getElementById('job_title');
+                const jobTitle = titleInput ? titleInput.value.trim() : '';
+                if (!jobTitle) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Posisi Belum Diisi',
+                        text: 'Silakan isi Posisi / Nama Jabatan terlebih dahulu untuk generate image prompt.',
+                        confirmButtonColor: '#0F52BA'
+                    });
+                    return;
+                }
+
+                const skillsData = document.getElementById('job_skills')?.value.trim() || '';
+                const qualsData = $('#job_quals').length ? $('#job_quals').summernote('code') : (document.getElementById('job_quals')?.value || '');
+
+                const origHtml = btnPrompt.innerHTML;
+                btnPrompt.disabled = true;
+                btnPrompt.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> <span>Generating...</span>';
+
+                fetch('{{ route("job.generate_image_prompt") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        job_title: jobTitle,
+                        job_skills: skillsData,
+                        job_quals: qualsData
+                    })
+                })
+                .then(res => res.json())
+                .then(res => {
+                    btnPrompt.disabled = false;
+                    btnPrompt.innerHTML = origHtml;
+
+                    if (res.status === 'success' && res.data) {
+                        generatedPromptData = JSON.stringify(res.data, null, 2);
+                        btnPrompt.innerHTML = '<i class="fa-regular fa-copy"></i> <span>Copy Prompt</span>';
+                        btnPrompt.classList.remove('bg-[#2563eb]', 'hover:bg-blue-700');
+                        btnPrompt.classList.add('bg-emerald-600', 'hover:bg-emerald-700');
+                        showPromptModal(generatedPromptData);
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal',
+                            text: res.message || 'Terjadi kesalahan saat generate image prompt.'
+                        });
+                    }
+                })
+                .catch(err => {
+                    btnPrompt.disabled = false;
+                    btnPrompt.innerHTML = origHtml;
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Kesalahan Sistem',
+                        text: 'Gagal menghubungi server generator prompt.'
+                    });
+                });
+            });
+        }
+
+        function showPromptModal(promptText) {
+            Swal.fire({
+                title: 'Prompt Berhasil Digenerate!',
+                html: `
+                    <p class="text-xs text-slate-500 text-left mb-2">Prompt JSON siap digunakan untuk Image Generator (Midjourney / DALL-E):</p>
+                    <textarea id="swal-prompt-text" class="w-full p-3 rounded-xl border border-slate-300 font-mono text-xs text-slate-800 bg-slate-50" rows="10" readonly>${promptText}</textarea>
+                `,
+                icon: 'success',
+                showCancelButton: true,
+                confirmButtonText: '<i class="fa-regular fa-copy mr-1"></i> Copy Prompt',
+                cancelButtonText: 'Tutup',
+                confirmButtonColor: '#0F52BA',
+                cancelButtonColor: '#64748b',
+                width: '600px'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    navigator.clipboard.writeText(promptText).then(() => {
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Prompt berhasil disalin ke clipboard!',
+                            showConfirmButton: false,
+                            timer: 3000
+                        });
+                    }).catch(() => {
+                        alert('Gagal menyalin ke clipboard.');
+                    });
+                }
+            });
+        }
+    });
+
     function jobManager() {
         return {
             qrModalOpen: false,
@@ -760,25 +1098,22 @@
                 if (document.getElementById('job_title')) {
                     document.getElementById('job_title').value = tmpl.title || '';
                 }
-                if (document.getElementById('job_area') && tmpl.area) {
-                    const areaSelect = document.getElementById('job_area');
-                    for (let i = 0; i < areaSelect.options.length; i++) {
-                        if (tmpl.area.toUpperCase().includes(areaSelect.options[i].value)) {
-                            areaSelect.selectedIndex = i;
-                            break;
-                        }
-                    }
-                }
-                if (document.getElementById('job_quals')) {
+                if ($('#job_quals').length) {
+                    $('#job_quals').summernote('code', tmpl.quals ? tmpl.quals.replace(/\n/g, '<br>') : '');
+                } else if (document.getElementById('job_quals')) {
                     document.getElementById('job_quals').value = tmpl.quals || '';
                 }
                 if (document.getElementById('job_skills')) {
                     document.getElementById('job_skills').value = tmpl.skills || '';
                 }
-                if (document.getElementById('job_exp')) {
+                if ($('#job_exp').length) {
+                    $('#job_exp').summernote('code', tmpl.exp ? tmpl.exp.replace(/\n/g, '<br>') : '');
+                } else if (document.getElementById('job_exp')) {
                     document.getElementById('job_exp').value = tmpl.exp || '';
                 }
-                if (document.getElementById('job_desc')) {
+                if ($('#job_desc').length) {
+                    $('#job_desc').summernote('code', tmpl.desc ? tmpl.desc.replace(/\n/g, '<br>') : '');
+                } else if (document.getElementById('job_desc')) {
                     document.getElementById('job_desc').value = tmpl.desc || '';
                 }
             },

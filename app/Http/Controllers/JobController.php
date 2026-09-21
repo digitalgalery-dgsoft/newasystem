@@ -6,9 +6,14 @@ use Illuminate\Http\Request;
 use App\Models\JobSpec;
 use App\Models\Principle;
 use App\Models\User;
+use App\Models\Employee;
+use App\Models\AiSetting;
 use App\Services\ActivityLogger;
+use App\Services\IndonesiaRegionService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 class JobController extends Controller
 {
@@ -25,6 +30,22 @@ class JobController extends Controller
         $user = auth()->user() ?? $this->getCurrentUser();
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
         $today = Carbon::today()->format('Y-m-d');
+
+        // Resolusi Area User (Area mengikuti area user penempatan)
+        $userArea = $user?->area;
+        if (empty($userArea) && $user?->email) {
+            $emp = Employee::where('email', $user->email)->first();
+            if ($emp && !empty($emp->area)) {
+                $userArea = $emp->area;
+            }
+        }
+        if (empty($userArea)) {
+            $userArea = 'Jember';
+        }
+
+        // Data Provinsi dan Kota Se-Indonesia
+        $provincesWithCities = IndonesiaRegionService::getProvincesWithCities();
+        $provinces = IndonesiaRegionService::getProvinces();
 
         $userEmail = strtolower(trim($user?->email ?? ''));
         $userName = strtolower(trim($user?->name ?? ''));
@@ -199,7 +220,10 @@ class JobController extends Controller
             'user',
             'isAdmin',
             'allCreators',
-            'filterCreator'
+            'filterCreator',
+            'userArea',
+            'provinces',
+            'provincesWithCities'
         ));
     }
 
@@ -212,6 +236,18 @@ class JobController extends Controller
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
         $userEmail = strtolower(trim($user?->email ?? ''));
         $userName = strtolower(trim($user?->name ?? ''));
+
+        // Resolusi Area User (Area mengikuti area user)
+        $userArea = $user?->area;
+        if (empty($userArea) && $user?->email) {
+            $emp = Employee::where('email', $user->email)->first();
+            if ($emp && !empty($emp->area)) {
+                $userArea = $emp->area;
+            }
+        }
+        if (empty($userArea)) {
+            $userArea = 'Jember';
+        }
 
         $validated = $request->validate([
             'job_title' => 'required|string|max:200',
@@ -227,6 +263,11 @@ class JobController extends Controller
             'tgl_expired' => 'nullable|date',
             'edit_id' => 'nullable|integer',
         ]);
+
+        // Ketentuan: Area mengikuti sesuai area user (jika non-admin atau jika job_area kosong)
+        if (!$isAdmin || empty($validated['job_area'])) {
+            $validated['job_area'] = $userArea;
+        }
 
         $editId = $request->input('edit_id');
         $today = Carbon::today()->format('Y-m-d');
@@ -326,5 +367,220 @@ class JobController extends Controller
 
         return redirect()->route('job.input')
             ->with('success', "Status job '{$job->job_title}' diubah menjadi: " . strtoupper($job->status));
+    }
+
+    /**
+     * Generate Spesifikasi Job via AI (Replikasi ajax_generate_job.php)
+     */
+    public function generateJobAi(Request $request)
+    {
+        $jobTitle = trim($request->input('job_title', ''));
+        if (empty($jobTitle)) {
+            return response()->json(['status' => 'error', 'message' => 'Posisi / Nama Jabatan harus diisi terlebih dahulu!'], 422);
+        }
+
+        $aiSetting = AiSetting::first();
+        $keys = $aiSetting?->keys_list ?? [];
+        $geminiModel = $aiSetting?->gemini_model ?: 'gemini-2.5-flash';
+        $sumopodKey = $aiSetting?->sumopod_key ?: '';
+        $sumopodModel = $aiSetting?->sumopod_model ?: 'gpt-4o-mini';
+
+        $prompt = "Buatkan detail lowongan kerja Profesional dalam bahasa Indonesia untuk posisi '{$jobTitle}'.\n" .
+                  "PENTING: Dilarang keras menyebutkan kebutuhan batasan usia, tinggi badan, berat badan, serta menyebutkan nama brand apa pun di dalam bagian Kualifikasi Umum ('quals') maupun Deskripsi/Skills.\n" .
+                  "Jika ada standar rekomendasi mengenai usia, tinggi/berat badan untuk posisi tersebut, masukkan informasi itu HANYA ke dalam bagian 'additional_info'.\n" .
+                  "Output WAJIB hanya berupa JSON murni tanpa tag markdown (jangan gunakan ```json).\n" .
+                  "JSON harus memiliki key persis seperti ini:\n" .
+                  "- 'quals' (Pendidikan & Kualifikasi Umum, format list HTML <ul><li>)\n" .
+                  "- 'skills' (Spesialisasi Keterampilan, teks biasa dipisah koma. CONTOH: Skill A, Skill B. DILARANG menggunakan list HTML!)\n" .
+                  "- 'exp' (Ringkasan Pengalaman, format list HTML <ul><li>)\n" .
+                  "- 'desc' (Deskripsi Tugas Pekerjaan, format list HTML <ul><li>)\n" .
+                  "- 'additional_info' (Informasi tambahan internal seperti rekomendasi batasan usia/tinggi/berat badan, format paragraf plain text biasa).\n" .
+                  "Pastikan keseluruhan response AI Anda adalah SATU json utuh dan valid, tanpa tambahan teks apapun di luar blok kurawal JSON.";
+
+        $jsonResult = null;
+
+        // Try Gemini keys
+        foreach ($keys as $key) {
+            $key = trim($key);
+            if (empty($key)) continue;
+            $res = $this->callGeminiApi($key, $geminiModel, $prompt);
+            if ($res) {
+                $cleaned = trim(preg_replace('/^```(?:json)?\s*|\s*```$/i', '', trim($res)));
+                $parsed = json_decode($cleaned, true);
+                if (is_array($parsed) && isset($parsed['quals'])) {
+                    $jsonResult = $parsed;
+                    break;
+                }
+            }
+        }
+
+        // Fallback to SumoPod
+        if (!$jsonResult && !empty($sumopodKey)) {
+            $res = $this->callSumopodApi($sumopodKey, $sumopodModel, $prompt);
+            if ($res) {
+                $cleaned = trim(preg_replace('/^```(?:json)?\s*|\s*```$/i', '', trim($res)));
+                $parsed = json_decode($cleaned, true);
+                if (is_array($parsed) && isset($parsed['quals'])) {
+                    $jsonResult = $parsed;
+                }
+            }
+        }
+
+        // Fallback default template if AI is offline
+        if (!$jsonResult) {
+            $jsonResult = [
+                'quals' => "<ul><li>Pendidikan minimal SMA/SMK/D3/S1 sesuai bidang pekerjaan</li><li>Memiliki komunikasi yang baik, ramah, dan berpenampilan rapi</li><li>Disiplin, jujur, teliti, dan bertanggung jawab terhadap tugas</li><li>Mampu bekerja secara mandiri maupun berkolaborasi dalam tim</li></ul>",
+                'skills' => 'Komunikasi Efektif, Manajemen Waktu, Problem Solving, Administrasi Dasar, Kerjasama Tim',
+                'exp' => '<ul><li>Minimal 1 tahun pengalaman pada posisi serupa atau terbuka untuk lulusan baru bertalenta</li><li>Memiliki pemahaman dasar terkait alur kerja operasional</li></ul>',
+                'desc' => "<ul><li>Menjalankan tugas utama serta tanggung jawab harian posisi {$jobTitle}</li><li>Berkoordinasi aktif dengan supervisor dan rekan kerja terkait capaian target</li><li>Menyusun laporan aktivitas harian/mingguan secara berkala</li></ul>",
+                'additional_info' => 'Kandidat diprioritaskan yang siap segera bergabung (immediate joiner).',
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $jsonResult,
+        ]);
+    }
+
+    /**
+     * Generate Image Prompt untuk Midjourney / DALL-E (Replikasi ajax_generate_image_prompt.php)
+     */
+    public function generateImagePrompt(Request $request)
+    {
+        $jobTitle = trim($request->input('job_title', ''));
+        $jobSkills = trim($request->input('job_skills', ''));
+        $jobQuals = trim($request->input('job_quals', ''));
+
+        if (empty($jobTitle)) {
+            return response()->json(['status' => 'error', 'message' => 'Posisi / Nama Jabatan harus diisi terlebih dahulu!'], 422);
+        }
+
+        $user = auth()->user() ?? $this->getCurrentUser();
+        $userName = $user?->name ?: 'HRD Recruitment';
+        $userPhone = $user?->phone ?: '0812-3456-7890';
+
+        $prompt = "Buatkan prompt JSON murni untuk Image Generator (Midjourney/DALL-E) guna pembuatan Poster Loker (aspek rasio 3:4).\n" .
+                  "DILARANG memasukkan rekomendasi usia, tinggi, berat badan atau brand ke dalam prompt visual.\n" .
+                  "Pastikan output HANYA JSON murni (jangan gunakan markdown ```json).\n" .
+                  "Di area kanan bawah poster HARUS dikosongkan/diwarnai putih untuk penempelan QR Code (wajib disebutkan di visual_prompt).\n\n" .
+                  "Struktur JSON harus PERSIS seperti ini:\n" .
+                  "{\n" .
+                  "  \"job_title\": \"{$jobTitle}\",\n" .
+                  "  \"skills_required\": \"{$jobSkills}\",\n" .
+                  "  \"general_qualifications\": \"{$jobQuals}\",\n" .
+                  "  \"contact_person\": {\n" .
+                  "    \"name\": \"{$userName}\",\n" .
+                  "    \"phone\": \"{$userPhone}\"\n" .
+                  "  },\n" .
+                  "  \"aspect_ratio\": \"3:4\",\n" .
+                  "  \"visual_prompt\": \"Prompt rinci dalam bahasa Inggris untuk Midjourney/DALL-E untuk membuat poster estetik recruitment flyer for {$jobTitle}. Clean corporate and vibrant style, modern typography space, professional illustration or photo. MUST INCLUDE instruction to leave a blank white square at the bottom right corner for a QR code.\"\n" .
+                  "}\n\n" .
+                  "Pastikan response Anda HANYA berupa JSON valid.";
+
+        $aiSetting = AiSetting::first();
+        $keys = $aiSetting?->keys_list ?? [];
+        $geminiModel = $aiSetting?->gemini_model ?: 'gemini-2.5-flash';
+        $sumopodKey = $aiSetting?->sumopod_key ?: '';
+        $sumopodModel = $aiSetting?->sumopod_model ?: 'gpt-4o-mini';
+
+        $jsonResult = null;
+        foreach ($keys as $key) {
+            $key = trim($key);
+            if (empty($key)) continue;
+            $res = $this->callGeminiApi($key, $geminiModel, $prompt);
+            if ($res) {
+                $cleaned = trim(preg_replace('/^```(?:json)?\s*|\s*```$/i', '', trim($res)));
+                $parsed = json_decode($cleaned, true);
+                if (is_array($parsed) && isset($parsed['visual_prompt'])) {
+                    $jsonResult = $parsed;
+                    break;
+                }
+            }
+        }
+
+        if (!$jsonResult && !empty($sumopodKey)) {
+            $res = $this->callSumopodApi($sumopodKey, $sumopodModel, $prompt);
+            if ($res) {
+                $cleaned = trim(preg_replace('/^```(?:json)?\s*|\s*```$/i', '', trim($res)));
+                $parsed = json_decode($cleaned, true);
+                if (is_array($parsed) && isset($parsed['visual_prompt'])) {
+                    $jsonResult = $parsed;
+                }
+            }
+        }
+
+        if (!$jsonResult) {
+            $cleanQuals = strip_tags($jobQuals);
+            $jsonResult = [
+                'job_title' => $jobTitle,
+                'skills_required' => $jobSkills,
+                'general_qualifications' => $cleanQuals,
+                'contact_person' => [
+                    'name' => $userName,
+                    'phone' => $userPhone,
+                ],
+                'aspect_ratio' => '3:4',
+                'visual_prompt' => "A professional recruitment flyer poster for '{$jobTitle}', modern corporate graphic design, bold typography headline 'WE ARE HIRING: {$jobTitle}', clean layout with stylish badge highlights, high contrast aesthetic, ultra high definition, leave a clean white blank square box at the bottom right corner for QR code placement --ar 3:4",
+            ];
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'data' => $jsonResult,
+        ]);
+    }
+
+    private function callGeminiApi(string $apiKey, string $model, string $prompt): ?string
+    {
+        try {
+            $url = "https://generativelanguage.googleapis.com/v1beta/models/{$model}:generateContent?key=" . trim($apiKey);
+            $response = Http::timeout(25)
+                ->withHeaders(['Content-Type' => 'application/json'])
+                ->post($url, [
+                    'contents' => [
+                        [
+                            'parts' => [
+                                ['text' => $prompt]
+                            ]
+                        ]
+                    ],
+                    'generationConfig' => [
+                        'responseMimeType' => 'application/json'
+                    ]
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['candidates'][0]['content']['parts'][0]['text'] ?? null;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('JobController Gemini API Error: ' . $e->getMessage());
+        }
+        return null;
+    }
+
+    private function callSumopodApi(string $apiKey, string $model, string $prompt): ?string
+    {
+        try {
+            $url = "https://ai.sumopod.com/v1/chat/completions";
+            $response = Http::timeout(25)
+                ->withToken(trim($apiKey))
+                ->post($url, [
+                    'model' => $model,
+                    'messages' => [
+                        ['role' => 'user', 'content' => $prompt]
+                    ],
+                    'response_format' => ['type' => 'json_object']
+                ]);
+
+            if ($response->successful()) {
+                $data = $response->json();
+                return $data['choices'][0]['message']['content'] ?? null;
+            }
+        } catch (\Throwable $e) {
+            Log::warning('JobController SumoPod API Error: ' . $e->getMessage());
+        }
+        return null;
     }
 }
