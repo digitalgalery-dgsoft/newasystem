@@ -559,8 +559,19 @@
 
                             <!-- Col 3: NAMA KARYAWAN -->
                             <td>
-                                <div class="font-bold text-sm {{ $emp->has_komponen ? 'text-slate-900' : 'text-rose-600 font-extrabold' }}">
-                                    {{ $emp->nama_karyawan }}
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <span class="font-bold text-sm {{ $emp->has_komponen ? 'text-slate-900' : 'text-rose-600 font-extrabold' }}">
+                                        {{ $emp->nama_karyawan }}
+                                    </span>
+                                    @if($emp->hasLoginAccess())
+                                        <span title="Akses Login Sistem Aktif" class="inline-flex items-center text-emerald-600">
+                                            <i class="fa-solid fa-lock-open text-[11px]"></i>
+                                        </span>
+                                    @else
+                                        <span title="Akses Login Sistem Terkunci / Nonaktif" class="inline-flex items-center text-slate-400">
+                                            <i class="fa-solid fa-lock text-[11px]"></i>
+                                        </span>
+                                    @endif
                                 </div>
                                 <div class="text-[11px] text-slate-500 flex items-center gap-2 mt-0.5">
                                     <span><i class="fa-regular fa-envelope text-[10px]"></i> {{ $emp->email ?? '-' }}</span>
@@ -598,14 +609,20 @@
                                         <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-blue-50 text-blue-700 font-bold border border-blue-200 shadow-xs">
                                             <i class="fa-solid fa-house-chimney text-[9px]"></i> Inhouse
                                         </span>
-                                        <span class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200" title="Karyawan Inhouse otomatis dapat login">
-                                            <i class="fa-solid fa-lock-open text-[8px]"></i> Login
-                                        </span>
+                                        @if($emp->hasLoginAccess())
+                                            <span class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200" title="Akses Login Aktif">
+                                                <i class="fa-solid fa-lock-open text-[8px]"></i> Login
+                                            </span>
+                                        @else
+                                            <span class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-400 font-medium border border-slate-200" title="Akses Login Dicabut / Nonaktif">
+                                                <i class="fa-solid fa-lock text-[8px]"></i> No Login
+                                            </span>
+                                        @endif
                                     @else
                                         <span class="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-slate-100 text-slate-600 font-semibold border border-slate-200">
                                             <i class="fa-solid fa-briefcase text-[9px]"></i> RateCard
                                         </span>
-                                        @if($emp->akses_login)
+                                        @if($emp->hasLoginAccess())
                                             <span class="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-emerald-50 text-emerald-700 font-bold border border-emerald-200" title="Akses Login Diberikan oleh HR">
                                                 <i class="fa-solid fa-lock-open text-[8px]"></i> Login Diizinkan
                                             </span>
@@ -663,15 +680,18 @@
                                         <i class="bx bx-edit text-sm"></i>
                                     </button>
 
-                                    <!-- Quick Toggle Akses Login button for RateCard -->
-                                    @if($emp->tipe_karyawan === 'RateCard' && $emp->status !== 'Resign')
+                                    <!-- Quick Toggle Akses Login button for All Employees (Inhouse & RateCard) -->
+                                    @if($emp->status !== 'Resign')
+                                        @php
+                                            $canLogin = $emp->hasLoginAccess();
+                                        @endphp
                                         <form action="{{ route('master.karyawan.toggle-login', $emp->id) }}" method="POST" class="inline">
                                             @csrf
                                             <button type="submit" 
-                                                    onclick="return confirm('{{ $emp->akses_login ? 'Cabut izin akses login untuk ' . $emp->nama_karyawan . '?' : 'Beri izin akses login untuk ' . $emp->nama_karyawan . '?' }}');"
-                                                    class="w-7 h-7 rounded-lg {{ $emp->akses_login ? 'bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700' : 'bg-slate-100 text-slate-400 hover:bg-emerald-600 hover:text-white' }} flex items-center justify-center text-xs transition-all shadow-sm" 
-                                                    title="{{ $emp->akses_login ? 'Akses Login Aktif (Klik untuk cabut izin)' : 'Akses Login Terkunci (Klik untuk beri izin login)' }}">
-                                                <i class="fa-solid {{ $emp->akses_login ? 'fa-lock-open text-emerald-600' : 'fa-lock text-slate-400' }} text-[11px]"></i>
+                                                    onclick="return confirm('{{ $canLogin ? 'Cabut izin akses login untuk ' . $emp->nama_karyawan . '?' : 'Beri izin akses login untuk ' . $emp->nama_karyawan . '?' }}');"
+                                                    class="w-7 h-7 rounded-lg {{ $canLogin ? 'bg-emerald-100 text-emerald-700 hover:bg-rose-100 hover:text-rose-700' : 'bg-slate-100 text-slate-400 hover:bg-emerald-600 hover:text-white' }} flex items-center justify-center text-xs transition-all shadow-sm" 
+                                                    title="{{ $canLogin ? 'Akses Login Aktif (Klik untuk cabut izin)' : 'Akses Login Terkunci (Klik untuk beri izin login)' }}">
+                                                <i class="fa-solid {{ $canLogin ? 'fa-lock-open text-emerald-600' : 'fa-lock text-slate-400' }} text-[11px]"></i>
                                             </button>
                                         </form>
                                     @endif
@@ -944,14 +964,14 @@
                 </div>
             </div>
 
-            <!-- Pengaturan Akses Login (Untuk RateCard) -->
+            <!-- Pengaturan Akses Login -->
             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                 <label class="inline-flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" name="akses_login" value="1" class="rounded text-primary focus:ring-primary h-4 w-4">
-                    <span class="text-xs font-bold text-slate-800">Beri Izin Akses Login Sistem (Untuk RateCard)</span>
+                    <input type="checkbox" name="akses_login" value="1" checked class="rounded text-primary focus:ring-primary h-4 w-4">
+                    <span class="text-xs font-bold text-slate-800">Beri Izin Akses Login Sistem</span>
                 </label>
                 <p class="text-[11px] text-slate-500 pl-6">
-                    Karyawan <strong>Inhouse</strong> otomatis memiliki izin login. Untuk <strong>RateCard</strong>, centang opsi ini agar karyawan diberikan izin akses masuk ke aplikasi.
+                    Karyawan yang diberikan izin dapat login ke sistem menggunakan <strong>Email atau NIK</strong> dengan kata sandi default tanggal lahir <strong>(DDMMYYYY)</strong>.
                 </p>
             </div>
 
@@ -1166,14 +1186,14 @@
                 </div>
             </div>
 
-            <!-- Setting Akses Login RateCard -->
+            <!-- Setting Akses Login -->
             <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
                 <label class="inline-flex items-center gap-2 cursor-pointer">
                     <input type="checkbox" id="edit_akses_login" name="akses_login" value="1" class="rounded text-primary focus:ring-primary h-4 w-4">
-                    <span class="text-xs font-bold text-slate-800">Beri Izin Akses Login Sistem (Untuk RateCard)</span>
+                    <span class="text-xs font-bold text-slate-800">Beri Izin Akses Login Sistem</span>
                 </label>
                 <p class="text-[11px] text-slate-500 pl-6">
-                    Karyawan Inhouse otomatis memiliki hak login. Centang opsi ini jika karyawan RateCard ini diizinkan login ke aplikasi.
+                    Centang opsi ini agar karyawan memiliki izin akses login ke sistem dengan username (Email / NIK) dan kata sandi default tanggal lahir (DDMMYYYY).
                 </p>
             </div>
 
@@ -1668,7 +1688,11 @@
             document.getElementById('edit_tanggal_lahir').value = emp.tanggal_lahir ? emp.tanggal_lahir.substring(0, 10) : '';
         }
         if (document.getElementById('edit_akses_login')) {
-            document.getElementById('edit_akses_login').checked = Boolean(emp.akses_login);
+            const isEmpInhouse = emp.tipe_karyawan === 'Inhouse';
+            const hasLogin = isEmpInhouse 
+                ? (emp.akses_login !== false && emp.akses_login !== 0 && emp.akses_login !== '0') 
+                : Boolean(emp.akses_login);
+            document.getElementById('edit_akses_login').checked = hasLogin;
         }
         document.getElementById('edit_tanggal_join').value = emp.tanggal_join;
 

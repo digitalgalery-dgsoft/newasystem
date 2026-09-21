@@ -97,7 +97,7 @@
                         <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-blue-200/80 text-blue-800">Inhouse &amp; RateCard</span>
                     </div>
                     <p class="text-[11px] text-slate-600 leading-relaxed">
-                        Gunakan <strong>Email Karyawan</strong> terdaftar dengan kata sandi default <strong>Tanggal Lahir (DDMMYYYY)</strong>. Karyawan RateCard harus memiliki izin aktif dari Admin HR.
+                        Gunakan <strong>Email atau NIK Karyawan</strong> terdaftar dengan kata sandi default <strong>Tanggal Lahir (DDMMYYYY)</strong>. Karyawan RateCard harus memiliki izin aktif dari Admin HR.
                     </p>
                 </div>
             </div>
@@ -106,14 +106,14 @@
             <form action="{{ route('login.post') }}" method="POST" class="space-y-4" id="loginForm">
                 @csrf
 
-                <!-- Email Input -->
+                <!-- Email or NIK Input -->
                 <div class="space-y-1.5">
-                    <label for="email" class="text-xs font-bold text-slate-700 block">Email Pengguna</label>
+                    <label for="email" class="text-xs font-bold text-slate-700 block">Email atau NIK Pengguna</label>
                     <div class="relative">
                         <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
-                            <i class="fa-regular fa-envelope text-xs"></i>
+                            <i class="fa-regular fa-user text-xs"></i>
                         </div>
-                        <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="karyawan@arina.co.id atau admin@asystem.co.id" required autofocus class="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
+                        <input type="text" id="email" name="email" value="{{ old('email') }}" placeholder="Email (contoh: ithelpdesk@arina.co.id) atau NIK" required autofocus class="w-full pl-9 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:bg-white focus:border-primary focus:ring-2 focus:ring-primary/20 outline-none transition-all">
                     </div>
                 </div>
 

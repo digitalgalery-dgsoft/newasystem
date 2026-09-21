@@ -37,16 +37,46 @@ class AuthController extends Controller
             'password' => 'required|string',
         ]);
 
-        $email = trim($request->input('email'));
+        $identifier = trim($request->input('email'));
         $inputPassword = $request->input('password');
         $remember = $request->has('remember');
 
-        // 1. Check if an Employee exists with this email
-        $employee = Employee::where('email', $email)->first();
+        // 1. Check if an Employee exists with Email, NIK, or NIP
+        // Prioritize: Inhouse / active login access first, then newest ID
+        $employees = Employee::where('email', $identifier)
+            ->orWhere('nik', $identifier)
+            ->orWhere('nip', $identifier)
+            ->orderByRaw("CASE WHEN tipe_karyawan = 'Inhouse' THEN 0 ELSE 1 END")
+            ->orderByDesc('akses_login')
+            ->orderByDesc('id')
+            ->get();
 
-        if ($employee) {
+        if ($employees->isNotEmpty()) {
+            $matchedEmployee = null;
+            $hasValidPassword = false;
+
+            foreach ($employees as $empCandidate) {
+                if ($empCandidate->status === 'Resign') {
+                    continue;
+                }
+
+                $defPwd = $empCandidate->default_password;
+                if ($inputPassword === $defPwd || (!empty($empCandidate->password) && Hash::check($inputPassword, $empCandidate->password))) {
+                    $matchedEmployee = $empCandidate;
+                    $hasValidPassword = true;
+                    if ($empCandidate->hasLoginAccess()) {
+                        break; // Found matching employee with active login access!
+                    }
+                }
+            }
+
+            // If no password match found, pick the most relevant non-resigned employee for error messaging
+            if (!$matchedEmployee) {
+                $matchedEmployee = $employees->first(fn($e) => $e->status !== 'Resign') ?: $employees->first();
+            }
+
             // Check status: Resigned employees cannot log in
-            if ($employee->status === 'Resign') {
+            if ($matchedEmployee->status === 'Resign') {
                 return back()
                     ->withInput($request->only('email', 'remember'))
                     ->withErrors([
@@ -55,60 +85,53 @@ class AuthController extends Controller
             }
 
             // Check Access Permission:
-            // Inhouse has access; RateCard only if granted (akses_login == true)
-            if (!$employee->hasLoginAccess()) {
+            if (!$matchedEmployee->hasLoginAccess()) {
                 return back()
                     ->withInput($request->only('email', 'remember'))
                     ->withErrors([
-                        'email' => 'Akses login belum diaktifkan untuk karyawan RateCard ini. Silakan hubungi Admin HR untuk perizinan akses sistem.',
+                        'email' => 'Akses login belum diaktifkan untuk karyawan ini. Silakan hubungi Admin HR untuk perizinan akses sistem.',
                     ]);
             }
 
-            // Verify Password:
-            // Matches default password (ddmmyyyy of tanggal_lahir) OR custom hashed password
-            $defaultPassword = $employee->default_password;
-            $isPasswordValid = false;
-
-            if ($inputPassword === $defaultPassword) {
-                $isPasswordValid = true;
-            } elseif (!empty($employee->password) && Hash::check($inputPassword, $employee->password)) {
-                $isPasswordValid = true;
-            }
-
-            if ($isPasswordValid) {
+            if ($hasValidPassword) {
                 // Ensure a User account exists in users table
-                $userRole = ($employee->tipe_karyawan === 'Inhouse') ? 'karyawan_inhouse' : 'karyawan_ratecard';
-                $user = User::firstOrCreate(
-                    ['email' => $employee->email],
-                    [
-                        'name' => $employee->nama_karyawan,
+                $userRole = ($matchedEmployee->tipe_karyawan === 'Inhouse') ? 'karyawan_inhouse' : 'karyawan_ratecard';
+                $userEmail = !empty($matchedEmployee->email) ? $matchedEmployee->email : ($matchedEmployee->nik . '@asystem.co.id');
+
+                $user = User::where('email', $userEmail)->first();
+                if (!$user) {
+                    $user = User::create([
+                        'name' => $matchedEmployee->nama_karyawan,
+                        'email' => $userEmail,
                         'password' => Hash::make($inputPassword),
                         'role' => $userRole,
-                        'area' => $employee->area,
-                        'job_title' => $employee->jabatan,
-                        'phone' => $employee->telepon,
+                        'area' => $matchedEmployee->area,
+                        'job_title' => $matchedEmployee->jabatan,
+                        'phone' => $matchedEmployee->telepon,
                         'is_active' => true,
-                    ]
-                );
+                    ]);
+                } else {
+                    $existingRole = $user->role;
+                    $assignedRole = (!empty($existingRole) && !in_array($existingRole, ['karyawan_inhouse', 'karyawan_ratecard'], true))
+                        ? $existingRole
+                        : ($existingRole ?: $userRole);
 
-                // Update password and info without overwriting custom RBAC role (e.g. role_akses_as, admin, recruiter)
-                $existingRole = $user->role;
-                $assignedRole = (!empty($existingRole) && !in_array($existingRole, ['karyawan_inhouse', 'karyawan_ratecard'], true))
-                    ? $existingRole
-                    : ($existingRole ?: $userRole);
-
-                $user->update([
-                    'name' => $employee->nama_karyawan,
-                    'password' => Hash::make($inputPassword),
-                    'role' => $assignedRole,
-                    'is_active' => true,
-                ]);
+                    $user->update([
+                        'name' => $matchedEmployee->nama_karyawan,
+                        'password' => Hash::make($inputPassword),
+                        'role' => $assignedRole,
+                        'area' => $matchedEmployee->area ?: $user->area,
+                        'job_title' => $matchedEmployee->jabatan ?: $user->job_title,
+                        'phone' => $matchedEmployee->telepon ?: $user->phone,
+                        'is_active' => true,
+                    ]);
+                }
 
                 Auth::login($user, $remember);
                 $request->session()->regenerate();
 
                 return redirect()->intended(route('fitur.index'))
-                    ->with('success', "Selamat datang kembali, {$employee->nama_karyawan} ({$employee->tipe_karyawan})!");
+                    ->with('success', "Selamat datang kembali, {$matchedEmployee->nama_karyawan} ({$matchedEmployee->tipe_karyawan})!");
             }
 
             return back()
@@ -120,7 +143,7 @@ class AuthController extends Controller
 
         // 2. Fallback to standard Admin/Recruiter User authentication
         $credentials = [
-            'email' => $email,
+            'email' => $identifier,
             'password' => $inputPassword,
         ];
 

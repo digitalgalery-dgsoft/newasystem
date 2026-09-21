@@ -118,12 +118,12 @@ class Employee extends Model
 
     /**
      * Check if employee has system login access.
-     * Rule: Inhouse always has login access; RateCard only if granted (akses_login == true).
+     * Rule: Inhouse has login access by default unless revoked; RateCard only if granted (akses_login == true).
      */
     public function hasLoginAccess(): bool
     {
         if ($this->tipe_karyawan === 'Inhouse') {
-            return true;
+            return $this->akses_login !== false && $this->akses_login !== 0 && $this->akses_login !== '0';
         }
         return (bool) $this->akses_login;
     }

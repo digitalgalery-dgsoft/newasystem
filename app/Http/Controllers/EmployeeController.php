@@ -285,6 +285,34 @@ class EmployeeController extends Controller
 
         $newEmp = Employee::create($validated);
 
+        // Auto-create / sync User account in users table
+        if (!empty($newEmp->email)) {
+            $userRole = ($newEmp->tipe_karyawan === 'Inhouse') ? 'karyawan_inhouse' : 'karyawan_ratecard';
+            $user = User::where('email', $newEmp->email)->first();
+            if ($user) {
+                $user->update([
+                    'name' => $newEmp->nama_karyawan,
+                    'password' => Hash::make($defaultPassword),
+                    'role' => $user->role ?: $userRole,
+                    'area' => $newEmp->area,
+                    'job_title' => $newEmp->jabatan,
+                    'phone' => $newEmp->telepon,
+                    'is_active' => (bool) $newEmp->hasLoginAccess(),
+                ]);
+            } else {
+                User::create([
+                    'name' => $newEmp->nama_karyawan,
+                    'email' => $newEmp->email,
+                    'password' => Hash::make($defaultPassword),
+                    'role' => $userRole,
+                    'area' => $newEmp->area,
+                    'job_title' => $newEmp->jabatan,
+                    'phone' => $newEmp->telepon,
+                    'is_active' => (bool) $newEmp->hasLoginAccess(),
+                ]);
+            }
+        }
+
         ActivityLogger::crud('CREATE', 'Master Karyawan', "Menambahkan karyawan baru: {$newEmp->nama_karyawan} (NIK: {$newEmp->nik}, Jabatan: {$newEmp->jabatan})", $newEmp, [], $validated);
 
         return redirect()->route('master.karyawan.index')->with('success', 'Data Karyawan berhasil ditambahkan!');
@@ -328,9 +356,9 @@ class EmployeeController extends Controller
             }
         }
 
-        // Login access rule: Inhouse always has access; RateCard respects setting
+        // Login access rule: Inhouse default active, RateCard respects setting
         if ($validated['tipe_karyawan'] === 'Inhouse') {
-            $validated['akses_login'] = true;
+            $validated['akses_login'] = $request->has('akses_login') ? in_array($request->input('akses_login'), ['1', 'on', 'true'], true) : true;
         } else {
             $validated['akses_login'] = $request->has('akses_login') && in_array($request->input('akses_login'), ['1', 'on', 'true'], true);
         }
@@ -358,30 +386,27 @@ class EmployeeController extends Controller
     }
 
     /**
-     * Toggle Akses Login untuk Karyawan RateCard
+     * Toggle Akses Login untuk Karyawan (Inhouse maupun RateCard)
      */
     public function toggleLoginAccess($id)
     {
         $employee = Employee::findOrFail($id);
 
-        if ($employee->tipe_karyawan === 'Inhouse') {
-            return redirect()->back()->with('info', "Karyawan Inhouse ({$employee->nama_karyawan}) otomatis memiliki akses login.");
-        }
-
-        $employee->akses_login = !$employee->akses_login;
+        $newStatus = !$employee->hasLoginAccess();
+        $employee->akses_login = $newStatus;
         $employee->save();
 
-        ActivityLogger::crud('UPDATE', 'Master Karyawan', "Mengubah izin login karyawan: {$employee->nama_karyawan} menjadi " . ($employee->akses_login ? 'Aktif' : 'Nonaktif'), $employee);
+        ActivityLogger::crud('UPDATE', 'Master Karyawan', "Mengubah izin login karyawan: {$employee->nama_karyawan} menjadi " . ($newStatus ? 'Aktif' : 'Nonaktif'), $employee);
 
         if ($employee->email) {
             $user = User::where('email', $employee->email)->first();
             if ($user) {
-                $user->update(['is_active' => $employee->akses_login]);
+                $user->update(['is_active' => $newStatus]);
             }
         }
 
-        $statusText = $employee->akses_login ? 'diberikan izin akses login' : 'dicabut izin akses loginnya';
-        return redirect()->back()->with('success', "Karyawan RateCard {$employee->nama_karyawan} berhasil {$statusText}.");
+        $statusText = $newStatus ? 'diberikan izin akses login' : 'dicabut izin akses loginnya';
+        return redirect()->back()->with('success', "Karyawan {$employee->nama_karyawan} ({$employee->tipe_karyawan}) berhasil {$statusText}.");
     }
 
     public function bulkUpdatePimpinan(Request $request)
