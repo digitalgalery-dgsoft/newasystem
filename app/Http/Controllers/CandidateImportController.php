@@ -309,6 +309,19 @@ class CandidateImportController extends Controller
             ->where('status', 'Active')
             ->first();
 
+        $rawGender = strtolower(trim((string)($foundApplicant['gender'] ?? '')));
+        $gender = 'Laki-laki';
+        if (in_array($rawGender, ['female', 'perempuan', 'wanita', 'p', 'f'])) {
+            $gender = 'Perempuan';
+        } elseif (in_array($rawGender, ['male', 'laki-laki', 'pria', 'l', 'm'])) {
+            $gender = 'Laki-laki';
+        } elseif (strlen($targetNik) >= 8) {
+            $day = (int) substr($targetNik, 6, 2);
+            if ($day > 40 && $day <= 71) {
+                $gender = 'Perempuan';
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => "Data pelamar ditemukan di Odoo [{$foundEntity}]!" . ($foundVia === 'no_kk' ? " (via No. KK)" : ""),
@@ -331,7 +344,7 @@ class CandidateImportController extends Controller
                 'birth_place'  => $foundApplicant['place_of_birth'] ?? null,
                 'address'      => $foundApplicant['ktp_address'] ?? null,
                 'email'        => $foundApplicant['email_from'] ?? null,
-                'gender'       => $foundApplicant['gender'] ?? null,
+                'gender'       => $gender,
             ],
             'existing_candidate' => $existingCandidate ? [
                 'id'         => $existingCandidate->id,
@@ -479,6 +492,20 @@ class CandidateImportController extends Controller
         $passwordPlain = $birthDate ? date('dmY', strtotime($birthDate)) : '12345678';
         $passwordHashed = bcrypt($passwordPlain);
 
+        // Normalisasi jenis kelamin dari Odoo (female -> Perempuan, male -> Laki-laki)
+        $rawGender = strtolower(trim((string)($foundApplicant['gender'] ?? '')));
+        $gender = 'Laki-laki';
+        if (in_array($rawGender, ['female', 'perempuan', 'wanita', 'p', 'f'])) {
+            $gender = 'Perempuan';
+        } elseif (in_array($rawGender, ['male', 'laki-laki', 'pria', 'l', 'm'])) {
+            $gender = 'Laki-laki';
+        } elseif (strlen($targetNik) >= 8) {
+            $day = (int) substr($targetNik, 6, 2);
+            if ($day > 40 && $day <= 71) {
+                $gender = 'Perempuan';
+            }
+        }
+
         // Pengguna / Rekruter saat ini
         $user = $this->getCurrentUser();
         $userEmail = $user ? $user->email : 'recruitment@asystem.co.id';
@@ -498,7 +525,7 @@ class CandidateImportController extends Controller
                 'birth_date'               => $birthDate,
                 'address_ktp'              => $foundApplicant['ktp_address'] ?? null,
                 'address_domicile'         => $foundApplicant['ktp_address'] ?? null,
-                'gender'                   => $foundApplicant['gender'] ?? null,
+                'gender'                   => $gender,
                 'height'                   => (int)($foundApplicant['height'] ?? null) ?: null,
                 'weight'                   => (int)($foundApplicant['weight'] ?? null) ?: null,
                 'religion'                 => $foundApplicant['religion'] ?? null,
@@ -625,6 +652,7 @@ class CandidateImportController extends Controller
                     'tes_ke'              => 1,
                     'idprinsiple'         => null,
                     'ttd_prinsiple'       => null,
+                    'gender'              => $gender,
                 ];
 
                 $existingTb = DB::table('tb_kandidat')->whereIn('no_ktp', $allPossibleNiks)->first();

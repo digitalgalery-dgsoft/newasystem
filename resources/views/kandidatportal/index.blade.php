@@ -588,13 +588,13 @@
 
                         <!-- Jenis Kelamin -->
                         <td>
-                            @if(strtolower($cand->gender ?? '') === 'perempuan')
+                            @if(in_array(strtolower($cand->gender ?? ''), ['perempuan', 'female']))
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
-                                    <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
+                                     <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
                                 </span>
                             @else
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
-                                    <i class="fa-solid fa-mars text-[10px]"></i> Laki-laki
+                                     <i class="fa-solid fa-mars text-[10px]"></i> Laki-laki
                                 </span>
                             @endif
                         </td>

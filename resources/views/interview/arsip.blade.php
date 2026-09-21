@@ -78,7 +78,7 @@
                         <td class="py-2.5 px-3 font-mono font-semibold">{{ $c->nik }}</td>
                         <td class="py-2.5 px-4 font-bold text-slate-950">{{ $c->full_name }}</td>
                         <td class="py-2.5 px-3">
-                            @if(strtolower($c->gender ?? '') === 'perempuan')
+                            @if(in_array(strtolower($c->gender ?? ''), ['perempuan', 'female']))
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
                                     <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
                                 </span>

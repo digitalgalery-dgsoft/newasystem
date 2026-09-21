@@ -417,7 +417,7 @@
 
                             <!-- JENIS KELAMIN -->
                             <td>
-                                @if(strtolower($candidate->gender ?? '') === 'perempuan')
+                                @if(in_array(strtolower($candidate->gender ?? ''), ['perempuan', 'female']))
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
                                         <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
                                     </span>
@@ -628,7 +628,7 @@
                                 <div class="text-[10px] text-slate-400">Area: {{ $candidate->area }}</div>
                             </td>
                             <td>
-                                @if(strtolower($candidate->gender ?? '') === 'perempuan')
+                                @if(in_array(strtolower($candidate->gender ?? ''), ['perempuan', 'female']))
                                     <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
                                         <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
                                     </span>

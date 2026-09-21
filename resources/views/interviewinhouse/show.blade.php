@@ -118,7 +118,7 @@
                     <div class="flex items-start gap-2">
                         <span class="w-32 text-slate-400 font-medium flex-shrink-0">Jenis Kelamin:</span>
                         <span class="font-bold text-slate-800">
-                            @if(strtolower($candidate->gender ?? '') === 'perempuan')
+                            @if(in_array(strtolower($candidate->gender ?? ''), ['perempuan', 'female']))
                                 <span class="inline-flex items-center gap-1 text-pink-600 font-bold"><i class="fa-solid fa-venus"></i> Perempuan</span>
                             @else
                                 <span class="inline-flex items-center gap-1 text-blue-600 font-bold"><i class="fa-solid fa-mars"></i> Laki-laki</span>

@@ -249,6 +249,13 @@ class Candidate extends Model
     public function getGenderAttribute($value)
     {
         if (!empty($value)) {
+            $lower = strtolower(trim((string)$value));
+            if (in_array($lower, ['female', 'perempuan', 'wanita', 'p', 'f'])) {
+                return 'Perempuan';
+            }
+            if (in_array($lower, ['male', 'laki-laki', 'pria', 'l', 'm'])) {
+                return 'Laki-laki';
+            }
             return $value;
         }
         $cleanNik = preg_replace('/\D/', '', $this->nik ?? '');
@@ -261,6 +268,22 @@ class Candidate extends Model
             }
         }
         return 'Laki-laki';
+    }
+
+    public function setGenderAttribute($value)
+    {
+        if (empty($value)) {
+            $this->attributes['gender'] = null;
+            return;
+        }
+        $lower = strtolower(trim((string)$value));
+        if (in_array($lower, ['female', 'perempuan', 'wanita', 'p', 'f'])) {
+            $this->attributes['gender'] = 'Perempuan';
+        } elseif (in_array($lower, ['male', 'laki-laki', 'pria', 'l', 'm'])) {
+            $this->attributes['gender'] = 'Laki-laki';
+        } else {
+            $this->attributes['gender'] = $value;
+        }
     }
 
     public function getJenisKelaminAttribute()
