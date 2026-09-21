@@ -67,7 +67,8 @@ class Task extends Model
     }
 
     /**
-     * Cek apakah tugas terlambat (overdue)
+     * Cek apakah tugas terlambat (overdue).
+     * Tugas dianggap terlambat hanya jika tanggal deadline sudah terlewat (sebelum hari ini).
      */
     public function isOverdue(): bool
     {
@@ -79,7 +80,23 @@ class Task extends Model
             return false;
         }
 
-        return Carbon::parse($this->due_date)->startOfDay()->isPast();
+        return Carbon::parse($this->due_date)->startOfDay()->lt(Carbon::today());
+    }
+
+    /**
+     * Cek apakah deadline tugas adalah hari ini
+     */
+    public function isDueToday(): bool
+    {
+        if (in_array($this->status, ['done', 'archived'])) {
+            return false;
+        }
+
+        if (empty($this->due_date)) {
+            return false;
+        }
+
+        return Carbon::parse($this->due_date)->isToday();
     }
 
     /**

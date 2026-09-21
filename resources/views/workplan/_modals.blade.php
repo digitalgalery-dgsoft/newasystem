@@ -229,6 +229,11 @@
                         Terlambat
                     </span>
                 </template>
+                <template x-if="currentTask && !currentTask.is_overdue && currentTask.is_due_today">
+                    <span class="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500 text-white uppercase tracking-wider">
+                        Deadline Hari Ini
+                    </span>
+                </template>
             </div>
             <button type="button" @click="closeTaskDetail()" class="w-8 h-8 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-slate-600 flex items-center justify-center transition-all">
                 <i class="fa-solid fa-xmark text-sm"></i>

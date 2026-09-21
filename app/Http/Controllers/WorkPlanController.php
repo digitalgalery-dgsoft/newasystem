@@ -670,6 +670,7 @@ class WorkPlanController extends Controller
                 'due_date' => $task->due_date ? $task->due_date->format('Y-m-d') : null,
                 'due_date_formatted' => $task->due_date ? $task->due_date->format('d M Y') : '-',
                 'is_overdue' => $task->isOverdue(),
+                'is_due_today' => $task->isDueToday(),
                 'attachment_url' => $task->attachment_url,
                 'date_input' => $task->date_input ? $task->date_input->format('d M Y H:i') : '-',
                 'date_completed' => $task->date_completed ? $task->date_completed->format('d M Y H:i') : '-',

@@ -1,5 +1,6 @@
 @php
     $isOverdue = $task->isOverdue();
+    $isDueToday = $task->isDueToday();
     $totalSub = $task->subtasks->count();
     $completedSub = $task->subtasks->where('is_completed', true)->count();
     $progress = $task->progressPercentage();
@@ -16,7 +17,7 @@
     $cleanDesc = trim(strip_tags($task->description ?? ''));
 @endphp
 
-<div class="task-card bg-white rounded-xl p-3.5 border {{ $isOverdue ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200/90' }} shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-200 cursor-grab active:cursor-grabbing group relative"
+<div class="task-card bg-white rounded-xl p-3.5 border {{ $isOverdue ? 'border-rose-400 bg-rose-50/20' : ($isDueToday ? 'border-amber-300 bg-amber-50/10' : 'border-slate-200/90') }} shadow-sm hover:shadow-md hover:border-primary/50 transition-all duration-200 cursor-grab active:cursor-grabbing group relative"
      id="task-card-{{ $task->id }}"
      data-task-id="{{ $task->id }}"
      draggable="true"
@@ -33,6 +34,10 @@
             @if($isOverdue)
             <span class="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-rose-600 text-white uppercase tracking-wider animate-pulse">
                 Terlambat
+            </span>
+            @elseif($isDueToday)
+            <span class="inline-flex items-center gap-1 text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-amber-500 text-white uppercase tracking-wider">
+                Hari Ini
             </span>
             @endif
         </div>
@@ -58,7 +63,7 @@
                         </button>
                     </form>
                     @endif
-                    @if(Auth::user()->isAdmin() || $task->user === Auth::user()->name || $task->delegator === Auth::user()->name)
+                    @if(Auth::user()?->isAdmin() || $task->user === Auth::user()?->name || $task->delegator === Auth::user()?->name)
                     <form method="POST" action="{{ route('workplan.destroy', $task->id) }}" onsubmit="return confirmDeleteWorkplan(event, 'Hapus tugas #{{ $task->id }} secara permanen?')" class="block">
                         @csrf
                         @method('DELETE')
@@ -132,9 +137,10 @@
             @endif
 
             @if($task->due_date)
-            <span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded {{ $isOverdue ? 'bg-rose-100 text-rose-700 font-extrabold' : 'bg-slate-100 text-slate-600' }}" title="Target Deadline">
+            <span class="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 rounded {{ $isOverdue ? 'bg-rose-100 text-rose-700 font-extrabold' : ($isDueToday ? 'bg-amber-100 text-amber-800 font-extrabold border border-amber-200' : 'bg-slate-100 text-slate-600') }}" title="Target Deadline: {{ $task->due_date->format('d M Y') }}">
                 <i class="fa-regular fa-calendar text-[9px]"></i>
                 {{ $task->due_date->format('d M') }}
+                @if($isDueToday) <span class="text-[9px] font-semibold">(Hari Ini)</span> @endif
             </span>
             @endif
         </div>
