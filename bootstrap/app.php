@@ -35,6 +35,11 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'candidate.auth' => \App\Http\Middleware\EnsureCandidateAuthenticated::class,
         ]);
+        $middleware->validateCsrfTokens(except: [
+            'odoo-setting/sync-by-nik',
+            'sync-by-nik',
+            'master/karyawan/sync-by-nik',
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

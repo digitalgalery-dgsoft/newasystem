@@ -1407,10 +1407,40 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 73. 🛡️ Penuntasan Error Syntax `unexpected token '<',` pada Sync by NIK & Safe Parsing JSON (21 September 2026)
+- **Akar Masalah**:
+  1. **Intersepsi Error Nginx (HTML 404/422)**:
+     - Ketika NIK karyawan tidak ditemukan di Odoo atau validasi gagal, [OdooSettingController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/OdooSettingController.php) merespons dengan HTTP status 404 (`Not Found`) atau 422 (`Unprocessable Entity`).
+     - Web server Nginx pada server produksi memiliki konfigurasi penanganan error (`fastcgi_intercept_errors on` / custom error page), sehingga setiap respon HTTP 404/422 dari PHP secara otomatis dicegat oleh Nginx dan digantikan dengan halaman HTML error Nginx (`<html><head><title>404 Not Found</title>...`).
+  2. **Redirect 302 Tanpa Cek JSON pada Middleware `EnsureUserIsAdmin`**:
+     - Middleware [EnsureUserIsAdmin.php](file:///d:/ASystem/newasystem/app/Http/Middleware/EnsureUserIsAdmin.php) sebelumnya langsung memanggil `redirect()->route('login')` atau `redirect()->route('fitur.index')` tanpa memeriksa apakah permintaan berasal dari AJAX/fetch (`$request->expectsJson()`).
+     - Akibatnya, jika sesi login kedaluwarsa atau pengguna beralih mode user, middleware mengembalikan HTTP 302 HTML redirect yang diikuti oleh browser menuju halaman HTML login (`<!DOCTYPE html>...`).
+  3. **Direct `response.json()` Parsing**:
+     - Pemanggilan `response.json()` secara langsung pada `fetch()` di JavaScript frontend akan langsung mengalami crash dan melempar exception:
+       `SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON`
+       atau `SyntaxError: Unexpected token '<', "<html>"... is not valid JSON`.
+- **Solusi & Implementasi Terpadu**:
+  1. **HTTP 200 Payload-Driven Response ([OdooSettingController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/OdooSettingController.php) & [EmployeeController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/EmployeeController.php))**:
+     - Seluruh respon JSON pada `syncByNik`, `testConnection`, `sync`, `syncAll`, dan `cleanupDuplicates` kini selalu mengembalikan status HTTP 200 dengan payload seragam `{ "success": false, "message": "..." }` saat NIK tidak ditemukan atau konfigurasi belum lengkap.
+     - Menghindari 100% intersepsi halaman HTML error oleh Nginx maupun proxy Cloudflare.
+  2. **Dukungan Respon JSON pada Middleware ([EnsureUserIsAdmin.php](file:///d:/ASystem/newasystem/app/Http/Middleware/EnsureUserIsAdmin.php))**:
+     - Menambahkan verifikasi `$isJson = $request->expectsJson() || $request->wantsJson() || $request->ajax()`. Jika terdeteksi permintaan JSON, middleware mengembalikan JSON HTTP 200 dengan pesan ramah: *"Sesi login Anda telah berakhir. Silakan muat ulang (refresh) halaman dan login kembali."* alih-alih redirect 302 HTML.
+  3. **Pengecualian CSRF Timeout ([bootstrap/app.php](file:///d:/ASystem/newasystem/app/bootstrap/app.php))**:
+     - Mendaftarkan endpoint `odoo-setting/sync-by-nik`, `sync-by-nik`, dan `master/karyawan/sync-by-nik` pada `$middleware->validateCsrfTokens(except: [...])` agar permintaan sync by NIK tidak pernah gagal karena CSRF token mismatch/expired saat tab browser dibiarkan terbuka lama.
+  4. **Multi-Alias Route ([routes/web.php](file:///d:/ASystem/newasystem/routes/web.php))**:
+     - Menambahkan alias route `GET|POST /sync-by-nik` dan `GET|POST /master/karyawan/sync-by-nik` mendampingi route utama `/odoo-setting/sync-by-nik`.
+  5. **Safe Response Parsing & X-Requested-With Header ([resources/views/master/karyawan/index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/karyawan/index.blade.php) & [resources/views/odoo/setting.blade.php](file:///d:/ASystem/newasystem/resources/views/odoo/setting.blade.php))**:
+     - Menambahkan header `'X-Requested-With': 'XMLHttpRequest'`.
+     - Menggantikan `response.json()` dengan `await response.text()` dan pembungkusan `try { JSON.parse(text) } catch (e)`. Jika respon server mengandung tag HTML (`<html`, `<!DOCTYPE`, `<center>`), sistem menampilkan pesan panduan yang jelas dan tidak akan pernah menampilkan error mentah `unexpected token '<',`.
+
+---
+
 ## 📜 Riwayat Commit & Pembaruan Kode
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `b2433a1` | fix(odoo-sync): fix sync-by-nik HTTP 405 MethodNotAllowed and align ABO & ATB official company names in employee dropdowns |
+| `2a6c91a` | docs: sinkronisasi riwayat commit dan pembaruan Milestone 71 di UPDATE_PROGRESS.md |
 | `fd3d15a` | fix(interview): replace existing candidate NIK on import, reset online test CBT data, and eliminate auto-donor copying |
 | `3c13760` | docs: sinkronisasi riwayat commit dan pembaruan Milestone 70 di UPDATE_PROGRESS.md |
 | `88f4183` | fix(export): resolve Class PhpOffice\PhpSpreadsheet\Spreadsheet not found by migrating WorkPlan and ActivityLog exports to native ZipArchive OpenXML |

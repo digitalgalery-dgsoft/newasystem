@@ -96,14 +96,14 @@ class OdooSettingController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => "Entitas {$code} tidak ditemukan.",
-            ], 404);
+            ], 200);
         }
 
         if (!$entity->isConfigured()) {
             return response()->json([
                 'success' => false,
                 'message' => "Kredensial Odoo untuk {$entity->name} belum lengkap. Mohon isi URL, DB, Username, dan API Key.",
-            ], 422);
+            ], 200);
         }
 
         try {
@@ -114,12 +114,12 @@ class OdooSettingController extends Controller
                 'success' => true,
                 'message' => "Koneksi Berhasil! Terhubung ke Odoo v{$result['server_version']} sebagai UID {$result['uid']} (Database: {$result['database']})",
                 'data'    => $result,
-            ]);
+            ], 200);
         } catch (\Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Koneksi Gagal: ' . $e->getMessage(),
-            ], 500);
+            ], 200);
         }
     }
 
@@ -131,16 +131,16 @@ class OdooSettingController extends Controller
     {
         $entity = OdooEntity::where('code', $code)->first();
         if (!$entity) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => "Entitas {$code} tidak ditemukan."], 404);
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => "Entitas {$code} tidak ditemukan."], 200);
             }
             return redirect()->back()->with('error', "Entitas {$code} tidak ditemukan.");
         }
 
         if (!$entity->isConfigured()) {
             $msg = "Kredensial Odoo untuk {$entity->name} belum lengkap. Silakan lengkapi pengaturan koneksi terlebih dahulu.";
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $msg], 422);
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 200);
             }
             return redirect()->back()->with('error', $msg);
         }
@@ -153,12 +153,12 @@ class OdooSettingController extends Controller
 
             ActivityLogger::sync("Odoo ERP ({$code})", "Sinkronisasi data karyawan Odoo entitas {$code} (Kategori: {$category}, Baru: " . ($result['created'] ?? 0) . ", Update: " . ($result['updated'] ?? 0) . ")", $result);
 
-            if ($request->wantsJson()) {
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => $result['success'],
                     'message' => $result['message'],
                     'data'    => $result,
-                ]);
+                ], 200);
             }
 
             return redirect()
@@ -166,8 +166,8 @@ class OdooSettingController extends Controller
                 ->with($result['success'] ? 'success' : 'warning', $result['message']);
 
         } catch (\Throwable $e) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Gagal sinkronisasi: ' . $e->getMessage()], 500);
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Gagal sinkronisasi: ' . $e->getMessage()], 200);
             }
             return redirect()
                 ->route('odoo.setting.index', ['tab' => $code])
@@ -185,8 +185,8 @@ class OdooSettingController extends Controller
 
         if ($activeEntities->isEmpty()) {
             $msg = 'Tidak ada entitas aktif dengan kredensial Odoo yang lengkap.';
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $msg], 422);
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 200);
             }
             return redirect()->back()->with('warning', $msg);
         }
@@ -272,8 +272,8 @@ class OdooSettingController extends Controller
 
         if (empty($niks)) {
             $msg = 'Mohon masukkan setidaknya satu Nomor Induk Karyawan (NIK / NIP).';
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => $msg], 422);
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 200);
             }
             return redirect()->back()->with('error', $msg);
         }
@@ -284,8 +284,8 @@ class OdooSettingController extends Controller
             $entities = OdooEntity::where('is_active', true)->get()->filter->isConfigured();
             if ($entities->isEmpty()) {
                 $msg = 'Tidak ada entitas Odoo aktif dengan kredensial lengkap yang siap disinkronkan. Mohon periksa konfigurasi Odoo ERP.';
-                if ($request->wantsJson()) {
-                    return response()->json(['success' => false, 'message' => $msg], 422);
+                if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $msg], 200);
                 }
                 return redirect()->back()->with('error', $msg);
             }
@@ -293,15 +293,15 @@ class OdooSettingController extends Controller
             $entity = OdooEntity::where('code', $entityCode)->first();
             if (!$entity) {
                 $msg = "Entitas {$entityCode} tidak ditemukan.";
-                if ($request->wantsJson()) {
-                    return response()->json(['success' => false, 'message' => $msg], 404);
+                if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $msg], 200);
                 }
                 return redirect()->back()->with('error', $msg);
             }
             if (!$entity->isConfigured()) {
                 $msg = "Kredensial Odoo untuk entitas {$entity->name} ({$entity->code}) belum lengkap. Silakan lengkapi pengaturan koneksi terlebih dahulu.";
-                if ($request->wantsJson()) {
-                    return response()->json(['success' => false, 'message' => $msg], 422);
+                if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $msg], 200);
                 }
                 return redirect()->back()->with('error', $msg);
             }
@@ -365,8 +365,8 @@ class OdooSettingController extends Controller
         // Single NIK: return exact schema expected by UI
         if (count($niks) === 1) {
             $single = $results[0];
-            if ($request->wantsJson()) {
-                return response()->json($single, $single['success'] ? 200 : 404);
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json($single, 200);
             }
 
             return redirect()->back()->with($single['success'] ? 'success' : 'error', $single['message']);
@@ -376,7 +376,7 @@ class OdooSettingController extends Controller
         $overallSuccess = ($foundCount > 0);
         $summaryMsg = "Sinkronisasi NIK selesai: {$foundCount} berhasil disinkronkan, {$notFoundCount} tidak ditemukan.";
 
-        if ($request->wantsJson()) {
+        if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => $overallSuccess,
                 'message' => $summaryMsg,
@@ -386,7 +386,7 @@ class OdooSettingController extends Controller
                     'not_found' => $notFoundCount,
                 ],
                 'results' => $results,
-            ], $overallSuccess ? 200 : 404);
+            ], 200);
         }
 
         return redirect()->back()->with($overallSuccess ? 'success' : 'warning', $summaryMsg);
@@ -718,8 +718,8 @@ class OdooSettingController extends Controller
             return redirect()->route('odoo.setting.index')->with('success', $msg);
 
         } catch (\Throwable $e) {
-            if ($request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Gagal membersihkan duplikat: ' . $e->getMessage()], 500);
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => 'Gagal membersihkan duplikat: ' . $e->getMessage()], 200);
             }
             return redirect()->route('odoo.setting.index')->with('error', 'Gagal membersihkan duplikat: ' . $e->getMessage());
         }

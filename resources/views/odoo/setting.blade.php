@@ -861,10 +861,23 @@ function testOdooConnection(entityCode) {
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
         }
     })
-    .then(response => response.json().then(data => ({ status: response.status, body: data })))
+    .then(async response => {
+        const text = await response.text();
+        let body;
+        try {
+            body = JSON.parse(text);
+        } catch (e) {
+            if (text.includes('<!DOCTYPE') || text.includes('<html') || text.includes('<center>')) {
+                throw new Error('Sesi login telah berakhir atau server merespons dengan format yang tidak sesuai. Silakan muat ulang halaman.');
+            }
+            throw new Error('Respons tidak valid dari server: ' + text.substring(0, 100));
+        }
+        return { status: response.status, body: body };
+    })
     .then(({ status, body }) => {
         btn.disabled = false;
         btn.innerHTML = originalHtml;
@@ -914,14 +927,27 @@ function handleSyncByNik(event) {
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
-            'Accept': 'application/json'
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
         },
         body: JSON.stringify({
             nik: nik,
             entity_code: entityCode
         })
     })
-    .then(response => response.json().then(data => ({ status: response.status, body: data })))
+    .then(async response => {
+        const text = await response.text();
+        let body;
+        try {
+            body = JSON.parse(text);
+        } catch (e) {
+            if (text.includes('<!DOCTYPE') || text.includes('<html') || text.includes('<center>')) {
+                throw new Error('Sesi login telah berakhir atau server merespons dengan format yang tidak sesuai. Silakan muat ulang (refresh) halaman lalu coba lagi.');
+            }
+            throw new Error('Respons tidak valid dari server: ' + text.substring(0, 100));
+        }
+        return { status: response.status, body: body };
+    })
     .then(({ status, body }) => {
         btn.disabled = false;
         btn.innerHTML = originalHtml;

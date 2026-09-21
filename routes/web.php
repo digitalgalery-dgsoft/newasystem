@@ -341,6 +341,8 @@ Route::middleware(['admin'])->prefix('odoo-setting')->name('odoo.setting.')->gro
     Route::post('/cleanup-duplicates', [App\Http\Controllers\OdooSettingController::class, 'cleanupDuplicates'])->name('cleanup-duplicates');
 });
 // Legacy shortcut alias
+Route::match(['GET', 'POST'], '/sync-by-nik', [App\Http\Controllers\OdooSettingController::class, 'syncByNik'])->middleware(['admin']);
+Route::match(['GET', 'POST'], '/master/karyawan/sync-by-nik', [App\Http\Controllers\OdooSettingController::class, 'syncByNik'])->middleware(['admin']);
 Route::get('/odoo-sync', function() { return redirect()->route('odoo.setting.index'); });
 Route::get('/odoo_setting.php', function() { return redirect()->route('odoo.setting.index'); });
 

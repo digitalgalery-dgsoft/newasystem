@@ -506,8 +506,8 @@ class EmployeeController extends Controller
 
         if ($validated['target_type'] === 'selected') {
             if (empty($validated['employee_ids'])) {
-                if ($request->wantsJson()) {
-                    return response()->json(['success' => false, 'message' => 'Pilih minimal 1 karyawan yang ingin diperbarui.'], 422);
+                if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                    return response()->json(['success' => false, 'message' => 'Pilih minimal 1 karyawan yang ingin diperbarui.'], 200);
                 }
                 return redirect()->back()->with('error', 'Pilih minimal 1 karyawan yang ingin diperbarui.');
             }
