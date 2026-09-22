@@ -51,8 +51,8 @@
         </div>
     </div>
 
-    <!-- 5 STATISTIC METRIC CARDS -->
-    <div class="grid grid-cols-2 md:grid-cols-5 gap-3.5">
+    <!-- 6 STATISTIC METRIC CARDS -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3.5">
         <!-- 1. Total Tugas Aktif -->
         <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-all">
             <div class="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg flex-shrink-0">
@@ -98,7 +98,7 @@
         </div>
 
         <!-- 5. Selesai (Done) & Overdue -->
-        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between gap-2 col-span-2 md:col-span-1 hover:shadow-md transition-all">
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between gap-2 hover:shadow-md transition-all">
             <div class="flex items-center gap-2.5 min-w-0">
                 <div class="w-11 h-11 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg flex-shrink-0">
                     <i class="fa-solid fa-circle-check"></i>
@@ -115,7 +115,45 @@
             </div>
             @endif
         </div>
+
+        <!-- 6. Arsip (Archived) -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-3.5 hover:shadow-md transition-all cursor-pointer"
+             onclick="document.getElementById('archived-section')?.scrollIntoView({ behavior: 'smooth' })"
+             title="Klik untuk melihat tugas yang diarsipkan">
+            <div class="w-11 h-11 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center text-lg flex-shrink-0">
+                <i class="fa-solid fa-box-archive"></i>
+            </div>
+            <div class="min-w-0 flex-1">
+                <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider truncate">Arsip</div>
+                <div class="text-xl font-extrabold text-purple-600 tracking-tight">{{ number_format($statsArchived ?? 0) }}</div>
+            </div>
+        </div>
     </div>
+
+    <!-- BANNER JIKA USER MEMILIKI TUGAS TERSIMPAN DI ARSIP -->
+    @if($statsTotal === 0 && ($statsArchived ?? 0) > 0)
+    <div class="bg-gradient-to-r from-purple-50 via-indigo-50 to-blue-50 border border-purple-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 shadow-sm">
+        <div class="flex items-center gap-3.5">
+            <div class="w-11 h-11 rounded-xl bg-purple-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                <i class="fa-solid fa-box-archive"></i>
+            </div>
+            <div>
+                <h4 class="text-xs font-bold text-slate-800">
+                    Seluruh Tugas Tersimpan di Arsip ({{ number_format($statsArchived) }} Tugas)
+                </h4>
+                <p class="text-[11px] text-slate-500 mt-0.5">
+                    Tidak ada tugas aktif di papan Kanban saat ini. Seluruh data historis tugas dari database lama tersimpan pada bagian <span class="font-bold text-purple-700">Tugas Diarsipkan (Archived)</span> di bawah.
+                </p>
+            </div>
+        </div>
+        <button type="button" 
+                onclick="document.getElementById('archived-section')?.scrollIntoView({ behavior: 'smooth' })" 
+                class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-sm shrink-0 flex items-center justify-center gap-2 cursor-pointer">
+            <span>Buka Arsip</span>
+            <i class="fa-solid fa-arrow-down text-[10px]"></i>
+        </button>
+    </div>
+    @endif
 
     <!-- FILTER & SEARCH TOOLBAR -->
     <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm">
@@ -190,7 +228,7 @@
                                    x-model="search" 
                                    @keydown.escape="open = false" 
                                    @keydown.enter.prevent="if(filteredUsers.length > 0) selectUser(filteredUsers[0])"
-                                   placeholder="Cari nama karyawan inhouse..." 
+                                   placeholder="Cari nama karyawan / user..." 
                                    class="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all font-medium">
                             <button type="button" 
                                     x-show="search" 
@@ -203,21 +241,21 @@
 
                     <!-- Options List -->
                     <div class="max-h-60 overflow-y-auto p-1.5 space-y-0.5 text-xs">
-                        <!-- Option: Semua Karyawan Inhouse -->
+                        <!-- Option: Semua Karyawan / User -->
                         <button type="button" 
                                 @click="selectUser('all')" 
                                 class="w-full px-3 py-2 rounded-xl text-left transition-all flex items-center justify-between font-medium cursor-pointer"
                                 :class="!selectedValue || selectedValue === 'all' ? 'bg-primary-50 text-primary font-bold shadow-xs' : 'text-slate-700 hover:bg-slate-50'">
                             <span class="flex items-center gap-2">
                                 <i class="fa-solid fa-users text-xs text-primary"></i>
-                                <span>Semua Karyawan Inhouse ({{ count($usersInView) }})</span>
+                                <span>Semua Karyawan / User ({{ count($usersInView) }})</span>
                             </span>
                             <i x-show="!selectedValue || selectedValue === 'all'" class="fa-solid fa-check text-xs text-primary"></i>
                         </button>
 
                         <div class="border-t border-slate-100 my-1"></div>
 
-                        <!-- Filtered Inhouse Employees -->
+                        <!-- Filtered Inhouse Employees & Task Users -->
                         <template x-for="name in filteredUsers" :key="name">
                             <button type="button" 
                                     @click="selectUser(name)" 
@@ -234,14 +272,14 @@
                         <!-- Empty State -->
                         <div x-show="filteredUsers.length === 0" class="py-6 text-center text-slate-400 text-xs">
                             <i class="fa-solid fa-user-slash text-base text-slate-300 block mb-1"></i>
-                            <span>Tidak ada karyawan inhouse yang cocok</span>
+                            <span>Tidak ada karyawan / user yang cocok</span>
                         </div>
                     </div>
 
                     <!-- Footer Info -->
                     <div class="px-3 py-2 bg-slate-50 border-t border-slate-100 text-[10px] text-slate-400 flex items-center justify-between">
-                        <span>Hanya Karyawan Inhouse</span>
-                        <span x-text="`${filteredUsers.length} karyawan ditemukan`"></span>
+                        <span>Daftar Karyawan & Pengguna</span>
+                        <span x-text="`${filteredUsers.length} nama ditemukan`"></span>
                     </div>
                 </div>
 
@@ -497,7 +535,7 @@
     <!-- ============================================================================== -->
     <!-- DAFTAR TUGAS DIARSIPKAN (ARCHIVED ACCORDION)                                    -->
     <!-- ============================================================================== -->
-    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden" x-data="{ openArchive: false }">
+    <div id="archived-section" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden" x-data="{ openArchive: {{ ($statsTotal === 0 && ($statsArchived ?? 0) > 0) || (request('user_filter') && request('user_filter') !== 'all' && ($statsArchived ?? 0) > 0) || request('archive_date') || request('archive_date_from') || request('archive_date_to') || request('page') ? 'true' : 'false' }} }">
         <button type="button" 
                 @click="openArchive = !openArchive"
                 class="w-full px-5 py-4 flex items-center justify-between hover:bg-slate-50 transition-all">
@@ -519,43 +557,199 @@
         </button>
 
         <div x-show="openArchive" x-collapse class="border-t border-slate-200 p-5 bg-slate-50/40">
-            @if($tasksArchived->count() > 0)
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
-                @foreach($tasksArchived as $archivedTask)
-                <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between gap-2">
-                    <div>
-                        <div class="flex items-center justify-between gap-2 mb-1.5">
-                            <span class="text-[10px] font-bold text-slate-400">#{{ $archivedTask->id }}</span>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600">
-                                {{ $archivedTask->priority }}
-                            </span>
+            <!-- TOOLBAR FILTER TANGGAL ARSIP -->
+            <form method="GET" action="{{ route('workplan.index') }}#archived-section" class="bg-white p-3.5 rounded-2xl border border-slate-200/90 shadow-xs mb-5">
+                <!-- Pertahankan parameter filter pencarian utama -->
+                @if(!empty($filterUser))
+                <input type="hidden" name="user_filter" value="{{ $filterUser }}">
+                @endif
+                @if(!empty($smartFilter) && $smartFilter !== 'all')
+                <input type="hidden" name="smart" value="{{ $smartFilter }}">
+                @endif
+                @if(!empty($search))
+                <input type="hidden" name="search" value="{{ $search }}">
+                @endif
+
+                <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+                    <!-- Dropdown Quick Select Tanggal -->
+                    <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 flex-1">
+                        <div class="flex items-center gap-1.5 text-xs font-bold text-slate-700 shrink-0">
+                            <i class="fa-solid fa-filter text-purple-600"></i>
+                            <span>Filter Tanggal:</span>
                         </div>
-                        <h5 class="text-xs font-bold text-slate-800 line-clamp-2">{{ $archivedTask->title }}</h5>
+
+                        <div class="relative min-w-[240px] flex-1 sm:max-w-xs">
+                            <select name="archive_date" 
+                                    onchange="if(this.value !== '') { document.getElementById('archive_from_input').value = ''; document.getElementById('archive_to_input').value = ''; } this.form.submit()"
+                                    class="w-full pl-8 pr-8 py-2 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all font-semibold text-slate-800 cursor-pointer shadow-xs">
+                                <option value="">-- Semua Tanggal ({{ number_format($statsArchived ?? 0) }}) --</option>
+                                @foreach($availableArchiveDates as $avail)
+                                    @php
+                                        $dt = \Carbon\Carbon::parse($avail->task_date)->locale('id');
+                                        $formattedDate = $dt->translatedFormat('D, d M Y');
+                                    @endphp
+                                    <option value="{{ $avail->task_date }}" {{ $archiveDate === $avail->task_date ? 'selected' : '' }}>
+                                        {{ $formattedDate }} ({{ $avail->total_tasks }} Tugas)
+                                    </option>
+                                @endforeach
+                            </select>
+                            <i class="fa-regular fa-calendar-days text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 text-xs pointer-events-none"></i>
+                        </div>
                     </div>
-                    <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
-                        <span>{{ $archivedTask->date_completed ? $archivedTask->date_completed->format('d M Y') : '-' }}</span>
-                        <div class="flex items-center gap-2">
-                            <button type="button" @click="openTaskDetail({{ $archivedTask->id }})" class="text-primary hover:underline font-semibold">
-                                Detail
-                            </button>
-                            <form method="POST" action="{{ route('workplan.unarchive', $archivedTask->id) }}" class="inline">
-                                @csrf
-                                <button type="submit" class="text-emerald-600 hover:underline font-semibold" title="Pulihkan ke Done">
-                                    Pulihkan
-                                </button>
-                            </form>
+
+                    <!-- Rentang Tanggal Kustom (Dari - Sampai) -->
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[11px] font-bold text-slate-400">Rentang:</span>
+                        <div class="flex items-center gap-1.5">
+                            <input type="date" 
+                                   id="archive_from_input"
+                                   name="archive_date_from" 
+                                   value="{{ $archiveDateFrom }}"
+                                   placeholder="Dari" 
+                                   class="px-2.5 py-1.5 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all font-medium text-slate-800 shadow-xs">
+                            <span class="text-xs text-slate-400">s/d</span>
+                            <input type="date" 
+                                   id="archive_to_input"
+                                   name="archive_date_to" 
+                                   value="{{ $archiveDateTo }}"
+                                   placeholder="Sampai" 
+                                   class="px-2.5 py-1.5 text-xs bg-slate-50 hover:bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-200 focus:border-purple-500 transition-all font-medium text-slate-800 shadow-xs">
                         </div>
+
+                        <button type="submit" 
+                                class="px-3.5 py-1.5 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-magnifying-glass text-[10px]"></i>
+                            <span>Cari</span>
+                        </button>
+
+                        @if(!empty($archiveDate) || !empty($archiveDateFrom) || !empty($archiveDateTo))
+                        <a href="{{ route('workplan.index', array_merge(request()->except(['archive_date', 'archive_date_from', 'archive_date_to', 'page']))) }}#archived-section" 
+                           class="px-2.5 py-1.5 bg-slate-100 hover:bg-rose-50 hover:text-rose-600 text-slate-600 text-xs font-bold rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                           title="Reset Filter Tanggal Arsip">
+                            <i class="fa-solid fa-xmark"></i>
+                            <span>Reset</span>
+                        </a>
+                        @endif
                     </div>
                 </div>
-                @endforeach
+            </form>
+
+            <!-- ACTIVE FILTER NOTIFICATION PILL -->
+            @if(!empty($archiveDate) || !empty($archiveDateFrom) || !empty($archiveDateTo))
+            <div class="mb-5 px-4 py-2.5 bg-purple-50/90 border border-purple-200/90 rounded-xl flex items-center justify-between gap-3 text-xs">
+                <div class="flex items-center gap-2.5 text-purple-900 font-medium">
+                    <div class="w-6 h-6 rounded-lg bg-purple-200/70 text-purple-700 flex items-center justify-center text-xs shrink-0">
+                        <i class="fa-solid fa-filter"></i>
+                    </div>
+                    <span>
+                        Menampilkan <strong>{{ $tasksArchived->total() }}</strong> tugas diarsipkan 
+                        @if(!empty($archiveDate))
+                            pada tanggal <strong>{{ \Carbon\Carbon::parse($archiveDate)->locale('id')->translatedFormat('l, d F Y') }}</strong>
+                        @elseif(!empty($archiveDateFrom) && !empty($archiveDateTo))
+                            rentang <strong>{{ \Carbon\Carbon::parse($archiveDateFrom)->locale('id')->translatedFormat('d M Y') }}</strong> s/d <strong>{{ \Carbon\Carbon::parse($archiveDateTo)->locale('id')->translatedFormat('d M Y') }}</strong>
+                        @elseif(!empty($archiveDateFrom))
+                            mulai <strong>{{ \Carbon\Carbon::parse($archiveDateFrom)->locale('id')->translatedFormat('d M Y') }}</strong>
+                        @elseif(!empty($archiveDateTo))
+                            sampai <strong>{{ \Carbon\Carbon::parse($archiveDateTo)->locale('id')->translatedFormat('d M Y') }}</strong>
+                        @endif
+                    </span>
+                </div>
+                <a href="{{ route('workplan.index', array_merge(request()->except(['archive_date', 'archive_date_from', 'archive_date_to', 'page']))) }}#archived-section" 
+                   class="text-[11px] font-bold text-purple-700 hover:text-purple-900 hover:underline shrink-0">
+                    Tampilkan Semua Tanggal
+                </a>
             </div>
-            <div class="mt-4">
-                {{ $tasksArchived->links() }}
-            </div>
+            @endif
+
+            <!-- DAFTAR TUGAS DIARSIPKAN GROUPED BY TANGGAL -->
+            @if($tasksArchived->count() > 0)
+                <div class="space-y-6">
+                    @foreach($archivedGrouped as $dateKey => $tasksInGroup)
+                    <div>
+                        <!-- Group Date Header -->
+                        <div class="flex items-center gap-2.5 mb-3">
+                            <div class="w-7 h-7 rounded-lg bg-purple-100 text-purple-700 flex items-center justify-center text-xs font-bold shadow-xs">
+                                <i class="fa-regular fa-calendar-days"></i>
+                            </div>
+                            <h5 class="text-xs font-black text-slate-800 tracking-tight">
+                                @if($dateKey === 'Tanpa Tanggal')
+                                    Tanpa Catatan Tanggal
+                                @else
+                                    {{ \Carbon\Carbon::parse($dateKey)->locale('id')->translatedFormat('l, d F Y') }}
+                                @endif
+                            </h5>
+                            <span class="px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200/60 text-[10px] font-bold">
+                                {{ count($tasksInGroup) }} Tugas
+                            </span>
+                            <div class="flex-1 border-b border-slate-200/70 ml-1"></div>
+                        </div>
+
+                        <!-- Cards Grid -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5">
+                            @foreach($tasksInGroup as $archivedTask)
+                            <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between gap-2.5 hover:shadow-md hover:border-purple-200 transition-all">
+                                <div>
+                                    <div class="flex items-center justify-between gap-2 mb-1.5">
+                                        <span class="text-[10px] font-bold text-slate-400">#{{ $archivedTask->id }}</span>
+                                        <div class="flex items-center gap-1.5">
+                                            @if($archivedTask->priority === 'High')
+                                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-rose-50 text-rose-600 border border-rose-200/60">High</span>
+                                            @elseif($archivedTask->priority === 'Low')
+                                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-slate-100 text-slate-600">Low</span>
+                                            @else
+                                                <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-50 text-amber-600 border border-amber-200/60">Medium</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <h5 class="text-xs font-bold text-slate-800 line-clamp-2 leading-relaxed">{{ $archivedTask->title }}</h5>
+                                    @if(!empty($archivedTask->assignee))
+                                    <div class="flex items-center gap-1.5 mt-2 text-[11px] text-slate-500">
+                                        <i class="fa-regular fa-user text-[10px] text-slate-400"></i>
+                                        <span class="truncate font-medium">{{ $archivedTask->assignee }}</span>
+                                    </div>
+                                    @endif
+                                </div>
+                                <div class="flex items-center justify-between pt-2 border-t border-slate-100 text-[11px] text-slate-400">
+                                    <div class="flex items-center gap-1 text-[10px]">
+                                        <i class="fa-regular fa-clock"></i>
+                                        <span>{{ $archivedTask->date_completed ? $archivedTask->date_completed->format('H:i') : ($archivedTask->date_input ? $archivedTask->date_input->format('H:i') : '-') }} WIB</span>
+                                    </div>
+                                    <div class="flex items-center gap-2.5">
+                                        <button type="button" @click="openTaskDetail({{ $archivedTask->id }})" class="text-primary hover:underline font-bold text-xs cursor-pointer">
+                                            Detail
+                                        </button>
+                                        <form method="POST" action="{{ route('workplan.unarchive', $archivedTask->id) }}" class="inline">
+                                            @csrf
+                                            <button type="submit" class="text-emerald-600 hover:text-emerald-700 hover:underline font-bold text-xs cursor-pointer" title="Pulihkan tugas ke kolom Done">
+                                                Pulihkan
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            @endforeach
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-200">
+                    {{ $tasksArchived->fragment('archived-section')->links() }}
+                </div>
             @else
-            <div class="text-center py-8 text-slate-400 text-xs">
-                Belum ada tugas yang diarsipkan.
-            </div>
+                <div class="text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 text-xs">
+                    <i class="fa-solid fa-box-open text-3xl text-slate-300 mb-2.5 block"></i>
+                    <span class="font-medium text-slate-500">Tidak ada tugas yang diarsipkan pada tanggal atau filter yang dipilih.</span>
+                    @if(!empty($archiveDate) || !empty($archiveDateFrom) || !empty($archiveDateTo))
+                    <div class="mt-3">
+                        <a href="{{ route('workplan.index', array_merge(request()->except(['archive_date', 'archive_date_from', 'archive_date_to', 'page']))) }}#archived-section" 
+                           class="px-3 py-1.5 bg-purple-50 text-purple-700 font-bold rounded-xl text-xs hover:bg-purple-100 transition-all inline-flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrow-rotate-left text-[10px]"></i>
+                            <span>Reset Filter Tanggal</span>
+                        </a>
+                    </div>
+                    @endif
+                </div>
             @endif
         </div>
     </div>

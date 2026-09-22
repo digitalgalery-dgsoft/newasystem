@@ -1736,6 +1736,44 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 32. 📋 Resolusi Work Plan & To Do List Pasca-Migrasi: Pencocokan Nama Case-Insensitive & Akses Data Historis Arsip (Andi Kurniawan Distrianto & 65 User Lainnya)
+- **Akar Permasalahan yang Ditemukan**:
+  - **Perbedaan Huruf Besar/Kecil (Case Sensitivity)**: Di database SQLite, operator perbandingan string `=` dan `IN` bersifat case-sensitive. Nama user dari Odoo ERP sering kali berformat huruf kapital penuh (`ANDI KURNIAWAN DISTRIANTO`), sedangkan data historis dari database lama berformat Title Case (`Andi Kurniawan Distrianto`) atau huruf kecil. Akibatnya query pencarian menghasilkan 0 baris.
+  - **Status Tugas Diarsipkan (`status = 'archived'`)**: Data tugas milik **Andi Kurniawan Distrianto** (sebanyak 316 tugas) dan 65 user lainnya seluruhnya berstatus `'archived'` (dari total 11.903 data arsip hasil migrasi database lama). Di antarmuka papan Kanban sebelumnya:
+    1. Kartu metrik ringkasan di bagian atas hanya menghitung tugas aktif non-arsip, sehingga angka menunjukkan `0` (dikira data hilang).
+    2. Accordion "Tugas Diarsipkan" di bagian bawah berada dalam posisi tertutup (*collapsed*) secara default.
+    3. Dropdown filter karyawan secara eksplisit mengecualikan status `archived` (`whereNotIn('status', ['archived'])`), sehingga nama Andi Kurniawan Distrianto dan 64 karyawan lainnya tidak muncul di filter pencarian.
+- **Solusi Komprehensif yang Diterapkan**:
+  - **Pencocokan Case-Insensitive Multi-Kandidat (`WorkPlanController.php`)**:
+    - Seluruh query penelusuran user, assignee, delegator, maupun penerima notifikasi diubah menggunakan `LOWER(TRIM(...))`.
+    - Dibuat helper `getUserCandidateNames($user)` yang menghimpun variasi nama akun (`users.name`), nama di Odoo (`employees.nama_karyawan`), dan email.
+    - Helper otorisasi `isUserAuthorizedForTask()`, `isDelegatorForTask()`, dan `isCreatorOrDelegatorForTask()` memastikan akses edit, approve, dan delete berfungsi mulus tanpa terganjal variasi kapitalisasi nama.
+  - **Dropdown Filter Karyawan Lengkap & Deduplikasi Rapi**:
+    - Dropdown filter kini merangkum semua user dari riwayat tugas (baik status aktif maupun `archived`, mencakup `assignee`, `user`, dan `delegator`), digabungkan dengan karyawan inhouse aktif.
+    - Dilakukan deduplikasi case-insensitive cerdas yang memprioritaskan format Title Case/Mixed Case daripada ALL CAPS.
+  - **Kartu Metrik ke-6 untuk Arsip & Banner Informatif (`index.blade.php`)**:
+    - Grid statistik atas diperluas menjadi 6 kolom responsif dengan kartu **Arsip** berwarna ungu (`fa-box-archive`) yang menampilkan jumlah total arsip secara transparan.
+    - Ditambahkan banner gradien informatif jika user memiliki 0 tugas aktif namun memiliki riwayat di arsip (misal: `"Seluruh Tugas Tersimpan di Arsip (316 Tugas)"`).
+    - Accordion "Tugas Diarsipkan" otomatis terbuka (*auto-expanded*) jika user hanya memiliki data arsip atau saat difilter berdasarkan nama user tersebut.
+  - **Avatar & Foto Profil Case-Insensitive (`Task.php`)**:
+    - Metode `Task::getAvatarUrl` kini melakukan pencarian case-insensitive ke tabel `users` dan `employees`, serta menampilkan foto profil karyawan asli jika tersedia.
+
+---
+
+### 33. 📅 Fitur Pengelompokan (Grouping) & Filter Tanggal pada Tugas Diarsipkan (Archive Section)
+- **Pengelompokan Berdasarkan Tanggal (Grouping by Date)**:
+  - Seluruh tugas diarsipkan kini dikelompokkan secara visual berdasarkan tanggal penyelesaian (`date_completed`) atau tanggal input (`date_input`).
+  - Setiap kelompok tanggal dilengkapi dengan header elegan: ikon kalender, tanggal dalam bahasa Indonesia lengkap (contoh: `Selasa, 15 September 2026`), badge jumlah tugas (`16 Tugas`), dan garis pemisah.
+  - Kartu tugas menampilkan prioritas, judul tugas, penanggung jawab/assignee, jam selesai dalam format WIB, tombol detail, dan tombol pulihkan (*unarchive*).
+- **Toolbar Filter Tanggal Khusus Arsip**:
+  - **Quick Select Dropdown**: Pilihan tanggal instan yang otomatis menghimpun tanggal-tanggal yang memiliki riwayat arsip tugas beserta jumlah tugasnya (contoh: `Sel, 15 Sep 2026 (16 Tugas)`). Pemilihan langsung memperbarui data.
+  - **Filter Rentang Tanggal (Date Range)**: Input tanggal kustom `Dari` dan `Sampai` untuk meninjau riwayat tugas dalam kurun waktu tertentu.
+  - **Tombol Reset & Indikator Aktif**: Tombol reset yang ramah serta notifikasi banner informatif yang menjelaskan rentang tanggal yang sedang aktif.
+  - **Preservasi Parameter**: Filter tanggal arsip mempertahankan seluruh parameter filter papan utama (`user_filter`, `smart`, `search`) tanpa saling menimpa.
+  - **Anchor Navigation & Paginasi**: Paginasi arsip dilengkapi hash fragment `#archived-section` sehingga saat berpindah halaman langsung mengarah ke bagian arsip tanpa mengharuskan pengguna scroll manual dari atas.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

@@ -35,7 +35,39 @@ class WorkPlanController extends Controller
     protected function getUserOfficialName($user): string
     {
         if (!$user) return 'Guest';
+        if ($user->linked_employee && !empty($user->linked_employee->nama_karyawan)) {
+            return trim($user->linked_employee->nama_karyawan);
+        }
         return trim($user->name ?: ($user->email ?: 'User'));
+    }
+
+    /**
+     * Dapatkan semua variasi nama / identitas resmi pengguna untuk pencocokan tugas case-insensitive
+     */
+    protected function getUserCandidateNames($user): array
+    {
+        if (!$user) return [];
+        $names = [];
+
+        if (!empty($user->name)) {
+            $names[] = trim($user->name);
+        }
+
+        // Cek linked employee jika ada
+        if ($user->linked_employee && !empty($user->linked_employee->nama_karyawan)) {
+            $names[] = trim($user->linked_employee->nama_karyawan);
+        }
+
+        // Cek employee berdasarkan email jika linked_employee belum ter-cache
+        if (!empty($user->email)) {
+            $names[] = trim($user->email);
+            $emp = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($user->email))])->first();
+            if ($emp && !empty($emp->nama_karyawan)) {
+                $names[] = trim($emp->nama_karyawan);
+            }
+        }
+
+        return array_values(array_unique(array_filter($names)));
     }
 
     /**
@@ -45,13 +77,19 @@ class WorkPlanController extends Controller
     {
         if (!$user) return [];
         $userName = $this->getUserOfficialName($user);
+        $candidateNames = $this->getUserCandidateNames($user);
 
         $team = [$userName];
+        foreach ($candidateNames as $cn) {
+            if (!in_array($cn, $team)) $team[] = $cn;
+        }
 
-        // Cari bawahan di tabel employees berdasarkan nama pimpinan atau NIK pimpinan
-        $subordinates = Employee::where(function ($q) use ($userName, $user) {
-            $q->where('pimpinan', $userName)
-              ->orWhere(DB::raw('LOWER(TRIM(pimpinan))'), strtolower($userName));
+        // Cari bawahan di tabel employees berdasarkan nama pimpinan atau NIK pimpinan (case-insensitive)
+        $lowerPimpinan = array_map('strtolower', $candidateNames);
+        $subordinates = Employee::where(function ($q) use ($lowerPimpinan, $user) {
+            foreach ($lowerPimpinan as $lp) {
+                $q->orWhereRaw('LOWER(TRIM(pimpinan)) = ?', [$lp]);
+            }
             if (!empty($user->nik)) {
                 $q->orWhere('pimpinan', $user->nik);
             }
@@ -68,6 +106,7 @@ class WorkPlanController extends Controller
         if (method_exists($user, 'getSubordinateRecruiterIdentifiers')) {
             $extra = $user->getSubordinateRecruiterIdentifiers();
             foreach ($extra as $ex) {
+                $ex = trim($ex);
                 if (!empty($ex) && !in_array($ex, $team)) {
                     $team[] = $ex;
                 }
@@ -78,7 +117,55 @@ class WorkPlanController extends Controller
     }
 
     /**
-     * Terapkan filter hak akses hierarkis pada query tasks
+     * Cek apakah user berhak mengedit atau menghapus tugas (case-insensitive)
+     */
+    protected function isUserAuthorizedForTask($task, $user): bool
+    {
+        if (!$user) return false;
+        if ($user->isAdmin() || $user->role === 'admin') return true;
+
+        $candidateNames = array_map('strtolower', $this->getUserCandidateNames($user));
+        $taskUser = strtolower(trim($task->user ?? ''));
+        $taskAssignee = strtolower(trim($task->assignee ?? ''));
+        $taskDelegator = strtolower(trim($task->delegator ?? ''));
+
+        return in_array($taskUser, $candidateNames, true)
+            || in_array($taskAssignee, $candidateNames, true)
+            || in_array($taskDelegator, $candidateNames, true);
+    }
+
+    /**
+     * Cek apakah user adalah delegator (pimpinan pembuat tugas) untuk approval (case-insensitive)
+     */
+    protected function isDelegatorForTask($task, $user): bool
+    {
+        if (!$user) return false;
+        if ($user->isAdmin() || $user->role === 'admin') return true;
+
+        $candidateNames = array_map('strtolower', $this->getUserCandidateNames($user));
+        $taskDelegator = strtolower(trim($task->delegator ?? ''));
+
+        return in_array($taskDelegator, $candidateNames, true);
+    }
+
+    /**
+     * Cek apakah user adalah creator atau delegator (case-insensitive)
+     */
+    protected function isCreatorOrDelegatorForTask($task, $user): bool
+    {
+        if (!$user) return false;
+        if ($user->isAdmin() || $user->role === 'admin') return true;
+
+        $candidateNames = array_map('strtolower', $this->getUserCandidateNames($user));
+        $taskUser = strtolower(trim($task->user ?? ''));
+        $taskDelegator = strtolower(trim($task->delegator ?? ''));
+
+        return in_array($taskUser, $candidateNames, true)
+            || in_array($taskDelegator, $candidateNames, true);
+    }
+
+    /**
+     * Terapkan filter hak akses hierarkis pada query tasks (case-insensitive)
      */
     protected function applyAccessScope($query, $user, &$isHead = false, &$teamMembers = [])
     {
@@ -88,26 +175,37 @@ class WorkPlanController extends Controller
         }
 
         $teamMembers = $this->getTeamMemberNames($user);
-        $userName = $this->getUserOfficialName($user);
+        $candidateNames = $this->getUserCandidateNames($user);
+        $lowerNames = array_values(array_unique(array_map('strtolower', $candidateNames)));
         $isHead = count($teamMembers) > 1 || ($user && method_exists($user, 'isHead') && $user->isHead());
 
         if ($isHead && count($teamMembers) > 1) {
-            $query->where(function ($q) use ($teamMembers, $userName) {
-                $q->whereIn('user', $teamMembers)
-                  ->orWhereIn('assignee', $teamMembers)
-                  ->orWhereIn('delegator', $teamMembers)
-                  ->orWhere('user', $userName)
-                  ->orWhere('assignee', $userName);
+            $lowerTeam = array_values(array_unique(array_map('strtolower', array_map('trim', $teamMembers))));
+            $placeholders = implode(',', array_fill(0, count($lowerTeam), '?'));
+            $query->where(function ($q) use ($placeholders, $lowerTeam, $lowerNames, $user) {
+                $q->whereRaw("LOWER(TRIM(\"user\")) IN ($placeholders)", $lowerTeam)
+                  ->orWhereRaw("LOWER(TRIM(\"assignee\")) IN ($placeholders)", $lowerTeam)
+                  ->orWhereRaw("LOWER(TRIM(\"delegator\")) IN ($placeholders)", $lowerTeam);
+                foreach ($lowerNames as $lName) {
+                    $q->orWhereRaw('LOWER(TRIM("user")) = ?', [$lName])
+                      ->orWhereRaw('LOWER(TRIM("assignee")) = ?', [$lName]);
+                }
+                if (!empty($user->email)) {
+                    $q->orWhereRaw('LOWER(TRIM("user")) = ?', [strtolower(trim($user->email))])
+                      ->orWhereRaw('LOWER(TRIM("assignee")) = ?', [strtolower(trim($user->email))]);
+                }
             });
         } else {
-            // Staf / Rekruter / Karyawan biasa: hanya melihat tugas miliknya sendiri
-            $query->where(function ($q) use ($userName, $user) {
-                $q->where('user', $userName)
-                  ->orWhere('assignee', $userName)
-                  ->orWhere('delegator', $userName);
+            // Staf / Rekruter / Karyawan biasa: hanya melihat tugas miliknya sendiri (case-insensitive)
+            $query->where(function ($q) use ($lowerNames, $user) {
+                foreach ($lowerNames as $lName) {
+                    $q->orWhereRaw('LOWER(TRIM("user")) = ?', [$lName])
+                      ->orWhereRaw('LOWER(TRIM("assignee")) = ?', [$lName])
+                      ->orWhereRaw('LOWER(TRIM("delegator")) = ?', [$lName]);
+                }
                 if (!empty($user->email)) {
-                    $q->orWhere('user', $user->email)
-                      ->orWhere('assignee', $user->email);
+                    $q->orWhereRaw('LOWER(TRIM("user")) = ?', [strtolower(trim($user->email))])
+                      ->orWhereRaw('LOWER(TRIM("assignee")) = ?', [strtolower(trim($user->email))]);
                 }
             });
         }
@@ -141,11 +239,15 @@ class WorkPlanController extends Controller
 
         $today = Carbon::today()->toDateString();
 
-        // Terapkan Smart Filter
+        // Terapkan Smart Filter (case-insensitive)
         if ($smartFilter === 'my') {
-            $baseQuery->where(function ($q) use ($userName) {
-                $q->where('user', $userName)
-                  ->orWhere('assignee', $userName);
+            $candidateNames = $this->getUserCandidateNames($user);
+            $lowerNames = array_values(array_unique(array_map('strtolower', $candidateNames)));
+            $baseQuery->where(function ($q) use ($lowerNames) {
+                foreach ($lowerNames as $lName) {
+                    $q->orWhereRaw('LOWER(TRIM("user")) = ?', [$lName])
+                      ->orWhereRaw('LOWER(TRIM("assignee")) = ?', [$lName]);
+                }
             });
         } elseif ($smartFilter === 'high') {
             $baseQuery->where('priority', 'High');
@@ -155,12 +257,13 @@ class WorkPlanController extends Controller
                       ->where('due_date', '<', $today);
         }
 
-        // Terapkan Filter Karyawan
+        // Terapkan Filter Karyawan (case-insensitive)
         if (!empty($filterUser) && $filterUser !== 'all') {
-            $baseQuery->where(function ($q) use ($filterUser) {
-                $q->where('user', $filterUser)
-                  ->orWhere('assignee', $filterUser)
-                  ->orWhere('delegator', $filterUser);
+            $lowerFilter = strtolower(trim($filterUser));
+            $baseQuery->where(function ($q) use ($lowerFilter) {
+                $q->whereRaw('LOWER(TRIM("user")) = ?', [$lowerFilter])
+                  ->orWhereRaw('LOWER(TRIM("assignee")) = ?', [$lowerFilter])
+                  ->orWhereRaw('LOWER(TRIM("delegator")) = ?', [$lowerFilter]);
             });
         }
 
@@ -206,6 +309,7 @@ class WorkPlanController extends Controller
         $statsInProgress = (clone $baseQuery)->where('status', 'inprogress')->count();
         $statsReview = (clone $baseQuery)->where('status', 'review')->count();
         $statsDone = (clone $baseQuery)->where('status', 'done')->count();
+        $statsArchived = (clone $baseQuery)->where('status', 'archived')->count();
         
         $today = Carbon::today()->toDateString();
         $statsOverdue = (clone $baseQuery)
@@ -221,8 +325,47 @@ class WorkPlanController extends Controller
         $tasksReview = (clone $baseQuery)->where('status', 'review')->orderBy('id', 'desc')->take($perColumn)->get();
         $tasksDone = (clone $baseQuery)->where('status', 'done')->orderBy('date_completed', 'desc')->orderBy('id', 'desc')->take($perColumn)->get();
 
-        // Ambil Data Arsip (15 data terbaru yang diarsipkan)
-        $tasksArchived = (clone $baseQuery)->where('status', 'archived')->orderBy('date_completed', 'desc')->orderBy('id', 'desc')->paginate(15);
+        // Filter tanggal khusus arsip
+        $archiveDate = trim($request->query('archive_date', ''));
+        $archiveDateFrom = trim($request->query('archive_date_from', ''));
+        $archiveDateTo = trim($request->query('archive_date_to', ''));
+
+        // Query Dasar Tugas Diarsipkan
+        $archiveBaseQuery = (clone $baseQuery)->where('status', 'archived');
+
+        // Daftar tanggal unik yang memiliki arsip tugas (untuk quick-select filter arsip)
+        $availableArchiveDates = (clone $archiveBaseQuery)
+            ->select(DB::raw('COALESCE(DATE(date_completed), DATE(date_input)) as task_date'), DB::raw('count(*) as total_tasks'))
+            ->whereNotNull(DB::raw('COALESCE(DATE(date_completed), DATE(date_input))'))
+            ->groupBy('task_date')
+            ->orderBy('task_date', 'desc')
+            ->get();
+
+        // Terapkan filter tanggal jika dipilih
+        $archiveFilteredQuery = clone $archiveBaseQuery;
+        if (!empty($archiveDate) && $archiveDate !== 'all') {
+            $archiveFilteredQuery->whereRaw('COALESCE(DATE(date_completed), DATE(date_input)) = ?', [$archiveDate]);
+        } else {
+            if (!empty($archiveDateFrom)) {
+                $archiveFilteredQuery->whereRaw('COALESCE(DATE(date_completed), DATE(date_input)) >= ?', [$archiveDateFrom]);
+            }
+            if (!empty($archiveDateTo)) {
+                $archiveFilteredQuery->whereRaw('COALESCE(DATE(date_completed), DATE(date_input)) <= ?', [$archiveDateTo]);
+            }
+        }
+
+        // Ambil Data Arsip dengan Paginasi 30 data per halaman (diurutkan tanggal terbaru)
+        $tasksArchived = $archiveFilteredQuery
+            ->orderByRaw('COALESCE(date_completed, date_input) DESC')
+            ->orderBy('id', 'desc')
+            ->paginate(30)
+            ->withQueryString();
+
+        // Grouping data arsip yang diambil per tanggal
+        $archivedGrouped = $tasksArchived->getCollection()->groupBy(function ($task) {
+            $d = $task->date_completed ?? $task->date_input;
+            return $d ? Carbon::parse($d)->toDateString() : 'Tanpa Tanggal';
+        });
 
         // Ambil Daftar Karyawan Unik HANYA Karyawan Inhouse untuk Dropdown Filter
         $inhouseEmployeesQuery = Employee::where('status', 'Aktiv')
@@ -237,27 +380,62 @@ class WorkPlanController extends Controller
             ->get();
 
         if ($isAdmin) {
-            $taskUsers = Task::whereNotIn('status', ['archived'])
-                ->select('assignee')
-                ->distinct()
-                ->pluck('assignee')
-                ->filter()
-                ->values()
-                ->toArray();
+            // Ambil semua user dari riwayat tugas (termasuk status archived, baik assignee, user, maupun delegator)
+            $taskAssignees = Task::whereNotNull('assignee')->distinct()->pluck('assignee')->filter()->values();
+            $taskUsers = Task::whereNotNull('user')->distinct()->pluck('user')->filter()->values();
+            $taskDelegators = Task::whereNotNull('delegator')->distinct()->pluck('delegator')->filter()->values();
 
-            $usersInView = $inhouseEmployees->pluck('nama_karyawan')
+            $rawNames = $inhouseEmployees->pluck('nama_karyawan')
+                ->merge($taskAssignees)
                 ->merge($taskUsers)
+                ->merge($taskDelegators)
                 ->filter()
-                ->unique()
-                ->sort()
-                ->values()
-                ->toArray();
+                ->map(fn($n) => trim($n))
+                ->filter(fn($n) => !empty($n));
+
+            // Deduplikasi case-insensitive (utamakan Title Case / Mixed Case jika ada daripada ALL CAPS atau all lowercase)
+            $uniqueByName = [];
+            foreach ($rawNames as $name) {
+                $lower = strtolower($name);
+                if (!isset($uniqueByName[$lower])) {
+                    $uniqueByName[$lower] = $name;
+                } else {
+                    $current = $uniqueByName[$lower];
+                    $isCurrentAllCaps = (strtoupper($current) === $current && strtolower($current) !== $current);
+                    $isCurrentAllLower = (strtolower($current) === $current);
+                    $isNewMixed = (strtoupper($name) !== $name && strtolower($name) !== $name);
+                    if (($isCurrentAllCaps || $isCurrentAllLower) && $isNewMixed) {
+                        $uniqueByName[$lower] = $name;
+                    }
+                }
+            }
+            $usersInView = array_values($uniqueByName);
+            natcasesort($usersInView);
+            $usersInView = array_values($usersInView);
 
             if (empty($usersInView) && !empty($userName)) {
                 $usersInView = [$userName];
             }
         } elseif ($isHead && !empty($teamMembers)) {
-            $usersInView = $inhouseEmployees->whereIn('nama_karyawan', $teamMembers)->pluck('nama_karyawan')->unique()->values()->toArray();
+            $lowerTeam = array_map('strtolower', array_map('trim', $teamMembers));
+            $matchedEmployees = $inhouseEmployees->filter(function ($emp) use ($lowerTeam) {
+                return in_array(strtolower(trim($emp->nama_karyawan)), $lowerTeam, true);
+            })->pluck('nama_karyawan')->toArray();
+
+            $allTeam = array_merge($matchedEmployees, $teamMembers);
+            $uniqueByName = [];
+            foreach ($allTeam as $name) {
+                $name = trim($name);
+                if (empty($name)) continue;
+                $lower = strtolower($name);
+                if (!isset($uniqueByName[$lower])) {
+                    $uniqueByName[$lower] = $name;
+                }
+            }
+            $usersInView = array_values($uniqueByName);
+            natcasesort($usersInView);
+            $usersInView = array_values($usersInView);
+
             if (empty($usersInView)) {
                 $usersInView = $teamMembers;
             }
@@ -284,11 +462,17 @@ class WorkPlanController extends Controller
             'tasksReview',
             'tasksDone',
             'tasksArchived',
+            'archivedGrouped',
+            'availableArchiveDates',
+            'archiveDate',
+            'archiveDateFrom',
+            'archiveDateTo',
             'statsTotal',
             'statsTodo',
             'statsInProgress',
             'statsReview',
             'statsDone',
+            'statsArchived',
             'statsOverdue',
             'search',
             'smartFilter',
@@ -440,8 +624,8 @@ class WorkPlanController extends Controller
         $userName = $this->getUserOfficialName($user);
         $isAdmin = $user->isAdmin() || $user->role === 'admin';
 
-        // Validasi izin edit: hanya creator, assignee, delegator, atau admin
-        if (!$isAdmin && $task->user !== $userName && $task->assignee !== $userName && $task->delegator !== $userName) {
+        // Validasi izin edit: creator, assignee, delegator, atau admin (case-insensitive)
+        if (!$this->isUserAuthorizedForTask($task, $user)) {
             return response()->json(['success' => false, 'error' => 'Akses ditolak. Anda tidak berhak mengedit tugas ini.'], 403);
         }
 
@@ -517,8 +701,8 @@ class WorkPlanController extends Controller
 
         // Aturan Hak Akses:
         // Jika status berpindah dari 'review' ke 'done':
-        // HANYA DELEGATOR (Pimpinan pembuat tugas) ATAU ADMIN yang berhak menyetujui tugas menjadi DONE!
-        if ($oldStatus === 'review' && $newStatus === 'done' && !$isAdmin && $task->delegator !== $userName) {
+        // HANYA DELEGATOR (Pimpinan pembuat tugas) ATAU ADMIN yang berhak menyetujui tugas menjadi DONE! (case-insensitive)
+        if ($oldStatus === 'review' && $newStatus === 'done' && !$this->isDelegatorForTask($task, $user)) {
             return response()->json([
                 'success' => false,
                 'error' => "Akses ditolak! Hanya Delegator/Pimpinan ({$task->delegator}) atau Administrator yang berhak menyetujui tugas dari status Review menjadi Done."
@@ -549,8 +733,10 @@ class WorkPlanController extends Controller
             'new_status' => $newStatus,
         ]);
 
-        // Notifikasi ke Delegator saat tugas dipindahkan ke Review
-        if ($newStatus === 'review' && !empty($task->delegator) && $task->delegator !== $userName) {
+        // Notifikasi ke Delegator saat tugas dipindahkan ke Review (case-insensitive check)
+        $candidateNames = array_map('strtolower', $this->getUserCandidateNames($user));
+        $taskDelegatorLower = strtolower(trim($task->delegator ?? ''));
+        if ($newStatus === 'review' && !empty($task->delegator) && !in_array($taskDelegatorLower, $candidateNames, true)) {
             TaskNotification::create([
                 'user_recipient' => $task->delegator,
                 'task_id' => $task->id,
@@ -632,7 +818,8 @@ class WorkPlanController extends Controller
         $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
         $userName = $this->getUserOfficialName($user);
 
-        if (!$isAdmin && $task->user !== $userName && $task->delegator !== $userName) {
+        // Hanya creator, delegator, atau admin yang berhak menghapus tugas (case-insensitive)
+        if (!$this->isCreatorOrDelegatorForTask($task, $user)) {
             return back()->with('error', 'Akses ditolak! Anda tidak memiliki izin untuk menghapus tugas ini.');
         }
 
@@ -739,9 +926,9 @@ class WorkPlanController extends Controller
             $q->orderBy('id', 'asc');
         }])->findOrFail($id);
 
-        $canEdit = $isAdmin || $task->user === $userName || $task->assignee === $userName || $task->delegator === $userName;
-        $canDelete = $isAdmin || $task->user === $userName || $task->delegator === $userName;
-        $canApprove = $isAdmin || $task->delegator === $userName;
+        $canEdit = $this->isUserAuthorizedForTask($task, $user);
+        $canDelete = $this->isCreatorOrDelegatorForTask($task, $user);
+        $canApprove = $this->isDelegatorForTask($task, $user);
 
         return response()->json([
             'success' => true,
@@ -899,10 +1086,19 @@ class WorkPlanController extends Controller
     public function getNotifications()
     {
         $user = $this->getCurrentUser();
-        $userName = $this->getUserOfficialName($user);
+        if (!$user) return response()->json(['success' => false, 'notifications' => []]);
 
-        $notifications = TaskNotification::where('user_recipient', $userName)
-            ->where('is_read', false)
+        $candidateNames = array_values(array_unique(array_filter(array_map('strtolower', array_map('trim', $this->getUserCandidateNames($user))))));
+        $notificationsQuery = TaskNotification::where('is_read', false);
+        if (!empty($candidateNames)) {
+            $placeholders = implode(',', array_fill(0, count($candidateNames), '?'));
+            $notificationsQuery->whereRaw("LOWER(TRIM(user_recipient)) IN ($placeholders)", $candidateNames);
+        } else {
+            $userName = $this->getUserOfficialName($user);
+            $notificationsQuery->where('user_recipient', $userName);
+        }
+
+        $notifications = $notificationsQuery
             ->orderBy('created_at', 'desc')
             ->limit(10)
             ->get()
@@ -925,11 +1121,20 @@ class WorkPlanController extends Controller
     public function markNotificationRead($id)
     {
         $user = $this->getCurrentUser();
-        $userName = $this->getUserOfficialName($user);
+        if (!$user) return response()->json(['success' => false], 401);
 
-        TaskNotification::where('id', $id)
-            ->where('user_recipient', $userName)
-            ->update(['is_read' => true]);
+        $candidateNames = array_values(array_unique(array_filter(array_map('strtolower', array_map('trim', $this->getUserCandidateNames($user))))));
+        $notifQuery = TaskNotification::where('id', $id);
+        if (!$user->isAdmin() && $user->role !== 'admin') {
+            if (!empty($candidateNames)) {
+                $placeholders = implode(',', array_fill(0, count($candidateNames), '?'));
+                $notifQuery->whereRaw("LOWER(TRIM(user_recipient)) IN ($placeholders)", $candidateNames);
+            } else {
+                $userName = $this->getUserOfficialName($user);
+                $notifQuery->where('user_recipient', $userName);
+            }
+        }
+        $notifQuery->update(['is_read' => true]);
 
         return response()->json(['success' => true]);
     }
@@ -946,11 +1151,16 @@ class WorkPlanController extends Controller
         $query = Task::query();
         $this->applyAccessScope($query, $user);
 
-        // Hanya tugas user yang bersangkutan jika bukan admin
-        $query->where(function ($q) use ($userName) {
-            $q->where('user', $userName)
-              ->orWhere('assignee', $userName);
-        });
+        // Hanya tugas user yang bersangkutan jika bukan admin (case-insensitive)
+        $lowerNames = array_values(array_unique(array_filter(array_map('strtolower', array_map('trim', $this->getUserCandidateNames($user))))));
+        if (!$user->isAdmin() && $user->role !== 'admin') {
+            $query->where(function ($q) use ($lowerNames) {
+                foreach ($lowerNames as $ln) {
+                    $q->orWhereRaw('LOWER(TRIM("user")) = ?', [$ln])
+                      ->orWhereRaw('LOWER(TRIM("assignee")) = ?', [$ln]);
+                }
+            });
+        }
 
         $doneTasks = (clone $query)->where('status', 'done')->whereDate('date_completed', Carbon::today())->get();
         if ($doneTasks->isEmpty()) {
@@ -1023,13 +1233,14 @@ class WorkPlanController extends Controller
         $query = Task::with(['subtasks']);
         $this->applyAccessScope($query, $user);
 
-        // Filter
+        // Filter (case-insensitive)
         $filterUser = $request->query('user_filter');
         if (!empty($filterUser) && $filterUser !== 'all') {
-            $query->where(function ($q) use ($filterUser) {
-                $q->where('user', $filterUser)
-                  ->orWhere('assignee', $filterUser)
-                  ->orWhere('delegator', $filterUser);
+            $lowerFilter = strtolower(trim($filterUser));
+            $query->where(function ($q) use ($lowerFilter) {
+                $q->whereRaw('LOWER(TRIM("user")) = ?', [$lowerFilter])
+                  ->orWhereRaw('LOWER(TRIM("assignee")) = ?', [$lowerFilter])
+                  ->orWhereRaw('LOWER(TRIM("delegator")) = ?', [$lowerFilter]);
             });
         }
 
@@ -1046,6 +1257,21 @@ class WorkPlanController extends Controller
         $filterStatus = $request->query('status');
         if (!empty($filterStatus) && $filterStatus !== 'all') {
             $query->where('status', $filterStatus);
+        }
+
+        // Filter tanggal khusus arsip jika ada
+        $archiveDate = trim($request->query('archive_date', ''));
+        $archiveDateFrom = trim($request->query('archive_date_from', ''));
+        $archiveDateTo = trim($request->query('archive_date_to', ''));
+        if (!empty($archiveDate) && $archiveDate !== 'all') {
+            $query->whereRaw('COALESCE(DATE(date_completed), DATE(date_input)) = ?', [$archiveDate]);
+        } else {
+            if (!empty($archiveDateFrom)) {
+                $query->whereRaw('COALESCE(DATE(date_completed), DATE(date_input)) >= ?', [$archiveDateFrom]);
+            }
+            if (!empty($archiveDateTo)) {
+                $query->whereRaw('COALESCE(DATE(date_completed), DATE(date_input)) <= ?', [$archiveDateTo]);
+            }
         }
 
         $tasks = $query->orderBy('id', 'desc')->get();
@@ -1095,7 +1321,13 @@ class WorkPlanController extends Controller
 
         $query = WorkPlanDaily::query();
         if (!$isAdmin) {
-            $query->where('user', $userName);
+            $candidateNames = array_values(array_unique(array_filter(array_map('strtolower', array_map('trim', $this->getUserCandidateNames($user))))));
+            if (!empty($candidateNames)) {
+                $placeholders = implode(',', array_fill(0, count($candidateNames), '?'));
+                $query->whereRaw("LOWER(TRIM(\"user\")) IN ($placeholders)", $candidateNames);
+            } else {
+                $query->where('user', $userName);
+            }
         }
 
         $search = trim($request->query('search', ''));
@@ -1187,7 +1419,10 @@ class WorkPlanController extends Controller
         $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
         $userName = $this->getUserOfficialName($user);
 
-        if (!$isAdmin && $item->user !== $userName) {
+        $candidateNames = array_map('strtolower', $this->getUserCandidateNames($user));
+        $itemUser = strtolower(trim($item->user ?? ''));
+
+        if (!$isAdmin && !in_array($itemUser, $candidateNames, true)) {
             return back()->with('error', 'Akses ditolak! Anda tidak memiliki izin untuk menghapus catatan ini.');
         }
 

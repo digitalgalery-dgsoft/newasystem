@@ -123,10 +123,17 @@ class Task extends Model
             return 'https://ui-avatars.com/api/?background=6366f1&color=fff&name=User';
         }
 
-        // Cek foto di employee / user jika ada
-        $user = User::where('name', $name)->first();
+        // Cek foto di User (case-insensitive)
+        $lowerName = strtolower($name);
+        $user = User::whereRaw('LOWER(TRIM(name)) = ?', [$lowerName])->first();
         if ($user && !empty($user->avatar)) {
             return asset('storage/' . $user->avatar);
+        }
+
+        // Cek foto di Employee jika ada (case-insensitive)
+        $employee = Employee::whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [$lowerName])->first();
+        if ($employee && !empty($employee->foto)) {
+            return asset('storage/' . $employee->foto);
         }
 
         return 'https://ui-avatars.com/api/?background=random&color=fff&name=' . urlencode($name);
