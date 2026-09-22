@@ -23,6 +23,42 @@ class Candidate extends Model
         'odoo_applicant_data' => 'array',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function ($candidate) {
+            if (!empty($candidate->area) && $candidate->area !== '-') {
+                $candidate->region = \App\Models\TbArea::resolveRegion($candidate->area);
+            }
+        });
+    }
+
+    /**
+     * Resolusi Region resmi kandidat berdasarkan master tb_area ESA Groups
+     */
+    public function getRegionAttribute(): string
+    {
+        if (!empty($this->attributes['region']) && $this->attributes['region'] !== '-') {
+            return $this->attributes['region'];
+        }
+
+        $area = !empty($this->area) ? trim($this->area) : null;
+        if (!empty($area) && $area !== '-') {
+            $reg = \App\Models\TbArea::resolveRegion($area);
+            if ($reg !== '-') {
+                return $reg;
+            }
+        }
+
+        if (!empty($this->city_domicile)) {
+            $reg = \App\Models\TbArea::resolveRegion($this->city_domicile);
+            if ($reg !== '-') {
+                return $reg;
+            }
+        }
+
+        return 'Region 1';
+    }
+
     public function principle()
     {
         return $this->belongsTo(Principle::class);

@@ -532,7 +532,7 @@
                         <th>Tgl Lahir / Usia</th>
                         <th>Pendidikan</th>
                         <th>Posisi Dilamar</th>
-                        <th>Area</th>
+                        <th>Area & Region</th>
                         <th class="text-center">Step Odoo</th>
                         <th class="text-center">AI Match</th>
                         <th class="text-center">Kategori</th>
@@ -621,12 +621,17 @@
                             </div>
                         </td>
 
-                        <!-- Area -->
+                        <!-- Area & Region -->
                         <td>
-                            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100">
-                                <i class="fa-solid fa-location-dot text-[9px]"></i>
-                                {{ $cand->area ?? 'JAKARTA' }}
-                            </span>
+                            <div class="flex flex-col gap-0.5">
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 w-fit">
+                                    <i class="fa-solid fa-location-dot text-[9px]"></i>
+                                    {{ $cand->area ? \App\Models\TbArea::getCanonicalAreaName($cand->area) : 'Jakarta' }}
+                                </span>
+                                <span class="inline-flex items-center text-[9px] font-bold text-slate-400 pl-1 tracking-wide">
+                                    {{ $cand->region }}
+                                </span>
+                            </div>
                         </td>
 
                         <!-- Step Odoo -->

@@ -446,11 +446,15 @@ class KandidatPortalController extends Controller
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
         $userPrinsiples = \App\Http\Controllers\InterviewController::getUserPrinsipleOptions($candidate);
-        $areas = [
-            'JAKARTA', 'SURABAYA', 'BANDUNG', 'SEMARANG', 'MEDAN', 
-            'MAKASSAR', 'DENPASAR', 'PALEMBANG', 'BALIKPAPAN', 'YOGYAKARTA',
-            'MALANG', 'BOGOR', 'BEKASI', 'TANGERANG', 'DEPOK'
-        ];
+        try {
+            $areas = DB::table('tb_area')->orderBy('area')->pluck('area')->toArray();
+        } catch (\Throwable $e) {
+            $areas = [];
+        }
+        if (empty($areas)) {
+            $areas = array_column(\App\Models\TbArea::getOfficialAreas(), 'area');
+            sort($areas);
+        }
 
         // Sinkronisasi data pengalaman dari tb_pengalaman jika work_experiences masih kosong
         if ($candidate->workExperiences->isEmpty()) {
@@ -937,7 +941,8 @@ class KandidatPortalController extends Controller
 
         $updates = [];
         if ($request->filled('area')) {
-            $candidate->area = trim($request->area);
+            $candidate->area = \App\Models\TbArea::getCanonicalAreaName(trim($request->area));
+            $candidate->region = \App\Models\TbArea::resolveRegion($candidate->area);
             $updates['area'] = $candidate->area;
         }
 

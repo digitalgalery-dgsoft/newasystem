@@ -5,7 +5,9 @@ namespace App\Services;
 use ZipArchive;
 use Exception;
 use Carbon\Carbon;
+use App\Models\Candidate;
 use App\Models\Employee;
+use App\Models\TbArea;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
@@ -311,38 +313,8 @@ class CandidateXlsxExportService
 
         $xml .= '</row>';
 
-        // Area to Region mapping
-        $regionMap = [
-            'jakarta' => 'Region 1',
-            'bandung' => 'Region 2',
-            'tasikmalaya' => 'Region 2',
-            'semarang' => 'Region 3',
-            'purwokerto' => 'Region 3',
-            'yogyakarta' => 'Region 3',
-            'solo' => 'Region 3',
-            'tegal' => 'Region 3',
-            'surabaya' => 'Region 4',
-            'malang' => 'Region 4',
-            'madiun' => 'Region 4',
-            'kediri' => 'Region 4',
-            'bojonegoro' => 'Region 4',
-            'denpasar' => 'Region 4',
-            'mataram' => 'Region 4',
-            'jember' => 'Region 4',
-            'makassar' => 'Region 5',
-            'gorontalo' => 'Region 5',
-            'manado' => 'Region 5',
-            'palu' => 'Region 5',
-            'medan' => 'Region 6',
-            'batam' => 'Region 6',
-            'samarinda' => 'Region 6',
-            'balikpapan' => 'Region 6',
-            'banjarmasin' => 'Region 6',
-            'palembang' => 'Region 7',
-            'lampung' => 'Region 7',
-            'jambi' => 'Region 7',
-            'pekanbaru' => 'Region 7',
-        ];
+        // Area to Region mapping (Mengacu ke Master tb_area 43 Area resmi ESA Groups)
+        $regionMap = TbArea::getRegionMap();
 
         // Production Server Base URL: always prioritize https://new.asystem.co.id
         $baseUrl = !empty($meta['base_url']) ? $meta['base_url'] : null;
@@ -423,9 +395,15 @@ class CandidateXlsxExportService
             $area = !empty($c->area) ? trim($c->area) : '-';
             
             // Region & Secondary City
-            $areaLower = strtolower(trim((string)$area));
-            $region = $regionMap[$areaLower] ?? (!empty($c->region) ? $c->region : 'Region 1');
-            $secCity = !empty($c->city_domicile) ? trim($c->city_domicile) : (!empty($c->penempatan) ? trim($c->penempatan) : $area);
+            $cleanArea = (!empty($area) && $area !== '-') ? TbArea::getCanonicalAreaName($area) : '-';
+            $region = TbArea::resolveRegion($cleanArea);
+            if ($region === '-' && !empty($c->region)) {
+                $region = $c->region;
+            }
+            if ($region === '-') {
+                $region = 'Region 1';
+            }
+            $secCity = !empty($c->city_domicile) ? trim($c->city_domicile) : (!empty($c->penempatan) ? trim($c->penempatan) : $cleanArea);
 
             // Q: Nama AS & Jabatan (Ambil dari Data Karyawan berdasarkan email)
             $namaAs = '-';

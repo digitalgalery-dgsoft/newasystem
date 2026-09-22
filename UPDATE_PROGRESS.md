@@ -1774,6 +1774,28 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 34. 🗺️ Penyelarasan Penuh Data Region & Area (Job Statistik & Kandidat Portal) Berdasarkan Master `tb_area` (43 Area Resmi ESA Groups)
+- **Master Area Model `TbArea.php` (43 Area Resmi)**:
+  - Dibuat model [TbArea.php](file:///d:/ASystem/newasystem/app/Models/TbArea.php) sebagai sumber kebenaran tunggal (*single source of truth*) yang merepresentasikan seluruh 43 cabang/area resmi ESA Groups dari `tb_area (2).sql`.
+  - Dilengkapi kamus pemetaan region terpusat (`getRegionMap()`), resolusi nama region presisi (`resolveRegion()`), dan normalisasi kapitalisasi nama area (`getCanonicalAreaName()`).
+- **Koreksi Mismatch Region pada Job Statistik ([JobStatistikController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/JobStatistikController.php))**:
+  - **Aceh**: Dikoreksi dari **Region 7** menjadi **Region 6** (sesuai kode 30 pada master data).
+  - **Papua**: Dikoreksi dari `-` menjadi **Region 5**.
+  - **Pematang Siantar**: Dikoreksi dari `-` menjadi **Region 6**.
+  - **Buduran & Medaeng**: Dikoreksi dari `-` menjadi **Region 4**.
+  - **Normalisasi Duplikasi Area**: Menggabungkan variasi kapitalisasi (`TASIKMALAYA` vs `Tasikmalaya`, `JAKARTA` vs `Jakarta`, dll.) sehingga rekapitulasi data per Area pada Tabel 1, Tabel 2, dan Tabel 3 menyatu rapi tanpa baris terpisah.
+- **Koreksi Export Excel & Tampilan Kandidat Portal**:
+  - Pada [CandidateXlsxExportService.php](file:///d:/ASystem/newasystem/app/Services/CandidateXlsxExportService.php), seluruh 43 area kini dipetakan dengan tepat ke Region 1 s/d Region 7 pada Kolom O (Region) file Excel, menyelesaikan bug di mana pelamar dari 14 area sebelumnya salah di-default ke Region 1.
+  - Pada [KandidatPortalController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/KandidatPortalController.php) metode `show()`, modal "Ganti Area" kini mengambil seluruh 43 area resmi dari `TbArea`.
+  - Pada [kandidatportal/index.blade.php](file:///d:/ASystem/newasystem/resources/views/kandidatportal/index.blade.php), ditambahkan badge visual Region di samping/bawah nama Area pada daftar pelamar.
+- **Accessor Model `region` pada `Candidate` & `JobSpec`**:
+  - Menambahkan accessor `getRegionAttribute()` dan model boot saving hook pada [Candidate.php](file:///d:/ASystem/newasystem/app/Models/Candidate.php) dan [JobSpec.php](file:///d:/ASystem/newasystem/app/Models/JobSpec.php) agar atribut `region` selalu tersinkron otomatis saat data disimpan.
+- **Database Migration Sinkronisasi Data Eksisting**:
+  - Migrasi `2026_09_22_123000_sync_tb_area_and_normalize_regions.php` menambahkan kolom `region` (terindeks) pada `candidates` dan `job_region` pada `job_specs`.
+  - Menyinkronkan seluruh 64.000+ data kandidat dan 477 lowongan kerja yang ada di database ke Region yang benar.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

@@ -19,6 +19,35 @@ class JobSpec extends Model
         'tgl_expired' => 'date',
     ];
 
+    protected static function booted(): void
+    {
+        static::saving(function ($job) {
+            if (!empty($job->job_area) && $job->job_area !== '-') {
+                $job->job_region = \App\Models\TbArea::resolveRegion($job->job_area);
+            }
+        });
+    }
+
+    /**
+     * Resolusi Region resmi lowongan berdasarkan master tb_area ESA Groups
+     */
+    public function getRegionAttribute(): string
+    {
+        if (!empty($this->attributes['job_region']) && $this->attributes['job_region'] !== '-') {
+            return $this->attributes['job_region'];
+        }
+
+        $area = !empty($this->job_area) ? trim($this->job_area) : null;
+        if (!empty($area) && $area !== '-') {
+            $reg = \App\Models\TbArea::resolveRegion($area);
+            if ($reg !== '-') {
+                return $reg;
+            }
+        }
+
+        return 'Region 1';
+    }
+
 
     public function getSlugAttribute(): string
     {

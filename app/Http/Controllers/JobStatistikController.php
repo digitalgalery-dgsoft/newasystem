@@ -6,6 +6,7 @@ use App\Models\Candidate;
 use App\Models\Employee;
 use App\Models\JobSpec;
 use App\Models\Principle;
+use App\Models\TbArea;
 use App\Services\JobStatistikXlsxExportService;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
@@ -19,59 +20,7 @@ class JobStatistikController extends Controller
      */
     public static function getRegionMap(): array
     {
-        return [
-            // Region 1: Jabodetabek
-            'jakarta' => 'Region 1', 'dki jakarta' => 'Region 1', 'jakpus' => 'Region 1', 'jaksel' => 'Region 1',
-            'jakbar' => 'Region 1', 'jaktim' => 'Region 1', 'jakut' => 'Region 1', 'bogor' => 'Region 1',
-            'depok' => 'Region 1', 'tangerang' => 'Region 1', 'tangsel' => 'Region 1', 'bekasi' => 'Region 1',
-            'kepulauan seribu' => 'Region 1',
-
-            // Region 2: Jawa Barat
-            'bandung' => 'Region 2', 'tasikmalaya' => 'Region 2', 'cirebon' => 'Region 2', 'sukabumi' => 'Region 2',
-            'karawang' => 'Region 2', 'subang' => 'Region 2', 'garut' => 'Region 2', 'purwakarta' => 'Region 2',
-            'indramayu' => 'Region 2', 'majalengka' => 'Region 2', 'kuningan' => 'Region 2', 'cianjur' => 'Region 2',
-            'cimahi' => 'Region 2', 'sumedang' => 'Region 2',
-
-            // Region 3: Jawa Tengah & DIY
-            'semarang' => 'Region 3', 'solo' => 'Region 3', 'surakarta' => 'Region 3', 'yogyakarta' => 'Region 3',
-            'jogja' => 'Region 3', 'purwokerto' => 'Region 3', 'tegal' => 'Region 3', 'pekalongan' => 'Region 3',
-            'magelang' => 'Region 3', 'kudus' => 'Region 3', 'cilacap' => 'Region 3', 'pati' => 'Region 3',
-            'klaten' => 'Region 3', 'salatiga' => 'Region 3', 'brebes' => 'Region 3', 'banyumas' => 'Region 3',
-            'kebumen' => 'Region 3', 'purworejo' => 'Region 3', 'wonosobo' => 'Region 3', 'boyolali' => 'Region 3',
-            'sukoharjo' => 'Region 3', 'karanganyar' => 'Region 3', 'wonogiri' => 'Region 3', 'sragen' => 'Region 3',
-            'grobogan' => 'Region 3', 'blora' => 'Region 3', 'rembang' => 'Region 3', 'jepara' => 'Region 3',
-            'demak' => 'Region 3', 'temanggung' => 'Region 3', 'batang' => 'Region 3', 'pemalang' => 'Region 3',
-
-            // Region 4: Jawa Timur, Bali, NTB, NTT
-            'surabaya' => 'Region 4', 'malang' => 'Region 4', 'jember' => 'Region 4', 'kediri' => 'Region 4',
-            'madiun' => 'Region 4', 'bojonegoro' => 'Region 4', 'denpasar' => 'Region 4', 'mataram' => 'Region 4',
-            'kupang' => 'Region 4', 'banyuwangi' => 'Region 4', 'probolinggo' => 'Region 4', 'pasuruan' => 'Region 4',
-            'tuban' => 'Region 4', 'lamongan' => 'Region 4', 'gresik' => 'Region 4', 'sidoarjo' => 'Region 4',
-            'mojokerto' => 'Region 4', 'jombang' => 'Region 4', 'nganjuk' => 'Region 4', 'blitar' => 'Region 4',
-            'tulungagung' => 'Region 4', 'trenggalek' => 'Region 4', 'ponorogo' => 'Region 4', 'pacitan' => 'Region 4',
-            'magetan' => 'Region 4', 'ngawi' => 'Region 4', 'bangkalan' => 'Region 4', 'sampang' => 'Region 4',
-            'pamekasan' => 'Region 4', 'sumenep' => 'Region 4', 'bali' => 'Region 4', 'lombok' => 'Region 4',
-            'sumbawa' => 'Region 4', 'bima' => 'Region 4', 'flores' => 'Region 4', 'sumba' => 'Region 4',
-
-            // Region 5: Sulawesi, Maluku, Papua
-            'makassar' => 'Region 5', 'manado' => 'Region 5', 'palu' => 'Region 5', 'kendari' => 'Region 5',
-            'gorontalo' => 'Region 5', 'mamuju' => 'Region 5', 'ambon' => 'Region 5', 'jayapura' => 'Region 5',
-            'sorong' => 'Region 5', 'merauke' => 'Region 5', 'mimika' => 'Region 5', 'bitung' => 'Region 5',
-            'kotamobagu' => 'Region 5', 'tomohon' => 'Region 5', 'baubau' => 'Region 5', 'parepare' => 'Region 5',
-            'palopo' => 'Region 5', 'maros' => 'Region 5', 'gowa' => 'Region 5',
-
-            // Region 6: Kalimantan & Sumatera Utara / Kepri
-            'medan' => 'Region 6', 'batam' => 'Region 6', 'banjarmasin' => 'Region 6', 'balikpapan' => 'Region 6',
-            'samarinda' => 'Region 6', 'pontianak' => 'Region 6', 'palangkaraya' => 'Region 6', 'tarakan' => 'Region 6',
-            'tanjungpinang' => 'Region 6', 'binjai' => 'Region 6', 'pematangsiantar' => 'Region 6', 'singkawang' => 'Region 6',
-            'banjarbaru' => 'Region 6', 'bontang' => 'Region 6', 'kutai' => 'Region 6',
-
-            // Region 7: Sumatera Bagian Selatan & Tengah
-            'palembang' => 'Region 7', 'lampung' => 'Region 7', 'bandar lampung' => 'Region 7', 'jambi' => 'Region 7',
-            'pekanbaru' => 'Region 7', 'padang' => 'Region 7', 'bengkulu' => 'Region 7', 'pangkalpinang' => 'Region 7',
-            'banda aceh' => 'Region 7', 'prabumulih' => 'Region 7', 'pagar alam' => 'Region 7', 'lubuklinggau' => 'Region 7',
-            'metro' => 'Region 7', 'dumai' => 'Region 7', 'bukittinggi' => 'Region 7', 'riau' => 'Region 7',
-        ];
+        return TbArea::getRegionMap();
     }
 
     /**
@@ -79,24 +28,9 @@ class JobStatistikController extends Controller
      */
     public static function resolveRegion(?string $area): string
     {
-        if (empty($area)) {
-            return '-';
-        }
-        $map = self::getRegionMap();
-        $clean = strtolower(trim($area));
-
-        if (isset($map[$clean])) {
-            return $map[$clean];
-        }
-
-        foreach ($map as $k => $v) {
-            if (str_contains($clean, $k) || str_contains($k, $clean)) {
-                return $v;
-            }
-        }
-
-        return '-';
+        return TbArea::resolveRegion($area);
     }
+
 
     /**
      * Data Master Karyawan Map (email / name -> formatted display name).
@@ -271,7 +205,8 @@ class JobStatistikController extends Controller
 
         // Inisialisasi proses Job Specs
         foreach ($jobs as $job) {
-            $area = !empty(trim((string)$job->job_area)) ? trim((string)$job->job_area) : '-';
+            $rawArea = trim((string)$job->job_area);
+            $area = !empty($rawArea) && $rawArea !== '-' ? TbArea::getCanonicalAreaName($rawArea) : '-';
             $region = self::resolveRegion($area);
             $prinsiple = !empty(trim((string)$job->job_prinsiple)) ? trim((string)$job->job_prinsiple) : '-';
             $creator = trim((string)$job->created_by);
@@ -384,7 +319,8 @@ class JobStatistikController extends Controller
             $appJob = strtolower(trim((string)$c->applied_job));
             $useras = trim((string)$c->useras);
             $userasLower = strtolower($useras);
-            $cArea = trim((string)$c->area) ?: '-';
+            $cRawArea = trim((string)$c->area);
+            $cArea = !empty($cRawArea) && $cRawArea !== '-' && strtolower($cRawArea) !== 'null' ? TbArea::getCanonicalAreaName($cRawArea) : '-';
             $rawPrin = $c->getRawOriginal('principle');
             if (empty($rawPrin) && is_object($c->principle)) {
                 $rawPrin = $c->principle->name ?? '-';
@@ -401,16 +337,16 @@ class JobStatistikController extends Controller
                 $recruiterDisplay = $emailMap[$userasLower]['display'];
                 $matchedCanonicalKey = $emailMap[$userasLower]['canonical_key'];
                 $matchedEmail = $emailMap[$userasLower]['email'];
-                if ($cArea === '-' && !empty($emailMap[$userasLower]['area'])) {
-                    $cArea = $emailMap[$userasLower]['area'];
+                if (($cArea === '-' || strtolower($cArea) === 'nasional') && !empty($emailMap[$userasLower]['area'])) {
+                    $cArea = TbArea::getCanonicalAreaName($emailMap[$userasLower]['area']);
                     $cRegion = self::resolveRegion($cArea);
                 }
             } elseif (!empty($userasLower) && isset($rawNameMap[$userasLower])) {
                 $recruiterDisplay = $rawNameMap[$userasLower]['display'];
                 $matchedCanonicalKey = $rawNameMap[$userasLower]['canonical_key'];
                 $matchedEmail = $rawNameMap[$userasLower]['email'];
-                if ($cArea === '-' && !empty($rawNameMap[$userasLower]['area'])) {
-                    $cArea = $rawNameMap[$userasLower]['area'];
+                if (($cArea === '-' || strtolower($cArea) === 'nasional') && !empty($rawNameMap[$userasLower]['area'])) {
+                    $cArea = TbArea::getCanonicalAreaName($rawNameMap[$userasLower]['area']);
                     $cRegion = self::resolveRegion($cArea);
                 }
             } else {
