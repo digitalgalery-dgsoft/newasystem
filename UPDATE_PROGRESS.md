@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 21 September 2026*
+*Terakhir diperbarui: 22 September 2026*
 
 ---
 
@@ -1796,7 +1796,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 18. 🧹 Pembersihan Akun Demo Jamil & Pengembalian Data Kandidat ke User Asli
+### 35. 🧹 Pembersihan Akun Demo Jamil & Pengembalian Data Kandidat ke User Asli
 - **Latar Belakang Masalah**:
   - Akun `jamil@asystem.co.id` (Abdurrahman Jamil - IT Programmer) sebelumnya digunakan sebagai fallback akun demo saat pengembangan awal sistem pada modul `InterviewController`, `KandidatPortalController`, `InterviewInhouseController`, dan `CandidateImportController`.
   - Pada tabel `candidates`, terdapat kandidat interview demo (ID 4: Ahmad Faisal Rahman dan ID 5: Siti Nurhaliza) yang di-assign ke `useras: 'jamil@asystem.co.id'` dan `recruiter_id: 3`.
@@ -1816,6 +1816,49 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   - [AuthController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/AuthController.php): Menghapus fallback pencocokan alias login ke `jamil@asystem.co.id`.
 - **Status Deployment**:
   - Berhasil diuji coba lokal, di-commit, di-push ke branch `main`, dan berhasil dieksekusi migrasinya pada server production (`new.asystem.co.id`) dengan status HTTP 200 OK.
+
+---
+
+### 36. 🏢 Modul Approval Inhouse, Kandidat Inhouse, & Penyelarasan Step Berjenjang (Rekrutor ➔ Head ➔ HRD Pusat)
+- **Detail Kandidat Inhouse & Approval Inhouse ([interview/show.blade.php](file:///d:/ASystem/newasystem/resources/views/interview/show.blade.php) & [interviewinhouse/show.blade.php](file:///d:/ASystem/newasystem/resources/views/interviewinhouse/show.blade.php))**:
+  - Untuk kandidat dengan Prinsiple naungan 5 entitas inhouse (`PT ARINA MULTI KARYA`, `PT ALVA KARYA PERKASA`, `PT ANUGRAH TERPERCAYA KERJA`, `PT ABADI BERKAT ODELIA`, `PT ANUGRAH TALENTA BERKARYA`, `PT ARINA BINTANG OETAMA`, `PT ANUGRAH TRI BERKAH`), tab ke-7 berubah menjadi **"Approval Inhouse"**.
+  - **Penyelarasan Tampilan Profil Kandidat Lengkap**: Seluruh tampilan profil kandidat pada modul interview maupun detail inhouse diselaraskan menggunakan format kartu profil lengkap 11 data points (*No. KTP/NIK, Nama Lengkap, Alamat KTP, Usia, Pendidikan, WhatsApp, Pengajuan Entitas, Posisi Dilamar, Status Seleksi, User AS/Rekruter, Lampiran CV*) dengan pasfoto 3x4 interaktif dan viewer lampiran CV terpadu.
+  - **7 Tab Terpadu pada Halaman Inhouse (`/interviewinhouse/{id}`)**: Halaman evaluasi approver inhouse menyertakan seluruh 7 tab hasil seleksi lengkap yang identik dengan detail interview standar:
+    1. *Hasil Interview*: Matrix penilaian aspek wawancara, tanggal interview, catatan pewawancara, dan tanda tangan AS/rekruter.
+    2. *Referensi Cek*: Riwayat pengalaman kerja kandidat, kontak referensi, catatan verifikasi, dan bukti screenshot cek referensi.
+    3. *Tes Komputer*: Skor Word, Excel, PPT, Internet, total skor penilaian, dan berkas bukti tes.
+    4. *Tes Kepribadian*: Hasil evaluasi kepribadian, gaya komunikasi, dan tipe kepribadian DISC.
+    5. *Tes Matematika*: Skor nilai, rincian jumlah jawaban benar, salah, dan riwayat tes ke-N.
+    6. *Analisa AI (CV Analyzer)*: Match rate kecocokan posisi, level pengalaman, dan ringkasan keunggulan kandidat.
+    7. *Approval Inhouse*: Tabel riwayat *List Head Approve*, *Approval HRD Pusat*, dan form keputusan evaluasi approver.
+  - **Tombol Berkas Lamaran & Dokumen Interview**:
+    - Tombol *Dokument Interview & Test Online*: Membuka berkas PDF resmi lembar penilaian seleksi kandidat.
+    - Tombol *Berkas Lamaran*: Membuka file lamaran yang dilampirkan Rekrutor/AS dengan penanganan responsif dan status tombol disabled yang informatif jika berkas belum diunggah.
+  - **Formulir Status Formasi Pengajuan (New / Replace)**:
+    - Pilihan status formasi: `New` atau `Replace`.
+    - Jika memilih `Replace`, form dinamis Alpine.js otomatis memunculkan kolom input: *Menggantikan*, *Tanggal Resign*, dan *Alasan Resign*, serta tersinkronisasi ke tabel `tb_replace`.
+
+---
+
+### 37. 🔒 Penguncian Step Approver Inhouse (*Step Locking*), Perbaikan Tab Navigation, & Proteksi Otomatis Pimpinan User
+- **Penguncian Nama Approver Otomatis Sesuai Pimpinan User (Step 1 Locking)**:
+  - Mengubah field *Nama Approver Inhouse* dari dropdown yang dapat dipilih manual menjadi **kartu terkunci otomatis (*Locked Readonly Display*)** berikon gembok dan badge `Step 1: Head Approver (Terkunci)`.
+  - Rekrutor/pengaju tidak dapat memilih atau mengubah approver secara manual guna mencegah salah pilih.
+  - Nilai approver diselesaikan secara otomatis berjenjang oleh [InterviewController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php):
+    1. Pimpinan dari User AS / Rekrutor kandidat di master `employees.pimpinan` & `jabatan_pimpinan`.
+    2. Pimpinan user yang sedang login di master `employees`.
+    3. Pimpinan / Leader per Area dari data master karyawan aktif.
+    4. Head operasional inhouse resmi (`David Oscar Sahala G Sibuea - OM (Operation Manager)`).
+  - Dibuat migrasi database `2026_09_22_174813_add_nama_approver_to_candidates_table.php` untuk menyimpan kolom `nama_approver` secara permanen pada tabel `candidates`.
+- **Proteksi Hak Akses & Alur Step Berjenjang**:
+  - **Step 1 (Rekrutor ➔ Head)**: Status kandidat menjadi `Review Head`. Form di rekrutor terkunci (*Locked View*). User HRD yang mencoba melakukan approve pada tahap ini ditolak oleh sistem karena kandidat wajib disetujui Head terlebih dahulu.
+  - **Step 2 (Head ➔ HRD Pusat)**: Setelah Head menyetujui, status naik menjadi `Review HRD`. Head tidak dapat mengedit ulang pengajuan yang sudah berada di tahap HRD Pusat. Form approval terbuka khusus untuk user dengan hak akses HRD Pusat.
+  - **Selesai (Fully Approved)**: Setelah disetujui HRD Pusat, status kandidat menjadi `Approve`, kolom `ttd_prinsiple` dan `time_prinsiple` terisi, dan kandidat otomatis berpindah ke tab *Interview Selesai* (`tab=done`).
+- **Perbaikan Bug Loading Modal & Tab Navigation**:
+  - Memperbaiki tag penutup form sinkronisasi status Odoo yang sebelumnya hilang (`unclosed <form>`) pada `interview/show.blade.php`, yang sebelumnya menyebabkan klik tab navigasi terinterpretasi sebagai form submit dan memicu modal loading *page-loader* *"Menyimpan Data..."* serta me-refresh halaman kembali ke Tab 1.
+  - Menambahkan atribut eksplisit `type="button"` pada seluruh 7 tombol tab navigasi di `interview/show.blade.php` dan `interviewinhouse/show.blade.php` sehingga perpindahan tab antar menu seleksi berlangsung instan tanpa me-reload halaman.
+- **Deployment Production**:
+  - Seluruh pembaruan telah diuji coba, diverifikasi dengan kompilasi template Blade bersih (`php artisan view:cache`), di-push ke GitHub `origin/main`, dan dieksekusi migrasinya pada server production live (`new.asystem.co.id`).
 
 ---
 
