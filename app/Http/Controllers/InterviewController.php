@@ -778,64 +778,114 @@ class InterviewController extends Controller
         $currentApprovalStatus = $candidate->status_approval ?? 'Proses';
         $isStepHrd = in_array($currentApprovalStatus, ['Review HRD']);
 
-        if ($isStepHrd) {
-            // Step 2: Pilihan HRD Pusat
-            $inhouseApproverOptions = [
-                'Uriyanto - ADMIN HRD Jakarta',
-                'Administrator HR - Head of Recruitment',
-            ];
-            $hrdUsers = User::where(function($q) {
-                $q->where('role', 'admin')
-                  ->orWhere('role', 'hrd')
-                  ->orWhere('role', 'head_hr')
-                  ->orWhere('job_title', 'like', '%HRD%')
-                  ->orWhere('job_title', 'like', '%HR%');
-            })->get();
-            foreach ($hrdUsers as $hu) {
-                $lbl = $hu->name . ' - ' . ($hu->job_title ?: 'HRD Pusat');
-                if (!in_array($lbl, $inhouseApproverOptions)) {
-                    $inhouseApproverOptions[] = $lbl;
-                }
-            }
-        } else {
-            // Step 1: Pilihan Head (Pimpinan User Rekrutor)
-            // Cek pimpinan langsung user login
-            $userPimpinan = null;
-            if ($user) {
-                $emp = Employee::where('email', $user->email)->orWhere('nama_karyawan', $user->name)->first();
-                if ($emp && !empty($emp->pimpinan)) {
-                    $userPimpinan = $emp->pimpinan;
-                }
-            }
-            if (!empty($userPimpinan)) {
-                $inhouseApproverOptions[] = $userPimpinan;
-            }
+        // -------------------------------------------------------------
+        // Resolusi Nama Approver Inhouse (Step 1: Terkunci ke Pimpinan User Rekrutor)
+        // -------------------------------------------------------------
+        $lockedApproverName = !empty($candidate->nama_approver) ? $candidate->nama_approver : null;
+        $userPimpinan = null;
+        $pimpinanJabatan = null;
 
-            // Tambahkan daftar Head standar operasional
-            $defaultHeads = [
-                'Nurul Yuliastuti - Head HR',
-                'David Oscar Sahala G Sibuea - OM',
-                'Firmanto Setia Budi - AM',
-                'Arief Denny Priambodo - RM',
-                'Santy Christina Manurung - RM',
-                'Rini Widia Anwar Suwarha - SAM',
-                'Marinus Gulo - AM',
-                'Administrator HR - Head of Recruitment'
-            ];
-            foreach ($defaultHeads as $dh) {
-                if (!in_array($dh, $inhouseApproverOptions)) {
-                    $inhouseApproverOptions[] = $dh;
+        if (empty($lockedApproverName)) {
+            // 1. Cek dari Rekrutor / User AS Kandidat di master Employee
+            $recruiterEmail = $candidate->recruiter?->email ?? (str_contains($candidate->useras ?? '', '@') ? $candidate->useras : null);
+            $recruiterName = $candidate->recruiter?->name ?? $candidate->useras;
+
+            if (!empty($recruiterEmail)) {
+                $empRecruiter = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($recruiterEmail))])
+                    ->whereNotNull('pimpinan')
+                    ->where('pimpinan', '!=', '')
+                    ->first();
+                if ($empRecruiter && !empty($empRecruiter->pimpinan)) {
+                    $userPimpinan = trim($empRecruiter->pimpinan);
+                    $pimpinanJabatan = trim($empRecruiter->jabatan_pimpinan ?? '');
                 }
             }
 
-            $headUsers = User::all()->filter(fn($u) => $u->isHead());
-            foreach ($headUsers as $hu) {
-                $lbl = $hu->name . ' - ' . ($hu->job_title ?: 'Head Approver');
-                if (!in_array($lbl, $inhouseApproverOptions)) {
-                    $inhouseApproverOptions[] = $lbl;
+            if (empty($userPimpinan) && !empty($recruiterName)) {
+                $cleanName = trim(preg_replace('/\b(recruitment|recruiter|aro|jakarta|surabaya|bandung|amk|akp|atk|abo)\b/i', '', $recruiterName));
+                $empRecruiter = Employee::where(function($q) use ($cleanName, $recruiterName) {
+                        if (!empty($cleanName)) {
+                            $q->orWhereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower($cleanName)])
+                              ->orWhere('nama_karyawan', 'like', "%{$cleanName}%");
+                        }
+                        $q->orWhere('nama_karyawan', 'like', "%{$recruiterName}%");
+                    })
+                    ->whereNotNull('pimpinan')
+                    ->where('pimpinan', '!=', '')
+                    ->first();
+                if ($empRecruiter && !empty($empRecruiter->pimpinan)) {
+                    $userPimpinan = trim($empRecruiter->pimpinan);
+                    $pimpinanJabatan = trim($empRecruiter->jabatan_pimpinan ?? '');
                 }
             }
+
+            // 2. Cek dari User yang sedang Login (Auth::user())
+            if (empty($userPimpinan) && $user) {
+                $empUser = Employee::where(function($q) use ($user) {
+                    if (!empty($user->email)) {
+                        $q->orWhereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($user->email))]);
+                    }
+                    if (!empty($user->name)) {
+                        $q->orWhereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower(trim($user->name))])
+                          ->orWhere('nama_karyawan', 'like', "%{$user->name}%");
+                    }
+                })
+                ->whereNotNull('pimpinan')
+                ->where('pimpinan', '!=', '')
+                ->first();
+
+                if ($empUser && !empty($empUser->pimpinan)) {
+                    $userPimpinan = trim($empUser->pimpinan);
+                    $pimpinanJabatan = trim($empUser->jabatan_pimpinan ?? '');
+                }
+            }
+
+            // 3. Cek Pimpinan / Leader Karyawan berdasarkan Area Kandidat / User
+            if (empty($userPimpinan)) {
+                $targetArea = !empty($candidate->area) ? trim($candidate->area) : (!empty($user->area) ? trim($user->area) : null);
+                if ($targetArea) {
+                    $headArea = Employee::where('status', 'Aktiv')
+                        ->whereRaw('UPPER(TRIM(area)) = ?', [strtoupper($targetArea)])
+                        ->where(function($q) {
+                            $q->whereIn('level', ['SPV', 'HEAD', 'TL', 'AM', 'RM', 'OM'])
+                              ->orWhere('jabatan', 'like', '%HEAD%')
+                              ->orWhere('jabatan', 'like', '%SPV%')
+                              ->orWhere('jabatan', 'like', '%SUPERVISOR%')
+                              ->orWhere('jabatan', 'like', '%MANAGER%')
+                              ->orWhere('jabatan', 'like', '%AS %')
+                              ->orWhere('jabatan', 'like', '%LEAD%');
+                        })
+                        ->first();
+                    if ($headArea) {
+                        $userPimpinan = trim($headArea->nama_karyawan);
+                        $pimpinanJabatan = trim($headArea->jabatan ?? '');
+                    }
+                }
+            }
+
+            // 4. Cek User Head di tabel users
+            if (empty($userPimpinan)) {
+                $targetArea = !empty($candidate->area) ? trim($candidate->area) : null;
+                $headUser = User::where('is_active', true)
+                    ->when($targetArea, fn($q) => $q->where('area', 'like', "%{$targetArea}%"))
+                    ->get()
+                    ->first(fn($u) => $u->isHead() && !$u->isHrd());
+                if ($headUser) {
+                    $userPimpinan = $headUser->name;
+                    $pimpinanJabatan = $headUser->job_title ?? 'Head Approver';
+                }
+            }
+
+            // 5. Fallback Standar Operasional Head Inhouse
+            if (empty($userPimpinan)) {
+                $userPimpinan = 'David Oscar Sahala G Sibuea';
+                $pimpinanJabatan = 'OM (Operation Manager)';
+            }
+
+            $lockedApproverName = !empty($pimpinanJabatan) ? "{$userPimpinan} - {$pimpinanJabatan}" : $userPimpinan;
         }
+
+        $inhouseApproverOptions = [$lockedApproverName];
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
         $userPrinsiples = self::getUserPrinsipleOptions($candidate);
@@ -901,6 +951,7 @@ class InterviewController extends Controller
             'otherCandidates' => $otherCandidates,
             'isInhouseCandidate' => $isInhouseCandidate,
             'inhouseApproverOptions' => $inhouseApproverOptions,
+            'lockedApproverName' => $lockedApproverName,
         ], $evalData));
     }
 
@@ -2144,6 +2195,7 @@ class InterviewController extends Controller
 
         $candidate->update([
             'is_inhouse' => 1,
+            'nama_approver' => $request->nama_approver,
             'status_replace' => $statusReplace,
             'menggantikan' => $statusReplace === 'Replace' ? $request->menggantikan : null,
             'tgl_resign' => $statusReplace === 'Replace' ? $request->tgl_resign : null,

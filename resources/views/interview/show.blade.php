@@ -1632,6 +1632,11 @@
                                     </div>
 
                                     <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                        <span class="text-slate-500 font-medium">Approver Head:</span>
+                                        <span class="font-bold text-slate-900">{{ $candidate->nama_approver ?: ($lockedApproverName ?? '-') }}</span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
                                         <span class="text-slate-500 font-medium">Berkas Lamaran:</span>
                                         @if($candidate->berkas_lamaran)
                                             <a href="{{ route('interviewinhouse.berkas', $candidate->id) }}" target="_blank" class="font-bold underline text-primary hover:text-primary-700 inline-flex items-center gap-1">
@@ -1668,19 +1673,23 @@
                             <form action="{{ route('interview.inhouse_approval', $candidate->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
                                 @csrf
 
-                                <!-- Nama Approver Inhouse (Step 1: Pilihan Head / Pimpinan) -->
+                                <!-- Nama Approver Inhouse (TERKUNCI SESUAI PIMPINAN USER REKRUTOR) -->
                                 <div>
                                     <div class="flex items-center justify-between mb-1.5">
                                         <label class="block text-xs font-bold text-slate-700">Nama Approver Inhouse</label>
-                                        <span class="px-2 py-0.5 text-[9.5px] font-extrabold bg-blue-100 text-blue-800 rounded-md">Step 1: Head Approver</span>
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 text-[9.5px] font-extrabold bg-emerald-100 text-emerald-800 rounded-md border border-emerald-200">
+                                            <i class="fa-solid fa-lock text-[9px]"></i> Step 1: Head Approver (Terkunci)
+                                        </span>
                                     </div>
-                                    <select name="nama_approver" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
-                                        <option value="" disabled selected>-- Pilih Head Approver (Pimpinan) --</option>
-                                        @foreach($inhouseApproverOptions as $opt)
-                                            <option value="{{ $opt }}">{{ $opt }}</option>
-                                        @endforeach
-                                    </select>
-                                    <span class="text-[10.5px] text-slate-500 mt-1 block italic">* Terkunci pada Step 1 (Pimpinan / Head). Pilihan HRD Pusat akan otomatis aktif di Step 2 setelah Head menyetujui.</span>
+                                    <div class="w-full bg-slate-100 border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-semibold flex items-center justify-between shadow-inner">
+                                        <div class="flex items-center gap-2.5">
+                                            <i class="fa-solid fa-user-shield text-primary-600 text-sm"></i>
+                                            <span class="font-bold text-slate-900">{{ $lockedApproverName ?? ($candidate->nama_approver ?: 'Head Approver (Pimpinan)') }}</span>
+                                        </div>
+                                        <span class="text-[10px] text-slate-500 bg-white border border-slate-200 px-2 py-0.5 rounded font-medium shadow-2xs">Pimpinan User</span>
+                                    </div>
+                                    <input type="hidden" name="nama_approver" value="{{ $lockedApproverName ?? ($candidate->nama_approver ?: 'Head Approver (Pimpinan)') }}">
+                                    <span class="text-[10.5px] text-slate-500 mt-1 block italic">* Terkunci otomatis sesuai Pimpinan User Rekrutor (Step 1). Tidak dapat diubah agar tidak terjadi salah pilih.</span>
                                 </div>
 
                                 <!-- Berkas Lamaran Kandidat -->
