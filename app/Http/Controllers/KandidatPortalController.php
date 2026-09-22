@@ -27,10 +27,7 @@ class KandidatPortalController extends Controller
         if (auth()->check()) {
             return auth()->user();
         }
-        return User::where('email', 'jamil@asystem.co.id')->first()
-            ?? User::where('name', 'like', '%abdur%')->first()
-            ?? User::where('email', 'like', '%abdur%')->first()
-            ?? User::where('role', '!=', 'admin')->first()
+        return User::where('role', 'admin')->first()
             ?? User::first();
     }
 
@@ -52,18 +49,7 @@ class KandidatPortalController extends Controller
             $name = trim($user->name);
             $identifiers[] = strtolower($name);
 
-            // Variasi ejaan: "Abdurrahman" <-> "Abdur Rahman"
-            if (stripos($name, 'abdurrahman') !== false) {
-                $identifiers[] = strtolower(str_ireplace('abdurrahman', 'abdur rahman', $name));
-                $identifiers[] = 'abdur rahman';
-                $identifiers[] = 'abdurrahman';
-            } elseif (stripos($name, 'abdur rahman') !== false) {
-                $identifiers[] = strtolower(str_ireplace('abdur rahman', 'abdurrahman', $name));
-                $identifiers[] = 'abdur rahman';
-                $identifiers[] = 'abdurrahman';
-            }
-
-            // Potongan nama jika lebih dari 1 kata (contoh: "Jamil")
+            // Potongan nama jika lebih dari 1 kata
             $parts = preg_split('/\s+/', $name);
             if (count($parts) > 1) {
                 foreach ($parts as $p) {
@@ -93,24 +79,6 @@ class KandidatPortalController extends Controller
                     $identifiers[] = strtolower(trim($emp->nama_karyawan));
                 }
             }
-        }
-
-        // Alias khusus yang diketahui untuk Abdurrahman Jamil
-        $hasJamilOrAbdur = false;
-        foreach ($identifiers as $id) {
-            if (str_contains($id, 'abdurrahman') || str_contains($id, 'abdur rahman') || str_contains($id, 'jamil')) {
-                $hasJamilOrAbdur = true;
-                break;
-            }
-        }
-        if ($hasJamilOrAbdur) {
-            $identifiers[] = 'abdur rahman';
-            $identifiers[] = 'abdurrahman';
-            $identifiers[] = 'abdurrahman jamil';
-            $identifiers[] = 'abdurrahman2330@gmail.com';
-            $identifiers[] = 'abdurrahmanjamil.mail@gmail.com';
-            $identifiers[] = 'jamil@asystem.co.id';
-            $identifiers[] = 'jamil';
         }
 
         return array_values(array_unique(array_filter($identifiers)));

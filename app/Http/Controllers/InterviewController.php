@@ -26,21 +26,8 @@ class InterviewController extends Controller
             return auth()->user();
         }
 
-        return User::where('email', 'jamil@asystem.co.id')->first()
-            ?? User::where('name', 'like', '%abdur%')->first()
-            ?? User::where('email', 'like', '%abdur%')->first()
-            ?? User::where('role', '!=', 'admin')->first()
-            ?? User::firstOrCreate(
-                ['email' => 'jamil@asystem.co.id'],
-                [
-                    'name' => 'Abdurrahman Jamil',
-                    'password' => bcrypt('password'),
-                    'role' => 'karyawan_inhouse',
-                    'job_title' => 'REKRUTMEN',
-                    'area' => 'JAKARTA',
-                    'phone' => '081234567890',
-                ]
-            );
+        return User::where('role', 'admin')->first()
+            ?? User::first();
     }
 
     private function getSalam(): string

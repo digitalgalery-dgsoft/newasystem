@@ -17,17 +17,7 @@ class InterviewInhouseController extends Controller
 {
     private function getCurrentUser()
     {
-        return auth()->user() ?? User::firstOrCreate(
-            ['email' => 'jamil@asystem.co.id'],
-            [
-                'name' => 'Jamil Abdurrahman',
-                'password' => bcrypt('password'),
-                'role' => 'admin',
-                'job_title' => 'HRD & IT Support Lead',
-                'area' => 'JAKARTA',
-                'phone' => '081234567890',
-            ]
-        );
+        return auth()->user() ?? User::where('role', 'admin')->first() ?? User::first();
     }
 
     private function getSalam(): string

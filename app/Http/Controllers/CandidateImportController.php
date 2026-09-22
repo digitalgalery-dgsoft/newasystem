@@ -35,9 +35,7 @@ class CandidateImportController extends Controller
             return auth()->user();
         }
 
-        return User::where('email', 'jamil@asystem.co.id')->first()
-            ?? User::where('name', 'like', '%abdur%')->first()
-            ?? User::where('email', 'like', '%abdur%')->first()
+        return User::where('role', 'admin')->first()
             ?? User::first();
     }
 
