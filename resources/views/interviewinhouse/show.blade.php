@@ -264,42 +264,48 @@
 
     <!-- 7 TABS NAVIGATION BAR (TETAP DISAMAKAN DENGAN DETAIL INTERVIEW) -->
     <div class="bg-slate-100/80 border border-slate-200 rounded-2xl p-1.5 shadow-inner flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
-        <button @click="activeTab = 'interview'" 
+        <button type="button" 
+                @click="activeTab = 'interview'" 
                 :class="activeTab === 'interview' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-clipboard-check text-xs"></i>
             <span>1. Hasil Interview</span>
         </button>
 
-        <button @click="activeTab = 'refcek'" 
+        <button type="button" 
+                @click="activeTab = 'refcek'" 
                 :class="activeTab === 'refcek' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-phone-volume text-xs"></i>
             <span>2. Referensi Cek</span>
         </button>
 
-        <button @click="activeTab = 'kompt'" 
+        <button type="button" 
+                @click="activeTab = 'kompt'" 
                 :class="activeTab === 'kompt' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-laptop-code text-xs"></i>
             <span>3. Tes Komputer</span>
         </button>
 
-        <button @click="activeTab = 'kepribadian'" 
+        <button type="button" 
+                @click="activeTab = 'kepribadian'" 
                 :class="activeTab === 'kepribadian' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-brain text-xs"></i>
             <span>4. Tes Kepribadian</span>
         </button>
 
-        <button @click="activeTab = 'matematika'" 
+        <button type="button" 
+                @click="activeTab = 'matematika'" 
                 :class="activeTab === 'matematika' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-calculator text-xs"></i>
             <span>5. Tes Matematika</span>
         </button>
 
-        <button @click="activeTab = 'ai'" 
+        <button type="button" 
+                @click="activeTab = 'ai'" 
                 :class="activeTab === 'ai' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-wand-magic-sparkles text-amber-500 text-xs"></i>
@@ -307,7 +313,8 @@
         </button>
 
         <!-- TAB 7: APPROVAL INHOUSE (DEFAULT APPROVER TAB) -->
-        <button @click="activeTab = 'approval'" 
+        <button type="button" 
+                @click="activeTab = 'approval'" 
                 :class="activeTab === 'approval' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-house-chimney-user text-xs"></i>

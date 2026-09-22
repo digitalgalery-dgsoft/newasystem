@@ -170,6 +170,7 @@
                 <i class="fa-solid fa-arrows-rotate text-purple-600"></i>
                 <span>Cek Status Terkini</span>
             </button>
+        </form>
     </div>
 
     <!-- PROFIL KANDIDAT CARD REGULER (11 DATA POINTS + FOTO DROPZONE) -->
@@ -385,35 +386,40 @@
 
     <!-- 7 Tabs Navigation Bar (Modern Attendance Tabs) -->
     <div class="bg-slate-100/80 border border-slate-200 rounded-2xl p-1.5 shadow-inner flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
-        <button @click="activeTab = 'interview'" 
+        <button type="button" 
+                @click="activeTab = 'interview'" 
                 :class="activeTab === 'interview' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-clipboard-check text-xs"></i>
             <span>1. Hasil Interview</span>
         </button>
 
-        <button @click="activeTab = 'refcek'" 
+        <button type="button" 
+                @click="activeTab = 'refcek'" 
                 :class="activeTab === 'refcek' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-phone-volume text-xs"></i>
             <span>2. Referensi Cek</span>
         </button>
 
-        <button @click="activeTab = 'kompt'" 
+        <button type="button" 
+                @click="activeTab = 'kompt'" 
                 :class="activeTab === 'kompt' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-laptop-code text-xs"></i>
             <span>3. Tes Komputer</span>
         </button>
 
-        <button @click="activeTab = 'kepribadian'" 
+        <button type="button" 
+                @click="activeTab = 'kepribadian'" 
                 :class="activeTab === 'kepribadian' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-brain text-xs"></i>
             <span>4. Tes Kepribadian</span>
         </button>
 
-        <button @click="activeTab = 'matematika'" 
+        <button type="button" 
+                @click="activeTab = 'matematika'" 
                 :class="activeTab === 'matematika' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-calculator text-xs"></i>
@@ -421,7 +427,8 @@
         </button>
 
         <!-- 6. Analisa AI (CV Analyzer) (Tab No. 6 Sesuai Permintaan User!) -->
-        <button @click="activeTab = 'ai'" 
+        <button type="button" 
+                @click="activeTab = 'ai'" 
                 :class="activeTab === 'ai' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                 class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
             <i class="fa-solid fa-wand-magic-sparkles text-amber-500 text-xs"></i>
@@ -430,7 +437,8 @@
 
         <!-- 7. User Principle / Approver Inhouse -->
         @if(!empty($isInhouseCandidate))
-            <button @click="activeTab = 'userprinsiple'" 
+            <button type="button" 
+                    @click="activeTab = 'userprinsiple'" 
                     :class="activeTab === 'userprinsiple' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                     class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
                 <i class="fa-solid fa-house-chimney-user text-xs"></i>
@@ -446,7 +454,8 @@
                 <span class="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-tight">Disabled</span>
             </button>
         @else
-            <button @click="activeTab = 'userprinsiple'" 
+            <button type="button" 
+                    @click="activeTab = 'userprinsiple'" 
                     :class="activeTab === 'userprinsiple' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                     class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
                 <i class="fa-solid fa-building-circle-check text-xs"></i>
