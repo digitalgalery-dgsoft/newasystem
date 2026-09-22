@@ -1862,6 +1862,28 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 38. 🏢 Pembatasan Ketat Approval Inhouse Khusus 5 Entitas Resmi & Pemulihan Approval Prinsiple
+- **Koreksi Logika Penentuan Status Inhouse (`InterviewInhouseController.php`)**:
+  - Memperbaiki method `getInhousePrincipleIds()`: Menghapus pengecekan `Principle::whereIn('entity', ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'])` yang sebelumnya keliru mengambil seluruh prinsiple/klien (karena seluruh klien seperti Nestle, L'Oreal, Wings berada di bawah entity holding tersebut).
+  - Menyandarkan filter ID prinsiple resmi secara eksklusif pada 5 entitas inhouse perusahaan via `\App\Models\Employee::isInhousePrinciple($p->name)`.
+  - Memperbaiki method `isCandidateInhouse($candidate)` agar strictly hanya mengembalikan `true` jika `principle_id` atau nama `principle` kandidat termasuk ke dalam salah satu dari 5 entitas resmi:
+    1. `PT ARINA MULTI KARYA`
+    2. `PT ALVA KARYA PERKASA`
+    3. `PT ANUGRAH TERPERCAYA KERJA`
+    4. `PT ABADI BERKAT ODELIA`
+    5. `PT ANUGRAH TALENTA BERKARYA`
+  - Menghapus bypass `is_inhouse = 1` tanpa validasi prinsiple, sehingga kandidat dengan prinsiple eksternal/klien (seperti *PT NESTLE INDONESIA*) tidak lagi keliru diperlakukan sebagai inhouse.
+  - Memperbaiki query filter `index()` agar strictly hanya menampilkan kandidat dengan prinsiple 5 entitas inhouse resmi.
+- **Auto-Recovery & Proteksi Form Approval (`InterviewController.php`)**:
+  - Pada method `show($id)`: Menambahkan auto-recovery otomatis jika kandidat non-inhouse sempat memiliki flag `is_inhouse = 1` atau status `Review Head` / `Review HRD` akibat kekeliruan submit sebelumnya. Sistem secara otomatis menetralkan `is_inhouse = 0` dan mereset `status_approval = null` sehingga form **Approval Prinsiple** terbuka bebas tanpa terkunci.
+  - Pada method `storeInhouseApproval()`: Menambahkan validasi protektif `if (!InterviewInhouseController::isCandidateInhouse($candidate))` untuk mencegah pengajuan inhouse pada kandidat yang bukan 5 entitas.
+- **Penyelarasan Tampilan Tab Navigasi (`interview/show.blade.php`)**:
+  - Tab navigasi ke-7 menampilkan label eksplisit:
+    - Untuk kandidat inhouse: **`7. Approval Inhouse`** (`fa-house-chimney-user`).
+    - Untuk kandidat prinsiple/klien umum: **`7. Approval Prinsiple`** (`fa-building-circle-check`).
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

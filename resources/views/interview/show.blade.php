@@ -435,14 +435,14 @@
             <span>6. Analisa AI (CV Analyzer)</span>
         </button>
 
-        <!-- 7. User Principle / Approver Inhouse -->
+        <!-- 7. Approval Prinsiple / Approval Inhouse -->
         @if(!empty($isInhouseCandidate))
             <button type="button" 
                     @click="activeTab = 'userprinsiple'" 
                     :class="activeTab === 'userprinsiple' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                     class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
                 <i class="fa-solid fa-house-chimney-user text-xs"></i>
-                <span>Approval Inhouse</span>
+                <span>7. Approval Inhouse</span>
             </button>
         @elseif(!empty($isUserPrinsipleDisabled))
             <button type="button" 
@@ -450,7 +450,7 @@
                     title="{{ implode(' &#10; ', $userPrinsipleDisableReasons ?? []) }}"
                     class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap bg-slate-100 text-slate-400 opacity-60 cursor-not-allowed border border-dashed border-slate-300">
                 <i class="fa-solid fa-ban text-rose-500 text-xs"></i>
-                <span>7. User Principle</span>
+                <span>7. Approval Prinsiple</span>
                 <span class="px-1.5 py-0.5 text-[9px] font-bold rounded-md bg-rose-100 text-rose-700 border border-rose-200 uppercase tracking-tight">Disabled</span>
             </button>
         @else
@@ -459,7 +459,7 @@
                     :class="activeTab === 'userprinsiple' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
                     class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
                 <i class="fa-solid fa-building-circle-check text-xs"></i>
-                <span>7. User Principle</span>
+                <span>7. Approval Prinsiple</span>
             </button>
         @endif
     </div>

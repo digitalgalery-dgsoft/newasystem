@@ -52,36 +52,46 @@ class InterviewInhouseController extends Controller
      */
     public static function getInhousePrincipleIds(): array
     {
-        $names = [
-            'PT ARINA MULTI KARYA', 'PT Arina Multikarya', 'PT ARINA MULTIKARYA', 'ARINA MULTI KARYA',
-            'PT ALVA KARYA PERKASA', 'PT Alva Karya Perkasa', 'ALVA KARYA PERKASA',
-            'PT ANUGRAH TERPERCAYA KERJA', 'PT Anugrah Terpercaya Kerja', 'ANUGRAH TERPERCAYA KERJA',
-            'PT ABADI BERKAT ODELIA', 'PT Abadi Berkat Odelia', 'PT ARINA BINTANG OETAMA', 'PT Arina Bintang Oetama',
-            'PT ANUGRAH TALENTA BERKARYA', 'PT Anugrah Talenta Berkarya', 'PT ANUGRAH TRI BERKAH', 'PT Anugrah Tri Berkah'
-        ];
-
-        return Principle::whereIn('entity', ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'])
-            ->orWhere(function($pq) use ($names) {
-                foreach ($names as $ip) {
-                    $pq->orWhere('name', 'like', "%{$ip}%");
-                }
-            })->pluck('id')->toArray();
+        return Principle::all()->filter(function ($p) {
+            return \App\Models\Employee::isInhousePrinciple($p->name);
+        })->pluck('id')->toArray();
     }
 
     /**
-     * Cek apakah kandidat berstatus inhouse 5 entitas
+     * Cek apakah kandidat berstatus inhouse 5 entitas resmi:
+     * - PT ARINA MULTI KARYA
+     * - PT ALVA KARYA PERKASA
+     * - PT ANUGRAH TERPERCAYA KERJA
+     * - PT ABADI BERKAT ODELIA
+     * - PT ANUGRAH TALENTA BERKARYA
      */
     public static function isCandidateInhouse($candidate): bool
     {
-        $inhouseIds = self::getInhousePrincipleIds();
-        if (!empty($candidate->principle_id) && in_array($candidate->principle_id, $inhouseIds)) {
+        if (!$candidate) {
+            return false;
+        }
+
+        // 1. Cek dari ID Prinsiple resmi (hanya ID dari 5 entitas inhouse)
+        if (!empty($candidate->principle_id)) {
+            $inhouseIds = self::getInhousePrincipleIds();
+            if (in_array((int)$candidate->principle_id, $inhouseIds, true)) {
+                return true;
+            }
+        }
+
+        // 2. Cek dari nama prinsiple (baik dari model relation ataupun kolom string)
+        $prinName = '';
+        if (is_object($candidate->principle) && !empty($candidate->principle->name)) {
+            $prinName = $candidate->principle->name;
+        } elseif (is_string($candidate->principle)) {
+            $prinName = $candidate->principle;
+        }
+
+        if (!empty($prinName) && \App\Models\Employee::isInhousePrinciple($prinName)) {
             return true;
         }
-        if (!empty($candidate->is_inhouse)) {
-            return true;
-        }
-        $prinName = is_string($candidate->principle) ? $candidate->principle : ($candidate->principle?->name ?? '');
-        return \App\Models\Employee::isInhousePrinciple($prinName);
+
+        return false;
     }
 
     /**
@@ -105,7 +115,7 @@ class InterviewInhouseController extends Controller
         $statusReplace = $request->query('status_replace');
         $statusApproval = $request->query('status_approval');
 
-        // 1. Filter: HANYA tampil kandidat dengan prinsiple 5 entitas inhouse
+        // 1. Filter: HANYA tampil kandidat dengan prinsiple 5 entitas inhouse resmi
         $inhouseIds = self::getInhousePrincipleIds();
         $inhouseNames = [
             'ARINA MULTI KARYA', 'ALVA KARYA PERKASA', 'ANUGRAH TERPERCAYA KERJA',
@@ -115,15 +125,14 @@ class InterviewInhouseController extends Controller
         $baseQuery = Candidate::with(['principle', 'recruiter', 'testResults', 'inhouseApprovals'])
             ->whereNotIn('status', ['Arsip', 'archived'])
             ->where(function ($q) use ($inhouseIds, $inhouseNames) {
-                $q->whereIn('principle_id', $inhouseIds)
-                  ->orWhere(function ($sq) use ($inhouseNames) {
-                      $sq->where('is_inhouse', 1)
-                         ->orWhere(function ($eq) use ($inhouseNames) {
-                             foreach ($inhouseNames as $n) {
-                                 $eq->orWhere('principle', 'like', "%{$n}%");
-                             }
-                         });
-                  });
+                if (!empty($inhouseIds)) {
+                    $q->whereIn('principle_id', $inhouseIds);
+                }
+                $q->orWhere(function ($eq) use ($inhouseNames) {
+                    foreach ($inhouseNames as $n) {
+                        $eq->orWhere('principle', 'like', "%{$n}%");
+                    }
+                });
             });
 
         // 2. Hak Akses: HRD melihat semua inhouse, Head HANYA melihat kandidat yang dihandle rekruter/AS binaannya

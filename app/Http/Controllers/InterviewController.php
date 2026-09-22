@@ -773,6 +773,15 @@ class InterviewController extends Controller
 
         $isInhouseCandidate = InterviewInhouseController::isCandidateInhouse($candidate);
 
+        // Auto-heal / sinkronisasi jika kandidat BUKAN inhouse 5 entitas resmi namun sempat tersimpan flag is_inhouse = 1 atau status Review Head/HRD akibat bug sebelumnya
+        if (!$isInhouseCandidate && ($candidate->is_inhouse || in_array($candidate->status_approval, ['Review Head', 'Review HRD']))) {
+            $candidate->is_inhouse = 0;
+            if (in_array($candidate->status_approval, ['Review Head', 'Review HRD'])) {
+                $candidate->status_approval = null;
+            }
+            $candidate->save();
+        }
+
         // Ambil daftar Approver Inhouse sesuai alur (Step 1: Rekrutor ke Head, Step 2: Head ke HRD)
         $inhouseApproverOptions = [];
         $currentApprovalStatus = $candidate->status_approval ?? 'Proses';
@@ -2158,6 +2167,11 @@ class InterviewController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
         $user = $this->getCurrentUser();
+
+        // Validasi ketat: Approval Inhouse HANYA KHUSUS untuk 5 entitas inhouse resmi
+        if (!InterviewInhouseController::isCandidateInhouse($candidate)) {
+            return back()->with('error', 'Kandidat ini bukan kandidat inhouse 5 entitas resmi perusahaan. Silakan gunakan form Approval Prinsiple.');
+        }
 
         if (in_array($candidate->status_approval, ['Review Head', 'Review HRD', 'Approve'])) {
             return back()->with('error', 'Pengajuan sedang dalam proses evaluasi (' . $candidate->status_approval . ') dan telah dikunci sesuai stepnya.');
