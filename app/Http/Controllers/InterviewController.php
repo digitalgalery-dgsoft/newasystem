@@ -767,8 +767,75 @@ class InterviewController extends Controller
             'workExperiences',
             'interviewAssessment',
             'testResults',
-            'principleApprovals'
+            'principleApprovals',
+            'inhouseApprovals'
         ])->findOrFail($id);
+
+        $isInhouseCandidate = InterviewInhouseController::isCandidateInhouse($candidate);
+
+        // Ambil daftar Approver Inhouse sesuai alur (Step 1: Rekrutor ke Head, Step 2: Head ke HRD)
+        $inhouseApproverOptions = [];
+        $currentApprovalStatus = $candidate->status_approval ?? 'Proses';
+        $isStepHrd = in_array($currentApprovalStatus, ['Review HRD']);
+
+        if ($isStepHrd) {
+            // Step 2: Pilihan HRD Pusat
+            $inhouseApproverOptions = [
+                'Uriyanto - ADMIN HRD Jakarta',
+                'Administrator HR - Head of Recruitment',
+            ];
+            $hrdUsers = User::where(function($q) {
+                $q->where('role', 'admin')
+                  ->orWhere('role', 'hrd')
+                  ->orWhere('role', 'head_hr')
+                  ->orWhere('job_title', 'like', '%HRD%')
+                  ->orWhere('job_title', 'like', '%HR%');
+            })->get();
+            foreach ($hrdUsers as $hu) {
+                $lbl = $hu->name . ' - ' . ($hu->job_title ?: 'HRD Pusat');
+                if (!in_array($lbl, $inhouseApproverOptions)) {
+                    $inhouseApproverOptions[] = $lbl;
+                }
+            }
+        } else {
+            // Step 1: Pilihan Head (Pimpinan User Rekrutor)
+            // Cek pimpinan langsung user login
+            $userPimpinan = null;
+            if ($user) {
+                $emp = Employee::where('email', $user->email)->orWhere('nama_karyawan', $user->name)->first();
+                if ($emp && !empty($emp->pimpinan)) {
+                    $userPimpinan = $emp->pimpinan;
+                }
+            }
+            if (!empty($userPimpinan)) {
+                $inhouseApproverOptions[] = $userPimpinan;
+            }
+
+            // Tambahkan daftar Head standar operasional
+            $defaultHeads = [
+                'Nurul Yuliastuti - Head HR',
+                'David Oscar Sahala G Sibuea - OM',
+                'Firmanto Setia Budi - AM',
+                'Arief Denny Priambodo - RM',
+                'Santy Christina Manurung - RM',
+                'Rini Widia Anwar Suwarha - SAM',
+                'Marinus Gulo - AM',
+                'Administrator HR - Head of Recruitment'
+            ];
+            foreach ($defaultHeads as $dh) {
+                if (!in_array($dh, $inhouseApproverOptions)) {
+                    $inhouseApproverOptions[] = $dh;
+                }
+            }
+
+            $headUsers = User::all()->filter(fn($u) => $u->isHead());
+            foreach ($headUsers as $hu) {
+                $lbl = $hu->name . ' - ' . ($hu->job_title ?: 'Head Approver');
+                if (!in_array($lbl, $inhouseApproverOptions)) {
+                    $inhouseApproverOptions[] = $lbl;
+                }
+            }
+        }
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
         $userPrinsiples = self::getUserPrinsipleOptions($candidate);
@@ -832,6 +899,8 @@ class InterviewController extends Controller
             'areas' => $areas,
             'aiData' => $aiData,
             'otherCandidates' => $otherCandidates,
+            'isInhouseCandidate' => $isInhouseCandidate,
+            'inhouseApproverOptions' => $inhouseApproverOptions,
         ], $evalData));
     }
 
@@ -2029,6 +2098,79 @@ class InterviewController extends Controller
 
         return redirect()->route('interview.show', $candidate->id)
             ->with('success', 'Status dan Bukti Approval User Principle berhasil disimpan!');
+    }
+
+    /**
+     * Simpan Pengajuan Approval Inhouse dari Rekrutor / AS (Set & Send Approval)
+     */
+    public function storeInhouseApproval(Request $request, $id)
+    {
+        $candidate = Candidate::findOrFail($id);
+        $user = $this->getCurrentUser();
+
+        $request->validate([
+            'nama_approver' => 'required|string',
+            'status_replace' => 'required|string',
+            'berkas_lamaran' => 'nullable|file|mimes:pdf,doc,docx,jpeg,png,jpg|max:10240',
+            'menggantikan' => 'nullable|string|max:255',
+            'tgl_resign' => 'nullable|date',
+            'alasan_resign' => 'nullable|string|max:1000',
+        ]);
+
+        $statusReplace = $request->status_replace === 'Baru' ? 'New' : $request->status_replace;
+
+        // Upload berkas lamaran jika ada
+        if ($request->hasFile('berkas_lamaran')) {
+            $file = $request->file('berkas_lamaran');
+            $filename = time() . '_' . preg_replace('/[^A-Za-z0-9_\.]/', '_', $file->getClientOriginalName());
+            $destination = public_path('lampiran/berkas_lamaran');
+            if (!\Illuminate\Support\Facades\File::exists($destination)) {
+                \Illuminate\Support\Facades\File::makeDirectory($destination, 0777, true, true);
+            }
+            $file->move($destination, $filename);
+            $candidate->berkas_lamaran = 'lampiran/berkas_lamaran/' . $filename;
+        }
+
+        $userRequest = null;
+        if ($user) {
+            $userTitle = $user->job_title ?: 'REKRUTMEN';
+            $userArea = $user->area ?: 'Jakarta';
+            $userRequest = "{$user->name} - {$userTitle} {$userArea}";
+        }
+
+        $candidate->update([
+            'is_inhouse' => 1,
+            'status_replace' => $statusReplace,
+            'menggantikan' => $statusReplace === 'Replace' ? $request->menggantikan : null,
+            'tgl_resign' => $statusReplace === 'Replace' ? $request->tgl_resign : null,
+            'alasan_resign' => $statusReplace === 'Replace' ? $request->alasan_resign : null,
+            'status_approval' => 'Review Head',
+            'user_request' => $userRequest ?? $candidate->user_request,
+        ]);
+
+        // Sinkronisasi ke tb_replace jika ada
+        try {
+            if (\Illuminate\Support\Facades\Schema::hasTable('tb_replace')) {
+                \Illuminate\Support\Facades\DB::table('tb_replace')->updateOrInsert(
+                    ['id_kandidat' => $candidate->id],
+                    [
+                        'status' => $statusReplace,
+                        'menggantikan' => $statusReplace === 'Replace' ? ($request->menggantikan ?? '') : '',
+                        'tgl_resign' => $statusReplace === 'Replace' ? ($request->tgl_resign ?? '0000-00-00') : '0000-00-00',
+                        'alasan_resign' => $statusReplace === 'Replace' ? ($request->alasan_resign ?? '') : '',
+                    ]
+                );
+            }
+        } catch (\Throwable $e) {}
+
+        ActivityLogger::log('UPDATE', 'Interview / Inhouse Approval', "Pengajuan approval inhouse untuk kandidat {$candidate->full_name} ({$candidate->id}) dikirim ke {$request->nama_approver}", $candidate, [
+            'status_replace' => $statusReplace,
+            'nama_approver' => $request->nama_approver,
+            'menggantikan' => $request->menggantikan,
+        ]);
+
+        return redirect()->route('interview.show', $candidate->id)
+            ->with('success', "Pengajuan Approval Inhouse berhasil dikirim ke Approver: {$request->nama_approver}!");
     }
 
     /**

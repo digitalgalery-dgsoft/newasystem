@@ -81,31 +81,55 @@
         </a>
     </div>
 
+    <!-- TAB NAVIGASI UTAMA (PROSES APPROVAL vs TAB DONE) -->
+    <div class="bg-slate-100/80 border border-slate-200 rounded-2xl p-1.5 shadow-inner flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
+        <a href="{{ route('interviewinhouse.index', array_merge(request()->except(['tab', 'page']), ['tab' => 'process'])) }}" 
+           class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap {{ $tab !== 'done' ? 'bg-primary text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary hover:bg-white font-semibold' }}">
+            <i class="fa-solid fa-clock-rotate-left text-xs"></i>
+            <span>Proses Approval</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold {{ $tab !== 'done' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700' }}">
+                {{ $countProcess }}
+            </span>
+        </a>
+
+        <a href="{{ route('interviewinhouse.index', array_merge(request()->except(['tab', 'page']), ['tab' => 'done'])) }}" 
+           class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap {{ $tab === 'done' ? 'bg-emerald-600 text-white shadow-md shadow-emerald-500/25 font-bold' : 'text-slate-600 hover:text-emerald-600 hover:bg-white font-semibold' }}">
+            <i class="fa-solid fa-circle-check text-xs"></i>
+            <span>Tab Done (Selesai HRD)</span>
+            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold {{ $tab === 'done' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700' }}">
+                {{ $countApproved }}
+            </span>
+        </a>
+    </div>
+
     <!-- MAIN DATA TABLE CONTAINER -->
     <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
         <!-- FILTER & SEARCH BAR -->
         <div class="p-4 border-b border-slate-200/80 flex flex-col md:flex-row items-center justify-between gap-4 bg-slate-50/50">
             <div class="flex flex-wrap items-center gap-2">
-                <a href="{{ route('interviewinhouse.index') }}" 
+                <a href="{{ route('interviewinhouse.index', ['tab' => $tab]) }}" 
                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ empty($statusReplace) && empty($statusApproval) ? 'bg-primary text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-                    Semua Inhouse
+                    Semua
                 </a>
-                <a href="{{ route('interviewinhouse.index', ['status_replace' => 'Baru']) }}" 
+                <a href="{{ route('interviewinhouse.index', ['tab' => $tab, 'status_replace' => 'Baru']) }}" 
                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ $statusReplace === 'Baru' ? 'bg-emerald-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-                    Baru ({{ $countBaru }})
+                    Baru
                 </a>
-                <a href="{{ route('interviewinhouse.index', ['status_replace' => 'Replace']) }}" 
+                <a href="{{ route('interviewinhouse.index', ['tab' => $tab, 'status_replace' => 'Replace']) }}" 
                    class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ $statusReplace === 'Replace' ? 'bg-amber-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-                    Replace ({{ $countReplace }})
+                    Replace
                 </a>
-                <a href="{{ route('interviewinhouse.index', ['status_approval' => 'Approve']) }}" 
-                   class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ $statusApproval === 'Approve' ? 'bg-blue-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
-                    Approved ({{ $countApproved }})
-                </a>
+                @if($tab !== 'done')
+                    <a href="{{ route('interviewinhouse.index', ['tab' => $tab, 'status_approval' => 'Pending']) }}" 
+                       class="px-3 py-1.5 rounded-lg text-xs font-bold transition-all {{ $statusApproval === 'Pending' ? 'bg-indigo-600 text-white shadow-sm' : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200' }}">
+                        Menunggu Head/HRD
+                    </a>
+                @endif
             </div>
 
             <!-- SEARCH FORM -->
             <form action="{{ route('interviewinhouse.index') }}" method="GET" class="flex items-center gap-2 w-full md:w-80">
+                <input type="hidden" name="tab" value="{{ $tab }}">
                 @if($statusReplace)
                     <input type="hidden" name="status_replace" value="{{ $statusReplace }}">
                 @endif

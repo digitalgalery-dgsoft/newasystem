@@ -162,9 +162,11 @@ class InterviewInhouseController extends Controller
         }
 
         // Hitung Statistik
+        // Hitung Statistik
         $totalInhouse = (clone $baseQuery)->count();
         $countBaru = (clone $baseQuery)->where(function ($q) {
             $q->where('status_replace', 'Baru')
+              ->orWhere('status_replace', 'New')
               ->orWhereNull('status_replace')
               ->orWhere('status_replace', '');
         })->count();
@@ -175,9 +177,25 @@ class InterviewInhouseController extends Controller
               ->orWhereIn('status_approval', ['Review HRD', 'Review Head', 'Proses']);
         })->count();
         $countApproved = (clone $baseQuery)->where('status_approval', 'Approve')->count();
+        $countProcess = $totalInhouse - $countApproved;
+
+        // Navigasi Tabs: 'process' (default) vs 'done'
+        $tab = $request->query('tab', 'process');
+        if (!in_array($tab, ['process', 'done'])) {
+            $tab = 'process';
+        }
 
         // Filter tabel
         $query = clone $baseQuery;
+
+        if ($tab === 'done') {
+            $query->where('status_approval', 'Approve');
+        } else {
+            $query->where(function ($q) {
+                $q->whereNull('status_approval')
+                  ->orWhere('status_approval', '!=', 'Approve');
+            });
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -192,6 +210,7 @@ class InterviewInhouseController extends Controller
             if ($statusReplace === 'Baru') {
                 $query->where(function ($q) {
                     $q->where('status_replace', 'Baru')
+                      ->orWhere('status_replace', 'New')
                       ->orWhereNull('status_replace')
                       ->orWhere('status_replace', '');
                 });
@@ -224,11 +243,13 @@ class InterviewInhouseController extends Controller
             'candidates',
             'user',
             'salam',
+            'tab',
             'totalInhouse',
             'countBaru',
             'countReplace',
             'countPending',
             'countApproved',
+            'countProcess',
             'search',
             'statusReplace',
             'statusApproval'
@@ -346,66 +367,96 @@ class InterviewInhouseController extends Controller
             return back()->with('error', 'Catatan dan hasil keputusan wajib diisi!');
         }
 
-        // Proteksi: Submit HRD hanya boleh dilakukan oleh HRD
-        if ($submitType === 'hrd' && !$user->isHrd()) {
-            if ($isJson) {
-                return response()->json(['status' => 'error', 'message' => 'Akses ditolak! Hanya HRD yang berhak melakukan Submit HRD.'], 403);
-            }
-            return back()->with('error', 'Akses ditolak! Hanya HRD yang berhak melakukan Submit HRD.');
-        }
-
-        // Proteksi: Submit Head hanya boleh dilakukan oleh Head (atau HRD/Admin yang bertindak atas nama Head)
-        if ($submitType === 'head' && !$user->isHead() && !$user->isHrd()) {
-            if ($isJson) {
-                return response()->json(['status' => 'error', 'message' => 'Akses ditolak! Anda bukan Head yang berwenang melakukan Submit Head.'], 403);
-            }
-            return back()->with('error', 'Akses ditolak! Anda bukan Head yang berwenang melakukan Submit Head.');
-        }
-
-        // Tanda tangan image processing
+        // Tanda tangan image processing (Simpan file PNG jika data URL)
         $fileName = null;
         if (!empty($imageData)) {
-            $fileName = $imageData; // simpan data URL atau path
+            if (str_starts_with($imageData, 'data:image')) {
+                $dir = public_path('lampiran');
+                if (!file_exists($dir)) {
+                    mkdir($dir, 0777, true);
+                }
+                $ttdFilename = 'ttd_' . time() . '_' . $candidate->id . '.png';
+                $binary = base64_decode(preg_replace('#^data:image/\w+;base64,#i', '', $imageData));
+                file_put_contents($dir . '/' . $ttdFilename, $binary);
+                $fileName = 'lampiran/' . $ttdFilename;
+            } else {
+                $fileName = $imageData;
+            }
         }
 
         if ($submitType === 'hrd') {
             // Replikasi savettdhrd.php
+            $finalStatus = ($approval === 'Yes' || $approval === 'Approve') ? 'Approve' : 'Tolak';
+            
             $candidate->update([
-                'status_approval' => $approval === 'Yes' || $approval === 'Approve' ? 'Approve' : 'Tolak',
+                'status_approval' => $finalStatus,
                 'note_principle' => $catatan,
-                'signature_path' => $fileName ?? $candidate->signature_path,
+                'ttd_prinsiple' => $fileName ?? $candidate->ttd_prinsiple ?? $candidate->signature_path,
+                'time_prinsiple' => Carbon::now('Asia/Jakarta'),
             ]);
 
             // Catat juga ke inhouse_approvals
             InhouseApproval::create([
                 'candidate_id' => $candidate->id,
                 'nama_approver' => $user->name,
-                'jabatan_approver' => $user->job_title ?? 'HRD Lead',
+                'jabatan_approver' => $user->job_title ?? 'ADMIN HRD Jakarta',
                 'catatan_approver' => $catatan,
-                'status' => $approval === 'Yes' || $approval === 'Approve' ? 'Approve' : 'Tolak',
+                'status' => $finalStatus,
                 'ttd_approver' => $fileName,
                 'time_approver' => Carbon::now('Asia/Jakarta'),
             ]);
 
-            $msg = 'Tanda tangan & Keputusan HRD berhasil disimpan!';
+            // Sinkronisasi ke tb_catataninhouse
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('tb_catataninhouse')) {
+                    \Illuminate\Support\Facades\DB::table('tb_catataninhouse')->insert([
+                        'id_kandidat' => $candidate->id,
+                        'nama_approver' => $user->name,
+                        'jabatan_aprover' => $user->job_title ?? 'ADMIN HRD',
+                        'catatan_approver' => $catatan,
+                        'status' => ($approval === 'Yes' || $approval === 'Approve') ? 'Yes' : 'No',
+                        'ttd_approver' => $fileName ? basename($fileName) : null,
+                        'time_approver' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
+                    ]);
+                }
+            } catch (\Throwable $e) {}
+
+            $msg = 'Persetujuan & Tanda Tangan HRD Pusat berhasil disimpan! Kandidat selesai diproses.';
         } else {
             // Replikasi savettdhead.php
+            $finalStatus = ($approval === 'Yes' || $approval === 'Approve') ? 'Approve' : 'Tolak';
+
             InhouseApproval::create([
                 'candidate_id' => $candidate->id,
                 'nama_approver' => $user->name,
                 'jabatan_approver' => $user->job_title ?? 'Head Approver',
                 'catatan_approver' => $catatan,
-                'status' => $approval === 'Yes' || $approval === 'Approve' ? 'Approve' : 'Tolak',
+                'status' => $finalStatus,
                 'ttd_approver' => $fileName,
                 'time_approver' => Carbon::now('Asia/Jakarta'),
             ]);
 
-            // Update candidate status
+            // Update candidate status ke Review HRD
             $candidate->update([
-                'status_approval' => $approval === 'Yes' || $approval === 'Approve' ? 'Review HRD' : 'Tolak',
+                'status_approval' => ($approval === 'Yes' || $approval === 'Approve') ? 'Review HRD' : 'Tolak',
             ]);
 
-            $msg = 'Tanda tangan & Keputusan Head Approver berhasil disubmit!';
+            // Sinkronisasi ke tb_catataninhouse
+            try {
+                if (\Illuminate\Support\Facades\Schema::hasTable('tb_catataninhouse')) {
+                    \Illuminate\Support\Facades\DB::table('tb_catataninhouse')->insert([
+                        'id_kandidat' => $candidate->id,
+                        'nama_approver' => $user->name,
+                        'jabatan_aprover' => $user->job_title ?? 'OM',
+                        'catatan_approver' => $catatan,
+                        'status' => ($approval === 'Yes' || $approval === 'Approve') ? 'Yes' : 'No',
+                        'ttd_approver' => $fileName ? basename($fileName) : null,
+                        'time_approver' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
+                    ]);
+                }
+            } catch (\Throwable $e) {}
+
+            $msg = 'Persetujuan Head Approver berhasil disubmit! Kandidat kini diteruskan ke HRD Pusat.';
         }
 
         if ($isJson) {
@@ -420,16 +471,36 @@ class InterviewInhouseController extends Controller
     }
 
     /**
-     * Download Berkas Lamaran
+     * Download Berkas Lamaran yang diupload Rekrutor / AS
      */
     public function downloadBerkas($id)
     {
         $candidate = Candidate::findOrFail($id);
         if (empty($candidate->berkas_lamaran)) {
-            return back()->with('warning', 'Berkas lamaran belum diunggah oleh kandidat.');
+            return back()->with('warning', 'Berkas lamaran belum diunggah oleh Rekrutor / AS.');
         }
 
-        // Return direct PDF printout of candidate if uploaded file not physically present
-        return redirect()->route('interview.pdf', $candidate->id);
+        $berkas = $candidate->berkas_lamaran;
+        $pathsToCheck = [
+            public_path($berkas),
+            public_path('lampiran/' . basename($berkas)),
+            public_path('lampiran/berkas_lamaran/' . basename($berkas)),
+            storage_path('app/public/' . $berkas),
+            storage_path('app/public/berkas_lamaran/' . basename($berkas)),
+        ];
+
+        foreach ($pathsToCheck as $p) {
+            if (file_exists($p) && !is_dir($p)) {
+                return response()->file($p);
+            }
+        }
+
+        // Jika path berupa URL eksternal
+        if (str_starts_with($berkas, 'http://') || str_starts_with($berkas, 'https://')) {
+            return redirect($berkas);
+        }
+
+        // Fallback: Jika file fisik belum ada di server lokal, arahkan ke legacy asystem
+        return redirect('https://asystem.co.id/interview/lampiran/' . rawurlencode(basename($berkas)), 302);
     }
 }

@@ -92,6 +92,7 @@ Route::middleware(['admin'])->prefix('master')->name('master.')->group(function 
 Route::get('/interview', [InterviewController::class, 'index'])->name('interview.index');
 Route::get('/interview/{id}', [InterviewController::class, 'show'])->name('interview.show');
 Route::post('/interview/{id}/approval', [InterviewController::class, 'storePrincipleApproval'])->name('interview.principleApproval');
+Route::post('/interview/{id}/inhouse-approval', [InterviewController::class, 'storeInhouseApproval'])->name('interview.inhouse_approval');
 Route::post('/interview/{id}/assess', [InterviewController::class, 'storeAssessment'])->name('interview.assess');
 Route::post('/interview/{id}/refcek', [InterviewController::class, 'storeRefcek'])->name('interview.refcek');
 Route::post('/interview/{id}/kompt', [InterviewController::class, 'storeComputerTest'])->name('interview.kompt');

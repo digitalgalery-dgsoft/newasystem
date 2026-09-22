@@ -171,9 +171,74 @@
                 <span>Cek Status Terkini</span>
             </button>
         </form>
+    </div>    @if(!empty($isInhouseCandidate))
+    <!-- PROFIL KANDIDAT INHOUSE (Persis Gambar 1) -->
+    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
+        <h2 class="text-sm font-bold text-slate-800 tracking-tight">Profil Kandidat</h2>
+        
+        <div class="space-y-2.5 text-xs">
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">No. KTP</div>
+                <div class="col-span-12 sm:col-span-9 text-slate-800 font-mono">: {{ $candidate->nik }}</div>
+            </div>
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Nama Kandidat</div>
+                <div class="col-span-12 sm:col-span-9 text-slate-900 font-bold">: {{ $candidate->full_name }}</div>
+            </div>
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Alamat KTP</div>
+                <div class="col-span-12 sm:col-span-9 text-slate-800">: {{ $candidate->address_ktp ?? '-' }}</div>
+            </div>
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Usia</div>
+                <div class="col-span-12 sm:col-span-9 text-slate-800">: {{ $candidate->age }} Tahun</div>
+            </div>
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Pendidikan Terakhir</div>
+                <div class="col-span-12 sm:col-span-9 text-slate-800">: {{ $candidate->education ?? '-' }}</div>
+            </div>
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Mobile</div>
+                <div class="col-span-12 sm:col-span-9 text-slate-800">: {{ $candidate->phone ?? '-' }}</div>
+            </div>
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Prinsiple</div>
+                <div class="col-span-12 sm:col-span-9 text-slate-900 font-semibold">: {{ $candidate->principle ? $candidate->principle->name : 'PT ARINA MULTI KARYA' }} - {{ $candidate->area ?? 'Jakarta' }}</div>
+            </div>
+            <div class="grid grid-cols-12 gap-2">
+                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Jabatan</div>
+                <div class="col-span-12 sm:col-span-9 text-slate-900 font-semibold">: {{ $candidate->applied_job ?? $candidate->position ?? '-' }} - {{ $candidate->area ?? 'Jakarta' }}</div>
+            </div>
+            <div class="grid grid-cols-12 gap-2 items-center">
+                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Status</div>
+                <div class="col-span-12 sm:col-span-9 flex items-center gap-2">
+                    : <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-white">
+                        {{ $candidate->status_approval ?? $candidate->status_kandidat ?? 'Proses' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tombol Edit Profile & Arsipkan Kandidat (Persis Gambar 1) -->
+        <div class="flex items-center gap-2 pt-3 border-t border-slate-100">
+            <button @click="gantiAreaModalOpen = true" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition cursor-pointer">
+                Edit Profile
+            </button>
+            <button @click="archiveModal = true" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition cursor-pointer">
+                Arsipkan Kandidat
+            </button>
+        </div>
     </div>
 
-    <!-- PROFIL KANDIDAT CARD (11 DATA POINTS + FOTO DROPZONE - Identik dengan Detail Kandidat Portal) -->
+    <!-- Tombol Download All Document (Persis Gambar 1) -->
+    <div class="flex items-center gap-2">
+        <a href="{{ route('interview.pdf', $candidate->id) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition">
+            <i class="fa-solid fa-file-pdf text-rose-500"></i>
+            <span>Download All Document</span>
+        </a>
+    </div>
+    @else
+    <!-- PROFIL KANDIDAT CARD REGULER (11 DATA POINTS + FOTO DROPZONE) -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
         <div class="flex flex-col lg:flex-row gap-6">
             
@@ -383,6 +448,7 @@
 
         </div>
     </div>
+    @endif
 
     <!-- 7 Tabs Navigation Bar (Modern Attendance Tabs) -->
     <div class="bg-slate-100/80 border border-slate-200 rounded-2xl p-1.5 shadow-inner flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
@@ -429,8 +495,15 @@
             <span>6. Analisa AI (CV Analyzer)</span>
         </button>
 
-        <!-- 7. User Principle -->
-        @if(!empty($isUserPrinsipleDisabled))
+        <!-- 7. User Principle / Approver Inhouse -->
+        @if(!empty($isInhouseCandidate))
+            <button @click="activeTab = 'userprinsiple'" 
+                    :class="activeTab === 'userprinsiple' ? 'bg-primary-600 text-white shadow-md shadow-primary-500/25 font-bold' : 'text-slate-600 hover:text-primary-600 hover:bg-white font-semibold'" 
+                    class="px-4 py-2.5 rounded-xl text-xs md:text-sm transition-all duration-150 flex items-center gap-2 whitespace-nowrap">
+                <i class="fa-solid fa-house-chimney-user text-xs"></i>
+                <span>Approval Inhouse</span>
+            </button>
+        @elseif(!empty($isUserPrinsipleDisabled))
             <button type="button" 
                     disabled 
                     title="{{ implode(' &#10; ', $userPrinsipleDisableReasons ?? []) }}"
@@ -1381,193 +1454,408 @@
         </div>
 
         <!-- ============================================================= -->
-        <!-- TAB 7: USER PRINCIPLE (Matching Legacy App) -->
+        <!-- TAB 7: USER PRINCIPLE / APPROVER INHOUSE -->
         <!-- ============================================================= -->
         <div x-show="activeTab === 'userprinsiple'" class="space-y-6">
-            @if(!empty($isUserPrinsipleDisabled))
-                <!-- Warning / Disqualification Banner -->
-                <div class="p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-900 shadow-sm flex items-start gap-3.5">
-                    <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center flex-shrink-0 text-lg">
-                        <i class="fa-solid fa-ban"></i>
-                    </div>
-                    <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2">
-                            <h4 class="text-sm font-bold text-rose-900">Tab User Principle Dinonaktifkan</h4>
-                            <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-200 text-rose-800 uppercase">Tidak Memenuhi Kriteria</span>
-                        </div>
-                        <div class="mt-2 space-y-1.5">
-                            @foreach($userPrinsipleDisableReasons ?? [] as $reason)
-                                <div class="text-xs font-semibold text-rose-800 flex items-start gap-2">
-                                    <i class="fa-solid fa-circle-xmark text-rose-500 mt-0.5 flex-shrink-0"></i>
-                                    <span>{{ $reason }}</span>
-                                </div>
-                            @endforeach
-                        </div>
-                        <p class="text-[11px] text-rose-600 font-medium mt-2.5 border-t border-rose-200/60 pt-2">
-                            * Kandidat tidak dapat diajukan / dikirim ke User Prinsiple karena tidak memenuhi syarat kelulusan seleksi.
-                        </p>
-                    </div>
-                </div>
-            @endif
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-                
-                <!-- Left: Approval Info & Notes -->
-                <div class="lg:col-span-7 space-y-4">
-                    <h3 class="text-sm font-bold text-slate-800 pb-2 border-b border-slate-100 flex items-center gap-2">
-                        <i class="fa-solid fa-stamp text-primary-600"></i>
-                        di Approve Oleh Prinsiple :
-                    </h3>
-
-                    <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-2 text-xs text-slate-700">
-                        <div class="flex items-center justify-between">
-                            <span class="text-slate-500 font-medium">Nama Approver:</span>
-                            <strong class="text-slate-900">
-                                @if($candidate->approverPrinsiple)
-                                    {{ $candidate->approverPrinsiple->nama_lengkap }} ({{ $candidate->approverPrinsiple->jabatan ?? 'Manager' }})
-                                @elseif($candidate->principle)
-                                    {{ $candidate->principle->name }} (Manager)
-                                @else
-                                    PT ARINA MULTI KARYA (Manager)
-                                @endif
-                            </strong>
-                        </div>
-                        <div class="flex items-center justify-between border-t border-slate-200/60 pt-2">
-                            <span class="text-slate-500 font-medium">Status Approval:</span>
-                            @if(in_array(strtolower($candidate->status_approval ?? ''), ['approve', 'approved']))
-                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
-                                    Approved
-                                </span>
-                            @elseif(in_array(strtolower($candidate->status_approval ?? ''), ['tolak', 'rejected']))
-                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                                    Rejected
-                                </span>
-                            @else
-                                <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
-                                    Menunggu Approval
-                                </span>
-                            @endif
-                        </div>
-                    </div>
-
-                    <div class="pt-2">
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Note Prinsiple :</label>
-                        <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs {{ !empty($candidate->note_principle) ? 'text-slate-700 font-medium' : 'text-slate-500 italic' }} leading-relaxed">
-                            {{ $candidate->note_principle ?: 'Belum ada catatan persetujuan dari User Prinsiple.' }}
-                        </div>
-                    </div>
-
-                    <!-- Lampiran Bukti Approval Prinsiple (Screenshot WA / TTD Digital) -->
-                    <div class="pt-2">
-                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Lampiran Bukti Approval Prinsiple :</label>
-                        @if($candidate->approval_proof_url)
-                            <div class="p-3.5 bg-white border border-slate-200 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
-                                <div class="flex items-center gap-3 min-w-0">
-                                    <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 cursor-pointer group relative" onclick="openCandidateMedia('image', '{{ $candidate->approval_proof_url }}', 'Bukti Approval Prinsiple: {{ addslashes($candidate->full_name) }}')">
-                                        <img src="{{ $candidate->approval_proof_url }}" alt="Approval Proof" class="w-full h-full object-cover transition-transform group-hover:scale-105" onerror="this.onerror=null; this.src='{{ $candidate->approval_legacy_url }}';">
-                                    </div>
-                                    <div class="min-w-0">
-                                        <div class="text-xs font-bold text-slate-900 truncate">{{ basename($candidate->ttd_prinsiple ?? $candidate->principleApprovals->first()?->signature_path ?? '') }}</div>
-                                        <div class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
-                                            <i class="fa-solid fa-circle-check text-[9px]"></i> Berkas Tersimpan / Fallback Live V3
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="flex items-center gap-1.5 flex-shrink-0">
-                                    <button type="button" onclick="openCandidateMedia('image', '{{ $candidate->approval_proof_url }}', 'Bukti Approval Prinsiple: {{ addslashes($candidate->full_name) }}')" class="px-3 py-1.5 rounded-xl bg-primary-50 text-primary-700 hover:bg-primary-100 text-xs font-bold transition-colors inline-flex items-center gap-1.5">
-                                        <i class="fa-solid fa-eye text-xs"></i>
-                                        <span>Preview</span>
-                                    </button>
-                                    <a href="{{ $candidate->approval_proof_url }}" target="_blank" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition-colors inline-flex items-center gap-1.5">
-                                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                                        <span>Buka</span>
-                                    </a>
-                                </div>
-                            </div>
-                        @else
-                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-400 italic">
-                                Belum ada berkas lampiran bukti approval dari User Prinsiple.
-                            </div>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Right: Form to Set & Send to Principle with Ultra Attractive File Upload -->
-                <div class="lg:col-span-5 bg-slate-50/70 border border-slate-200 rounded-2xl p-5 space-y-4">
-                    <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
-                        <i class="fa-solid fa-user-check text-primary-600"></i>
-                        Set Approval Prinsiple
-                    </h4>
+            @if(!empty($isInhouseCandidate))
+                <!-- KHUSUS KANDIDAT INHOUSE (Matching Gambar 1 & 2) -->
+                <div x-data="{ inhouseStatus: '{{ old('status_replace', $candidate->status_replace ?? '') }}' }" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                     
-                    <form action="{{ route('interview.principleApproval', $candidate->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
-                        @csrf
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama Approver Prinsiple</label>
-                            <select name="userprinsiple" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none" required>
-                                <option value="" disabled {{ empty($candidate->idprinsiple) ? 'selected' : '' }}>-- Pilih User Prinsiple ({{ $candidate->area ?? 'Area' }}) --</option>
-                                @forelse($userPrinsiples ?? $candidate->user_prinsiple_options as $up)
-                                    <option value="{{ $up->id }}" {{ (old('userprinsiple', $candidate->idprinsiple) == $up->id) ? 'selected' : '' }}>
-                                        {{ $up->nama_lengkap }} - {{ $up->jabatan }} ({{ $up->prinsiple }} - {{ $up->area }})
-                                    </option>
-                                @empty
-                                    <option value="" disabled>Tidak ada User Prinsiple yang cocok di area ini</option>
-                                @endforelse
-                            </select>
+                    <!-- KIRI: List Head Approve & Approval HRD -->
+                    <div class="lg:col-span-7 space-y-6">
+                        <!-- 1. List Head Approve -->
+                        <div class="space-y-3">
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-user-tie text-primary"></i>
+                                <span>List Head Approve</span>
+                            </h3>
+                            <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs bg-white">
+                                <table class="w-full text-xs text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                                            <th class="py-3 px-3.5">Nama</th>
+                                            <th class="py-3 px-3.5">Catatan</th>
+                                            <th class="py-3 px-3 text-center">Hasil Keputusan</th>
+                                            <th class="py-3 px-3 text-center">Tanda Tangan</th>
+                                            <th class="py-3 px-3.5 text-center">Waktu Submit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @php
+                                            $headList = $candidate->inhouseApprovals->filter(function($appr) {
+                                                $job = strtolower($appr->jabatan_approver ?? '');
+                                                return !str_contains($job, 'admin hrd') && !str_contains($job, 'hr lead');
+                                            });
+                                        @endphp
+                                        @forelse($headList as $headAppr)
+                                            <tr class="hover:bg-slate-50/70 transition-colors">
+                                                <td class="py-3 px-3.5 font-bold text-slate-800">
+                                                    <div>{{ $headAppr->nama_approver }}</div>
+                                                    <div class="text-[10px] text-slate-400 font-normal">{{ $headAppr->jabatan_approver ?: 'Head' }}</div>
+                                                </td>
+                                                <td class="py-3 px-3.5 text-slate-600 leading-relaxed max-w-[200px]">
+                                                    {{ $headAppr->catatan_approver ?: '-' }}
+                                                </td>
+                                                <td class="py-3 px-3 text-center">
+                                                    @if(in_array(strtolower($headAppr->status ?? ''), ['approve', 'yes']))
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">Approve</span>
+                                                    @else
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">Tolak</span>
+                                                    @endif
+                                                </td>
+                                                <td class="py-3 px-3 text-center">
+                                                    @if($headAppr->ttd_approver)
+                                                        @php
+                                                            $sigSrc = $headAppr->ttd_approver;
+                                                            if (!str_starts_with($sigSrc, 'data:image') && !str_starts_with($sigSrc, 'http')) {
+                                                                $sigSrc = asset($sigSrc);
+                                                            }
+                                                        @endphp
+                                                        <img src="{{ $sigSrc }}" alt="TTD Head" class="h-9 max-w-[90px] mx-auto object-contain" onerror="this.src='/lampiran/{{ basename($headAppr->ttd_approver) }}';">
+                                                    @else
+                                                        <span class="text-[10px] text-slate-400 italic">Belum TTD</span>
+                                                    @endif
+                                                </td>
+                                                <td class="py-3 px-3.5 text-center text-[11px] text-slate-500 whitespace-nowrap">
+                                                    {{ $headAppr->time_approver ? \Carbon\Carbon::parse($headAppr->time_approver)->format('d/m/Y H:i') : '-' }}
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="5" class="py-6 text-center text-xs text-slate-400 italic bg-slate-50/50">
+                                                    Belum ada approval dari Head
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
 
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Yes / No</label>
-                            <select name="statusapprove" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none" required>
-                                <option value="" selected disabled>Pilih Hasil Approval</option>
-                                <option value="Yes" {{ in_array(strtolower($candidate->status_approval ?? ''), ['approve', 'approved']) ? 'selected' : '' }}>Yes</option>
-                                <option value="No" {{ in_array(strtolower($candidate->status_approval ?? ''), ['tolak', 'rejected']) ? 'selected' : '' }}>No</option>
-                            </select>
+                        <!-- 2. Approval HRD -->
+                        <div class="space-y-3">
+                            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                <i class="fa-solid fa-stamp text-primary"></i>
+                                <span>Approval HRD</span>
+                            </h3>
+                            <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs bg-white">
+                                <table class="w-full text-xs text-left border-collapse">
+                                    <thead>
+                                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                                            <th class="py-3 px-3.5">Nama</th>
+                                            <th class="py-3 px-3.5">Catatan</th>
+                                            <th class="py-3 px-3 text-center">Hasil Keputusan</th>
+                                            <th class="py-3 px-3 text-center">Tanda Tangan</th>
+                                            <th class="py-3 px-3.5 text-center">Waktu Submit</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-slate-100">
+                                        @php
+                                            $hrdList = $candidate->inhouseApprovals->filter(function($appr) {
+                                                $job = strtolower($appr->jabatan_approver ?? '');
+                                                return str_contains($job, 'admin hrd') || str_contains($job, 'hr lead') || str_contains($job, 'hrd');
+                                            });
+                                        @endphp
+                                        @forelse($hrdList as $hrdAppr)
+                                            <tr class="hover:bg-slate-50/70 transition-colors">
+                                                <td class="py-3 px-3.5 font-bold text-slate-800">
+                                                    <div>{{ $hrdAppr->nama_approver }}</div>
+                                                    <div class="text-[10px] text-slate-400 font-normal">{{ $hrdAppr->jabatan_approver ?: 'HRD Pusat' }}</div>
+                                                </td>
+                                                <td class="py-3 px-3.5 text-slate-600 leading-relaxed max-w-[200px]">
+                                                    {{ $hrdAppr->catatan_approver ?: '-' }}
+                                                </td>
+                                                <td class="py-3 px-3 text-center">
+                                                    @if(in_array(strtolower($hrdAppr->status ?? ''), ['approve', 'yes']))
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">Approve</span>
+                                                    @else
+                                                        <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">Tolak</span>
+                                                    @endif
+                                                </td>
+                                                <td class="py-3 px-3 text-center">
+                                                    @if($hrdAppr->ttd_approver)
+                                                        @php
+                                                            $sigSrcHrd = $hrdAppr->ttd_approver;
+                                                            if (!str_starts_with($sigSrcHrd, 'data:image') && !str_starts_with($sigSrcHrd, 'http')) {
+                                                                $sigSrcHrd = asset($sigSrcHrd);
+                                                            }
+                                                        @endphp
+                                                        <img src="{{ $sigSrcHrd }}" alt="TTD HRD" class="h-9 max-w-[90px] mx-auto object-contain" onerror="this.src='/lampiran/{{ basename($hrdAppr->ttd_approver) }}';">
+                                                    @else
+                                                        <span class="text-[10px] text-slate-400 italic">Belum TTD</span>
+                                                    @endif
+                                                </td>
+                                                <td class="py-3 px-3.5 text-center text-[11px] text-slate-500 whitespace-nowrap">
+                                                    {{ $hrdAppr->time_approver ? \Carbon\Carbon::parse($hrdAppr->time_approver)->format('d/m/Y H:i') : '-' }}
+                                                </td>
+                                            </tr>
+                                        @empty
+                                            <tr>
+                                                <td colspan="5" class="py-6 text-center text-xs text-slate-400 italic bg-slate-50/50">
+                                                    Belum ada approval dari HRD Pusat
+                                                </td>
+                                            </tr>
+                                        @endforelse
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
+                    </div>
 
-                        <!-- Highly Attractive File Upload for Approval Screenshot -->
-                        <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Upload Screenshot Approval</label>
-                            
-                            <div class="relative border-2 border-dashed border-slate-300 hover:border-primary-500 rounded-2xl bg-white p-4 text-center transition-all group">
-                                <input type="file" 
-                                       name="approval_screenshot" 
-                                       id="approvalScreenshotInput" 
-                                       accept="image/jpeg,image/png,image/jpg" 
-                                       class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                                       onchange="handleApprovalProofPreview(this)">
+                    <!-- KANAN: Form Set & Send Approval (Persis Gambar 1 & 2) -->
+                    <div class="lg:col-span-5 bg-slate-50/70 border border-slate-200 rounded-2xl p-5 space-y-4">
+                        <form action="{{ route('interview.inhouse_approval', $candidate->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                            @csrf
 
-                                <div id="approvalUploadPrompt" class="space-y-1.5">
-                                    <div class="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mx-auto shadow-xs group-hover:scale-105 transition-transform">
-                                        <i class="fa-solid fa-file-arrow-up text-lg"></i>
+                            <!-- Nama Approver Inhouse -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama Approver Inhouse</label>
+                                <select name="nama_approver" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
+                                    @foreach($inhouseApproverOptions as $opt)
+                                        <option value="{{ $opt }}">{{ $opt }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <!-- Berkas Lamaran Kandidat -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Berkas Lamaran Kandidat</label>
+                                <div class="bg-white border border-slate-200 rounded-xl p-2.5">
+                                    <input type="file" name="berkas_lamaran" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+                                </div>
+                                @if($candidate->berkas_lamaran)
+                                    <div class="mt-2 flex items-center justify-between px-3 py-1.5 bg-sky-50 rounded-xl border border-sky-200 text-[11px] text-sky-800">
+                                        <span class="truncate max-w-[200px] font-medium"><i class="fa-solid fa-file-lines text-sky-600 mr-1"></i> {{ basename($candidate->berkas_lamaran) }}</span>
+                                        <a href="{{ route('interviewinhouse.berkas', $candidate->id) }}" target="_blank" class="font-bold underline text-sky-700 hover:text-sky-900 shrink-0">Lihat File</a>
                                     </div>
-                                    <span class="text-xs font-bold text-slate-700 block">Pilih Screenshot Bukti</span>
-                                    <span class="text-[10px] text-primary-600 italic block">Upload SS Jika Approval Via Email / Whatsapp</span>
+                                @endif
+                            </div>
+
+                            <!-- Status (New / Replace) -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Status</label>
+                                <select name="status_replace" x-model="inhouseStatus" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
+                                    <option value="">-- Pilih Status --</option>
+                                    <option value="New">New</option>
+                                    <option value="Replace">Replace</option>
+                                </select>
+                            </div>
+
+                            <!-- Form Tambahan Khusus Status Replace (Persis Gambar 2) -->
+                            <div x-show="inhouseStatus === 'Replace'" x-transition class="space-y-4 pt-1 border-t border-slate-200/80">
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Menggantikan</label>
+                                    <input type="text" name="menggantikan" value="{{ old('menggantikan', $candidate->menggantikan) }}" placeholder="Nama yang digantikan" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none">
                                 </div>
 
-                                <!-- Live Preview Container -->
-                                <div id="approvalPreviewContainer" class="hidden flex flex-col items-center space-y-1.5">
-                                    <img id="approvalPreviewImage" class="max-h-28 rounded-lg object-contain shadow-xs border border-slate-200">
-                                    <span id="approvalFileName" class="text-[11px] font-mono text-slate-700 font-bold"></span>
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Tanggal Resign</label>
+                                    <input type="date" name="tgl_resign" value="{{ old('tgl_resign', $candidate->tgl_resign) }}" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none">
                                 </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Alasan Resign</label>
+                                    <input type="text" name="alasan_resign" value="{{ old('alasan_resign', $candidate->alasan_resign) }}" placeholder="Alasan pengunduran diri" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none">
+                                </div>
+                            </div>
+
+                            <!-- Tombol Submit Set & Send Approval -->
+                            <div class="pt-2">
+                                <button type="submit" class="w-full py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 border border-rose-600 shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                                    <span>Set & Send Approval</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            @else
+                <!-- REGULAR USER PRINCIPLE FORM -->
+                @if(!empty($isUserPrinsipleDisabled))
+                    <!-- Warning / Disqualification Banner -->
+                    <div class="p-4 rounded-2xl bg-rose-50 border-2 border-rose-200 text-rose-900 shadow-sm flex items-start gap-3.5">
+                        <div class="w-10 h-10 rounded-xl bg-rose-100 text-rose-600 border border-rose-200 flex items-center justify-center flex-shrink-0 text-lg">
+                            <i class="fa-solid fa-ban"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2">
+                                <h4 class="text-sm font-bold text-rose-900">Tab User Principle Dinonaktifkan</h4>
+                                <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-200 text-rose-800 uppercase">Tidak Memenuhi Kriteria</span>
+                            </div>
+                            <div class="mt-2 space-y-1.5">
+                                @foreach($userPrinsipleDisableReasons ?? [] as $reason)
+                                    <div class="text-xs font-semibold text-rose-800 flex items-start gap-2">
+                                        <i class="fa-solid fa-circle-xmark text-rose-500 mt-0.5 flex-shrink-0"></i>
+                                        <span>{{ $reason }}</span>
+                                    </div>
+                                @endforeach
+                            </div>
+                            <p class="text-[11px] text-rose-600 font-medium mt-2.5 border-t border-rose-200/60 pt-2">
+                                * Kandidat tidak dapat diajukan / dikirim ke User Prinsiple karena tidak memenuhi syarat kelulusan seleksi.
+                            </p>
+                        </div>
+                    </div>
+                @endif
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                    
+                    <!-- Left: Approval Info & Notes -->
+                    <div class="lg:col-span-7 space-y-4">
+                        <h3 class="text-sm font-bold text-slate-800 pb-2 border-b border-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-stamp text-primary-600"></i>
+                            di Approve Oleh Prinsiple :
+                        </h3>
+
+                        <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-4 space-y-2 text-xs text-slate-700">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500 font-medium">Nama Approver:</span>
+                                <strong class="text-slate-900">
+                                    @if($candidate->approverPrinsiple)
+                                        {{ $candidate->approverPrinsiple->nama_lengkap }} ({{ $candidate->approverPrinsiple->jabatan ?? 'Manager' }})
+                                    @elseif($candidate->principle)
+                                        {{ $candidate->principle->name }} (Manager)
+                                    @else
+                                        PT ARINA MULTI KARYA (Manager)
+                                    @endif
+                                </strong>
+                            </div>
+                            <div class="flex items-center justify-between border-t border-slate-200/60 pt-2">
+                                <span class="text-slate-500 font-medium">Status Approval:</span>
+                                @if(in_array(strtolower($candidate->status_approval ?? ''), ['approve', 'approved']))
+                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                                        Approved
+                                    </span>
+                                @elseif(in_array(strtolower($candidate->status_approval ?? ''), ['tolak', 'rejected']))
+                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
+                                        Rejected
+                                    </span>
+                                @else
+                                    <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                                        Menunggu Approval
+                                    </span>
+                                @endif
                             </div>
                         </div>
 
                         <div class="pt-2">
-                            @if(!empty($isUserPrinsipleDisabled))
-                                <button type="button" disabled class="w-full py-3 rounded-xl text-xs font-bold bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 flex items-center justify-center gap-2 shadow-none">
-                                    <i class="fa-solid fa-ban text-xs text-rose-500"></i>
-                                    <span>Pengajuan Dinonaktifkan (Tidak Memenuhi Syarat)</span>
-                                </button>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Note Prinsiple :</label>
+                            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs {{ !empty($candidate->note_principle) ? 'text-slate-700 font-medium' : 'text-slate-500 italic' }} leading-relaxed">
+                                {{ $candidate->note_principle ?: 'Belum ada catatan persetujuan dari User Prinsiple.' }}
+                            </div>
+                        </div>
+
+                        <!-- Lampiran Bukti Approval Prinsiple (Screenshot WA / TTD Digital) -->
+                        <div class="pt-2">
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Lampiran Bukti Approval Prinsiple :</label>
+                            @if($candidate->approval_proof_url)
+                                <div class="p-3.5 bg-white border border-slate-200 rounded-2xl flex items-center justify-between gap-3 shadow-xs">
+                                    <div class="flex items-center gap-3 min-w-0">
+                                        <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 cursor-pointer group relative" onclick="openCandidateMedia('image', '{{ $candidate->approval_proof_url }}', 'Bukti Approval Prinsiple: {{ addslashes($candidate->full_name) }}')">
+                                            <img src="{{ $candidate->approval_proof_url }}" alt="Approval Proof" class="w-full h-full object-cover transition-transform group-hover:scale-105" onerror="this.onerror=null; this.src='{{ $candidate->approval_legacy_url }}';">
+                                        </div>
+                                        <div class="min-w-0">
+                                            <div class="text-xs font-bold text-slate-900 truncate">{{ basename($candidate->ttd_prinsiple ?? $candidate->principleApprovals->first()?->signature_path ?? '') }}</div>
+                                            <div class="text-[10px] text-emerald-600 font-semibold flex items-center gap-1 mt-0.5">
+                                                <i class="fa-solid fa-circle-check text-[9px]"></i> Berkas Tersimpan / Fallback Live V3
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-1.5 flex-shrink-0">
+                                        <button type="button" onclick="openCandidateMedia('image', '{{ $candidate->approval_proof_url }}', 'Bukti Approval Prinsiple: {{ addslashes($candidate->full_name) }}')" class="px-3 py-1.5 rounded-xl bg-primary-50 text-primary-700 hover:bg-primary-100 text-xs font-bold transition-colors inline-flex items-center gap-1.5">
+                                            <i class="fa-solid fa-eye text-xs"></i>
+                                            <span>Preview</span>
+                                        </button>
+                                        <a href="{{ $candidate->approval_proof_url }}" target="_blank" class="px-3 py-1.5 rounded-xl bg-slate-100 text-slate-700 hover:bg-slate-200 text-xs font-bold transition-colors inline-flex items-center gap-1.5">
+                                            <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                                            <span>Buka</span>
+                                        </a>
+                                    </div>
+                                </div>
                             @else
-                                <button type="submit" class="w-full py-3 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2">
-                                    <i class="fa-solid fa-paper-plane text-xs"></i>
-                                    <span>Set & Send To User Prinsiple</span>
-                                </button>
+                                <div class="bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-400 italic">
+                                    Belum ada berkas lampiran bukti approval dari User Prinsiple.
+                                </div>
                             @endif
                         </div>
-                    </form>
-                </div>
+                    </div>
 
-            </div>
+                    <!-- Right: Form to Set & Send to Principle with Ultra Attractive File Upload -->
+                    <div class="lg:col-span-5 bg-slate-50/70 border border-slate-200 rounded-2xl p-5 space-y-4">
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-700 flex items-center gap-2">
+                            <i class="fa-solid fa-user-check text-primary-600"></i>
+                            Set Approval Prinsiple
+                        </h4>
+                        
+                        <form action="{{ route('interview.principleApproval', $candidate->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                            @csrf
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama Approver Prinsiple</label>
+                                <select name="userprinsiple" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none" required>
+                                    <option value="" disabled {{ empty($candidate->idprinsiple) ? 'selected' : '' }}>-- Pilih User Prinsiple ({{ $candidate->area ?? 'Area' }}) --</option>
+                                    @forelse($userPrinsiples ?? $candidate->user_prinsiple_options as $up)
+                                        <option value="{{ $up->id }}" {{ (old('userprinsiple', $candidate->idprinsiple) == $up->id) ? 'selected' : '' }}>
+                                            {{ $up->nama_lengkap }} - {{ $up->jabatan }} ({{ $up->prinsiple }} - {{ $up->area }})
+                                        </option>
+                                    @empty
+                                        <option value="" disabled>Tidak ada User Prinsiple yang cocok di area ini</option>
+                                    @endforelse
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Yes / No</label>
+                                <select name="statusapprove" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none" required>
+                                    <option value="" selected disabled>Pilih Hasil Approval</option>
+                                    <option value="Yes" {{ in_array(strtolower($candidate->status_approval ?? ''), ['approve', 'approved']) ? 'selected' : '' }}>Yes</option>
+                                    <option value="No" {{ in_array(strtolower($candidate->status_approval ?? ''), ['tolak', 'rejected']) ? 'selected' : '' }}>No</option>
+                                </select>
+                            </div>
+
+                            <!-- Highly Attractive File Upload for Approval Screenshot -->
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Upload Screenshot Approval</label>
+                                
+                                <div class="relative border-2 border-dashed border-slate-300 hover:border-primary-500 rounded-2xl bg-white p-4 text-center transition-all group">
+                                    <input type="file" 
+                                           name="approval_screenshot" 
+                                           id="approvalScreenshotInput" 
+                                           accept="image/jpeg,image/png,image/jpg" 
+                                           class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                           onchange="handleApprovalProofPreview(this)">
+
+                                    <div id="approvalUploadPrompt" class="space-y-1.5">
+                                        <div class="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center mx-auto shadow-xs group-hover:scale-105 transition-transform">
+                                            <i class="fa-solid fa-file-arrow-up text-lg"></i>
+                                        </div>
+                                        <span class="text-xs font-bold text-slate-700 block">Pilih Screenshot Bukti</span>
+                                        <span class="text-[10px] text-primary-600 italic block">Upload SS Jika Approval Via Email / Whatsapp</span>
+                                    </div>
+
+                                    <!-- Live Preview Container -->
+                                    <div id="approvalPreviewContainer" class="hidden flex flex-col items-center space-y-1.5">
+                                        <img id="approvalPreviewImage" class="max-h-28 rounded-lg object-contain shadow-xs border border-slate-200">
+                                        <span id="approvalFileName" class="text-[11px] font-mono text-slate-700 font-bold"></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="pt-2">
+                                @if(!empty($isUserPrinsipleDisabled))
+                                    <button type="button" disabled class="w-full py-3 rounded-xl text-xs font-bold bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-300 flex items-center justify-center gap-2 shadow-none">
+                                        <i class="fa-solid fa-ban text-xs text-rose-500"></i>
+                                        <span>Pengajuan Dinonaktifkan (Tidak Memenuhi Syarat)</span>
+                                    </button>
+                                @else
+                                    <button type="submit" class="w-full py-3 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/25 transition-all flex items-center justify-center gap-2">
+                                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                                        <span>Set & Send To User Prinsiple</span>
+                                    </button>
+                                @endif
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
+            @endif
         </div>
 
     </div>
