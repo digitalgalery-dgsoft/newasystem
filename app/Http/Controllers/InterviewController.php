@@ -2108,6 +2108,10 @@ class InterviewController extends Controller
         $candidate = Candidate::findOrFail($id);
         $user = $this->getCurrentUser();
 
+        if (in_array($candidate->status_approval, ['Review Head', 'Review HRD', 'Approve'])) {
+            return back()->with('error', 'Pengajuan sedang dalam proses evaluasi (' . $candidate->status_approval . ') dan telah dikunci sesuai stepnya.');
+        }
+
         $request->validate([
             'nama_approver' => 'required|string',
             'status_replace' => 'required|string',

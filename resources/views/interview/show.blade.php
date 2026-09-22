@@ -170,74 +170,8 @@
                 <i class="fa-solid fa-arrows-rotate text-purple-600"></i>
                 <span>Cek Status Terkini</span>
             </button>
-        </form>
-    </div>    @if(!empty($isInhouseCandidate))
-    <!-- PROFIL KANDIDAT INHOUSE (Persis Gambar 1) -->
-    <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-4">
-        <h2 class="text-sm font-bold text-slate-800 tracking-tight">Profil Kandidat</h2>
-        
-        <div class="space-y-2.5 text-xs">
-            <div class="grid grid-cols-12 gap-2">
-                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">No. KTP</div>
-                <div class="col-span-12 sm:col-span-9 text-slate-800 font-mono">: {{ $candidate->nik }}</div>
-            </div>
-            <div class="grid grid-cols-12 gap-2">
-                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Nama Kandidat</div>
-                <div class="col-span-12 sm:col-span-9 text-slate-900 font-bold">: {{ $candidate->full_name }}</div>
-            </div>
-            <div class="grid grid-cols-12 gap-2">
-                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Alamat KTP</div>
-                <div class="col-span-12 sm:col-span-9 text-slate-800">: {{ $candidate->address_ktp ?? '-' }}</div>
-            </div>
-            <div class="grid grid-cols-12 gap-2">
-                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Usia</div>
-                <div class="col-span-12 sm:col-span-9 text-slate-800">: {{ $candidate->age }} Tahun</div>
-            </div>
-            <div class="grid grid-cols-12 gap-2">
-                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Pendidikan Terakhir</div>
-                <div class="col-span-12 sm:col-span-9 text-slate-800">: {{ $candidate->education ?? '-' }}</div>
-            </div>
-            <div class="grid grid-cols-12 gap-2">
-                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Mobile</div>
-                <div class="col-span-12 sm:col-span-9 text-slate-800">: {{ $candidate->phone ?? '-' }}</div>
-            </div>
-            <div class="grid grid-cols-12 gap-2">
-                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Prinsiple</div>
-                <div class="col-span-12 sm:col-span-9 text-slate-900 font-semibold">: {{ $candidate->principle ? $candidate->principle->name : 'PT ARINA MULTI KARYA' }} - {{ $candidate->area ?? 'Jakarta' }}</div>
-            </div>
-            <div class="grid grid-cols-12 gap-2">
-                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Jabatan</div>
-                <div class="col-span-12 sm:col-span-9 text-slate-900 font-semibold">: {{ $candidate->applied_job ?? $candidate->position ?? '-' }} - {{ $candidate->area ?? 'Jakarta' }}</div>
-            </div>
-            <div class="grid grid-cols-12 gap-2 items-center">
-                <div class="col-span-12 sm:col-span-3 text-slate-600 font-bold">Status</div>
-                <div class="col-span-12 sm:col-span-9 flex items-center gap-2">
-                    : <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-500 text-white">
-                        {{ $candidate->status_approval ?? $candidate->status_kandidat ?? 'Proses' }}
-                    </span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tombol Edit Profile & Arsipkan Kandidat (Persis Gambar 1) -->
-        <div class="flex items-center gap-2 pt-3 border-t border-slate-100">
-            <button @click="gantiAreaModalOpen = true" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition cursor-pointer">
-                Edit Profile
-            </button>
-            <button @click="archiveModal = true" type="button" class="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-sm transition cursor-pointer">
-                Arsipkan Kandidat
-            </button>
-        </div>
     </div>
 
-    <!-- Tombol Download All Document (Persis Gambar 1) -->
-    <div class="flex items-center gap-2">
-        <a href="{{ route('interview.pdf', $candidate->id) }}" target="_blank" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition">
-            <i class="fa-solid fa-file-pdf text-rose-500"></i>
-            <span>Download All Document</span>
-        </a>
-    </div>
-    @else
     <!-- PROFIL KANDIDAT CARD REGULER (11 DATA POINTS + FOTO DROPZONE) -->
     <div class="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
         <div class="flex flex-col lg:flex-row gap-6">
@@ -448,7 +382,6 @@
 
         </div>
     </div>
-    @endif
 
     <!-- 7 Tabs Navigation Bar (Modern Attendance Tabs) -->
     <div class="bg-slate-100/80 border border-slate-200 rounded-2xl p-1.5 shadow-inner flex items-center gap-1.5 overflow-x-auto scrollbar-thin">
@@ -1602,70 +1535,196 @@
                         </div>
                     </div>
 
-                    <!-- KANAN: Form Set & Send Approval (Persis Gambar 1 & 2) -->
+                    @php
+                        $inhouseStatusApproval = $candidate->status_approval ?? 'Proses';
+                        $isLocked = in_array($inhouseStatusApproval, ['Review Head', 'Review HRD', 'Approve']);
+                    @endphp
+
+                    <!-- KANAN: Form Set & Send Approval / Locked Status sesuai Step -->
                     <div class="lg:col-span-5 bg-slate-50/70 border border-slate-200 rounded-2xl p-5 space-y-4">
-                        <form action="{{ route('interview.inhouse_approval', $candidate->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
-                            @csrf
-
-                            <!-- Nama Approver Inhouse -->
-                            <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama Approver Inhouse</label>
-                                <select name="nama_approver" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
-                                    @foreach($inhouseApproverOptions as $opt)
-                                        <option value="{{ $opt }}">{{ $opt }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-
-                            <!-- Berkas Lamaran Kandidat -->
-                            <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Berkas Lamaran Kandidat</label>
-                                <div class="bg-white border border-slate-200 rounded-xl p-2.5">
-                                    <input type="file" name="berkas_lamaran" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+                        
+                        <!-- STEP INDICATOR BAR -->
+                        <div class="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
+                            <span class="text-[10.5px] font-bold uppercase tracking-wider text-slate-500 block">Alur Approval Inhouse:</span>
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <!-- Step 1 Box -->
+                                <div class="p-2 rounded-lg border {{ in_array($inhouseStatusApproval, ['Review Head']) ? 'bg-amber-50 border-amber-300 text-amber-900' : (in_array($inhouseStatusApproval, ['Review HRD', 'Approve']) ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-blue-50 border-blue-200 text-blue-900') }}">
+                                    <div class="text-[10px] font-bold">STEP 1: HEAD</div>
+                                    <div class="text-[11px] font-extrabold flex items-center gap-1 mt-0.5">
+                                        @if(in_array($inhouseStatusApproval, ['Review HRD', 'Approve']))
+                                            <i class="fa-solid fa-circle-check text-emerald-600 text-xs"></i> Disetujui Head
+                                        @elseif($inhouseStatusApproval === 'Review Head')
+                                            <i class="fa-solid fa-clock text-amber-500 text-xs"></i> Menunggu Head
+                                        @elseif($inhouseStatusApproval === 'Tolak')
+                                            <i class="fa-solid fa-circle-xmark text-rose-500 text-xs"></i> Ditolak
+                                        @else
+                                            <i class="fa-solid fa-arrow-right text-blue-500 text-xs"></i> Siap Dikirim
+                                        @endif
+                                    </div>
                                 </div>
-                                @if($candidate->berkas_lamaran)
-                                    <div class="mt-2 flex items-center justify-between px-3 py-1.5 bg-sky-50 rounded-xl border border-sky-200 text-[11px] text-sky-800">
-                                        <span class="truncate max-w-[200px] font-medium"><i class="fa-solid fa-file-lines text-sky-600 mr-1"></i> {{ basename($candidate->berkas_lamaran) }}</span>
-                                        <a href="{{ route('interviewinhouse.berkas', $candidate->id) }}" target="_blank" class="font-bold underline text-sky-700 hover:text-sky-900 shrink-0">Lihat File</a>
+
+                                <!-- Step 2 Box -->
+                                <div class="p-2 rounded-lg border {{ $inhouseStatusApproval === 'Review HRD' ? 'bg-amber-50 border-amber-300 text-amber-900' : ($inhouseStatusApproval === 'Approve' ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-slate-100 border-slate-200 text-slate-400') }}">
+                                    <div class="text-[10px] font-bold">STEP 2: HRD PUSAT</div>
+                                    <div class="text-[11px] font-extrabold flex items-center gap-1 mt-0.5">
+                                        @if($inhouseStatusApproval === 'Approve')
+                                            <i class="fa-solid fa-circle-check text-emerald-600 text-xs"></i> Selesai (Approved)
+                                        @elseif($inhouseStatusApproval === 'Review HRD')
+                                            <i class="fa-solid fa-clock text-amber-500 text-xs"></i> Menunggu HRD
+                                        @else
+                                            <i class="fa-solid fa-lock text-slate-400 text-xs"></i> Terkunci
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        @if($isLocked)
+                            <!-- TAMPILAN TERKUNCI (LOCKED VIEW SESUAI STEP) -->
+                            <div class="space-y-4">
+                                @if($inhouseStatusApproval === 'Review Head')
+                                    <div class="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-start gap-2.5">
+                                        <i class="fa-solid fa-lock text-amber-600 mt-0.5 text-sm"></i>
+                                        <div>
+                                            <strong class="block font-bold">Form Terkunci (Sedang Menunggu Review Head)</strong>
+                                            <span class="text-[11px] text-amber-800 leading-relaxed block mt-0.5">Pengajuan telah dikirimkan ke Head Approver. Form dikunci agar tidak terjadi kesalahan perubahan approver.</span>
+                                        </div>
+                                    </div>
+                                @elseif($inhouseStatusApproval === 'Review HRD')
+                                    <div class="p-3.5 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 text-xs flex items-start gap-2.5">
+                                        <i class="fa-solid fa-lock text-sky-600 mt-0.5 text-sm"></i>
+                                        <div>
+                                            <strong class="block font-bold">Form Terkunci (Sedang Menunggu Review HRD Pusat)</strong>
+                                            <span class="text-[11px] text-sky-800 leading-relaxed block mt-0.5">Head telah menyetujui kandidat ini. Saat ini berkas sedang dalam proses review akhir oleh HRD Pusat.</span>
+                                        </div>
+                                    </div>
+                                @elseif($inhouseStatusApproval === 'Approve')
+                                    <div class="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-start gap-2.5">
+                                        <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5 text-sm"></i>
+                                        <div>
+                                            <strong class="block font-bold">Proses Approval Selesai (Approved)</strong>
+                                            <span class="text-[11px] text-emerald-800 leading-relaxed block mt-0.5">Kandidat telah disetujui penuh oleh Head & HRD Pusat dan dipindahkan ke riwayat Selesai.</span>
+                                        </div>
                                     </div>
                                 @endif
-                            </div>
 
-                            <!-- Status (New / Replace) -->
-                            <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Status</label>
-                                <select name="status_replace" x-model="inhouseStatus" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
-                                    <option value="">-- Pilih Status --</option>
-                                    <option value="New">New</option>
-                                    <option value="Replace">Replace</option>
-                                </select>
-                            </div>
+                                <!-- Ringkasan Data Pengajuan yang Terkunci -->
+                                <div class="bg-white border border-slate-200 rounded-xl p-3.5 space-y-2.5 text-xs text-slate-700">
+                                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                        <span class="text-slate-500 font-medium">Status Pengajuan:</span>
+                                        <span class="px-2.5 py-0.5 rounded-full text-[10.5px] font-extrabold {{ $inhouseStatusApproval === 'Approve' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
+                                            {{ $inhouseStatusApproval }}
+                                        </span>
+                                    </div>
 
-                            <!-- Form Tambahan Khusus Status Replace (Persis Gambar 2) -->
-                            <div x-show="inhouseStatus === 'Replace'" x-transition class="space-y-4 pt-1 border-t border-slate-200/80">
+                                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                        <span class="text-slate-500 font-medium">Pengaju (User Request):</span>
+                                        <span class="font-bold text-slate-900">{{ $candidate->user_request ?: '-' }}</span>
+                                    </div>
+
+                                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                        <span class="text-slate-500 font-medium">Berkas Lamaran:</span>
+                                        @if($candidate->berkas_lamaran)
+                                            <a href="{{ route('interviewinhouse.berkas', $candidate->id) }}" target="_blank" class="font-bold underline text-primary hover:text-primary-700 inline-flex items-center gap-1">
+                                                <i class="fa-solid fa-file-lines text-xs"></i> Lihat Berkas
+                                            </a>
+                                        @else
+                                            <span class="text-slate-400 italic">Tidak ada berkas</span>
+                                        @endif
+                                    </div>
+
+                                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                        <span class="text-slate-500 font-medium">Status Formasi:</span>
+                                        <span class="font-bold text-slate-900">{{ $candidate->status_replace === 'Replace' ? 'Replace' : 'New' }}</span>
+                                    </div>
+
+                                    @if($candidate->status_replace === 'Replace')
+                                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                            <span class="text-slate-500 font-medium">Menggantikan:</span>
+                                            <span class="font-bold text-slate-900">{{ $candidate->menggantikan ?: '-' }}</span>
+                                        </div>
+                                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                                            <span class="text-slate-500 font-medium">Tanggal Resign:</span>
+                                            <span class="font-bold text-slate-900">{{ $candidate->tgl_resign ? \Carbon\Carbon::parse($candidate->tgl_resign)->format('d/m/Y') : '-' }}</span>
+                                        </div>
+                                        <div class="flex items-start justify-between">
+                                            <span class="text-slate-500 font-medium shrink-0 w-28">Alasan Resign:</span>
+                                            <span class="font-medium text-slate-800 text-right">{{ $candidate->alasan_resign ?: '-' }}</span>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @else
+                            <!-- FORM AKTIF STEP 1: PENGIRIMAN KE HEAD APPROVER -->
+                            <form action="{{ route('interview.inhouse_approval', $candidate->id) }}" method="POST" enctype="multipart/form-data" class="space-y-4">
+                                @csrf
+
+                                <!-- Nama Approver Inhouse (Step 1: Pilihan Head / Pimpinan) -->
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Menggantikan</label>
-                                    <input type="text" name="menggantikan" value="{{ old('menggantikan', $candidate->menggantikan) }}" placeholder="Nama yang digantikan" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none">
+                                    <div class="flex items-center justify-between mb-1.5">
+                                        <label class="block text-xs font-bold text-slate-700">Nama Approver Inhouse</label>
+                                        <span class="px-2 py-0.5 text-[9.5px] font-extrabold bg-blue-100 text-blue-800 rounded-md">Step 1: Head Approver</span>
+                                    </div>
+                                    <select name="nama_approver" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
+                                        <option value="" disabled selected>-- Pilih Head Approver (Pimpinan) --</option>
+                                        @foreach($inhouseApproverOptions as $opt)
+                                            <option value="{{ $opt }}">{{ $opt }}</option>
+                                        @endforeach
+                                    </select>
+                                    <span class="text-[10.5px] text-slate-500 mt-1 block italic">* Terkunci pada Step 1 (Pimpinan / Head). Pilihan HRD Pusat akan otomatis aktif di Step 2 setelah Head menyetujui.</span>
                                 </div>
 
+                                <!-- Berkas Lamaran Kandidat -->
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Tanggal Resign</label>
-                                    <input type="date" name="tgl_resign" value="{{ old('tgl_resign', $candidate->tgl_resign) }}" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none">
+                                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Berkas Lamaran Kandidat</label>
+                                    <div class="bg-white border border-slate-200 rounded-xl p-2.5">
+                                        <input type="file" name="berkas_lamaran" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" class="w-full text-xs text-slate-600 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 cursor-pointer">
+                                    </div>
+                                    @if($candidate->berkas_lamaran)
+                                        <div class="mt-2 flex items-center justify-between px-3 py-1.5 bg-sky-50 rounded-xl border border-sky-200 text-[11px] text-sky-800">
+                                            <span class="truncate max-w-[200px] font-medium"><i class="fa-solid fa-file-lines text-sky-600 mr-1"></i> {{ basename($candidate->berkas_lamaran) }}</span>
+                                            <a href="{{ route('interviewinhouse.berkas', $candidate->id) }}" target="_blank" class="font-bold underline text-sky-700 hover:text-sky-900 shrink-0">Lihat File</a>
+                                        </div>
+                                    @endif
                                 </div>
 
+                                <!-- Status (New / Replace) -->
                                 <div>
-                                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Alasan Resign</label>
-                                    <input type="text" name="alasan_resign" value="{{ old('alasan_resign', $candidate->alasan_resign) }}" placeholder="Alasan pengunduran diri" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none">
+                                    <label class="block text-xs font-bold text-slate-700 mb-1.5">Status</label>
+                                    <select name="status_replace" x-model="inhouseStatus" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
+                                        <option value="">-- Pilih Status --</option>
+                                        <option value="New">New</option>
+                                        <option value="Replace">Replace</option>
+                                    </select>
                                 </div>
-                            </div>
 
-                            <!-- Tombol Submit Set & Send Approval -->
-                            <div class="pt-2">
-                                <button type="submit" class="w-full py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 border border-rose-600 shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
-                                    <span>Set & Send Approval</span>
-                                </button>
-                            </div>
-                        </form>
+                                <!-- Form Tambahan Khusus Status Replace (Persis Gambar 2) -->
+                                <div x-show="inhouseStatus === 'Replace'" x-transition class="space-y-4 pt-1 border-t border-slate-200/80">
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Menggantikan</label>
+                                        <input type="text" name="menggantikan" value="{{ old('menggantikan', $candidate->menggantikan) }}" placeholder="Nama yang digantikan" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Tanggal Resign</label>
+                                        <input type="date" name="tgl_resign" value="{{ old('tgl_resign', $candidate->tgl_resign) }}" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none">
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Alasan Resign</label>
+                                        <input type="text" name="alasan_resign" value="{{ old('alasan_resign', $candidate->alasan_resign) }}" placeholder="Alasan pengunduran diri" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none">
+                                    </div>
+                                </div>
+
+                                <!-- Tombol Submit Set & Send Approval -->
+                                <div class="pt-2">
+                                    <button type="submit" class="w-full py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 border border-rose-600 shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                                        <span>Set & Kirim Approval ke Head (Step 1)</span>
+                                    </button>
+                                </div>
+                            </form>
+                        @endif
                     </div>
 
                 </div>

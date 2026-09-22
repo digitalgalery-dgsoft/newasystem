@@ -317,17 +317,28 @@ class InterviewInhouseController extends Controller
 
         $evalData = \App\Services\CandidateEvaluationDataService::getEvaluationData($candidate);
 
-        $isHrd = $user->isHrd();
-        $isHead = $user->isHead();
+        $aiData = $candidate->ai_data;
+        $otherCandidates = Candidate::where('applied_job', $candidate->applied_job)
+            ->where('id', '!=', $candidate->id)
+            ->whereNotNull('ai_score')
+            ->where('ai_score', '>', 0)
+            ->orderByDesc('ai_score')
+            ->limit(5)
+            ->get();
+        $userPrinsiples = InterviewController::getUserPrinsipleOptions($candidate);
 
         return view('interviewinhouse.show', array_merge([
             'candidate' => $candidate,
             'user' => $user,
             'principles' => $principles,
+            'userPrinsiples' => $userPrinsiples,
             'areas' => $areas,
+            'aiData' => $aiData,
+            'otherCandidates' => $otherCandidates,
             'statusBadge' => $statusBadge,
             'isHrd' => $isHrd,
             'isHead' => $isHead,
+            'isInhouseCandidate' => true,
         ], $evalData));
     }
 
@@ -365,6 +376,23 @@ class InterviewInhouseController extends Controller
                 return response()->json(['status' => 'error', 'message' => 'Catatan dan hasil keputusan wajib diisi!'], 422);
             }
             return back()->with('error', 'Catatan dan hasil keputusan wajib diisi!');
+        }
+
+        // Proteksi Step Locking
+        if ($submitType === 'hrd') {
+            if (!$user->isHrd()) {
+                $msg = 'Akses ditolak! Hanya role HRD yang berhak melakukan submit persetujuan HRD Pusat.';
+                return $isJson ? response()->json(['status' => 'error', 'message' => $msg], 403) : back()->with('error', $msg);
+            }
+            if ($candidate->status_approval === 'Review Head') {
+                $msg = 'Akses ditolak! Kandidat belum disetujui oleh Head Approver (Step 1). Menunggu persetujuan Head terlebih dahulu.';
+                return $isJson ? response()->json(['status' => 'error', 'message' => $msg], 422) : back()->with('error', $msg);
+            }
+        } elseif ($submitType === 'head') {
+            if (in_array($candidate->status_approval, ['Review HRD', 'Approve'])) {
+                $msg = 'Kandidat ini sudah disetujui oleh Head Approver dan telah berada di tahap HRD Pusat.';
+                return $isJson ? response()->json(['status' => 'error', 'message' => $msg], 422) : back()->with('error', $msg);
+            }
         }
 
         // Tanda tangan image processing (Simpan file PNG jika data URL)
