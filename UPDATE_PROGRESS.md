@@ -1796,6 +1796,29 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 18. 🧹 Pembersihan Akun Demo Jamil & Pengembalian Data Kandidat ke User Asli
+- **Latar Belakang Masalah**:
+  - Akun `jamil@asystem.co.id` (Abdurrahman Jamil - IT Programmer) sebelumnya digunakan sebagai fallback akun demo saat pengembangan awal sistem pada modul `InterviewController`, `KandidatPortalController`, `InterviewInhouseController`, dan `CandidateImportController`.
+  - Pada tabel `candidates`, terdapat kandidat interview demo (ID 4: Ahmad Faisal Rahman dan ID 5: Siti Nurhaliza) yang di-assign ke `useras: 'jamil@asystem.co.id'` dan `recruiter_id: 3`.
+  - Pada tabel `hasilinterview`, record ID 524 (NIK 3275086711040002 / Annisa Tiara Noviyanti) mencantumkan `nama_as: 'Abdurrahman Jamil'` padahal kandidat ini aslinya dihandle oleh Anton Purnama Wijaya (`useras: antonjunot666@gmail.com`).
+  - Pada fungsi `resolveUserIdentifiers()`, terdapat blok pemetaan alias liar yang menyatukan seluruh variasi nama `abdur rahman` (AS Jambi) dan `abdurrahman2330@gmail.com` (AS Pekanbaru) ke akun demo `jamil@asystem.co.id`, sehingga ratusan kandidat AS Jambi dan Pekanbaru keliru diasosiasikan sebagai milik akun demo Jamil.
+- **Tindakan Perbaikan & Migrasi Database**:
+  - Dibuat migrasi resmi: `2026_09_22_143000_revert_demo_candidate_users_from_jamil.php`.
+  - Mengembalikan kepemilikan data kandidat yang menggunakan akun demo `jamil@asystem.co.id` ke user Administrator HR yang sah (`admin@asystem.co.id`, `recruiter_id: 1`).
+  - Mengembalikan field `nama_as` pada tabel `hasilinterview` ID 524 ke user aslinya (`Anton Purnama Wijaya`).
+- **Pembersihan Logika Controller Backend**:
+  - [InterviewController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php): Mengganti metode `getCurrentUser()` agar menggunakan `auth()->user() ?? User::where('role', 'admin')->first() ?? User::first()`, menghapus fallback hardcoded ke akun demo Jamil.
+  - [KandidatPortalController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/KandidatPortalController.php):
+    - Mengganti `getCurrentUser()` ke auth user / admin resmi.
+    - Menghapus blok alias paksa yang mencampuradukkan AS Abdur Rahman Jambi / Pekanbaru dengan akun demo Jamil.
+  - [InterviewInhouseController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewInhouseController.php): Menghapus `User::firstOrCreate` akun demo Jamil pada `getCurrentUser()`.
+  - [CandidateImportController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CandidateImportController.php): Menghapus fallback Jamil pada `getCurrentUser()`.
+  - [AuthController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/AuthController.php): Menghapus fallback pencocokan alias login ke `jamil@asystem.co.id`.
+- **Status Deployment**:
+  - Berhasil diuji coba lokal, di-commit, di-push ke branch `main`, dan berhasil dieksekusi migrasinya pada server production (`new.asystem.co.id`) dengan status HTTP 200 OK.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
