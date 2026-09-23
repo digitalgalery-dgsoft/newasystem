@@ -833,6 +833,7 @@ class OdooSyncService
         $email = $rec['work_email'] ?: ($rec['private_email'] ?: null);
         $telepon = $rec['mobile_phone'] ?: null;
         $rawTanggalJoin = !empty($rec['first_contract_date']) ? $rec['first_contract_date'] : null;
+        $tanggalJoin    = $rawTanggalJoin;
 
         $jabatan = is_array($rec['job_id']) ? $rec['job_id'][1] : null;
         $divisi = is_array($rec['department_id']) ? $rec['department_id'][1] : null;
@@ -954,7 +955,7 @@ class OdooSyncService
                 'is_active'     => $isActive,
                 'email'         => $email,
                 'telepon'       => $telepon,
-                'tanggal_join'  => $tanggalJoin,
+                'tanggal_join'  => $tanggalJoin ?: $effectiveJoinDate,
             ],
         ];
     }
