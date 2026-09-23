@@ -1101,6 +1101,23 @@
                             </a>
                         </li>
                         <li>
+                            <a href="{{ route('admin.auth-chat.index') }}" 
+                               title="Bantuan Login & Reset Kata Sandi"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('admin.auth-chat.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-headset text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('admin.auth-chat.*') ? 'text-white' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 truncate">Bantuan Login</span>
+                                @php
+                                    $sidebarPendingReset = \App\Models\PasswordResetRequest::where('status', 'pending')->count();
+                                @endphp
+                                @if($sidebarPendingReset > 0)
+                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-rose-500 text-white font-bold px-1.5 py-0.2 rounded-full animate-bounce">{{ $sidebarPendingReset }}</span>
+                                @else
+                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded-md border border-emerald-200">Live</span>
+                                @endif
+                            </a>
+                        </li>
+                        <li>
                             <a href="{{ route('activity-logs.index') }}" 
                                title="Log Aktivitas & Audit"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('activity-logs.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
@@ -1528,11 +1545,19 @@
                             </div>
 
                             <!-- Footer -->
-                            <div class="p-2.5 bg-slate-50 flex items-center justify-between">
-                                <a href="{{ route('workplan.chat') }}" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors">
-                                    <i class="fa-solid fa-comments text-xs"></i>
-                                    <span>Buka Groups Chat</span>
-                                </a>
+                            <div class="p-2.5 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ route('workplan.chat') }}" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors">
+                                        <i class="fa-solid fa-comments text-xs"></i>
+                                        <span>Groups Chat</span>
+                                    </a>
+                                    @if(Auth::check() && Auth::user()->isAdmin())
+                                    <a href="{{ route('admin.auth-chat.index') }}" class="text-[11px] font-bold text-primary hover:text-primary-800 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors">
+                                        <i class="fa-solid fa-headset text-xs"></i>
+                                        <span>Bantuan Login</span>
+                                    </a>
+                                    @endif
+                                </div>
                                 <button type="button" @click="isOpen = false" class="text-[11px] font-semibold text-slate-400 hover:text-slate-600 px-2 py-1">
                                     Tutup
                                 </button>

@@ -1906,6 +1906,32 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 40. 💬 Fitur Lupa Kata Sandi via Live Chat Administrator & Auto-Sync Odoo Karyawan
+- **Latar Belakang & Kebutuhan Fitur**:
+  - Menggantikan tautan statis WhatsApp pada halaman login dengan modul **Live Chat Bantuan Login & Reset Password** yang terhubung langsung ke Administrator HR (mirip alur login helpdesk aplikasi Attendance).
+  - Mengintegrasikan pengecekan NIK otomatis ke server Odoo ERP (5 entitas: AMK, AKP, ATK, ABO, ATB).
+- **Alur Kerja Karyawan (Halaman Login `/login`)**:
+  - Karyawan mengklik tombol *"Lupa kata sandi?"* untuk membuka jendela dialog modal Live Chat.
+  - Karyawan memasukkan 16 digit NIK.
+  - Sistem memvalidasi NIK: jika belum terdaftar di database lokal, sistem secara otomatis menarik data dari server Odoo seluruh entitas. Jika ditemukan aktif di Odoo, karyawan langsung didaftarkan ke tabel `employees`.
+  - Jika karyawan aktif, sistem membuka sesi percakapan chat dengan tiket resmi (`REQ-YYYYMMDD-XXXX`).
+  - Karyawan dapat memantau pesan balasan secara real-time (auto-poll) dan saling berbalas pesan dengan Admin.
+  - Begitu Admin mengirimkan akses, kartu kredensial resmi (Email & Password) tampil di dalam chat dengan tombol **"Salin Kredensial & Langsung Masuk"** yang otomatis mengisikan form login.
+- **Alur Kerja Administrator (Dashboard Helpdesk `/admin/bantuan-login`)**:
+  - Admin menerima notifikasi real-time via badge lonceng navbar dan badge counter pada sidebar *Bantuan Login*.
+  - Tampilan split-pane 2 kolom: daftar tiket di sebelah kiri (dengan filter status *Pending*, *Selesai*, *Semua*) dan panel percakapan interaktif di sebelah kanan lengkap dengan ringkasan identitas karyawan.
+  - **Tombol "Kirim Akses" (Email & Kata Sandi)**: 1-klik mengirimkan kredensial login (email & kata sandi default `ddmmyyyy` / password akun) langsung ke percakapan chat karyawan.
+  - **Auto-Aktivasi RateCard**: Jika karyawan bertipe RateCard dan belum memiliki izin login (`akses_login = false`), sistem secara otomatis mengaktifkan perizinan login saat Admin mengklik tombol *Kirim Akses*.
+  - **Tombol "Kirim via WhatsApp"**: Menyediakan tautan cepat ke WhatsApp Web/App dengan pesan kredensial yang sudah terformat rapi.
+- **Basis Data & Komponen**:
+  - Migrasi `2026_09_23_093000_create_password_reset_chat_tables.php` (`password_reset_requests` & `password_reset_chat_messages`).
+  - Model `PasswordResetRequest` & `PasswordResetChatMessage`.
+  - Controller `AuthChatController`.
+  - Helper `OdooSyncService::findAndSyncByNik()`.
+  - View publik modal `auth/login.blade.php` & view admin `admin/auth_chat/index.blade.php`.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

@@ -36,6 +36,15 @@ Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->nam
 Route::get('/login.php', function () { return redirect()->route('login'); });
 
 // ==========================================
+// LIVE CHAT BANTUAN LOGIN & FORGOT PASSWORD (PUBLIK)
+// ==========================================
+Route::prefix('auth/chat')->name('auth.chat.')->group(function () {
+    Route::post('/check-nik', [\App\Http\Controllers\AuthChatController::class, 'checkNik'])->name('check-nik');
+    Route::get('/poll', [\App\Http\Controllers\AuthChatController::class, 'poll'])->name('poll');
+    Route::post('/send-message', [\App\Http\Controllers\AuthChatController::class, 'sendMessage'])->name('send-message');
+});
+
+// ==========================================
 // BAGIAN FITUR (FEATURE LAUNCHER HUB)
 // ==========================================
 Route::get('/fitur', [FeatureController::class, 'index'])->name('fitur.index');
@@ -356,6 +365,17 @@ Route::match(['GET', 'POST'], '/sync-by-nik', [App\Http\Controllers\OdooSettingC
 Route::match(['GET', 'POST'], '/master/karyawan/sync-by-nik', [App\Http\Controllers\OdooSettingController::class, 'syncByNik'])->middleware(['admin']);
 Route::get('/odoo-sync', function() { return redirect()->route('odoo.setting.index'); });
 Route::get('/odoo_setting.php', function() { return redirect()->route('odoo.setting.index'); });
+
+// ==============================================================
+// BANTUAN LOGIN & RESET PASSWORD (ADMIN HELPDESK LIVE CHAT)
+// ==============================================================
+Route::middleware(['admin'])->prefix('admin/bantuan-login')->name('admin.auth-chat.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AuthChatController::class, 'adminIndex'])->name('index');
+    Route::get('/poll', [\App\Http\Controllers\AuthChatController::class, 'adminPoll'])->name('poll');
+    Route::post('/{id}/reply', [\App\Http\Controllers\AuthChatController::class, 'adminReply'])->name('reply');
+    Route::post('/{id}/send-access', [\App\Http\Controllers\AuthChatController::class, 'adminSendAccess'])->name('send-access');
+    Route::post('/{id}/resolve', [\App\Http\Controllers\AuthChatController::class, 'adminResolve'])->name('resolve');
+});
 
 // ==============================================================
 // PENGATURAN SISTEM & HAK AKSES (RBAC)

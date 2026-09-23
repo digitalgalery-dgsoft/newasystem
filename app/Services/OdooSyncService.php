@@ -1022,6 +1022,81 @@ class OdooSyncService
     }
 
     /**
+     * Cari dan sinkronkan karyawan secara otomatis berdasarkan NIK lintas seluruh entitas Odoo yang aktif.
+     * Mengembalikan status: found_active, found_resign, atau not_found.
+     * Jika ditemukan aktif di Odoo, otomatis tersimpan/terupdate ke database lokal (Employee model).
+     */
+    public static function findAndSyncByNik(string $nik): array
+    {
+        $cleanNik = trim($nik);
+        if (empty($cleanNik)) {
+            return [
+                'status'   => 'not_found',
+                'message'  => 'NIK tidak boleh kosong.',
+                'employee' => null,
+            ];
+        }
+
+        $entities = OdooEntity::where('is_active', true)->get()->filter->isConfigured()->values();
+        if ($entities->isEmpty()) {
+            return [
+                'status'   => 'not_found',
+                'message'  => 'Tidak ada entitas Odoo yang terkonfigurasi.',
+                'employee' => null,
+            ];
+        }
+
+        $bestResult = null;
+        $bestEntity = null;
+
+        foreach ($entities as $entity) {
+            try {
+                $service = static::fromEntity($entity);
+                if (!$service) {
+                    continue;
+                }
+
+                $res = $service->syncSingleEmployee($entity, $cleanNik);
+                if (!empty($res['success'])) {
+                    $isEmployeeActive = ($res['status'] ?? '') === 'Aktiv' || ($res['is_active'] ?? false);
+
+                    if ($isEmployeeActive) {
+                        $bestResult = $res;
+                        $bestEntity = $entity;
+                        break; // Prioritaskan entitas dengan status Aktiv
+                    }
+
+                    if ($bestResult === null) {
+                        $bestResult = $res;
+                        $bestEntity = $entity;
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning("findAndSyncByNik {$cleanNik} exception on {$entity->code}: " . $e->getMessage());
+            }
+        }
+
+        if ($bestResult !== null) {
+            $isAct = ($bestResult['status'] ?? '') === 'Aktiv' || ($bestResult['is_active'] ?? false);
+            return [
+                'status'      => $isAct ? 'found_active' : 'found_resign',
+                'message'     => $bestResult['message'],
+                'employee'    => $bestResult['employee'],
+                'entity'      => $bestEntity?->code,
+                'action'      => $bestResult['action'] ?? 'updated',
+                'is_active'   => $isAct,
+                'old_entity'  => $bestResult['old_entity'] ?? null,
+            ];
+        }
+
+        return [
+            'status'   => 'not_found',
+            'message'  => "NIK '{$cleanNik}' tidak ditemukan di seluruh entitas Odoo yang aktif.",
+            'employee' => null,
+        ];
+    }
+
+    /**
      * Low-level cURL XML-RPC call.
      */
     public function xmlRpcCall(string $path, string $method, array $params): mixed
