@@ -368,7 +368,7 @@ class OdooSettingController extends Controller
                         }
                     }
                 } catch (\Throwable $e) {
-                    // Abaikan exception koneksi parsial per entitas
+                    \Log::warning("Sync by NIK {$nik} exception on entity {$targetEntity->code}: " . $e->getMessage());
                 }
             }
 
@@ -674,32 +674,63 @@ class OdooSettingController extends Controller
                 $found = false;
                 $sendEvent('info', "[{$num}/" . count($niks) . "] Mencari NIK {$singleNik} di server Odoo...");
 
+                $bestRes = null;
+                $bestEntity = null;
+
                 foreach ($entities as $entity) {
                     try {
                         $service = OdooSyncService::fromEntity($entity);
                         $res = $service->syncSingleEmployee($entity, $singleNik);
-                        if ($res['success']) {
-                            $found = true;
-                            $successCount++;
-                            $actionLabel = $res['action'] === 'created' ? 'DIBUAT (BARU)' : 'DIPERBARUI';
-                            $empName = $res['employee']->nama_karyawan ?? $singleNik;
-                            $empJob = $res['employee']->jabatan ?? 'Staff';
-                            $empType = $res['employee']->tipe_karyawan ?? 'Inhouse';
-                            $sendEvent('item_create', "✅ [{$entity->code}] NIK {$singleNik} - {$empName} ({$empJob} | {$empType}) -> {$actionLabel}", [
-                                'action'   => $res['action'],
-                                'entity'   => $entity->code,
-                                'nik'      => $singleNik,
-                                'name'     => $empName,
-                                'success'  => true,
-                            ]);
-                            break;
+                        if (!empty($res['success'])) {
+                            $isEmployeeActive = ($res['status'] ?? '') === 'Aktiv' || ($res['is_active'] ?? false);
+
+                            // Jika pencarian pada entitas tertentu (bukan ALL) ATAU karyawan berstatus AKTIF di entitas ini,
+                            // langsung jadikan hasil final dan hentikan pencarian lintas entitas
+                            if ($entityCode !== 'ALL' || $isEmployeeActive) {
+                                $bestRes = $res;
+                                $bestEntity = $entity;
+                                break;
+                            }
+
+                            // Jika berstatus Resign/non-aktif pada pencarian ALL, simpan sebagai fallback kandidat sementara
+                            // dan lanjutkan memeriksa entitas lainnya untuk mencari status aktif di entitas baru
+                            if ($bestRes === null) {
+                                $bestRes = $res;
+                                $bestEntity = $entity;
+                            }
                         }
                     } catch (\Throwable $e) {
-                        // continue to next entity
+                        \Log::warning("Stream sync NIK {$singleNik} error on entity {$entity->code}: " . $e->getMessage());
                     }
                 }
 
-                if (!$found) {
+                if ($bestRes !== null) {
+                    $found = true;
+                    $successCount++;
+                    $actionLabel = $bestRes['action'] === 'created' ? 'DIBUAT (BARU)' : 'DIPERBARUI';
+                    $empName = $bestRes['employee']->nama_karyawan ?? $singleNik;
+                    $empJob = $bestRes['employee']->jabatan ?? 'Staff';
+                    $empType = $bestRes['employee']->tipe_karyawan ?? 'Inhouse';
+                    $empStatus = $bestRes['status'] ?? ($bestRes['employee']->status ?? 'Aktiv');
+
+                    $mutationNote = (!empty($bestRes['old_entity']) && $bestRes['old_entity'] !== $bestEntity->code)
+                        ? " [Pindah dari {$bestRes['old_entity']} ➔ {$bestEntity->code}]"
+                        : "";
+                    $reactivationNote = (!empty($bestRes['old_status']) && $bestRes['old_status'] !== 'Aktiv' && $empStatus === 'Aktiv')
+                        ? " [Reaktivasi: {$bestRes['old_status']} ➔ Aktiv]"
+                        : "";
+
+                    $statusBadge = $empStatus === 'Aktiv' ? '✅' : '🚪';
+
+                    $sendEvent('item_create', "{$statusBadge} [{$bestEntity->code}] NIK {$singleNik} - {$empName} ({$empJob} | {$empType}) [Status: {$empStatus}]{$mutationNote}{$reactivationNote} -> {$actionLabel}", [
+                        'action'   => $bestRes['action'],
+                        'entity'   => $bestEntity->code,
+                        'nik'      => $singleNik,
+                        'name'     => $empName,
+                        'status'   => $empStatus,
+                        'success'  => true,
+                    ]);
+                } else {
                     $failCount++;
                     $sendEvent('item_error', "⚠️ NIK {$singleNik} tidak ditemukan pada entitas aktif di Odoo.", [
                         'nik'     => $singleNik,

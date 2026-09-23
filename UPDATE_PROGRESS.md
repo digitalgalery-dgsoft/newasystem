@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 22 September 2026*
+*Terakhir diperbarui: 23 September 2026*
 
 ---
 
@@ -1881,6 +1881,28 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   - Tab navigasi ke-7 menampilkan label eksplisit:
     - Untuk kandidat inhouse: **`7. Approval Inhouse`** (`fa-house-chimney-user`).
     - Untuk kandidat prinsiple/klien umum: **`7. Approval Prinsiple`** (`fa-building-circle-check`).
+
+---
+
+### 39. 🔄 Penyempurnaan Sinkronisasi Odoo: Mutasi Lintas Entitas & Reaktivasi Karyawan Resign
+- **Latar Belakang & Identifikasi Masalah**:
+  - Pada kasus karyawan yang resign di satu entitas holding (misal AMK) lalu diaktifkan kembali di entitas holding lain (misal ATK), data di Master Karyawan sebelumnya tidak terupdate dan tetap tertahan dengan status `Resign` di entitas lama (AMK).
+  - Ditemukan 4 titik penyebab:
+    1. Aturan skip mentah pada cron hourly dan bulk sync (`if (!$updateExisting) continue;`) yang mengabaikan NIK yang sudah ada di database tanpa memeriksa apakah karyawan tersebut berpindah entitas atau aktif kembali.
+    2. Perintah `break` prematur pada terminal sync NIK lintas entitas (`streamSyncNik`) dan CLI command (`odoo:sync`) saat menemukan record pertama (AMK) yang berstatus resign, sebelum sempat memeriksa entitas aktif baru (ATK).
+    3. Batasan `NOT NULL` pada kolom `tanggal_join` yang memicu PDOException jika karyawan baru di Odoo belum memiliki `first_contract_date`.
+- **Solusi & Implementasi**:
+  - **Logika Update Cerdas (`OdooSyncService::syncEmployees`)**:
+    - Memperbarui aturan skip: NIK hanya dilewati jika NIK sudah ada, **sudah berstatus Aktiv**, **dan** berada di **entitas yang sama**.
+    - Jika status karyawan sebelumnya `Resign` atau entitasnya berbeda (`AMK !== ATK`), sistem secara otomatis mengupdate record: mengubah entitas ke entitas baru, status ke `Aktiv`, serta memperbarui jabatan, departemen, tipe karyawan, prinsiple, dan Odoo ID.
+    - Menambahkan penanganan fallback otomatis untuk `tanggal_join`, `jabatan`, dan `area`.
+  - **Prioritas Status Aktif pada Pencarian NIK Lintas Entitas (`OdooSettingController::streamSyncNik` & `OdooSyncCommand`)**:
+    - Saat melakukan pencarian NIK lintas seluruh entitas (`ALL`), jika ditemukan record berstatus `Resign`, sistem tidak langsung menghentikan loop, melainkan menyimpannya sebagai fallback dan terus memeriksa entitas lainnya hingga menemukan record `Aktiv`.
+    - Menambahkan visualisasi badge dan log mutasi di live terminal SSE: `[Pindah dari AMK ➔ ATK]` dan `[Reaktivasi: Resign ➔ Aktiv]`.
+  - **Peningkatan Pelaporan Cron Hourly (`OdooSyncActiveCommand`)**:
+    - Menambahkan metrik pelacakan dan pencetakan `Total Mutasi / Reaktivasi` pada ringkasan eksekusi cron per jam.
+- **Deployment Production**:
+  - Seluruh pembaruan telah diuji coba, bebas error sintaks (`php -l`), lolos uji validasi skenario mutasi dan reaktivasi, di-push ke branch `main` GitHub, dan dieksekusi deployment ke server live production (`new.asystem.co.id`).
 
 ---
 

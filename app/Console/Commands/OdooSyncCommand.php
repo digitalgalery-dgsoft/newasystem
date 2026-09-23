@@ -72,7 +72,9 @@ class OdooSyncCommand extends Command
         // MODE 1: SYNC 1 EMPLOYEE BY NIK
         // =====================================================================
         if ($nik !== '') {
-            $found = false;
+            $bestResult = null;
+            $bestEntity = null;
+
             foreach ($entities as $entity) {
                 if (!$entity->isConfigured()) {
                     continue;
@@ -83,25 +85,24 @@ class OdooSyncCommand extends Command
                     $service = OdooSyncService::fromEntity($entity);
                     $result = $service->syncSingleEmployee($entity, $nik);
 
-                    if ($result['success']) {
-                        $emp = $result['employee'];
-                        $this->info("  ✓ Berhasil Disinkronkan!");
-                        $this->table(
-                            ['Field', 'Value'],
-                            [
-                                ['NIK / NIP', $emp->nik],
-                                ['Nama Lengkap', $emp->nama_karyawan],
-                                ['Jabatan', $emp->jabatan ?? '-'],
-                                ['Departemen', $emp->departemen ?? '-'],
-                                ['Prinsiple Odoo', $emp->prinsiple ?? '-'],
-                                ['Entitas Terpilih', $emp->entitas ?? '-'],
-                                ['Tipe Karyawan', $emp->tipe_karyawan ?? '-'],
-                                ['Status Aktif', $emp->status_aktif ? 'Aktif' : 'Non-Aktif'],
-                                ['Action', $result['action'] ?? '-'],
-                            ]
-                        );
-                        $found = true;
-                        break;
+                    if (!empty($result['success'])) {
+                        $isActive = ($result['status'] ?? '') === 'Aktiv' || ($result['is_active'] ?? false);
+
+                        // Jika entitas spesifik ditentukan via parameter ATAU karyawan berstatus AKTIF di entitas ini,
+                        // langsung jadikan hasil final dan hentikan pencarian lintas entitas
+                        if (!empty($entityCode) || $isActive) {
+                            $bestResult = $result;
+                            $bestEntity = $entity;
+                            break;
+                        }
+
+                        // Jika berstatus Resign pada pencarian ALL, simpan sebagai kandidat sementara
+                        // dan lanjutkan memeriksa entitas lainnya untuk mencari status aktif di entitas baru
+                        if ($bestResult === null) {
+                            $bestResult = $result;
+                            $bestEntity = $entity;
+                            $this->line("  <fg=yellow>ℹ Ditemukan di {$entity->code} dengan status '{$result['status']}'. Memeriksa entitas lain untuk status aktif...</>");
+                        }
                     } else {
                         $this->line("  <fg=yellow>ℹ {$result['message']}</>");
                     }
@@ -110,12 +111,36 @@ class OdooSyncCommand extends Command
                 }
             }
 
-            if (!$found) {
-                $this->warn("\n⚠️  Karyawan dengan NIK '{$nik}' tidak ditemukan atau tidak aktif di entitas yang diperiksa.");
-                return 1;
+            if ($bestResult !== null) {
+                $emp = $bestResult['employee'];
+                $statusStr = $bestResult['status'] ?? ($emp->status ?? '-');
+                $mutationNote = (!empty($bestResult['old_entity']) && $bestResult['old_entity'] !== $bestEntity->code)
+                    ? " (Pindah dari {$bestResult['old_entity']} ➔ {$bestEntity->code})"
+                    : "";
+                $reactivationNote = (!empty($bestResult['old_status']) && $bestResult['old_status'] !== 'Aktiv' && $statusStr === 'Aktiv')
+                    ? " (Reaktivasi: {$bestResult['old_status']} ➔ Aktiv)"
+                    : "";
+
+                $this->info("  ✓ Berhasil Disinkronkan dengan Entitas: {$bestEntity->name} ({$bestEntity->code})!");
+                $this->table(
+                    ['Field', 'Value'],
+                    [
+                        ['NIK / NIP', $emp->nik . (!empty($emp->nip) ? ' / ' . $emp->nip : '')],
+                        ['Nama Lengkap', $emp->nama_karyawan],
+                        ['Jabatan', $emp->jabatan ?? '-'],
+                        ['Departemen / Divisi', $emp->divisi ?? ($emp->departemen ?? '-')],
+                        ['Prinsiple Odoo', $emp->prinsiple ?? '-'],
+                        ['Entitas', $bestEntity->code . $mutationNote],
+                        ['Tipe Karyawan', $emp->tipe_karyawan ?? '-'],
+                        ['Status', $statusStr . $reactivationNote],
+                        ['Action', ($bestResult['action'] ?? '-') . $mutationNote],
+                    ]
+                );
+                return 0;
             }
 
-            return 0;
+            $this->warn("\n⚠️  Karyawan dengan NIK '{$nik}' tidak ditemukan di entitas yang diperiksa.");
+            return 1;
         }
 
         // =====================================================================

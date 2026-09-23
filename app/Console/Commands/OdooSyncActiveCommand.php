@@ -58,6 +58,7 @@ class OdooSyncActiveCommand extends Command
         }
 
         $totalGlobalCreated = 0;
+        $totalGlobalUpdated = 0;
         $totalGlobalSkipped = 0;
         $globalErrors       = [];
 
@@ -77,13 +78,16 @@ class OdooSyncActiveCommand extends Command
                 }
 
                 $timeStart = microtime(true);
-                // updateExisting = false: NIK yang sudah masuk tidak diupdate
+                // updateExisting = false: NIK yang sudah masuk dan aktif di entitas sama tidak diupdate,
+                // namun jika statusnya Resign atau berbeda entitas, OdooSyncService akan otomatis mengupdate (mutasi/reaktivasi)
                 $res = $service->syncEmployees(
                     entity: $entity,
                     progressCallback: function (string $type, string $message, ?array $meta = null) use ($isSilent) {
                         if (!$isSilent) {
                             if ($type === 'item_create') {
                                 $this->line("  <fg=green>{$message}</>");
+                            } elseif ($type === 'item_update') {
+                                $this->line("  <fg=cyan>{$message}</>");
                             } elseif ($type === 'error' || $type === 'item_error') {
                                 $this->line("  <fg=red>{$message}</>");
                             }
@@ -95,11 +99,16 @@ class OdooSyncActiveCommand extends Command
                 $duration = round(microtime(true) - $timeStart, 2);
 
                 $created = $res['created'] ?? 0;
+                $updated = $res['updated'] ?? 0;
                 $errors  = $res['errors'] ?? [];
 
                 $totalGlobalCreated += $created;
+                $totalGlobalUpdated += $updated;
 
                 $this->line("  <fg=green>✓ Karyawan Baru Ditambahkan : {$created}</>");
+                if ($updated > 0) {
+                    $this->line("  <fg=cyan>✓ Karyawan Mutasi/Reaktivasi: {$updated}</>");
+                }
                 $this->line("  <fg=blue>✓ Durasi Eksekusi          : {$duration} detik</>");
 
                 if (!empty($errors)) {
@@ -129,6 +138,7 @@ class OdooSyncActiveCommand extends Command
         $this->info("📊 RINGKASAN CRON EMPLOYEE AKTIF (HOURLY)");
         $this->info("================================================================================");
         $this->line("<fg=green>Total Karyawan Baru Masuk  : {$totalGlobalCreated}</>");
+        $this->line("<fg=cyan>Total Mutasi / Reaktivasi  : {$totalGlobalUpdated}</>");
         $this->line("<fg=" . (count($globalErrors) > 0 ? "red" : "green") . ">Total Error Terjadi        : " . count($globalErrors) . "</>");
         $this->info("================================================================================\n");
 

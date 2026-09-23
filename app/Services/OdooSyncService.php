@@ -283,32 +283,13 @@ class OdooSyncService
                     $nip = trim((string)($rec['registration_number'] ?: '')) ?: null;
                     $email = $rec['work_email'] ?: ($rec['private_email'] ?: null);
                     $telepon = $rec['mobile_phone'] ?: null;
-                    $tanggalJoin = !empty($rec['first_contract_date']) ? $rec['first_contract_date'] : null;
+                    $rawTanggalJoin = !empty($rec['first_contract_date']) ? $rec['first_contract_date'] : null;
 
                     $jabatan = is_array($rec['job_id']) ? $rec['job_id'][1] : null;
                     $divisi = is_array($rec['department_id']) ? $rec['department_id'][1] : null;
                     $area = is_array($rec['area_id']) ? $rec['area_id'][1] : null;
 
                     $status = 'Aktiv';
-
-                    $dataToSave = [
-                        'nik'           => $nik,
-                        'nip'           => $nip,
-                        'nama_karyawan' => $nama,
-                        'email'         => $email,
-                        'telepon'       => $telepon,
-                        'tanggal_join'  => $tanggalJoin,
-                        'jabatan'       => $jabatan ?: 'Staff',
-                        'divisi'        => $divisi,
-                        'principle_id'  => $principleId,
-                        'prinsiple'     => $principleName,
-                        'tipe_karyawan' => $tipeKaryawan,
-                        'area'          => $area ?: 'Pusat',
-                        'status'        => $status,
-                        'entity'        => $entity->code,
-                        'odoo_id'       => $odooId,
-                        'last_sync_at'  => now(),
-                    ];
 
                     // 1. Search by NIK if exists
                     $employee = null;
@@ -326,13 +307,39 @@ class OdooSyncService
                         $employee = Employee::where('odoo_id', $odooId)->where('entity', $entity->code)->first();
                     }
 
+                    $effectiveJoinDate = $rawTanggalJoin ?: ($employee?->tanggal_join ?: date('Y-m-d'));
+
+                    $dataToSave = [
+                        'nik'           => $nik,
+                        'nip'           => $nip,
+                        'nama_karyawan' => $nama,
+                        'email'         => $email,
+                        'telepon'       => $telepon,
+                        'tanggal_join'  => $effectiveJoinDate,
+                        'jabatan'       => $jabatan ?: ($employee?->jabatan ?: 'Staff'),
+                        'divisi'        => $divisi,
+                        'principle_id'  => $principleId,
+                        'prinsiple'     => $principleName,
+                        'tipe_karyawan' => $tipeKaryawan,
+                        'area'          => $area ?: ($employee?->area ?: 'Pusat'),
+                        'status'        => $status,
+                        'entity'        => $entity->code,
+                        'odoo_id'       => $odooId,
+                        'last_sync_at'  => now(),
+                    ];
+
                     if ($employee) {
-                        // Aturan: NIK yang sudah masuk JANGAN DIUPDATE pada sync active biasa/hourly
-                        if (!$updateExisting) {
+                        $isSameEntity    = ($employee->entity === $entity->code);
+                        $isAlreadyActive = ($employee->status === 'Aktiv');
+
+                        // Hanya lewati jika KEDUA syarat terpenuhi: NIK sudah ada dan SUDAH aktif di entitas yang sama.
+                        // Jika statusnya bukan 'Aktiv' (misal 'Resign' / 'Review') atau entitasnya berbeda (misal sebelumnya di 'AMK', sekarang aktif di 'ATK'),
+                        // maka WAJIB diupdate agar mutasi entitas dan reaktivasi karyawan segera tercatat di Master Karyawan!
+                        if (!$updateExisting && $isSameEntity && $isAlreadyActive) {
                             $skipped++;
-                            $log('item_skip', "⏭️ [{$entity->code}] Lewati {$nik} - {$nama}: NIK sudah ada di database (tidak diupdate)", [
+                            $log('item_skip', "⏭️ [{$entity->code}] Lewati {$nik} - {$nama}: NIK sudah ada dan aktif di {$entity->code} (tidak diupdate)", [
                                 'action'    => 'skipped',
-                                'reason'    => 'nik_exists',
+                                'reason'    => 'nik_exists_active',
                                 'nik'       => $nik,
                                 'name'      => $nama,
                                 'processed' => $processed,
@@ -343,24 +350,39 @@ class OdooSyncService
                             continue;
                         }
 
+                        $oldEntity = $employee->entity;
+                        $oldStatus = $employee->status;
+
                         $employee->update($dataToSave);
                         $updated++;
-                        $log('item_update', "🔄 [{$entity->code}] #{$processed} {$nik} - {$nama} ({$jabatan} | {$tipeKaryawan}) -> DIPERBARUI", [
-                            'action'    => 'updated',
-                            'entity'    => $entity->code,
-                            'nik'       => $nik,
-                            'name'      => $nama,
-                            'job'       => $jabatan,
-                            'type'      => $tipeKaryawan,
-                            'processed' => $processed,
-                            'created'   => $created,
-                            'updated'   => $updated,
-                            'skipped'   => $skipped,
+
+                        $changeNotes = [];
+                        if ($oldEntity !== $entity->code) {
+                            $changeNotes[] = "Pindah Entitas: {$oldEntity} ➔ {$entity->code}";
+                        }
+                        if ($oldStatus !== 'Aktiv') {
+                            $changeNotes[] = "Reaktivasi: {$oldStatus} ➔ Aktiv";
+                        }
+                        $noteStr = !empty($changeNotes) ? ' (' . implode(' | ', $changeNotes) . ')' : '';
+
+                        $log('item_update', "🔄 [{$entity->code}] #{$processed} {$nik} - {$nama} ({$jabatan} | {$tipeKaryawan}) -> DIPERBARUI{$noteStr}", [
+                            'action'     => 'updated',
+                            'entity'     => $entity->code,
+                            'old_entity' => $oldEntity,
+                            'old_status' => $oldStatus,
+                            'nik'        => $nik,
+                            'name'       => $nama,
+                            'job'        => $jabatan,
+                            'type'       => $tipeKaryawan,
+                            'processed'  => $processed,
+                            'created'    => $created,
+                            'updated'    => $updated,
+                            'skipped'    => $skipped,
                         ]);
                     } else {
                         Employee::create($dataToSave);
                         $created++;
-                        $log('item_create', "👤 [{$entity->code}] #{$processed} {$nik} - {$nama} ({$jabatan} | {$tipeKaryawan}) -> DIBUAT (BARU)", [
+                        $log('item_create', "✨ [{$entity->code}] #{$processed} {$nik} - {$nama} ({$jabatan} | {$tipeKaryawan}) -> DIBUAT (BARU)", [
                             'action'    => 'created',
                             'entity'    => $entity->code,
                             'nik'       => $nik,
@@ -810,7 +832,7 @@ class OdooSyncService
         $nama = trim((string)($rec['name'] ?? 'Tanpa Nama'));
         $email = $rec['work_email'] ?: ($rec['private_email'] ?: null);
         $telepon = $rec['mobile_phone'] ?: null;
-        $tanggalJoin = !empty($rec['first_contract_date']) ? $rec['first_contract_date'] : null;
+        $rawTanggalJoin = !empty($rec['first_contract_date']) ? $rec['first_contract_date'] : null;
 
         $jabatan = is_array($rec['job_id']) ? $rec['job_id'][1] : null;
         $divisi = is_array($rec['department_id']) ? $rec['department_id'][1] : null;
@@ -851,6 +873,8 @@ class OdooSyncService
                  ?: Employee::where('nik', $finalNik)->first()
                  ?: (!empty($nip) ? Employee::where('nip', $nip)->first() : null);
 
+        $effectiveJoinDate = $rawTanggalJoin ?: ($employee?->tanggal_join ?: date('Y-m-d'));
+
         $isNew = false;
         $dataToSave = [
             'nik'           => $finalNik,
@@ -858,18 +882,21 @@ class OdooSyncService
             'nama_karyawan' => $nama,
             'email'         => $email,
             'telepon'       => $telepon,
-            'tanggal_join'  => $tanggalJoin,
-            'jabatan'       => $jabatan ?: 'Staff',
+            'tanggal_join'  => $effectiveJoinDate,
+            'jabatan'       => $jabatan ?: ($employee?->jabatan ?: 'Staff'),
             'divisi'        => $divisi,
             'principle_id'  => $principleId,
             'prinsiple'     => $principleName,
             'tipe_karyawan' => $tipeKaryawan,
-            'area'          => $area ?: 'Pusat',
+            'area'          => $area ?: ($employee?->area ?: 'Pusat'),
             'status'        => $status,
             'entity'        => $entity->code,
             'odoo_id'       => $odooId,
             'last_sync_at'  => now(),
         ];
+
+        $oldEntity = $employee ? $employee->entity : null;
+        $oldStatus = $employee ? $employee->status : null;
 
         if ($employee) {
             $employee->update($dataToSave);
@@ -896,15 +923,21 @@ class OdooSyncService
                 'status'        => $status,
                 'tipe_karyawan' => $tipeKaryawan,
                 'prinsiple'     => $principleName,
+                'old_entity'    => $oldEntity,
+                'old_status'    => $oldStatus,
             ],
         ]);
+
+        $mutationInfo = ($oldEntity && $oldEntity !== $entity->code) ? " (Pindah dari {$oldEntity} ➔ {$entity->code})" : "";
 
         return [
             'success'   => true,
             'action'    => $isNew ? 'created' : 'updated',
             'status'    => $status,
             'is_active' => ($status === 'Aktiv'),
-            'message'   => ($isNew ? 'Berhasil menambahkan' : 'Berhasil memperbarui') . " data karyawan [{$nama}] (NIK: {$finalNik}) dari Odoo {$entity->code} ({$tipeKaryawan}).",
+            'old_entity'=> $oldEntity,
+            'old_status'=> $oldStatus,
+            'message'   => ($isNew ? 'Berhasil menambahkan' : 'Berhasil memperbarui') . " data karyawan [{$nama}] (NIK: {$finalNik}) dari Odoo {$entity->code} ({$tipeKaryawan}) - Status: {$status}{$mutationInfo}.",
             'employee'  => $employee,
             'data'      => $employee->toArray(),
             'odoo_raw'  => [
