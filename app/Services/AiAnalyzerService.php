@@ -546,11 +546,14 @@ class AiAnalyzerService
     {
         $url = "https://ai.sumopod.com/v1/chat/completions";
 
+        $instructionTop = "PENTING: Jangan lakukan overthinking atau penalaran panjang. Langsung evaluasi poin-poin utama dan outputkan HANYA string JSON valid sesuai format di bawah.\n\n";
+        $fullPrompt = $instructionTop . $prompt;
+
         $messages = [
             [
                 "role" => "user",
                 "content" => [
-                    ["type" => "text", "text" => $prompt]
+                    ["type" => "text", "text" => $fullPrompt]
                 ]
             ]
         ];
@@ -564,14 +567,11 @@ class AiAnalyzerService
             $messages[0]['content'][0]['text'] .= "\n\n(Catatan: Berkas adalah format PDF. Mohon analisis berdasarkan kualifikasi posisi dan inputan data kandidat di atas sedapatnya.)";
         }
 
-        // Tambahan instruksi khusus untuk model reasoning agar langsung mengeluarkan JSON
-        $messages[0]['content'][0]['text'] .= "\n\nPENTING: Langsung keluarkan format JSON valid sesuai struktur di atas tanpa analisis bertele-tele.";
-
         $data = [
             "model" => $model ?: 'glm-5.3-flash',
             "messages" => $messages,
             "temperature" => 0.1,
-            "max_tokens" => 3000
+            "max_tokens" => 8000
         ];
 
         $ch = curl_init($url);
@@ -594,9 +594,6 @@ class AiAnalyzerService
         if ($httpCode === 200 && !empty($result)) {
             $json = json_decode($result, true);
             $content = $json['choices'][0]['message']['content'] ?? null;
-            if (empty($content) && !empty($json['choices'][0]['message']['reasoning_content'])) {
-                $content = $json['choices'][0]['message']['reasoning_content'];
-            }
             if (!empty($content)) {
                 return [
                     'success' => true,
