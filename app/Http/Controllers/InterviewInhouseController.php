@@ -135,58 +135,69 @@ class InterviewInhouseController extends Controller
                 });
             });
 
-        // 2. Hak Akses: HRD melihat semua inhouse, Head HANYA melihat kandidat yang dihandle rekruter/AS binaannya
+        // 2. Hak Akses: HRD melihat semua inhouse, Head HANYA melihat kandidat yang dihandle rekruter/AS binaannya & ditugaskan kepadanya
         if ($user->isHrd()) {
             // HRD / Super Admin: Melihat seluruh kandidat inhouse (dibatasi scope bila diset)
             $user->applyRoleScopeToCandidates($baseQuery);
         } else {
-            // Head dari user (Rekrutor / AS) yang handle kandidat tersebut
+            // Head: Hanya kandidat yang ditujukan ke Head ini (nama_approver) atau dihandle tim binaannya
+            $userName = trim($user->name);
             $subIdentifiers = $user->getSubordinateRecruiterIdentifiers();
-            $headArea = !empty($user->area) ? strtoupper(trim($user->area)) : null;
-            $allowedAreas = array_map('strtoupper', $user->getEffectiveAreas());
 
-            $baseQuery->where(function ($q) use ($subIdentifiers, $headArea, $allowedAreas, $user) {
+            $baseQuery->where(function ($q) use ($userName, $subIdentifiers, $user) {
                 $hasCondition = false;
-                if (!empty($subIdentifiers)) {
-                    $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(TRIM(useras))'), $subIdentifiers);
+                if (!empty($userName)) {
+                    $q->where('nama_approver', 'like', "%{$userName}%");
                     $hasCondition = true;
                 }
-                if (!empty($allowedAreas)) {
+                if (!empty($subIdentifiers)) {
                     if ($hasCondition) {
-                        $q->orWhereIn(\Illuminate\Support\Facades\DB::raw('UPPER(TRIM(area))'), $allowedAreas);
+                        $q->orWhereIn(\Illuminate\Support\Facades\DB::raw('LOWER(TRIM(useras))'), $subIdentifiers);
                     } else {
-                        $q->whereIn(\Illuminate\Support\Facades\DB::raw('UPPER(TRIM(area))'), $allowedAreas);
-                        $hasCondition = true;
-                    }
-                } elseif (!empty($headArea)) {
-                    if ($hasCondition) {
-                        $q->orWhere(\Illuminate\Support\Facades\DB::raw('UPPER(TRIM(area))'), $headArea);
-                    } else {
-                        $q->where(\Illuminate\Support\Facades\DB::raw('UPPER(TRIM(area))'), $headArea);
+                        $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(TRIM(useras))'), $subIdentifiers);
                         $hasCondition = true;
                     }
                 }
                 $q->orWhere('recruiter_id', $user->id);
             });
+
+            // Di dashboard Head: kandidat yang relevan adalah yang masuk proses approval inhouse (Review Head, Review HRD, Approve)
+            $baseQuery->whereIn('status_approval', ['Review Head', 'Review HRD', 'Approve']);
         }
 
         // Hitung Statistik
-        // Hitung Statistik
-        $totalInhouse = (clone $baseQuery)->count();
-        $countBaru = (clone $baseQuery)->where(function ($q) {
-            $q->where('status_replace', 'Baru')
-              ->orWhere('status_replace', 'New')
-              ->orWhereNull('status_replace')
-              ->orWhere('status_replace', '');
-        })->count();
-        $countReplace = (clone $baseQuery)->where('status_replace', 'Replace')->count();
-        $countPending = (clone $baseQuery)->where(function ($q) {
-            $q->whereNull('status_approval')
-              ->orWhere('status_approval', '')
-              ->orWhereIn('status_approval', ['Review HRD', 'Review Head', 'Proses']);
-        })->count();
-        $countApproved = (clone $baseQuery)->where('status_approval', 'Approve')->count();
-        $countProcess = $totalInhouse - $countApproved;
+        if ($user->isHrd()) {
+            $totalInhouse = (clone $baseQuery)->count();
+            $countBaru = (clone $baseQuery)->where(function ($q) {
+                $q->where('status_replace', 'Baru')
+                  ->orWhere('status_replace', 'New')
+                  ->orWhereNull('status_replace')
+                  ->orWhere('status_replace', '');
+            })->count();
+            $countReplace = (clone $baseQuery)->where('status_replace', 'Replace')->count();
+            $countPending = (clone $baseQuery)->where(function ($q) {
+                $q->whereNull('status_approval')
+                  ->orWhere('status_approval', '')
+                  ->orWhereIn('status_approval', ['Review HRD', 'Review Head', 'Proses']);
+            })->count();
+            $countApproved = (clone $baseQuery)->where('status_approval', 'Approve')->count();
+            $countProcess = $totalInhouse - $countApproved;
+        } else {
+            // Khusus Head: statistik disesuaikan dengan alur approval Head
+            $totalInhouse = (clone $baseQuery)->count();
+            $countBaru = (clone $baseQuery)->where(function ($q) {
+                $q->where('status_replace', 'Baru')
+                  ->orWhere('status_replace', 'New')
+                  ->orWhereNull('status_replace')
+                  ->orWhere('status_replace', '');
+            })->count();
+            $countReplace = (clone $baseQuery)->where('status_replace', 'Replace')->count();
+            // Menunggu Approval Head: yang saat ini sedang di step 'Review Head'
+            $countPending = (clone $baseQuery)->where('status_approval', 'Review Head')->count();
+            // Selesai oleh Head: yang sudah diapprove oleh Head (Review HRD atau Approve)
+            $countApproved = (clone $baseQuery)->whereIn('status_approval', ['Review HRD', 'Approve'])->count();
+            $countProcess = $countPending;
+        }
 
         // Navigasi Tabs: 'process' (default) vs 'done'
         $tab = $request->query('tab', 'process');
@@ -198,12 +209,22 @@ class InterviewInhouseController extends Controller
         $query = clone $baseQuery;
 
         if ($tab === 'done') {
-            $query->where('status_approval', 'Approve');
+            if ($user->isHrd()) {
+                $query->where('status_approval', 'Approve');
+            } else {
+                // Untuk Head: tab done adalah kandidat yang sudah disetujui Head (diteruskan ke HRD atau sudah Approve)
+                $query->whereIn('status_approval', ['Review HRD', 'Approve']);
+            }
         } else {
-            $query->where(function ($q) {
-                $q->whereNull('status_approval')
-                  ->orWhere('status_approval', '!=', 'Approve');
-            });
+            if ($user->isHrd()) {
+                $query->where(function ($q) {
+                    $q->whereNull('status_approval')
+                      ->orWhere('status_approval', '!=', 'Approve');
+                });
+            } else {
+                // Untuk Head: hanya tampil kandidat yang sedang di step approval head
+                $query->where('status_approval', 'Review Head');
+            }
         }
 
         if ($search) {
@@ -230,11 +251,15 @@ class InterviewInhouseController extends Controller
 
         if ($statusApproval) {
             if ($statusApproval === 'Pending') {
-                $query->where(function ($q) {
-                    $q->whereNull('status_approval')
-                      ->orWhere('status_approval', '')
-                      ->orWhereIn('status_approval', ['Review HRD', 'Review Head', 'Proses']);
-                });
+                if ($user->isHrd()) {
+                    $query->where(function ($q) {
+                        $q->whereNull('status_approval')
+                          ->orWhere('status_approval', '')
+                          ->orWhereIn('status_approval', ['Review HRD', 'Review Head', 'Proses']);
+                    });
+                } else {
+                    $query->where('status_approval', 'Review Head');
+                }
             } else {
                 $query->where('status_approval', $statusApproval);
             }
@@ -292,8 +317,13 @@ class InterviewInhouseController extends Controller
             return redirect()->route('interview.index')->with('error', 'Akses Ditolak! Kandidat ini bukan kandidat inhouse 5 entitas.');
         }
 
-        // Jika user adalah Head (dan bukan HRD), periksa apakah kandidat ini dihandle oleh timnya
-        if (!$user->isHrd()) {
+        $isHrd = $user->isHrd();
+        $isHead = $user->isHead();
+
+        // Jika user adalah Head (dan bukan HRD), periksa apakah kandidat ini dihandle oleh timnya atau ditugaskan ke Head ini
+        if (!$isHrd) {
+            $userName = trim($user->name);
+            $isApproverMatch = !empty($candidate->nama_approver) && !empty($userName) && str_contains(strtolower($candidate->nama_approver), strtolower($userName));
             $subIdentifiers = $user->getSubordinateRecruiterIdentifiers();
             $candUseras = strtolower(trim($candidate->useras ?? ''));
             $isSub = in_array($candUseras, $subIdentifiers) || ($candidate->recruiter_id == $user->id);
@@ -302,7 +332,7 @@ class InterviewInhouseController extends Controller
             $allowedAreas = array_map('strtoupper', $user->getEffectiveAreas());
             $isAreaMatch = (!empty($allowedAreas) && in_array($candArea, $allowedAreas)) || (!empty($headArea) && $candArea === $headArea);
 
-            if (!$isSub && !$isAreaMatch) {
+            if (!$isApproverMatch && !$isSub && !$isAreaMatch) {
                 return redirect()->route('interviewinhouse.index')->with('error', 'Akses Ditolak! Anda bukan Head yang menangani kandidat inhouse ini.');
             }
         }
