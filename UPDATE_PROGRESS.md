@@ -2272,6 +2272,52 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 53. ⚙️ Implementasi Role Akses Approver Dinamis & Workflow Engine Kandidat Inhouse (23 September 2026)
+- **Latar Belakang & Kebutuhan Pengguna**:
+  - Alur persetujuan (*approval*) kandidat inhouse (`/interviewinhouse`) sebelumnya bersifat statis/kaku (*hardcoded* 2 tahap: Head $\rightarrow$ HRD Pusat).
+  - Pengguna membutuhkan fleksibilitas penuh untuk mengatur alur approval secara dinamis:
+    1. **Urutan Tahapan Dinamis**: Kemampuan menambah, mengubah, menghapus, dan mengatur urutan step approval (Step 1, Step 2, Step 3, dst.).
+    2. **Pilihan Tipe Approver per Step**:
+       - **Head**: Otomatis mengikuti Head / Pimpinan langsung dari rekruter yang menangani kandidat berdasarkan data Master Karyawan (`tb_karyawan.pimpinan` / `Employee::pimpinan`).
+       - **Akun User / Karyawan**: Memiliki input nama step kustom (misal: *Review HRD Jakarta*, *Review HRD Pusat*, *Approval GM Ops*) serta pemilihan akun pengguna / karyawan penanggung jawab (**mendukung pemilihan multiple approvers sekaligus**).
+    3. **Pengecualian Direksi (Auto-Bypass)**: Jika pimpinan langsung dari rekruter kandidat adalah **Direksi** (Direktur / BOD), maka step approval Head tidak diperlukan dan secara otomatis dilewati (*skip* langsung ke step berikutnya).
+    4. **Kondisi Berdasarkan Area & Entitas Formasi**:
+       - Step approval dapat memiliki batasan/kondisi **Area** (`Semua Area`, `Khusus Jakarta`, `Selain Jakarta (Luar Jakarta)`, atau area spesifik) dan **Entitas** (`Semua Entitas` atau entitas inhouse tertentu: AMK, AKP, ATK, ABO, ATB).
+       - Contoh implementasi:
+         - Kandidat **Area Jakarta**: Setelah step Head (atau langsung jika pimpinannya Direksi), alur masuk ke approval **HRD Jakarta** sesuai entitasnya.
+         - Kandidat **Selain Area Jakarta** (Cabang/Daerah luar Jakarta): Setelah step Head, alur masuk ke approval **HRD Pusat**.
+- **Komponen Arsitektur Database & Migrasi**:
+  - **Tabel `approval_workflows`**: Menyimpan master alur kerja approval per modul (`module: 'kandidat_inhouse'`).
+  - **Tabel `approval_workflow_steps`**: Menyimpan tahapan approval lengkap dengan `step_order`, `step_name`, `approver_type` (`'head'` vs `'user'`), `area_scope`, `entity_scope`, dan `skip_if_direksi`.
+  - **Tabel `approval_workflow_step_users`**: Tabel relasi penugasan banyak akun user / karyawan untuk setiap step approval (menunjang multi-approver per step).
+  - **Tabel `candidates`**: Penambahan kolom pelacakan step aktif: `current_approval_step_id` dan `current_step_order`.
+  - **Tabel `inhouse_approvals`**: Penambahan kolom pencatatan riwayat bertingkat: `step_id`, `step_order`, `step_name`, dan `user_id`.
+  - **Migrasi**: `2026_09_23_200000_create_dynamic_approval_workflows_tables.php` yang otomatis menginisialisasi workflow default dan memetakan kandidat eksisting tanpa menimbulkan downtime.
+- **Workflow Engine & Business Logic Service (`ApprovalWorkflowService.php`)**:
+  - `isPimpinanDireksi(Candidate $candidate)`: Mendeteksi secara cerdas apakah pimpinan rekruter berstatus Direksi (Direktur, Board of Directors, Managing Director, Presdir) melalui Master `Employee`.
+  - `getApplicableStepsForCandidate(Candidate $candidate)`: Menyaring daftar tahapan workflow yang relevan untuk kandidat berdasarkan evaluasi Direksi, normalisasi Area (Jakarta vs Luar Jakarta), dan Entitas inhouse (AMK, AKP, ATK, ABO, ATB).
+  - `getCurrentStep(Candidate $candidate)` & `getNextStep(Candidate $candidate, ...)`: Menentukan step aktif yang sedang menunggu keputusan dan menavigasi kandidat ke tahap berikutnya setelah disetujui.
+  - `canUserApprove(Candidate $candidate, User $user)`: Memvalidasi secara ketat hak akses pengguna pada step aktif saat ini:
+    - Administrator selalu memiliki akses override.
+    - Pada step Head: memvalidasi kecocokan nama pimpinan rekruter, bawahan langsung, atau penugasan `nama_approver`.
+    - Pada step Akun User: memvalidasi apakah user terdaftar pada daftar multi-approver step tersebut atau memiliki role HRD yang berwenang.
+  - `processApproval(Candidate $candidate, User $user, array $data)`: Mencatat log keputusan ke `inhouse_approvals` (dan sinkronisasi `tb_catataninhouse`), mengalihkan status kandidat ke step berikutnya, atau menyelesaikan approval final (`Approve`) jika seluruh tahapan telah rampung.
+- **Antarmuka Konfigurasi Master (`/master/approval-workflow`)**:
+  - Ditambahkan ke bilah navigasi (*sidebar*) di bawah menu **Master Data** khusus Administrator.
+  - Tampilan visual pipeline step cards responsif dengan badge tipe approver, filter area, filter entitas, dan indikator auto-skip Direksi.
+  - Tombol pengurutan langsung (*Reorder Up / Down*) yang sinkron via AJAX.
+  - Modal interaktif (didukung Alpine.js) untuk Tambah & Edit Step dengan radio selector tipe approver, opsi filter area & entitas, checkbox skip Direksi, serta pencarian & multi-select akun karyawan lengkap dengan avatar dan chips/tags terpilih.
+- **Pembaruan Halaman Detail & Evaluasi Inhouse (`/interviewinhouse/{id}`)**:
+  - Menggantikan blok statis 2 step dengan **Dynamic Horizontal/Vertical Stepper** yang merender seluruh tahapan yang berlaku bagi kandidat.
+  - Stepper menampilkan status riil tiap tahap: *Disetujui* (hijau), *Sedang Menunggu* (kuning/indigo berdenyut), *Terkunci* (abu-abu), atau *Ditolak* (merah).
+  - Form Approval hanya aktif dan dapat disubmit oleh user yang berhak pada step yang sedang aktif, sementara user lain disajikan kotak informasi yang menjelaskan giliran approver yang berhak.
+  - Tabel riwayat persetujuan terpadu menampilkan riwayat keputusan per tahap lengkap dengan nama approver, jabatan, tanda tangan digital, catatan, dan timestamp.
+- **Penyebaran ke Server Produksi (Server 3)**:
+  - Berhasil di-deploy ke server live `new.asystem.co.id` (38.103.170.224) via `php scripts/deploy_production.php`.
+  - Migrasi skema berjalan sukses dan seluruh endpoint telah teruji beroperasi normal (HTTP 200).
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
