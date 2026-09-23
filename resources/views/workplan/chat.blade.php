@@ -166,6 +166,7 @@
                 </div>
             </div>
 
+            @if($isGroupMember)
             <!-- 2. CHAT STREAM (WHATSAPP BACKGROUND & BUBBLES) -->
             <div class="flex-1 overflow-y-auto p-4 space-y-3 relative" id="chatMessageStream" style="background-color: #efeae2; background-image: radial-gradient(#d1d5db 0.75px, transparent 0.75px); background-size: 16px 16px;">
 
@@ -263,6 +264,45 @@
                     <i class="fa-solid fa-paper-plane text-xs" :class="{'animate-pulse': isSendingMessage}"></i>
                 </button>
             </div>
+            @else
+            <!-- 2B. ENCRYPTED / MEMBERS-ONLY RESTRICTION SCREEN (ADMIN / NON-MEMBER) -->
+            <div class="flex-1 flex flex-col items-center justify-center p-6 text-center bg-[#efeae2]" style="background-image: radial-gradient(#d1d5db 0.75px, transparent 0.75px); background-size: 16px 16px;">
+                <div class="max-w-md w-full bg-white/95 backdrop-blur-md rounded-3xl p-7 border border-slate-200/90 shadow-2xl space-y-4">
+                    <div class="w-16 h-16 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center text-3xl mx-auto shadow-sm">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-800 tracking-tight">Percakapan Khusus Anggota Group</h3>
+                        <div class="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold mt-2">
+                            <i class="fa-solid fa-shield-halved text-amber-600 text-xs"></i>
+                            <span>Privasi & Kerahasiaan Tim</span>
+                        </div>
+                    </div>
+                    <p class="text-xs text-slate-600 leading-relaxed">
+                        Isi percakapan dan pesan di dalam group <b>{{ $activeGroup->name }}</b> hanya dapat dibaca dan dikirim oleh anggota resmi group.
+                        @if($isAdmin)
+                        <span class="block mt-2 text-slate-500 text-[11px]">Sebagai Administrator, Anda dapat memantau daftar group dan melihat personil anggotanya melalui tombol di bawah.</span>
+                        @endif
+                    </p>
+                    <div class="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2">
+                        <button type="button" @click.stop="openViewMembersModal()" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-all shadow-md">
+                            <i class="fa-solid fa-users text-xs"></i>
+                            <span>Lihat Anggota ({{ $activeGroup->members->count() }})</span>
+                        </button>
+                        <button type="button" @click.stop="openAddMemberModal()" class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-md shadow-emerald-600/20">
+                            <i class="fa-solid fa-user-plus text-xs"></i>
+                            <span>Kelola Anggota</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3B. FOOTER TERKUNCI -->
+            <div class="p-3.5 bg-slate-100/90 border-t border-slate-200 text-center text-xs text-slate-500 flex items-center justify-center gap-2 flex-shrink-0">
+                <i class="fa-solid fa-lock text-slate-400 text-xs"></i>
+                <span class="font-medium text-slate-600">Anda bukan anggota group ini. Akses pesan dan pengiriman dinonaktifkan.</span>
+            </div>
+            @endif
 
             @else
             <!-- EMPTY STATE: WELCOME SCREEN (WA WEB STYLE) -->
@@ -689,6 +729,7 @@ function wpGroupChat() {
         userName: @json($userName),
         activeGroupId: @json($activeGroup ? $activeGroup->id : null),
         activeGroupName: @json($activeGroup ? $activeGroup->name : 'Groups Chat'),
+        isGroupMember: @json($isGroupMember ?? false),
         csrfToken: '{{ csrf_token() }}',
         
         // Data Groups
@@ -745,8 +786,8 @@ function wpGroupChat() {
 
             this.scrollToBottom(false);
 
-            // Jalankan polling real-time pesan jika ada group aktif
-            if (this.activeGroupId) {
+            // Jalankan polling real-time pesan HANYA jika ada group aktif dan user adalah ANGGOTA group
+            if (this.activeGroupId && this.isGroupMember) {
                 this.startMessagePolling();
             }
 
@@ -886,6 +927,9 @@ function wpGroupChat() {
         },
 
         formatLastMessageSnippet(g) {
+            if (g.is_member === false) {
+                return '<span class="italic text-slate-400 font-medium"><i class="fa-solid fa-lock text-[9px] mr-1"></i>Pesan khusus anggota grup</span>';
+            }
             if (!g.latest_message) return '<span class="italic text-slate-400">Belum ada pesan</span>';
             const sender = g.latest_message.sender === this.userName ? 'Anda: ' : `${g.latest_message.sender}: `;
             return `<span class="font-medium text-slate-600">${this.escapeHtml(sender)}</span>${this.escapeHtml(g.latest_message.text)}`;
@@ -1045,9 +1089,9 @@ function wpGroupChat() {
                 if (response.ok) {
                     const res = await response.json();
                     if (res.success && res.groups) {
-                        // Deteksi jika ada pesan baru di group selain activeGroup
+                        // Deteksi jika ada pesan baru di group selain activeGroup (HANYA untuk group tempat user menjadi anggota resmi)
                         res.groups.forEach(g => {
-                            if (g.latest_message && g.id != this.activeGroupId) {
+                            if (g.is_member && g.latest_message && g.id != this.activeGroupId) {
                                 const sig = g.latest_message.sender + ':' + g.latest_message.text;
                                 const prevSig = this.lastKnownGroupMessages[g.id];
                                 if (prevSig && prevSig !== sig && g.latest_message.sender !== this.userName) {

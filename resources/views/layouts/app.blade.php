@@ -1508,39 +1508,114 @@
                                 </div>
                                 <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
                                       :class="unreadTotal > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'"
-                                      x-text="unreadTotal > 0 ? (unreadTotal + ' pesan baru') : 'Semua terbaca'"></span>
+                                      x-text="unreadTotal > 0 ? (unreadTotal + ' pemberitahuan') : 'Semua terbaca'"></span>
                             </div>
 
-                            <!-- Chat Notification Items List -->
-                            <div class="max-h-72 overflow-y-auto divide-y divide-slate-100">
-                                <template x-for="grp in unreadGroups" :key="grp.group_id">
-                                    <a :href="'{{ url('/workplan-chat') }}?group_id=' + grp.group_id"
-                                       class="flex items-start gap-3 p-3 hover:bg-emerald-50/50 transition-colors group">
-                                        <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-xs"
-                                             :style="'background-color: ' + (grp.avatar_color || '#10b981')">
-                                            <span x-text="grp.initials"></span>
+                            <!-- Tab Filter (Khusus jika ada reset password & chat) -->
+                            <div x-show="pendingResets.length > 0 && unreadGroups.length > 0" class="flex items-center border-b border-slate-100 bg-slate-50/60 px-3 pt-1 text-[11px] font-bold gap-2">
+                                <button type="button" @click="activeNotifTab = 'all'" 
+                                        class="pb-1.5 border-b-2 transition-all" 
+                                        :class="activeNotifTab === 'all' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'">
+                                    Semua (<span x-text="unreadTotal"></span>)
+                                </button>
+                                <button type="button" @click="activeNotifTab = 'resets'" 
+                                        class="pb-1.5 border-b-2 transition-all flex items-center gap-1" 
+                                        :class="activeNotifTab === 'resets' ? 'border-amber-600 text-amber-700' : 'border-transparent text-slate-400 hover:text-slate-600'">
+                                    <span>Reset Password</span>
+                                    <span class="px-1 py-0.2 rounded-full bg-rose-100 text-rose-700 text-[9px]" x-text="pendingResets.length"></span>
+                                </button>
+                                <button type="button" @click="activeNotifTab = 'chats'" 
+                                        class="pb-1.5 border-b-2 transition-all flex items-center gap-1" 
+                                        :class="activeNotifTab === 'chats' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-400 hover:text-slate-600'">
+                                    <span>Chat Groups</span>
+                                    <span class="px-1 py-0.2 rounded-full bg-emerald-100 text-emerald-700 text-[9px]" x-text="unreadGroups.length"></span>
+                                </button>
+                            </div>
+
+                            <!-- Notification Items List Stream -->
+                            <div class="max-h-80 overflow-y-auto divide-y divide-slate-100">
+
+                                <!-- SECTION 1: PERMINTAAN RESET PASSWORD / BANTUAN LOGIN (ADMIN) -->
+                                <template x-if="(activeNotifTab === 'all' || activeNotifTab === 'resets') && pendingResets.length > 0">
+                                    <div class="divide-y divide-amber-100/60">
+                                        <div class="px-3 py-1.5 bg-amber-50/70 border-b border-amber-100/80 text-[10px] font-extrabold text-amber-800 uppercase tracking-wider flex items-center justify-between">
+                                            <span class="flex items-center gap-1.5">
+                                                <i class="fa-solid fa-key text-[9px] text-amber-600"></i>
+                                                Bantuan Login / Reset Password
+                                            </span>
+                                            <span class="px-1.5 py-0.2 rounded-full bg-rose-100 text-rose-700 font-black text-[9px]" x-text="pendingResets.length + ' PENDING'"></span>
                                         </div>
-                                        <div class="min-w-0 flex-1">
-                                            <div class="flex items-center justify-between gap-1 mb-0.5">
-                                                <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 truncate" x-text="grp.group_name"></span>
-                                                <span class="text-[10px] text-slate-400 flex-shrink-0" x-text="grp.last_message ? grp.last_message.time : ''"></span>
-                                            </div>
-                                            <p class="text-[11px] text-slate-600 truncate leading-tight">
-                                                <span class="font-semibold text-slate-800" x-text="grp.last_message ? (grp.last_message.sender + ': ') : ''"></span>
-                                                <span x-text="grp.last_message ? grp.last_message.text : 'Ada pesan baru'"></span>
-                                            </p>
-                                        </div>
-                                        <span class="px-1.5 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex-shrink-0" x-text="grp.unread_count"></span>
-                                    </a>
+
+                                        <template x-for="req in pendingResets" :key="'reset_' + req.id">
+                                            <a :href="'{{ route('admin.auth-chat.index') }}?id=' + req.id"
+                                               class="flex items-start gap-3 p-3 hover:bg-amber-50/60 transition-colors group relative">
+                                                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-600 text-white flex items-center justify-center text-sm font-bold shadow-xs flex-shrink-0 mt-0.5">
+                                                    <i class="fa-solid fa-key"></i>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                        <span class="text-xs font-bold text-slate-800 group-hover:text-amber-800 truncate" x-text="req.nama_karyawan"></span>
+                                                        <span class="text-[10px] text-slate-400 flex-shrink-0" x-text="req.time || req.created_at_human"></span>
+                                                    </div>
+                                                    <div class="text-[10px] text-slate-500 font-mono flex items-center gap-1.5">
+                                                        <span>NIK: <b class="text-slate-700" x-text="req.nik"></b></span>
+                                                        <span class="text-slate-300">•</span>
+                                                        <span class="truncate" x-text="req.entitas || 'ESA Groups'"></span>
+                                                    </div>
+                                                    <p class="text-[11px] text-slate-600 truncate leading-tight mt-1">
+                                                        <span class="text-amber-700 font-semibold">Pesan: </span>
+                                                        <span x-text="req.request_message || 'Permintaan reset password login.'"></span>
+                                                    </p>
+                                                </div>
+                                                <span class="px-1.5 py-0.5 rounded-full bg-rose-600 text-white font-extrabold text-[9px] flex-shrink-0 shadow-2xs">
+                                                    Proses
+                                                </span>
+                                            </a>
+                                        </template>
+                                    </div>
                                 </template>
 
-                                <!-- State Kosong jika tidak ada chat belum dibaca -->
-                                <div x-show="unreadGroups.length === 0" class="p-6 text-center text-slate-400">
+                                <!-- SECTION 2: CHAT NOTIFICATION ITEMS LIST (GROUPS CHAT) -->
+                                <template x-if="(activeNotifTab === 'all' || activeNotifTab === 'chats') && unreadGroups.length > 0">
+                                    <div class="divide-y divide-slate-100">
+                                        <div class="px-3 py-1.5 bg-emerald-50/60 border-b border-emerald-100/80 text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider flex items-center justify-between">
+                                            <span class="flex items-center gap-1.5">
+                                                <i class="fa-solid fa-comments text-[9px] text-emerald-600"></i>
+                                                Groups Chat
+                                            </span>
+                                            <span class="px-1.5 py-0.2 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[9px]" x-text="unreadGroups.length + ' group'"></span>
+                                        </div>
+
+                                        <template x-for="grp in unreadGroups" :key="'grp_' + grp.group_id">
+                                            <a :href="'{{ url('/workplan-chat') }}?group_id=' + grp.group_id"
+                                               class="flex items-start gap-3 p-3 hover:bg-emerald-50/50 transition-colors group">
+                                                <div class="w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold text-xs flex-shrink-0 shadow-xs mt-0.5"
+                                                     :style="'background-color: ' + (grp.avatar_color || '#10b981')">
+                                                    <span x-text="grp.initials"></span>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                        <span class="text-xs font-bold text-slate-800 group-hover:text-emerald-700 truncate" x-text="grp.group_name"></span>
+                                                        <span class="text-[10px] text-slate-400 flex-shrink-0" x-text="grp.last_message ? grp.last_message.time : ''"></span>
+                                                    </div>
+                                                    <p class="text-[11px] text-slate-600 truncate leading-tight">
+                                                        <span class="font-semibold text-slate-800" x-text="grp.last_message ? (grp.last_message.sender + ': ') : ''"></span>
+                                                        <span x-text="grp.last_message ? grp.last_message.text : 'Ada pesan baru'"></span>
+                                                    </p>
+                                                </div>
+                                                <span class="px-1.5 py-0.5 rounded-full bg-emerald-600 text-white font-bold text-[10px] flex-shrink-0 shadow-2xs" x-text="grp.unread_count"></span>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <!-- State Kosong jika tidak ada notifikasi apapun -->
+                                <div x-show="pendingResets.length === 0 && unreadGroups.length === 0" class="p-6 text-center text-slate-400">
                                     <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
                                         <i class="fa-regular fa-bell-slash text-base"></i>
                                     </div>
                                     <div class="text-xs font-bold text-slate-700">Tidak ada notifikasi baru</div>
-                                    <div class="text-[11px] text-slate-400 mt-0.5">Semua pesan di group yang Anda ikuti sudah dibaca.</div>
+                                    <div class="text-[11px] text-slate-400 mt-0.5">Semua pesan group dan permintaan bantuan sudah dibaca.</div>
                                 </div>
                             </div>
 
@@ -1739,8 +1814,12 @@
     function asystemNotifications() {
         return {
             isOpen: false,
+            activeNotifTab: 'all',
             unreadTotal: 0,
             unreadGroups: [],
+            pendingResets: [],
+            pendingResetsCount: 0,
+            notifiedResetIds: new Set(),
             lastChatId: 0,
             pollTimer: null,
             isRinging: false,
@@ -1788,6 +1867,66 @@
                 } catch (e) {}
             },
 
+            showPersistentResetToast(req) {
+                if (typeof Swal === 'undefined') return;
+
+                // Jangan munculkan popup jika admin sedang aktif membuka tiket yang sama persis
+                const currentUrlParams = new URLSearchParams(window.location.search);
+                const currentTicketId = currentUrlParams.get('id');
+                if (window.location.pathname.includes('/admin/bantuan-login') && currentTicketId == req.id) {
+                    return;
+                }
+
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
+                    showConfirmButton: true,
+                    confirmButtonText: '<i class="fa-solid fa-headset mr-1"></i> Buka Bantuan Login',
+                    showCloseButton: true,
+                    showCancelButton: false,
+                    timer: false, // TIDAK AUTO CLOSE (Sesuai Permintaan User!)
+                    timerProgressBar: false,
+                    iconHtml: `<div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow bg-gradient-to-tr from-amber-500 to-rose-600">
+                                 <i class="fa-solid fa-key text-xs"></i>
+                               </div>`,
+                    customClass: {
+                        popup: 'rounded-2xl shadow-2xl border-2 border-amber-400 bg-white/95 backdrop-blur-md cursor-pointer hover:shadow-2xl text-left p-3.5',
+                        title: 'text-xs font-extrabold text-slate-800 m-0 text-left',
+                        htmlContainer: 'text-xs text-slate-600 m-0 mt-1 text-left',
+                        confirmButton: 'px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-700 hover:to-rose-700 text-white font-bold text-xs shadow-sm border-0 transition-all'
+                    },
+                    title: `<div class="flex items-center justify-between gap-2">
+                              <div class="flex items-center gap-1.5 text-amber-800 font-extrabold text-xs">
+                                <span class="w-2 h-2 rounded-full bg-rose-500 animate-ping"></span>
+                                <span>Permintaan Reset Password</span>
+                              </div>
+                              <span class="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 uppercase">Pending</span>
+                            </div>`,
+                    html: `
+                        <div class="mt-2 space-y-1 bg-amber-50/70 p-2.5 rounded-xl border border-amber-200/80 text-xs">
+                            <div class="flex items-center justify-between">
+                                <span class="font-extrabold text-slate-900 text-xs">${this.escape(req.nama_karyawan)}</span>
+                                <span class="text-[10px] font-mono font-bold text-slate-600">NIK: ${this.escape(req.nik)}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-500 flex items-center gap-1">
+                                <i class="fa-solid fa-building text-[9px] text-slate-400"></i>
+                                <span>${this.escape(req.entitas || 'ESA Groups')} • ${this.escape(req.tipe_karyawan || 'Karyawan')}</span>
+                            </div>
+                            <div class="text-[11px] text-slate-600 italic line-clamp-2 mt-1">
+                                "${this.escape(req.request_message || 'Mohon bantuan kirim akses password login.')}"
+                            </div>
+                        </div>
+                    `,
+                    didOpen: (toast) => {
+                        toast.addEventListener('click', (ev) => {
+                            if (!ev.target.closest('.swal2-close')) {
+                                window.location.href = `{{ route('admin.auth-chat.index') }}?id=${req.id}`;
+                            }
+                        });
+                    }
+                });
+            },
+
             async fetchNotifications(isFirstRun = false) {
                 @auth
                 try {
@@ -1805,8 +1944,25 @@
                     if (data.success) {
                         this.unreadTotal = data.unread_total || 0;
                         this.unreadGroups = data.unread_groups || [];
+                        this.pendingResets = data.pending_resets || [];
+                        this.pendingResetsCount = data.pending_resets_count || 0;
 
-                        // Jika ada pesan baru masuk (bukan saat first page load)
+                        // 1. Deteksi Permintaan Reset Password Pending Baru (Khusus Admin)
+                        if (this.pendingResets && this.pendingResets.length > 0) {
+                            const newResets = this.pendingResets.filter(r => !this.notifiedResetIds.has(r.id));
+                            if (newResets.length > 0) {
+                                this.isRinging = true;
+                                this.playChime();
+                                setTimeout(() => { this.isRinging = false; }, 3000);
+
+                                newResets.forEach(req => {
+                                    this.notifiedResetIds.add(req.id);
+                                    this.showPersistentResetToast(req);
+                                });
+                            }
+                        }
+
+                        // 2. Jika ada pesan chat group baru masuk (bukan saat first page load)
                         if (!isFirstRun && data.new_messages && data.new_messages.length > 0) {
                             this.isRinging = true;
                             this.playChime();

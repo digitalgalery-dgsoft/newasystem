@@ -117,9 +117,18 @@ class WorkPlanChatController extends Controller
             $activeGroup = $groups->first();
         }
 
-        // Ambil riwayat pesan untuk group aktif
-        $messages = collect();
+        // Cek apakah user saat ini adalah anggota dari group aktif
+        $isGroupMember = false;
         if ($activeGroup) {
+            $isGroupMember = $activeGroup->members->contains(function ($m) use ($userName) {
+                return strtolower(trim($m->user_name)) === strtolower(trim($userName));
+            });
+        }
+
+        // Ambil riwayat pesan untuk group aktif HANYA jika user adalah anggota resmi
+        // Administrator yang bukan anggota TIDAK BISA membaca pesan
+        $messages = collect();
+        if ($activeGroup && $isGroupMember) {
             $messages = $activeGroup->messages()
                 ->orderBy('created_at', 'asc')
                 ->take(150)
@@ -160,18 +169,36 @@ class WorkPlanChatController extends Controller
         $inhouseEmployees = $inhouseEmployees->sortBy('nama_karyawan')->values();
 
         // Format JSON payload untuk frontend Alpine.js
-        $groupsJson = $groups->map(function ($g) {
+        $groupsJson = $groups->map(function ($g) use ($userName) {
+            $isMemberOfGroup = $g->members->contains(function ($m) use ($userName) {
+                return strtolower(trim($m->user_name)) === strtolower(trim($userName));
+            });
+
+            $latestMsg = null;
+            if ($g->latestMessage) {
+                if ($isMemberOfGroup) {
+                    $latestMsg = [
+                        'text' => $g->latestMessage->message_text,
+                        'sender' => $g->latestMessage->user_sender,
+                        'time' => $g->latestMessage->formatted_time,
+                    ];
+                } else {
+                    $latestMsg = [
+                        'text' => 'Pesan khusus anggota grup',
+                        'sender' => 'Grup',
+                        'time' => $g->latestMessage->formatted_time,
+                    ];
+                }
+            }
+
             return [
                 'id' => $g->id,
                 'name' => $g->name,
                 'initials' => $g->initials,
                 'avatar_color' => $g->avatar_color,
                 'member_count' => $g->members->count(),
-                'latest_message' => $g->latestMessage ? [
-                    'text' => $g->latestMessage->message_text,
-                    'sender' => $g->latestMessage->user_sender,
-                    'time' => $g->latestMessage->formatted_time,
-                ] : null,
+                'is_member' => $isMemberOfGroup,
+                'latest_message' => $latestMsg,
             ];
         })->values();
 
@@ -196,6 +223,7 @@ class WorkPlanChatController extends Controller
             'groups',
             'groupsJson',
             'activeGroup',
+            'isGroupMember',
             'messages',
             'messagesJson',
             'inhouseEmployees'
@@ -329,25 +357,28 @@ class WorkPlanChatController extends Controller
     /**
      * Polling Pesan Real-time (JSON API)
      */
+    /**
+     * Polling Pesan Real-time (JSON API)
+     */
     public function getMessages(Request $request, $groupId)
     {
         $user = $this->getCurrentUser();
         $userName = $this->getUserOfficialName($user);
-        $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
 
         $group = WpChatGroup::findOrFail($groupId);
 
-        // Verifikasi membership
-        if (!$isAdmin) {
-            $isMember = WpChatGroupMember::where('group_id', $groupId)
-                ->where(function ($q) use ($userName) {
-                    $q->where('user_name', $userName)
-                      ->orWhere(DB::raw('LOWER(TRIM(user_name))'), strtolower($userName));
-                })->exists();
+        // Verifikasi membership: HANYA ANGGOTA RESMI YANG BISA BACA PESAN (ADMIN BUKAN MEMBER DITOLAK)
+        $isMember = WpChatGroupMember::where('group_id', $groupId)
+            ->where(function ($q) use ($userName) {
+                $q->where('user_name', $userName)
+                  ->orWhere(DB::raw('LOWER(TRIM(user_name))'), strtolower($userName));
+            })->exists();
 
-            if (!$isMember) {
-                return response()->json(['success' => false, 'error' => 'Akses ditolak.'], 403);
-            }
+        if (!$isMember) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Akses ditolak. Isi pesan group hanya dapat dibaca oleh anggota resmi group.'
+            ], 403);
         }
 
         $lastId = (int) $request->query('last_id', 0);
@@ -392,20 +423,21 @@ class WorkPlanChatController extends Controller
     {
         $user = $this->getCurrentUser();
         $userName = $this->getUserOfficialName($user);
-        $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
 
         $group = WpChatGroup::findOrFail($groupId);
 
-        if (!$isAdmin) {
-            $isMember = WpChatGroupMember::where('group_id', $groupId)
-                ->where(function ($q) use ($userName) {
-                    $q->where('user_name', $userName)
-                      ->orWhere(DB::raw('LOWER(TRIM(user_name))'), strtolower($userName));
-                })->exists();
+        // Verifikasi membership: HANYA ANGGOTA RESMI YANG BISA MENGIRIM PESAN (ADMIN BUKAN MEMBER DITOLAK)
+        $isMember = WpChatGroupMember::where('group_id', $groupId)
+            ->where(function ($q) use ($userName) {
+                $q->where('user_name', $userName)
+                  ->orWhere(DB::raw('LOWER(TRIM(user_name))'), strtolower($userName));
+            })->exists();
 
-            if (!$isMember) {
-                return response()->json(['success' => false, 'error' => 'Akses ditolak. Anda bukan anggota group ini.'], 403);
-            }
+        if (!$isMember) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Akses ditolak. Anda bukan anggota group ini.'
+            ], 403);
         }
 
         $request->validate([
@@ -461,18 +493,36 @@ class WorkPlanChatController extends Controller
 
         $groups = $groupsQuery->get()->sortByDesc(function ($g) {
             return $g->latestMessage ? $g->latestMessage->created_at : $g->created_at;
-        })->values()->map(function ($g) {
+        })->values()->map(function ($g) use ($userName) {
+            $isMemberOfGroup = $g->members->contains(function ($m) use ($userName) {
+                return strtolower(trim($m->user_name)) === strtolower(trim($userName));
+            });
+
+            $latestMsg = null;
+            if ($g->latestMessage) {
+                if ($isMemberOfGroup) {
+                    $latestMsg = [
+                        'text' => $g->latestMessage->message_text,
+                        'sender' => $g->latestMessage->user_sender,
+                        'time' => $g->latestMessage->formatted_time,
+                    ];
+                } else {
+                    $latestMsg = [
+                        'text' => 'Pesan khusus anggota grup',
+                        'sender' => 'Grup',
+                        'time' => $g->latestMessage->formatted_time,
+                    ];
+                }
+            }
+
             return [
                 'id' => $g->id,
                 'name' => $g->name,
                 'initials' => $g->initials,
                 'avatar_color' => $g->avatar_color,
                 'member_count' => $g->members->count(),
-                'latest_message' => $g->latestMessage ? [
-                    'text' => $g->latestMessage->message_text,
-                    'sender' => $g->latestMessage->user_sender,
-                    'time' => $g->latestMessage->formatted_time,
-                ] : null,
+                'is_member' => $isMemberOfGroup,
+                'latest_message' => $latestMsg,
             ];
         });
 
@@ -483,7 +533,7 @@ class WorkPlanChatController extends Controller
     }
 
     /**
-     * Polling Global Notifikasi Chat (untuk Lonceng Navbar & Toast Popup)
+     * Polling Global Notifikasi Chat & Bantuan Login (untuk Lonceng Navbar & Toast Popup)
      */
     public function checkNotifications(Request $request)
     {
@@ -495,13 +545,43 @@ class WorkPlanChatController extends Controller
                 'max_id' => 0,
                 'new_messages' => [],
                 'unread_groups' => [],
+                'pending_resets' => [],
+                'pending_resets_count' => 0,
             ]);
         }
 
         $userName = $this->getUserOfficialName($user);
         $isAdmin = ($user->isAdmin() || $user->role === 'admin');
 
-        // Ambil ID group tempat user menjadi anggota
+        // 1. Cek Notifikasi Permintaan Reset Password / Bantuan Login (Khusus Admin)
+        $pendingResets = [];
+        $pendingResetsCount = 0;
+        if ($isAdmin) {
+            $pendingResetsCount = \App\Models\PasswordResetRequest::where('status', 'pending')->count();
+            $pendingResets = \App\Models\PasswordResetRequest::where('status', 'pending')
+                ->latest('created_at')
+                ->take(10)
+                ->get()
+                ->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'ticket_number' => $r->ticket_number,
+                        'nik' => $r->nik,
+                        'nama_karyawan' => $r->nama_karyawan,
+                        'tipe_karyawan' => $r->tipe_karyawan,
+                        'entitas' => $r->entitas,
+                        'telepon' => $r->telepon,
+                        'status' => $r->status,
+                        'request_message' => $r->request_message,
+                        'created_at_human' => $r->created_at ? $r->created_at->diffForHumans() : '',
+                        'time' => $r->created_at ? $r->created_at->format('H:i') : '',
+                        'date' => $r->created_at ? $r->created_at->format('d/m/Y') : '',
+                    ];
+                });
+        }
+
+        // 2. Ambil ID group tempat user terdaftar sebagai ANGGOTA RESMI
+        // PENTING: Jangan sertakan grup yang bukan anggotanya meskipun user adalah Admin!
         $memberGroupQuery = WpChatGroupMember::where(function ($q) use ($userName) {
             $q->where('user_name', $userName)
               ->orWhere(DB::raw('LOWER(TRIM(user_name))'), strtolower($userName));
@@ -509,86 +589,74 @@ class WorkPlanChatController extends Controller
         $userMemberships = $memberGroupQuery->get()->keyBy('group_id');
         $userGroupIds = $userMemberships->keys()->toArray();
 
-        if ($isAdmin) {
-            $allActiveGroupIds = WpChatGroup::where('is_active', true)->pluck('id')->toArray();
-            $userGroupIds = array_values(array_unique(array_merge($userGroupIds, $allActiveGroupIds)));
-        }
-
-        if (empty($userGroupIds)) {
-            return response()->json([
-                'success' => true,
-                'unread_total' => 0,
-                'max_id' => 0,
-                'new_messages' => [],
-                'unread_groups' => [],
-            ]);
-        }
-
-        $groups = WpChatGroup::whereIn('id', $userGroupIds)
-            ->where('is_active', true)
-            ->get();
-
-        $unreadTotal = 0;
+        $unreadTotal = $pendingResetsCount;
         $unreadGroups = [];
-
-        foreach ($groups as $grp) {
-            $membership = $userMemberships->get($grp->id);
-            $lastRead = $membership?->last_read_at;
-
-            $msgQuery = WpChatMessage::where('group_id', $grp->id)
-                ->where('user_sender', '!=', 'Sistem')
-                ->whereRaw('LOWER(TRIM(user_sender)) != ?', [strtolower(trim($userName))]);
-
-            if ($lastRead) {
-                $msgQuery->where('created_at', '>', $lastRead);
-            }
-
-            $count = $msgQuery->count();
-            if ($count > 0) {
-                $unreadTotal += $count;
-                $lastMsg = $msgQuery->latest('id')->first();
-                $unreadGroups[] = [
-                    'group_id' => $grp->id,
-                    'group_name' => $grp->name,
-                    'avatar_color' => $grp->avatar_color,
-                    'initials' => $grp->initials,
-                    'unread_count' => $count,
-                    'last_message' => $lastMsg ? [
-                        'sender' => $lastMsg->user_sender,
-                        'text' => \Illuminate\Support\Str::limit($lastMsg->message_text, 65),
-                        'time' => $lastMsg->formatted_time,
-                    ] : null,
-                ];
-            }
-        }
-
-        // Ambil pesan baru yang masuk untuk memicu Toast
         $newMessages = [];
-        $lastChatId = (int) $request->query('last_chat_id', 0);
-        if ($lastChatId > 0) {
-            $rawNew = WpChatMessage::whereIn('group_id', $userGroupIds)
-                ->where('id', '>', $lastChatId)
-                ->where('user_sender', '!=', 'Sistem')
-                ->whereRaw('LOWER(TRIM(user_sender)) != ?', [strtolower(trim($userName))])
-                ->with('group')
-                ->orderBy('id', 'asc')
-                ->take(10)
+        $currentMaxId = 0;
+
+        if (!empty($userGroupIds)) {
+            $groups = WpChatGroup::whereIn('id', $userGroupIds)
+                ->where('is_active', true)
                 ->get();
 
-            foreach ($rawNew as $m) {
-                $newMessages[] = [
-                    'id' => $m->id,
-                    'group_id' => $m->group_id,
-                    'group_name' => $m->group ? $m->group->name : 'Group Chat',
-                    'user_sender' => $m->user_sender,
-                    'sender_avatar' => self::getSenderAvatarUrl($m->user_sender),
-                    'message_text' => \Illuminate\Support\Str::limit($m->message_text, 140),
-                    'time' => $m->formatted_time,
-                ];
-            }
-        }
+            foreach ($groups as $grp) {
+                $membership = $userMemberships->get($grp->id);
+                $lastRead = $membership?->last_read_at;
 
-        $currentMaxId = WpChatMessage::whereIn('group_id', $userGroupIds)->max('id') ?: 0;
+                $msgQuery = WpChatMessage::where('group_id', $grp->id)
+                    ->where('user_sender', '!=', 'Sistem')
+                    ->whereRaw('LOWER(TRIM(user_sender)) != ?', [strtolower(trim($userName))]);
+
+                if ($lastRead) {
+                    $msgQuery->where('created_at', '>', $lastRead);
+                }
+
+                $count = $msgQuery->count();
+                if ($count > 0) {
+                    $unreadTotal += $count;
+                    $lastMsg = $msgQuery->latest('id')->first();
+                    $unreadGroups[] = [
+                        'group_id' => $grp->id,
+                        'group_name' => $grp->name,
+                        'avatar_color' => $grp->avatar_color,
+                        'initials' => $grp->initials,
+                        'unread_count' => $count,
+                        'last_message' => $lastMsg ? [
+                            'sender' => $lastMsg->user_sender,
+                            'text' => \Illuminate\Support\Str::limit($lastMsg->message_text, 65),
+                            'time' => $lastMsg->formatted_time,
+                        ] : null,
+                    ];
+                }
+            }
+
+            // Ambil pesan baru yang masuk untuk memicu Toast Chat
+            $lastChatId = (int) $request->query('last_chat_id', 0);
+            if ($lastChatId > 0) {
+                $rawNew = WpChatMessage::whereIn('group_id', $userGroupIds)
+                    ->where('id', '>', $lastChatId)
+                    ->where('user_sender', '!=', 'Sistem')
+                    ->whereRaw('LOWER(TRIM(user_sender)) != ?', [strtolower(trim($userName))])
+                    ->with('group')
+                    ->orderBy('id', 'asc')
+                    ->take(10)
+                    ->get();
+
+                foreach ($rawNew as $m) {
+                    $newMessages[] = [
+                        'id' => $m->id,
+                        'group_id' => $m->group_id,
+                        'group_name' => $m->group ? $m->group->name : 'Group Chat',
+                        'user_sender' => $m->user_sender,
+                        'sender_avatar' => self::getSenderAvatarUrl($m->user_sender),
+                        'message_text' => \Illuminate\Support\Str::limit($m->message_text, 140),
+                        'time' => $m->formatted_time,
+                    ];
+                }
+            }
+
+            $currentMaxId = WpChatMessage::whereIn('group_id', $userGroupIds)->max('id') ?: 0;
+        }
 
         return response()->json([
             'success' => true,
@@ -596,6 +664,8 @@ class WorkPlanChatController extends Controller
             'max_id' => $currentMaxId,
             'new_messages' => $newMessages,
             'unread_groups' => $unreadGroups,
+            'pending_resets' => $pendingResets,
+            'pending_resets_count' => $pendingResetsCount,
         ]);
     }
 }
