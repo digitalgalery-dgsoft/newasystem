@@ -520,6 +520,8 @@ class KandidatPortalController extends Controller
             });
 
         $liveStatus = \App\Services\AiAnalyzerService::getLiveRunningStatus();
+        $processLogs = \App\Services\AiAnalyzerService::getTodayLogs(80);
+        $logDate = now('Asia/Jakarta')->translatedFormat('d F Y');
 
         return [
             'queue_count' => $queueCount,
@@ -529,6 +531,8 @@ class KandidatPortalController extends Controller
             'red_count' => $redCount,
             'queue_list' => $queueList,
             'completed_list' => $completedList,
+            'process_logs' => $processLogs,
+            'log_date' => $logDate,
             'live_status' => $liveStatus,
             'timestamp' => now('Asia/Jakarta')->format('H:i:s'),
         ];
@@ -556,6 +560,46 @@ class KandidatPortalController extends Controller
     public function aiQueueData()
     {
         return response()->json(array_merge(['success' => true], $this->getAiQueueLogPayload()));
+    }
+
+    /**
+     * Trigger analisa 1 kandidat terdepan secara langsung dari web UI
+     */
+    public function aiQueueTriggerProcess(Request $request)
+    {
+        $candidate = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+            ->where(function ($q) {
+                $q->whereNull('ai_score')->orWhere('ai_score', 0);
+            })
+            ->where(function ($q) {
+                $q->whereNull('ai_cv_analysis')
+                  ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
+            })
+            ->whereNotNull('cv_path')
+            ->where('cv_path', '!=', '')
+            ->where('cv_path', '!=', '-')
+            ->orderBy('id', 'asc')
+            ->first();
+
+        if (!$candidate) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Tidak ada kandidat dalam antrean yang memiliki berkas CV valid untuk dianalisis.'
+            ]);
+        }
+
+        $analyzer = app(\App\Services\AiAnalyzerService::class);
+        $res = $analyzer->analyzeCandidate($candidate);
+
+        return response()->json([
+            'success' => $res['success'] ?? false,
+            'candidate_id' => $candidate->id,
+            'candidate_name' => $candidate->full_name,
+            'score' => $res['score'] ?? null,
+            'category' => $res['category'] ?? null,
+            'message' => $res['message'] ?? 'Proses analisa selesai.',
+            'error_type' => $res['error_type'] ?? null,
+        ]);
     }
 
     /**

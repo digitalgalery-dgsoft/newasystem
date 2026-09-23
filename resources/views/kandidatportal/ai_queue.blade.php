@@ -30,6 +30,8 @@
          redCount: {{ $red_count ?? 0 }},
          queueList: @js($queue_list ?? []),
          completedList: @js($completed_list ?? []),
+         processLogs: @js($process_logs ?? []),
+         logDate: '{{ $log_date ?? now("Asia/Jakarta")->translatedFormat("d F Y") }}',
          liveStatus: @js($live_status ?? [])
      })"
      x-init="init()">
@@ -520,6 +522,113 @@
 
     </div>
 
+    <!-- ==================================================================== -->
+    <!-- BAGIAN 3: LIVE CONSOLE LOG PROSES ANALISA AI (TERMINAL REALTIME)     -->
+    <!-- ==================================================================== -->
+    <div class="bg-slate-950 rounded-2xl border border-slate-800 shadow-xl overflow-hidden mt-6 flex flex-col font-sans">
+        <!-- Terminal Header Bar -->
+        <div class="px-4 py-3 bg-slate-900 border-b border-slate-800/80 flex flex-wrap items-center justify-between gap-3">
+            <div class="flex items-center gap-3">
+                <!-- Mac-style window dots -->
+                <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="w-3 h-3 rounded-full bg-rose-500/80 inline-block"></span>
+                    <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+                    <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+                </div>
+                <div class="h-4 w-[1px] bg-slate-700"></div>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-terminal text-cyan-400 text-xs"></i>
+                    <h4 class="text-xs font-bold text-slate-100 uppercase tracking-wider font-mono">Console Log Proses AI</h4>
+                    <span class="flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Live Stream</span>
+                    </span>
+                    <span class="text-[11px] text-slate-400 font-medium hidden sm:inline" x-text="'(Hanya Menyimpan Log Hari Ini: ' + logDate + ')'"></span>
+                </div>
+            </div>
+
+            <!-- Terminal Actions Toolbar -->
+            <div class="flex items-center gap-2">
+                <!-- Counter Baris Log -->
+                <span class="text-[11px] font-mono text-slate-400 bg-slate-800/80 px-2.5 py-1 rounded-lg border border-slate-700/60" x-text="processLogs.length + ' baris aktivitas'"></span>
+
+                <!-- Auto-Scroll Toggle -->
+                <button type="button" 
+                        @click="autoScrollLogs = !autoScrollLogs"
+                        :class="autoScrollLogs ? 'bg-indigo-600 text-white border-indigo-500' : 'bg-slate-800 text-slate-400 border-slate-700'"
+                        class="px-2.5 py-1 rounded-lg text-xs font-semibold border transition flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        :title="autoScrollLogs ? 'Auto-scroll aktif (otomatis ke baris terbaru)' : 'Auto-scroll nonaktif'">
+                    <i class="fa-solid" :class="autoScrollLogs ? 'fa-angles-down' : 'fa-lock'"></i>
+                    <span class="text-[11px]" x-text="autoScrollLogs ? 'Auto-Scroll: ON' : 'Auto-Scroll: OFF'"></span>
+                </button>
+
+                <!-- Tombol Proses 1 Kandidat Sekarang -->
+                <button type="button"
+                        @click="triggerProcessNext()"
+                        :disabled="isTriggering"
+                        class="px-3 py-1 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white border border-emerald-500 transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+                        title="Jalankan analisa 1 kandidat di antrean terdepan sekarang tanpa menunggu jadwal cron">
+                    <i class="fa-solid" :class="isTriggering ? 'fa-spinner fa-spin text-amber-300' : 'fa-play text-white'"></i>
+                    <span class="text-[11px]" x-text="isTriggering ? 'Sedang Memproses...' : 'Proses 1 Sekarang'"></span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Terminal Output Console Body -->
+        <div id="ai-process-console" 
+             class="p-4 bg-slate-950 font-mono text-[11px] leading-relaxed max-h-80 overflow-y-auto space-y-1 select-text scroll-smooth"
+             style="scrollbar-width: thin; scrollbar-color: #334155 #020617;">
+            
+            <template x-if="processLogs.length === 0">
+                <div class="py-8 text-center text-slate-500 italic">
+                    [Belum ada log proses untuk hari ini. Sistem dalam kondisi standby atau menunggu antrean berkas.]
+                </div>
+            </template>
+
+            <template x-for="(log, idx) in processLogs" :key="'log_' + idx">
+                <div class="flex items-start gap-2 py-0.5 border-b border-slate-900/50 hover:bg-slate-900/70 px-1 rounded transition-colors group">
+                    <!-- Timestamp -->
+                    <span class="text-slate-500 font-bold shrink-0 select-none group-hover:text-slate-400" x-text="'[' + log.time + ']'"></span>
+                    
+                    <!-- Level Badge -->
+                    <span class="shrink-0 text-[9px] font-black uppercase px-1.5 py-0.2 rounded border select-none leading-none flex items-center h-4 self-center"
+                          :class="{
+                              'bg-rose-950/80 text-rose-300 border-rose-800/60': log.level === 'error',
+                              'bg-amber-950/80 text-amber-300 border-amber-800/60': log.level === 'warning',
+                              'bg-emerald-950/80 text-emerald-300 border-emerald-800/60': log.level === 'success' || (log.message && log.message.includes('SUCCESS')),
+                              'bg-cyan-950/80 text-cyan-300 border-cyan-800/60': log.level === 'info' && !(log.message && log.message.includes('SUCCESS'))
+                          }"
+                          x-text="(log.message && log.message.includes('SUCCESS')) ? 'OK' : log.level">
+                    </span>
+
+                    <!-- Log Message -->
+                    <span class="break-all whitespace-pre-wrap flex-1"
+                          :class="{
+                              'text-rose-300': log.level === 'error',
+                              'text-amber-300': log.level === 'warning',
+                              'text-emerald-300 font-semibold': log.level === 'success' || (log.message && log.message.includes('SUCCESS')),
+                              'text-slate-300': log.level === 'info' && !(log.message && log.message.includes('SUCCESS'))
+                          }"
+                          x-text="log.message">
+                    </span>
+                </div>
+            </template>
+        </div>
+
+        <!-- Terminal Footer Bar -->
+        <div class="px-4 py-2 bg-slate-900/90 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2 text-[10px] text-slate-400 font-mono">
+            <div class="flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-check text-emerald-400"></i>
+                <span>Log kemarin otomatis dibersihkan setiap pergantian hari (Hanya menyimpan aktivitas hari ini).</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-slate-500">File: storage/logs/cron_ai.log</span>
+                <span>•</span>
+                <span class="text-indigo-300" x-text="'Diperbarui: ' + lastUpdatedTime"></span>
+            </div>
+        </div>
+    </div>
+
 </div>
 
 @endsection
@@ -535,6 +644,10 @@
             redCount: initData?.redCount || 0,
             queueList: initData?.queueList || [],
             completedList: initData?.completedList || [],
+            processLogs: initData?.processLogs || [],
+            logDate: initData?.logDate || 'Hari Ini',
+            autoScrollLogs: true,
+            isTriggering: false,
             
             // Live Status Ticker
             isProcessing: initData?.liveStatus?.is_processing || false,
@@ -552,6 +665,10 @@
 
             init() {
                 this.startCountdown();
+                this.$nextTick(() => {
+                    const el = document.getElementById('ai-process-console');
+                    if (el) el.scrollTop = el.scrollHeight;
+                });
             },
 
             startCountdown() {
@@ -578,6 +695,34 @@
                 await this.fetchData();
             },
 
+            async triggerProcessNext() {
+                if (this.isTriggering) return;
+                this.isTriggering = true;
+                try {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                    const res = await fetch('{{ route("kandidatportal.ai_queue_trigger") }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        }
+                    });
+                    const resJson = await res.json();
+                    if (resJson.success) {
+                        alert(`Berhasil menganalisis kandidat ${resJson.candidate_name}!\nSkor Match: ${resJson.score}% (${resJson.category})`);
+                    } else {
+                        alert(`Hasil: ${resJson.message || 'Proses antrean selesai.'}`);
+                    }
+                    await this.fetchData();
+                } catch (e) {
+                    console.error("Gagal trigger proses:", e);
+                    alert("Gagal memicu proses analisis. Silakan periksa koneksi.");
+                } finally {
+                    this.isTriggering = false;
+                }
+            },
+
             async fetchData() {
                 if (this.isLoading) return;
                 this.isLoading = true;
@@ -593,6 +738,8 @@
                             this.redCount = data.red_count;
                             this.queueList = data.queue_list;
                             this.completedList = data.completed_list;
+                            this.processLogs = data.process_logs || [];
+                            this.logDate = data.log_date || this.logDate;
                             
                             if (data.live_status) {
                                 this.isProcessing = data.live_status.is_processing;
@@ -602,6 +749,13 @@
                             }
 
                             this.lastUpdatedTime = (data.timestamp || new Date().toLocaleTimeString('id-ID')) + ' WIB';
+
+                            this.$nextTick(() => {
+                                if (this.autoScrollLogs) {
+                                    const el = document.getElementById('ai-process-console');
+                                    if (el) el.scrollTop = el.scrollHeight;
+                                }
+                            });
                         }
                     }
                 } catch (err) {

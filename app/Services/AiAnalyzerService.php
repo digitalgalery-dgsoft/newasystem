@@ -951,10 +951,113 @@ Catatan:
     }
 
     /**
-     * Tulis log ke storage/logs/cron_ai.log
+     * Bersihkan log dari hari-hari sebelumnya, hanya pertahankan log hari ini (Y-m-d).
+     */
+    public static function purgeOldLogsIfNewDay(): void
+    {
+        $logFile = storage_path('logs/cron_ai.log');
+        if (!file_exists($logFile)) {
+            return;
+        }
+
+        $today = date('Y-m-d');
+        $lastCleaned = Cache::get('ai_analyzer_log_last_cleaned_date');
+        if ($lastCleaned === $today) {
+            return;
+        }
+
+        try {
+            $content = @file_get_contents($logFile);
+            if ($content) {
+                $lines = explode("\n", $content);
+                $filtered = [];
+                foreach ($lines as $line) {
+                    $trimmed = trim($line);
+                    if (empty($trimmed)) continue;
+                    // Format baris log: [YYYY-MM-DD
+                    if (preg_match('/^\[(\d{4}-\d{2}-\d{2})/', $trimmed, $m)) {
+                        if ($m[1] === $today) {
+                            $filtered[] = $trimmed;
+                        }
+                    } else {
+                        // Pertahankan baris lanjutan jika baris sebelumnya adalah hari ini
+                        if (!empty($filtered)) {
+                            $filtered[] = $trimmed;
+                        }
+                    }
+                }
+                @file_put_contents($logFile, !empty($filtered) ? implode("\n", $filtered) . "\n" : "");
+            }
+            Cache::forever('ai_analyzer_log_last_cleaned_date', $today);
+        } catch (\Throwable $e) {
+            // Abaikan kegagalan
+        }
+    }
+
+    /**
+     * Ambil baris log hari ini yang terstruktur untuk UI web
+     */
+    public static function getTodayLogs(int $limit = 80): array
+    {
+        static::purgeOldLogsIfNewDay();
+        $logFile = storage_path('logs/cron_ai.log');
+        if (!file_exists($logFile)) {
+            return [];
+        }
+
+        $content = @file_get_contents($logFile);
+        if (!$content) {
+            return [];
+        }
+
+        $today = date('Y-m-d');
+        $rawLines = explode("\n", $content);
+        $parsed = [];
+
+        foreach ($rawLines as $line) {
+            $trimmed = trim($line);
+            if (empty($trimmed)) continue;
+
+            // Pattern: [2026-09-23 14:21:01] [info] message...
+            if (preg_match('/^\[(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\]\s+\[(.*?)\]\s+(.*)$/i', $trimmed, $m)) {
+                $date = $m[1];
+                $time = $m[2];
+                $level = strtolower($m[3]);
+                $msg = $m[4];
+
+                if ($date === $today) {
+                    $parsed[] = [
+                        'time' => $time,
+                        'datetime' => "$date $time",
+                        'level' => $level,
+                        'message' => $msg,
+                        'raw' => $trimmed,
+                    ];
+                }
+            } else {
+                $parsed[] = [
+                    'time' => '-',
+                    'datetime' => '-',
+                    'level' => 'info',
+                    'message' => $trimmed,
+                    'raw' => $trimmed,
+                ];
+            }
+        }
+
+        if (count($parsed) > $limit) {
+            $parsed = array_slice($parsed, -$limit);
+        }
+
+        return $parsed;
+    }
+
+    /**
+     * Tulis log ke storage/logs/cron_ai.log (auto prune hari kemarin)
      */
     protected function writeLog(string $message, string $level = 'info'): void
     {
+        static::purgeOldLogsIfNewDay();
         $logFile = storage_path('logs/cron_ai.log');
         $timestamp = date('Y-m-d H:i:s');
         $logLine = "[$timestamp] [$level] $message\n";
