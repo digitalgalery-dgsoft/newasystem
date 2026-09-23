@@ -2072,6 +2072,104 @@
         }));
     }
 
+    // Global Searchable Dropdown Helper for Modals & Forms
+    function searchableModalSelect(config) {
+        return {
+            open: false,
+            name: config.name,
+            placeholder: config.placeholder || '-- Pilih --',
+            searchPlaceholder: config.searchPlaceholder || 'Ketik untuk mencari...',
+            selectedValue: config.selected !== undefined && config.selected !== null ? String(config.selected) : '',
+            searchQuery: '',
+            rawOptions: config.options || [],
+            required: !!config.required,
+            allowCustom: !!config.allowCustom,
+            color: config.color || 'primary',
+
+            get parsedOptions() {
+                return (this.rawOptions || []).map(opt => {
+                    if (typeof opt === 'object' && opt !== null) {
+                        return {
+                            value: String(opt.value !== undefined ? opt.value : ''),
+                            label: String(opt.label || opt.name || opt.value || ''),
+                            sublabel: opt.sublabel ? String(opt.sublabel) : ''
+                        };
+                    }
+                    return {
+                        value: String(opt),
+                        label: String(opt),
+                        sublabel: ''
+                    };
+                });
+            },
+
+            get displayLabel() {
+                if (!this.selectedValue) return this.placeholder;
+                const found = this.parsedOptions.find(o => o.value.toLowerCase() === this.selectedValue.toLowerCase());
+                return found ? found.label : this.selectedValue;
+            },
+
+            get selectedOption() {
+                if (!this.selectedValue) return null;
+                return this.parsedOptions.find(o => o.value.toLowerCase() === this.selectedValue.toLowerCase()) || null;
+            },
+
+            get filteredOptions() {
+                const list = this.parsedOptions;
+                if (!this.searchQuery || !this.searchQuery.trim()) {
+                    return list.slice(0, 80);
+                }
+                const q = this.searchQuery.toLowerCase().trim();
+                const words = q.split(/\s+/).filter(w => w.length > 0);
+                
+                const matched = list.filter(opt => {
+                    const text = (opt.label + ' ' + opt.sublabel + ' ' + opt.value).toLowerCase();
+                    return words.every(word => text.includes(word));
+                });
+
+                return matched.slice(0, 80);
+            },
+
+            get totalMatches() {
+                if (!this.searchQuery || !this.searchQuery.trim()) {
+                    return this.parsedOptions.length;
+                }
+                const q = this.searchQuery.toLowerCase().trim();
+                const words = q.split(/\s+/).filter(w => w.length > 0);
+                return this.parsedOptions.filter(opt => {
+                    const text = (opt.label + ' ' + opt.sublabel + ' ' + opt.value).toLowerCase();
+                    return words.every(word => text.includes(word));
+                }).length;
+            },
+
+            toggle() {
+                this.open = !this.open;
+                if (this.open) {
+                    this.searchQuery = '';
+                    this.$nextTick(() => {
+                        if (this.$refs.searchInput) {
+                            this.$refs.searchInput.focus();
+                        }
+                    });
+                }
+            },
+
+            select(val) {
+                this.selectedValue = String(val);
+                this.open = false;
+                this.searchQuery = '';
+            },
+
+            clear(e) {
+                if (e) e.stopPropagation();
+                this.selectedValue = '';
+                this.searchQuery = '';
+                this.open = false;
+            }
+        };
+    }
+    window.searchableModalSelect = searchableModalSelect;
+
     document.addEventListener('DOMContentLoaded', function() {
         updateThemeUI();
     });

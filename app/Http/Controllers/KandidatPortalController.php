@@ -477,12 +477,15 @@ class KandidatPortalController extends Controller
 
         $user = $this->getCurrentUser();
 
+        $asRecruiterOptions = \App\Http\Controllers\InterviewController::getAsRecruiterOptions();
+
         return view('kandidatportal.show', array_merge([
             'candidate' => $candidate,
             'user' => $user,
             'principles' => $principles,
             'userPrinsiples' => $userPrinsiples,
             'areas' => $areas,
+            'asRecruiterOptions' => $asRecruiterOptions,
             'discTest' => $discTest,
             'mathTest' => $mathTest,
             'compTest' => $compTest,

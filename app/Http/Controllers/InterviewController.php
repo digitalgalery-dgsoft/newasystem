@@ -158,6 +158,129 @@ class InterviewController extends Controller
         ];
     }
 
+    /**
+     * Ambil Opsi Lengkap AS / Rekrutor untuk Dropdown Pengalihan Kandidat
+     */
+    public static function getAsRecruiterOptions(): array
+    {
+        $options = [];
+
+        // 1. Data User dari tabel users (Admin, Recruiter, Karyawan Inhouse)
+        $users = User::whereNotNull('email')->where('email', '!=', '')->get(['id', 'name', 'email', 'role']);
+        foreach ($users as $u) {
+            $email = strtolower(trim($u->email));
+            $roleLabel = match($u->role) {
+                'admin' => 'Admin Pusat',
+                'recruiter' => 'Rekruter',
+                'karyawan_inhouse' => 'Inhouse',
+                default => ucfirst($u->role)
+            };
+            $options[$email] = [
+                'value' => $u->email,
+                'label' => trim($u->name),
+                'sublabel' => $u->email . " ({$roleLabel})"
+            ];
+        }
+
+        // 2. Data riwayat User AS di tabel candidates dipetakan ke Master Employee
+        $candidateUseras = DB::table('candidates')
+            ->select('useras', DB::raw('count(*) as cnt'))
+            ->whereNotNull('useras')
+            ->where('useras', '!=', '')
+            ->groupBy('useras')
+            ->orderByDesc('cnt')
+            ->get();
+
+        $emails = $candidateUseras->pluck('useras')
+            ->filter(fn($u) => str_contains($u, '@'))
+            ->map(fn($e) => strtolower(trim($e)))
+            ->unique()
+            ->values()
+            ->all();
+
+        $emps = Employee::whereIn(DB::raw('LOWER(email)'), $emails)
+            ->get(['email', 'nama_karyawan', 'jabatan', 'area']);
+
+        $empMap = [];
+        foreach ($emps as $e) {
+            $empMap[strtolower(trim($e->email))] = $e;
+        }
+
+        foreach ($candidateUseras as $cu) {
+            $val = trim($cu->useras);
+            $lower = strtolower($val);
+
+            if (isset($empMap[$lower])) {
+                $e = $empMap[$lower];
+                $areaStr = !empty($e->area) ? " • Area {$e->area}" : "";
+                $jabStr = !empty($e->jabatan) ? " ({$e->jabatan})" : "";
+                $options[$lower] = [
+                    'value' => $val,
+                    'label' => trim($e->nama_karyawan),
+                    'sublabel' => $val . $jabStr . $areaStr
+                ];
+            } elseif (!isset($options[$lower])) {
+                if (str_contains($val, '@')) {
+                    $parts = explode('@', $val)[0];
+                    $cleanName = ucwords(trim(preg_replace('/[0-9_.-]+/', ' ', $parts))) ?: $val;
+                    $options[$lower] = [
+                        'value' => $val,
+                        'label' => $cleanName,
+                        'sublabel' => $val
+                    ];
+                } else {
+                    $options[$lower] = [
+                        'value' => $val,
+                        'label' => ucwords(strtolower($val)),
+                        'sublabel' => "Nama AS: " . $val
+                    ];
+                }
+            }
+        }
+
+        // 3. Data karyawan inhouse aktif dengan posisi rekrutmen / AS / HR
+        $recEmps = Employee::where('status', 'Aktiv')
+            ->where(function($q) {
+                $q->where('jabatan', 'like', '%recrui%')
+                  ->orWhere('jabatan', 'like', '%hr%')
+                  ->orWhere('jabatan', 'like', '%account specialist%')
+                  ->orWhere('jabatan', 'like', '%aro%')
+                  ->orWhere('jabatan', 'like', '%as %');
+            })
+            ->whereNotNull('email')
+            ->where('email', '!=', '')
+            ->get(['email', 'nama_karyawan', 'jabatan', 'area']);
+
+        foreach ($recEmps as $re) {
+            $val = trim($re->email);
+            $lower = strtolower($val);
+            if (!isset($options[$lower])) {
+                $areaStr = !empty($re->area) ? " • Area {$re->area}" : "";
+                $jabStr = !empty($re->jabatan) ? " ({$re->jabatan})" : "";
+                $options[$lower] = [
+                    'value' => $val,
+                    'label' => trim($re->nama_karyawan),
+                    'sublabel' => $val . $jabStr . $areaStr
+                ];
+            }
+        }
+
+        // Default fallback jika belum ada
+        $defaultAs = 'admin.pusat@arina.co.id';
+        if (!isset($options[strtolower($defaultAs)])) {
+            $options[strtolower($defaultAs)] = [
+                'value' => $defaultAs,
+                'label' => 'Admin Pusat Rekrutmen',
+                'sublabel' => $defaultAs . ' (Default AS)'
+            ];
+        }
+
+        $sorted = array_values($options);
+        usort($sorted, fn($a, $b) => strcasecmp($a['label'], $b['label']));
+
+        return $sorted;
+    }
+
     private function buildWaUrl($candidate, $user, $salam): string
     {
         $induk = $candidate->principle?->parent_company ?? $candidate->principle?->name ?? 'ESA Groups';
@@ -898,11 +1021,20 @@ class InterviewController extends Controller
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
         $userPrinsiples = self::getUserPrinsipleOptions($candidate);
-        $areas = [
-            'JAKARTA', 'SURABAYA', 'BANDUNG', 'SEMARANG', 'MEDAN', 
-            'MAKASSAR', 'DENPARAS', 'PALEMBANG', 'BALIKPAPAN', 'YOGYAKARTA',
-            'MALANG', 'BOGOR', 'BEKASI', 'TANGERANG', 'DEPOK'
-        ];
+        try {
+            $areas = DB::table('tb_area')->orderBy('area')->pluck('area')->toArray();
+        } catch (\Throwable $e) {
+            $areas = [];
+        }
+        if (empty($areas)) {
+            $areas = array_column(\App\Models\TbArea::getOfficialAreas(), 'area');
+            sort($areas);
+        }
+        if (!empty($candidate->area) && !in_array($candidate->area, $areas)) {
+            $areas[] = $candidate->area;
+            sort($areas);
+        }
+        $asRecruiterOptions = self::getAsRecruiterOptions();
 
         // Sinkronisasi data pengalaman dari tb_pengalaman jika work_experiences masih kosong
         if ($candidate->workExperiences->isEmpty()) {
@@ -956,6 +1088,7 @@ class InterviewController extends Controller
             'principles' => $principles,
             'userPrinsiples' => $userPrinsiples,
             'areas' => $areas,
+            'asRecruiterOptions' => $asRecruiterOptions,
             'aiData' => $aiData,
             'otherCandidates' => $otherCandidates,
             'isInhouseCandidate' => $isInhouseCandidate,

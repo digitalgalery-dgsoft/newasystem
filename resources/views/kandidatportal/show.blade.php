@@ -1660,38 +1660,223 @@
                 </div>
             </form>
 
-            </div>
+            @php
+        $principleSelectOptions = $principles->map(function($p) {
+            return [
+                'value' => (string)$p->id,
+                'label' => $p->name,
+                'sublabel' => $p->code . ($p->entity ? ' • Entitas ' . $p->entity : '')
+            ];
+        })->values()->all();
 
-    </div>
+        $selectedPrincipleId = (string)($candidate->principle_id 
+            ?? ($candidate->principle && is_object($candidate->principle) ? $candidate->principle->id : '')
+            ?? '');
+
+        $allAreasList = $areas ?? [];
+        if (!empty($candidate->area) && !in_array($candidate->area, $allAreasList)) {
+            $allAreasList[] = $candidate->area;
+        }
+        sort($allAreasList);
+        $areaSelectOptions = array_values($allAreasList);
+    @endphp
 
     <!-- MODAL ALIKAN KE AS -->
     <div x-show="alihkanModalOpen" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
         <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-200 space-y-4" @click.away="alihkanModalOpen = false">
             <div class="flex items-center justify-between border-b border-slate-100 pb-3">
-                <h4 class="text-sm font-extrabold text-slate-900">Alihkan Data Kandidat ke AS</h4>
-                <button @click="alihkanModalOpen = false" class="text-slate-400 hover:text-slate-600 text-base">✕</button>
+                <h4 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-user-gear text-primary"></i>
+                    <span>Alihkan Data Kandidat ke AS</span>
+                </h4>
+                <button @click="alihkanModalOpen = false" class="text-slate-400 hover:text-slate-600 text-base cursor-pointer">✕</button>
             </div>
-            <form action="{{ route('kandidatportal.alihkan', $candidate->id) }}" method="POST" class="space-y-3 text-xs">
+            <form action="{{ route('kandidatportal.alihkan', $candidate->id) }}" method="POST" class="space-y-3.5 text-xs">
                 @csrf
-                <div>
-                    <label class="block text-slate-700 font-bold mb-1">Prinsiple</label>
-                    <select name="prinsiple_id" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs">
-                        @foreach($principles as $p)
-                            <option value="{{ $p->id }}">{{ $p->name }}</option>
-                        @endforeach
-                    </select>
+                <!-- Pilih Prinsiple (Searchable Dropdown) -->
+                <div class="relative" style="z-index: 30;" x-data="searchableModalSelect({
+                    name: 'prinsiple_id',
+                    placeholder: '-- Pilih Prinsiple --',
+                    searchPlaceholder: 'Cari nama atau kode prinsiple...',
+                    selected: '{{ $selectedPrincipleId }}',
+                    options: {{ json_encode($principleSelectOptions) }},
+                    color: 'primary'
+                })">
+                    <label class="block text-slate-700 font-bold mb-1 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-building text-primary"></i>
+                            <span>Prinsiple Penempatan</span>
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-normal">Searchable Dropdown</span>
+                    </label>
+                    <input type="hidden" :name="name" :value="selectedValue">
+
+                    <div class="relative" @click.outside="open = false">
+                        <button type="button" 
+                                @click="toggle()" 
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-left flex items-center justify-between gap-2 shadow-xs hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition-all">
+                            <div class="truncate flex-1">
+                                <span class="block truncate font-semibold" :class="selectedValue ? 'text-slate-800' : 'text-slate-400'" x-text="displayLabel"></span>
+                                <span x-show="selectedOption && selectedOption.sublabel" class="block text-[10px] text-slate-400 truncate" x-text="selectedOption ? selectedOption.sublabel : ''"></span>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0 text-slate-400">
+                                <span x-show="selectedValue" @click.stop="clear($event)" class="hover:text-rose-500 p-0.5 rounded transition cursor-pointer" title="Hapus pilihan">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </span>
+                                <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                            </div>
+                        </button>
+
+                        <!-- Dropdown Search Menu -->
+                        <div x-show="open" 
+                             x-cloak
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 max-h-60 flex flex-col">
+                            
+                            <div class="p-2 border-b border-slate-100 bg-slate-50/90 sticky top-0 z-10">
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                    <input type="text" 
+                                           x-ref="searchInput" 
+                                           x-model="searchQuery" 
+                                           @keydown.escape="open = false" 
+                                           @keydown.enter.prevent="if(filteredOptions.length > 0) { select(filteredOptions[0].value); }"
+                                           :placeholder="searchPlaceholder" 
+                                           class="w-full pl-7 pr-7 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-white">
+                                    <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        <i class="fa-solid fa-xmark text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="overflow-y-auto p-1 text-xs space-y-0.5 max-h-48">
+                                <template x-for="(opt, idx) in filteredOptions" :key="opt.value + '_' + idx">
+                                    <button type="button" 
+                                            @click="select(opt.value)" 
+                                            class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between cursor-pointer"
+                                            :class="selectedValue === opt.value ? 'bg-primary-50 text-primary font-bold' : 'hover:bg-slate-50 text-slate-700'">
+                                        <div class="truncate pr-2">
+                                            <span class="block truncate" x-text="opt.label"></span>
+                                            <span x-show="opt.sublabel" class="block text-[10px] text-slate-400 truncate" x-text="opt.sublabel"></span>
+                                        </div>
+                                        <i x-show="selectedValue === opt.value" class="fa-solid fa-check text-primary text-xs shrink-0"></i>
+                                    </button>
+                                </template>
+                                <div x-show="filteredOptions.length === 0" class="py-3 text-center text-slate-400 text-xs">
+                                    Prinsiple tidak ditemukan
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <label class="block text-slate-700 font-bold mb-1">Nama AS / AE</label>
-                    <input type="text" name="useras" value="admin.pusat@arina.co.id" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-semibold">
+
+                <!-- Pilih Nama AS / Rekrutor (Searchable Dropdown) -->
+                <div class="relative" style="z-index: 20;" x-data="searchableModalSelect({
+                    name: 'useras',
+                    placeholder: '-- Pilih Nama AS / Rekrutor --',
+                    searchPlaceholder: 'Ketik nama AS, email, atau area...',
+                    selected: '{{ addslashes($candidate->useras ?? 'admin.pusat@arina.co.id') }}',
+                    options: {{ json_encode($asRecruiterOptions ?? []) }},
+                    required: true,
+                    allowCustom: true,
+                    color: 'primary'
+                })">
+                    <label class="block text-slate-700 font-bold mb-1 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-user-tie text-primary"></i>
+                            <span>Nama AS / Rekrutor Tujuan</span>
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-normal">Searchable Dropdown</span>
+                    </label>
+                    <input type="hidden" :name="name" :value="selectedValue" required>
+
+                    <div class="relative" @click.outside="open = false">
+                        <button type="button" 
+                                @click="toggle()" 
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-left flex items-center justify-between gap-2 shadow-xs hover:border-primary-400 focus:outline-none focus:ring-2 focus:ring-primary cursor-pointer transition-all">
+                            <div class="truncate flex-1">
+                                <span class="block truncate font-semibold" :class="selectedValue ? 'text-slate-800' : 'text-slate-400'" x-text="displayLabel"></span>
+                                <span x-show="selectedOption && selectedOption.sublabel" class="block text-[10px] text-slate-400 truncate" x-text="selectedOption ? selectedOption.sublabel : ''"></span>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0 text-slate-400">
+                                <span x-show="selectedValue" @click.stop="clear($event)" class="hover:text-rose-500 p-0.5 rounded transition cursor-pointer" title="Hapus pilihan">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </span>
+                                <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                            </div>
+                        </button>
+
+                        <!-- Dropdown Search Menu -->
+                        <div x-show="open" 
+                             x-cloak
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 max-h-64 flex flex-col">
+                            
+                            <div class="p-2 border-b border-slate-100 bg-slate-50/90 sticky top-0 z-10">
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                    <input type="text" 
+                                           x-ref="searchInput" 
+                                           x-model="searchQuery" 
+                                           @keydown.escape="open = false" 
+                                           @keydown.enter.prevent="if(filteredOptions.length > 0) { select(filteredOptions[0].value); } else if(allowCustom && searchQuery.trim()) { select(searchQuery.trim()); }"
+                                           :placeholder="searchPlaceholder" 
+                                           class="w-full pl-7 pr-7 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-primary bg-white">
+                                    <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        <i class="fa-solid fa-xmark text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="overflow-y-auto p-1 text-xs space-y-0.5 max-h-52">
+                                <template x-for="(opt, idx) in filteredOptions" :key="opt.value + '_' + idx">
+                                    <button type="button" 
+                                            @click="select(opt.value)" 
+                                            class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between cursor-pointer"
+                                            :class="selectedValue.toLowerCase() === opt.value.toLowerCase() ? 'bg-primary-50 text-primary font-bold' : 'hover:bg-slate-50 text-slate-700'">
+                                        <div class="truncate pr-2">
+                                            <span class="block truncate" x-text="opt.label"></span>
+                                            <span x-show="opt.sublabel" class="block text-[10px] text-slate-400 truncate" x-text="opt.sublabel"></span>
+                                        </div>
+                                        <i x-show="selectedValue.toLowerCase() === opt.value.toLowerCase()" class="fa-solid fa-check text-primary text-xs shrink-0"></i>
+                                    </button>
+                                </template>
+
+                                <!-- Custom Option -->
+                                <template x-if="allowCustom && searchQuery.trim() && !filteredOptions.some(o => o.value.toLowerCase() === searchQuery.trim().toLowerCase())">
+                                    <button type="button" 
+                                            @click="select(searchQuery.trim())" 
+                                            class="w-full px-2.5 py-2 rounded-lg text-left transition flex items-center gap-2 cursor-pointer bg-blue-50 hover:bg-blue-100 text-primary font-semibold border border-blue-200 mt-1">
+                                        <i class="fa-solid fa-plus-circle text-xs shrink-0"></i>
+                                        <span class="truncate">Gunakan nama/email kustom: &ldquo;<strong x-text="searchQuery.trim()"></strong>&rdquo;</span>
+                                    </button>
+                                </template>
+
+                                <div x-show="filteredOptions.length === 0 && (!allowCustom || !searchQuery.trim())" class="py-3 text-center text-slate-400 text-xs">
+                                    AS / Rekrutor tidak ditemukan
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
                 <div>
-                    <label class="block text-slate-700 font-bold mb-1">Catatan untuk AS</label>
-                    <textarea name="notes" rows="3" placeholder="Tuliskan catatan alokasi..." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs"></textarea>
+                    <label class="block text-slate-700 font-bold mb-1">Catatan untuk AS (Opsional)</label>
+                    <textarea name="notes" rows="2" placeholder="Tuliskan catatan alokasi..." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:ring-2 focus:ring-primary outline-none"></textarea>
                 </div>
-                <div class="flex items-center justify-end gap-2 pt-2">
-                    <button type="button" @click="alihkanModalOpen = false" class="px-3 py-2 rounded-xl border border-slate-300 font-semibold">Batal</button>
-                    <button type="submit" class="px-4 py-2 rounded-xl bg-primary text-white font-bold">Kirim Pengalihan</button>
+                <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                    <button type="button" @click="alihkanModalOpen = false" class="px-3.5 py-2 rounded-xl border border-slate-300 text-slate-700 font-bold hover:bg-slate-50 transition cursor-pointer">Batal</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold transition shadow-sm cursor-pointer">Kirim Pengalihan</button>
                 </div>
             </form>
         </div>
@@ -1705,46 +1890,168 @@
                     <i class="fa-solid fa-location-dot text-amber-600"></i>
                     Ganti Area & Prinsiple Penempatan
                 </h4>
-                <button @click="gantiAreaModalOpen = false" class="text-slate-400 hover:text-slate-600 text-base">✕</button>
+                <button @click="gantiAreaModalOpen = false" class="text-slate-400 hover:text-slate-600 text-base cursor-pointer">✕</button>
             </div>
             <form action="{{ route('kandidatportal.ganti_area', $candidate->id) }}" method="POST" class="space-y-3.5 text-xs">
                 @csrf
-                <div>
-                    <label class="block text-slate-700 font-bold mb-1 flex items-center gap-1.5">
-                        <i class="fa-solid fa-map-pin text-amber-600"></i>
-                        <span>Area Penempatan</span>
+                <!-- Area Penempatan (Searchable Dropdown) -->
+                <div class="relative" style="z-index: 30;" x-data="searchableModalSelect({
+                    name: 'area',
+                    placeholder: '-- Pilih Area Penempatan --',
+                    searchPlaceholder: 'Cari nama area...',
+                    selected: '{{ addslashes($candidate->area ?? '') }}',
+                    options: {{ json_encode($areaSelectOptions) }},
+                    required: true,
+                    color: 'amber'
+                })">
+                    <label class="block text-slate-700 font-bold mb-1 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-map-pin text-amber-600"></i>
+                            <span>Area Penempatan</span>
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-normal">Searchable Dropdown</span>
                     </label>
-                    <select name="area" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" required>
-                        @php
-                            $allAreas = $areas ?? [];
-                            if (!empty($candidate->area) && !in_array($candidate->area, $allAreas)) {
-                                $allAreas[] = $candidate->area;
-                            }
-                        @endphp
-                        @foreach($allAreas as $a)
-                            <option value="{{ $a }}" {{ ($candidate->area ?? '') === $a ? 'selected' : '' }}>{{ $a }}</option>
-                        @endforeach
-                    </select>
+                    <input type="hidden" :name="name" :value="selectedValue" required>
+                    
+                    <div class="relative" @click.outside="open = false">
+                        <button type="button" 
+                                @click="toggle()" 
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-left flex items-center justify-between gap-2 shadow-xs hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer transition-all">
+                            <span class="truncate font-semibold" :class="selectedValue ? 'text-slate-800' : 'text-slate-400'" x-text="displayLabel"></span>
+                            <div class="flex items-center gap-1 shrink-0 text-slate-400">
+                                <span x-show="selectedValue" @click.stop="clear($event)" class="hover:text-rose-500 p-0.5 rounded transition cursor-pointer" title="Hapus pilihan">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </span>
+                                <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                            </div>
+                        </button>
+
+                        <!-- Dropdown Search Menu -->
+                        <div x-show="open" 
+                             x-cloak
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 max-h-60 flex flex-col">
+                            
+                            <div class="p-2 border-b border-slate-100 bg-slate-50/90 sticky top-0 z-10">
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                    <input type="text" 
+                                           x-ref="searchInput" 
+                                           x-model="searchQuery" 
+                                           @keydown.escape="open = false" 
+                                           @keydown.enter.prevent="if(filteredOptions.length > 0) { select(filteredOptions[0].value); }"
+                                           :placeholder="searchPlaceholder" 
+                                           class="w-full pl-7 pr-7 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+                                    <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        <i class="fa-solid fa-xmark text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="overflow-y-auto p-1 text-xs space-y-0.5 max-h-48">
+                                <template x-for="(opt, idx) in filteredOptions" :key="opt.value + '_' + idx">
+                                    <button type="button" 
+                                            @click="select(opt.value)" 
+                                            class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between cursor-pointer"
+                                            :class="selectedValue.toLowerCase() === opt.value.toLowerCase() ? 'bg-amber-50 text-amber-900 font-bold' : 'hover:bg-slate-50 text-slate-700'">
+                                        <span class="truncate" x-text="opt.label"></span>
+                                        <i x-show="selectedValue.toLowerCase() === opt.value.toLowerCase()" class="fa-solid fa-check text-amber-600 text-xs shrink-0"></i>
+                                    </button>
+                                </template>
+                                <div x-show="filteredOptions.length === 0" class="py-3 text-center text-slate-400 text-xs">
+                                    Area tidak ditemukan
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <div>
-                    <label class="block text-slate-700 font-bold mb-1 flex items-center gap-1.5">
-                        <i class="fa-solid fa-building text-amber-600"></i>
-                        <span>Prinsiple Penempatan</span>
+                <!-- Prinsiple Penempatan (Searchable Dropdown) -->
+                <div class="relative" style="z-index: 20;" x-data="searchableModalSelect({
+                    name: 'principle_id',
+                    placeholder: '-- Pilih Prinsiple --',
+                    searchPlaceholder: 'Cari nama atau kode prinsiple...',
+                    selected: '{{ $selectedPrincipleId }}',
+                    options: {{ json_encode($principleSelectOptions) }},
+                    required: true,
+                    color: 'amber'
+                })">
+                    <label class="block text-slate-700 font-bold mb-1 flex items-center justify-between">
+                        <span class="flex items-center gap-1.5">
+                            <i class="fa-solid fa-building text-amber-600"></i>
+                            <span>Prinsiple Penempatan</span>
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-normal">Searchable Dropdown</span>
                     </label>
-                    <select name="principle_id" class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer" required>
-                        <option value="">-- Pilih Prinsiple --</option>
-                        @foreach($principles as $p)
-                            @php
-                                $isSelected = ($candidate->principle_id == $p->id)
-                                    || ($candidate->principle && is_object($candidate->principle) && $candidate->principle->id == $p->id)
-                                    || (is_string($candidate->principle) && strtolower(trim($candidate->principle)) === strtolower(trim($p->name)));
-                            @endphp
-                            <option value="{{ $p->id }}" {{ $isSelected ? 'selected' : '' }}>
-                                {{ $p->name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    <input type="hidden" :name="name" :value="selectedValue" required>
+
+                    <div class="relative" @click.outside="open = false">
+                        <button type="button" 
+                                @click="toggle()" 
+                                class="w-full px-3 py-2 rounded-xl border border-slate-300 bg-white text-xs text-left flex items-center justify-between gap-2 shadow-xs hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 cursor-pointer transition-all">
+                            <div class="truncate flex-1">
+                                <span class="block truncate font-semibold" :class="selectedValue ? 'text-slate-800' : 'text-slate-400'" x-text="displayLabel"></span>
+                                <span x-show="selectedOption && selectedOption.sublabel" class="block text-[10px] text-slate-400 truncate" x-text="selectedOption ? selectedOption.sublabel : ''"></span>
+                            </div>
+                            <div class="flex items-center gap-1 shrink-0 text-slate-400">
+                                <span x-show="selectedValue" @click.stop="clear($event)" class="hover:text-rose-500 p-0.5 rounded transition cursor-pointer" title="Hapus pilihan">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </span>
+                                <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-200" :class="{ 'rotate-180': open }"></i>
+                            </div>
+                        </button>
+
+                        <!-- Dropdown Search Menu -->
+                        <div x-show="open" 
+                             x-cloak
+                             x-transition:enter="transition ease-out duration-150"
+                             x-transition:enter-start="opacity-0 translate-y-1"
+                             x-transition:enter-end="opacity-100 translate-y-0"
+                             x-transition:leave="transition ease-in duration-100"
+                             x-transition:leave-start="opacity-100 translate-y-0"
+                             x-transition:leave-end="opacity-0 translate-y-1"
+                             class="absolute left-0 right-0 top-full mt-1 bg-white rounded-xl shadow-2xl border border-slate-200 overflow-hidden z-50 max-h-60 flex flex-col">
+                            
+                            <div class="p-2 border-b border-slate-100 bg-slate-50/90 sticky top-0 z-10">
+                                <div class="relative">
+                                    <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                    <input type="text" 
+                                           x-ref="searchInput" 
+                                           x-model="searchQuery" 
+                                           @keydown.escape="open = false" 
+                                           @keydown.enter.prevent="if(filteredOptions.length > 0) { select(filteredOptions[0].value); }"
+                                           :placeholder="searchPlaceholder" 
+                                           class="w-full pl-7 pr-7 py-1.5 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-2 focus:ring-amber-500 bg-white">
+                                    <button type="button" x-show="searchQuery" @click="searchQuery = ''; $refs.searchInput.focus()" class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        <i class="fa-solid fa-xmark text-xs"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="overflow-y-auto p-1 text-xs space-y-0.5 max-h-48">
+                                <template x-for="(opt, idx) in filteredOptions" :key="opt.value + '_' + idx">
+                                    <button type="button" 
+                                            @click="select(opt.value)" 
+                                            class="w-full px-2.5 py-1.5 rounded-lg text-left transition flex items-center justify-between cursor-pointer"
+                                            :class="selectedValue.toLowerCase() === opt.value.toLowerCase() ? 'bg-amber-50 text-amber-900 font-bold' : 'hover:bg-slate-50 text-slate-700'">
+                                        <div class="truncate pr-2">
+                                            <span class="block truncate" x-text="opt.label"></span>
+                                            <span x-show="opt.sublabel" class="block text-[10px] text-slate-400 truncate" x-text="opt.sublabel"></span>
+                                        </div>
+                                        <i x-show="selectedValue.toLowerCase() === opt.value.toLowerCase()" class="fa-solid fa-check text-amber-600 text-xs shrink-0"></i>
+                                    </button>
+                                </template>
+                                <div x-show="filteredOptions.length === 0" class="py-3 text-center text-slate-400 text-xs">
+                                    Prinsiple tidak ditemukan
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
