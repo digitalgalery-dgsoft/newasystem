@@ -1957,6 +1957,25 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 42. 🔒 Proteksi Email & Password Karyawan saat Pembaruan Data dari Odoo ERP
+- **Latar Belakang & Kebutuhan**:
+  - Banyak karyawan yang telah mengganti email login dan kata sandi kustom mereka melalui profil akun ASystem atau melalui bantuan tim HRD.
+  - Sebelumnya, ketika proses sinkronisasi Odoo berjalan (baik Sync All, Sync by NIK, maupun cron pembersihan resign), kolom `email` pada data karyawan yang sudah ada di-update ulang menggunakan data mentah dari Odoo (`work_email` / `private_email`).
+  - Hal ini menyebabkan karyawan yang telah mengganti email/password tidak dapat login kembali karena email di sistem tertimpa kembali ke email lama Odoo.
+- **Implementasi Proteksi**:
+  1. **Proteksi Email (`OdooSyncService.php`)**:
+     - Pada `syncEmployees()` (Sync All), `syncSingleEmployee()` (Sync by NIK), dan `verifyAndCleanResignedEmployees()`:
+       ```php
+       $effectiveEmail = ($employee && !empty($employee->email)) ? $employee->email : $email;
+       ```
+     - Jika data karyawan sudah terdaftar di database lokal dan kolom `email` sudah terisi, sistem **mempertahankan email lokal tersebut secara mutlak** dan tidak menimpanya dengan data dari Odoo.
+     - Email dari Odoo hanya digunakan untuk data karyawan baru (*new record*) atau jika data email lokal saat ini masih bernilai kosong (*null/empty*).
+  2. **Proteksi Kata Sandi (`password`)**:
+     - Kolom `password` tidak pernah disertakan dalam payload update data dari Odoo.
+     - Password kustom yang telah di-hash dan disimpan oleh karyawan / admin tetap utuh dan terlindungi dari segala bentuk reset atau modifikasi saat sinkronisasi rutin berlangsung.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

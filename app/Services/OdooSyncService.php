@@ -319,11 +319,16 @@ class OdooSyncService
 
                     $effectiveJoinDate = $rawTanggalJoin ?: ($employee?->tanggal_join ?: date('Y-m-d'));
 
+                    // Proteksi Email & Password:
+                    // Jika data karyawan sudah ada di database lokal dan memiliki email, pertahankan email lokal tersebut.
+                    // Jangan timpa email dan jangan ubah password karyawan yang sudah kustom.
+                    $effectiveEmail = ($employee && !empty($employee->email)) ? $employee->email : $email;
+
                     $dataToSave = [
                         'nik'           => $nik,
                         'nip'           => $nip,
                         'nama_karyawan' => $nama,
-                        'email'         => $email,
+                        'email'         => $effectiveEmail,
                         'telepon'       => $telepon,
                         'tanggal_join'  => $effectiveJoinDate,
                         'jabatan'       => $jabatan ?: ($employee?->jabatan ?: 'Staff'),
@@ -674,7 +679,7 @@ class OdooSyncService
                         $localEmp->update([
                             'nip'           => $nip ?: $localEmp->nip,
                             'nama_karyawan' => $recName,
-                            'email'         => $email ?: $localEmp->email,
+                            'email'         => !empty($localEmp->email) ? $localEmp->email : $email,
                             'telepon'       => $telepon ?: $localEmp->telepon,
                             'tanggal_join'  => $tanggalJoin ?: $localEmp->tanggal_join,
                             'jabatan'       => $jabatan ?: $localEmp->jabatan,
@@ -897,12 +902,17 @@ class OdooSyncService
 
         $effectiveJoinDate = $rawTanggalJoin ?: ($employee?->tanggal_join ?: date('Y-m-d'));
 
+        // Proteksi Email & Password:
+        // Jika data karyawan sudah ada di database lokal dan memiliki email, pertahankan email lokal tersebut.
+        // Jangan timpa email dan jangan ubah password karyawan yang sudah kustom.
+        $effectiveEmail = ($employee && !empty($employee->email)) ? $employee->email : $email;
+
         $isNew = false;
         $dataToSave = [
             'nik'           => $finalNik,
             'nip'           => $nip,
             'nama_karyawan' => $nama,
-            'email'         => $email,
+            'email'         => $effectiveEmail,
             'telepon'       => $telepon,
             'tanggal_join'  => $effectiveJoinDate,
             'jabatan'       => $jabatan ?: ($employee?->jabatan ?: 'Staff'),
@@ -975,7 +985,7 @@ class OdooSyncService
                 'status'         => $status,
                 'is_active'      => ($status === 'Aktiv'),
                 'departure_date' => $depDate,
-                'email'          => $email,
+                'email'          => $effectiveEmail ?: $email,
                 'telepon'        => $telepon,
                 'tanggal_join'   => $tanggalJoin ?: $effectiveJoinDate,
             ],
