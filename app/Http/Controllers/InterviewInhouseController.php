@@ -12,6 +12,7 @@ use App\Models\InhouseApproval;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class InterviewInhouseController extends Controller
 {
@@ -337,6 +338,41 @@ class InterviewInhouseController extends Controller
             }
         }
 
+        // Sinkronisasi data pengalaman dari tb_pengalaman jika work_experiences masih kosong
+        if ($candidate->workExperiences->isEmpty()) {
+            $rawExps = DB::table('tb_pengalaman')
+                ->where('id_kandidat', $candidate->id)
+                ->orWhere(function ($q) use ($candidate) {
+                    if (!empty($candidate->nik)) {
+                        $q->where('nomor_ktp', $candidate->nik);
+                    }
+                })
+                ->get();
+            if ($rawExps->isNotEmpty()) {
+                foreach ($rawExps as $r) {
+                    WorkExperience::create([
+                        'candidate_id' => $candidate->id,
+                        'company_name' => $r->nama_perusahaan ?? 'Perusahaan Sebelumnya',
+                        'position' => $r->jabatan ?? ($candidate->applied_job ?? 'Karyawan'),
+                        'company_phone' => $r->telp_perusahaan ?? '-',
+                        'reason_for_leaving' => $r->alasan_keluar ?? '-',
+                        'start_date' => $r->tgl_masuk ?? null,
+                        'end_date' => $r->tgl_keluar ?? null,
+                        'supervisor_name' => $r->spv ?? '-',
+                        'performance_notes' => $r->performa ?? 'Baik',
+                        'discipline_notes' => $r->disiplin ?? 'Tepat Waktu',
+                        'responsibility_notes' => $r->tanggungjawab ?? 'Bertanggung Jawab',
+                        'strengths' => $r->streng ?? '',
+                        'weaknesses' => $r->week ?? '',
+                        'check_date' => $r->tanggal ?? null,
+                        'proof_attachment_path' => $r->file_cek ?? null,
+                    ]);
+                }
+                $candidate->unsetRelation('workExperiences');
+                $candidate->load('workExperiences');
+            }
+        }
+
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
         $areas = [
             'JAKARTA', 'SURABAYA', 'BANDUNG', 'SEMARANG', 'MEDAN', 
@@ -366,6 +402,40 @@ class InterviewInhouseController extends Controller
             ->get();
         $userPrinsiples = InterviewController::getUserPrinsipleOptions($candidate);
 
+        // Resolve Interviewer / Recruiter details and signature
+        $asDetails = InterviewController::resolveCandidateAsDetails($candidate, $user);
+        $candidateAsUser = $asDetails['user'] ?? null;
+        $candidateAsName = $asDetails['name'] ?? ($candidate->user_display_name ?: 'User AS');
+        $candidateAsSigUrl = null;
+        if ($candidateAsUser && !empty($candidateAsUser->signature_path)) {
+            $candidateAsSigUrl = $candidateAsUser->getSignatureBase64();
+        }
+
+        $assess = $candidate->interviewAssessment;
+        $assessSigUrl = null;
+        $assessSigPath = $assess?->interviewer_signature_path;
+        if (!empty($assessSigPath)) {
+            if (str_starts_with($assessSigPath, 'data:image')) {
+                $assessSigUrl = $assessSigPath;
+            } elseif (Storage::disk('public')->exists($assessSigPath)) {
+                $assessSigUrl = 'data:image/png;base64,' . base64_encode(Storage::disk('public')->get($assessSigPath));
+            } elseif (file_exists(public_path($assessSigPath))) {
+                $assessSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(public_path($assessSigPath)));
+            } elseif (file_exists(storage_path('app/public/' . $assessSigPath))) {
+                $assessSigUrl = 'data:image/png;base64,' . base64_encode(file_get_contents(storage_path('app/public/' . $assessSigPath)));
+            }
+        }
+
+        $initialInterviewerSig = $assessSigUrl ?: $candidateAsSigUrl;
+        if (!$initialInterviewerSig && !empty($candidate->signature_path)) {
+            $candSig = $candidate->signature_path;
+            if (file_exists(public_path('lampiran/' . $candSig))) {
+                $initialInterviewerSig = asset('lampiran/' . $candSig);
+            } elseif (file_exists(public_path('storage/' . $candSig))) {
+                $initialInterviewerSig = asset('storage/' . $candSig);
+            }
+        }
+
         return view('interviewinhouse.show', array_merge([
             'candidate' => $candidate,
             'user' => $user,
@@ -378,6 +448,9 @@ class InterviewInhouseController extends Controller
             'isHrd' => $isHrd,
             'isHead' => $isHead,
             'isInhouseCandidate' => true,
+            'asDetails' => $asDetails,
+            'candidateAsName' => $candidateAsName,
+            'initialInterviewerSig' => $initialInterviewerSig,
         ], $evalData));
     }
 

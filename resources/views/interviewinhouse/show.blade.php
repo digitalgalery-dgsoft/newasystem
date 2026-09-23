@@ -331,38 +331,59 @@
         <div x-show="activeTab === 'interview'" class="space-y-6">
             @php
                 $assess = $candidate->interviewAssessment;
-                $asDetails = \App\Http\Controllers\InterviewController::resolveCandidateAsDetails($candidate, $user);
-                $candidateAsName = $asDetails['name'] ?? 'User AS';
-                $assessSigPath = $assess?->interviewer_signature_path;
             @endphp
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
-                <!-- Matrix Assessment Table -->
+                <!-- Left: 4 Pillars Radio Table (Styled Modern Matrix) -->
                 <div class="lg:col-span-8 space-y-5">
-                    <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                    
+                    <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                         <table class="w-full text-xs text-left border-collapse">
                             <thead>
                                 <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider text-[11px]">
                                     <th class="py-3 px-4 w-40 font-bold">Aspek Penilaian</th>
-                                    <th class="py-3 px-3 text-center font-bold">Hasil Penilaian Rekrutor / AS</th>
+                                    <th class="py-3 px-3 text-center font-bold">Sangat Baik</th>
+                                    <th class="py-3 px-3 text-center font-bold">Baik</th>
+                                    <th class="py-3 px-3 text-center font-bold">Cukup</th>
+                                    <th class="py-3 px-3 text-center font-bold">Kurang</th>
                                 </tr>
                             </thead>
                             <tbody class="divide-y divide-slate-100">
                                 @php
                                     $pillars = [
-                                        ['name' => 'kemauan_kerja', 'label' => 'Kemauan Kerja', 'val' => $assess?->work_motivation ?? 'Cukup'],
-                                        ['name' => 'penampilan', 'label' => 'Penampilan', 'val' => $assess?->appearance ?? 'Cukup'],
-                                        ['name' => 'attitude', 'label' => 'Attitude', 'val' => $assess?->attitude ?? 'Cukup'],
-                                        ['name' => 'daya_tangkap', 'label' => 'Daya Tangkap', 'val' => $assess?->comprehension ?? 'Cukup'],
+                                        ['name' => 'kemauan_kerja', 'label' => 'Kemauan Kerja', 'val' => $assess?->work_motivation ?? 3],
+                                        ['name' => 'penampilan', 'label' => 'Penampilan', 'val' => $assess?->appearance ?? 3],
+                                        ['name' => 'attitude', 'label' => 'Attitude', 'val' => $assess?->attitude ?? 3],
+                                        ['name' => 'daya_tangkap', 'label' => 'Daya Tangkap', 'val' => $assess?->comprehension ?? 3],
                                     ];
                                 @endphp
+
                                 @foreach($pillars as $p)
                                 <tr class="hover:bg-slate-50/70 transition-colors">
                                     <td class="py-3.5 px-4 font-bold text-slate-800 text-xs">{{ $p['label'] }}</td>
                                     <td class="py-3.5 px-3 text-center">
-                                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-primary-50 text-primary-700 border border-primary-200">
-                                            {{ $p['val'] }}
-                                        </span>
+                                        <label class="inline-flex items-center gap-1.5 cursor-default">
+                                            <input type="radio" disabled {{ ($p['val'] == 5 || $p['val'] === 'Sangat Baik') ? 'checked' : '' }} class="w-4 h-4 text-primary-600 border-slate-300">
+                                            <span class="{{ ($p['val'] == 5 || $p['val'] === 'Sangat Baik') ? 'text-primary-700 font-bold' : 'text-slate-500' }}">Sangat Baik</span>
+                                        </label>
+                                    </td>
+                                    <td class="py-3.5 px-3 text-center">
+                                        <label class="inline-flex items-center gap-1.5 cursor-default">
+                                            <input type="radio" disabled {{ ($p['val'] == 4 || $p['val'] === 'Baik') ? 'checked' : '' }} class="w-4 h-4 text-primary-600 border-slate-300">
+                                            <span class="{{ ($p['val'] == 4 || $p['val'] === 'Baik') ? 'text-primary-700 font-bold' : 'text-slate-500' }}">Baik</span>
+                                        </label>
+                                    </td>
+                                    <td class="py-3.5 px-3 text-center">
+                                        <label class="inline-flex items-center gap-1.5 cursor-default">
+                                            <input type="radio" disabled {{ ($p['val'] == 3 || $p['val'] == 2 || $p['val'] === 'Cukup' || empty($p['val'])) ? 'checked' : '' }} class="w-4 h-4 text-primary-600 border-slate-300">
+                                            <span class="{{ ($p['val'] == 3 || $p['val'] == 2 || $p['val'] === 'Cukup' || empty($p['val'])) ? 'text-primary-700 font-bold' : 'text-slate-500' }}">Cukup</span>
+                                        </label>
+                                    </td>
+                                    <td class="py-3.5 px-3 text-center">
+                                        <label class="inline-flex items-center gap-1.5 cursor-default">
+                                            <input type="radio" disabled {{ ($p['val'] == 1 || $p['val'] === 'Kurang') ? 'checked' : '' }} class="w-4 h-4 text-primary-600 border-slate-300">
+                                            <span class="{{ ($p['val'] == 1 || $p['val'] === 'Kurang') ? 'text-rose-600 font-bold' : 'text-slate-500' }}">Kurang</span>
+                                        </label>
                                     </td>
                                 </tr>
                                 @endforeach
@@ -371,36 +392,48 @@
                     </div>
 
                     <!-- Catatan Interview -->
-                    <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-                        <label class="block text-xs font-bold text-slate-700">Catatan Lain-lain dari Rekrutor:</label>
-                        <p class="text-xs text-slate-800 leading-relaxed italic">
-                            "{{ $assess?->other_notes ?? 'Tidak ada catatan wawancara khusus.' }}"
-                        </p>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Catatan Lain-lain dari Rekrutor:</label>
+                        <div class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3.5 text-xs text-slate-800 font-medium leading-relaxed italic">
+                            "{{ $assess?->other_notes ?: 'Tidak ada catatan wawancara khusus.' }}"
+                        </div>
                     </div>
 
                     <!-- Tanggal Interview -->
-                    <div class="text-xs text-slate-600">
-                        <span class="font-medium text-slate-400">Tanggal Wawancara:</span>
-                        <strong class="text-slate-800 ml-1">{{ $assess?->interview_date ? \Carbon\Carbon::parse($assess->interview_date)->format('d F Y') : '-' }}</strong>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Tanggal Wawancara:</label>
+                        <div class="relative max-w-xs">
+                            <span class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800">
+                                <i class="fa-regular fa-calendar-days text-primary"></i>
+                                <span>{{ $assess?->interview_date ? \Carbon\Carbon::parse($assess->interview_date)->format('d F Y') : '-' }}</span>
+                            </span>
+                        </div>
                     </div>
+
                 </div>
 
-                <!-- Right: Tanda Tangan Interviewer / AS -->
+                <!-- Right: Tanda Tangan Pewawancara (AS / Rekrutor) -->
                 <div class="lg:col-span-4 space-y-3">
-                    <label class="block text-xs font-bold text-slate-800">Tanda Tangan Pewawancara (AS / Rekrutor)</label>
-                    <span class="text-[10px] text-slate-500 font-medium block">Pewawancara: <b class="text-slate-700">{{ $candidateAsName }}</b></span>
-                    
-                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-2 bg-slate-50 flex items-center justify-center min-h-[160px]">
-                        @if(!empty($assessSigPath))
-                            @php
-                                $asSigSrc = $assessSigPath;
-                                if (!str_starts_with($asSigSrc, 'data:image') && !str_starts_with($asSigSrc, 'http')) {
-                                    $asSigSrc = asset($asSigSrc);
-                                }
-                            @endphp
-                            <img src="{{ $asSigSrc }}" alt="TTD Pewawancara" class="max-h-32 object-contain" onerror="this.src='/lampiran/{{ basename($assessSigPath) }}';">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-800">Tanda Tangan Pewawancara</label>
+                            <span class="text-[10px] text-slate-500 font-medium">User AS / Rekrutor: <b class="text-slate-700">{{ $candidateAsName }}</b></span>
+                        </div>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold {{ $initialInterviewerSig ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-slate-100 text-slate-500' }}">
+                            <i class="fa-solid {{ $initialInterviewerSig ? 'fa-circle-check text-emerald-600' : 'fa-pen-nib text-slate-400' }}"></i>
+                            <span>{{ $initialInterviewerSig ? 'TTD Terverifikasi' : 'Belum Ada TTD' }}</span>
+                        </span>
+                    </div>
+
+                    <div class="border-2 border-dashed border-slate-200 rounded-2xl p-4 bg-slate-50 flex items-center justify-center min-h-[180px]">
+                        @if(!empty($initialInterviewerSig))
+                            <img src="{{ $initialInterviewerSig }}" alt="TTD Pewawancara" class="max-h-32 object-contain mx-auto" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
+                            <span class="text-xs text-slate-400 italic hidden">Format TTD tidak dapat dimuat</span>
                         @else
-                            <span class="text-xs text-slate-400 italic">Belum dibubuhi tanda tangan pewawancara</span>
+                            <div class="text-center text-slate-400 space-y-1">
+                                <i class="fa-solid fa-signature text-2xl text-slate-300"></i>
+                                <span class="text-xs italic block">Belum dibubuhi tanda tangan pewawancara</span>
+                            </div>
                         @endif
                     </div>
                 </div>
@@ -412,157 +445,387 @@
         <!-- TAB 2: REFERENSI CEK -->
         <!-- ============================================================= -->
         <div x-show="activeTab === 'refcek'" class="space-y-6">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-phone-volume text-primary"></i>
-                <span>Data Pengalaman Kerja & Referensi Cek</span>
-            </h3>
+            @php
+                $firstExp = $candidate->workExperiences->first();
+            @endphp
 
-            <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                
+                <!-- Left Column (Perusahaan, Tanggal, SPV, Performa, Disiplin, Tanggung Jawab, Problem, Keunggulan, Kelemahan) -->
+                <div class="lg:col-span-7 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Perusahaan Sebelumnya</label>
+                        <select name="company_id" id="companySelect" onchange="handleCompanySelect(this.value)" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 font-semibold focus:ring-4 focus:ring-primary-100 focus:border-primary-600 outline-none shadow-xs">
+                            @if($candidate->workExperiences->count() > 0)
+                                @foreach($candidate->workExperiences as $w)
+                                    <option value="{{ $w->id }}" {{ $loop->first ? 'selected' : '' }}>
+                                        {{ $w->company_name }} @if(!empty($w->position)) ({{ $w->position }}) @endif
+                                    </option>
+                                @endforeach
+                            @else
+                                <option value="" selected disabled>Belum ada riwayat pengalaman kerja</option>
+                            @endif
+                        </select>
+                        <p class="text-[10px] text-slate-400 mt-1">Pilih dari data riwayat pekerjaan yang diinputkan dibagian Pengalaman Kerja kandidat</p>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Tanggal Cek Referensi</label>
+                        <input type="date" readonly id="refcek_date" value="{{ $firstExp?->check_date ? \Carbon\Carbon::parse($firstExp->check_date)->format('Y-m-d') : date('Y-m-d') }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Nama SPV</label>
+                        <input type="text" readonly id="refcek_spv" value="{{ $firstExp?->supervisor_name ?? '-' }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none font-medium">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Performa</label>
+                        <textarea readonly id="refcek_performance" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none">{{ $firstExp?->performance_notes ?? 'Baik' }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Disiplin</label>
+                        <textarea readonly id="refcek_discipline" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none">{{ $firstExp?->discipline_notes ?? 'Tepat Waktu' }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Tanggung Jawab</label>
+                        <textarea readonly id="refcek_responsibility" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none">{{ $firstExp?->responsibility_notes ?? 'Bertanggung Jawab' }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Problem / Masalah</label>
+                        <textarea readonly id="refcek_problem" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none">-</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Keunggulan</label>
+                        <textarea readonly id="refcek_strengths" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none">{{ $firstExp?->strengths ?? '-' }}</textarea>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Kelemahan</label>
+                        <textarea readonly id="refcek_weaknesses" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none">{{ $firstExp?->weaknesses ?? '-' }}</textarea>
+                    </div>
+                </div>
+
+                <!-- Right Column (Telp Perusahaan, Tgl Masuk, Tgl Keluar, Alasan Keluar, Proof Box) -->
+                <div class="lg:col-span-5 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Telp Perusahaan</label>
+                        <input type="text" readonly id="refcek_phone" value="{{ $firstExp?->company_phone ?? '-' }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Tgl. Masuk</label>
+                        <input type="text" readonly id="refcek_start_date" value="{{ $firstExp?->start_date ? \Carbon\Carbon::parse($firstExp->start_date)->format('Y-m-d') : '-' }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Tgl. Keluar</label>
+                        <input type="text" readonly id="refcek_end_date" value="{{ $firstExp?->end_date ? \Carbon\Carbon::parse($firstExp->end_date)->format('Y-m-d') : '-' }}" class="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:outline-none">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Alasan Keluar</label>
+                        <textarea readonly id="refcek_reason" rows="2" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:outline-none">{{ $firstExp?->reason_for_leaving ?? '-' }}</textarea>
+                    </div>
+
+                    <!-- Current Uploaded Proof Preview (Refcek) -->
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">Lampiran Bukti Referensi Cek Tersimpan :</label>
+                        <div id="refcek_current_proof" class="p-3 bg-white rounded-2xl border border-slate-200 shadow-2xs">
+                            <div id="refcek_has_proof" style="{{ ($firstExp && $firstExp->proof_url) ? '' : 'display:none;' }}" class="flex items-center justify-between gap-3">
+                                <div class="flex items-center gap-2.5 min-w-0">
+                                    <div class="w-12 h-12 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex-shrink-0 cursor-pointer shadow-xs group" onclick="previewCurrentRefcek()" title="Klik untuk preview lampiran">
+                                        <img id="refcek_proof_thumb" src="{{ $firstExp?->proof_url ?? '' }}" alt="Bukti Refcek" class="w-full h-full object-cover transition-transform group-hover:scale-105" onerror="this.onerror=null; this.src='{{ $firstExp?->proof_legacy_url ?? '' }}';">
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="text-xs font-bold text-slate-800 truncate" id="refcek_proof_filename">{{ $firstExp ? basename($firstExp->proof_attachment_path) : '' }}</div>
+                                        <span class="text-[10px] text-emerald-600 font-semibold block">Bukti Verifikasi Terlampir</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-shrink-0">
+                                    <button type="button" onclick="previewCurrentRefcek()" class="px-3 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-bold transition-colors inline-flex items-center gap-1 cursor-pointer">
+                                        <i class="fa-solid fa-eye text-xs"></i> Preview
+                                    </button>
+                                    <a href="{{ $firstExp?->proof_url ?? '#' }}" id="refcek_proof_link" target="_blank" class="px-3 py-1.5 bg-white border border-slate-300 rounded-xl text-xs font-bold text-primary hover:bg-slate-100 transition-colors inline-flex items-center gap-1 shadow-2xs">
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i> Buka
+                                    </a>
+                                </div>
+                            </div>
+                            <div id="refcek_no_proof" style="{{ ($firstExp && $firstExp->proof_url) ? 'display:none;' : '' }}" class="text-xs text-slate-400 italic text-center py-2">
+                                <i class="fa-regular fa-image text-slate-300 mr-1"></i> Belum ada lampiran screenshot verifikasi untuk perusahaan ini
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- Tabel Riwayat Semua Pengalaman Kerja -->
+            @if($candidate->workExperiences->count() > 0)
+                <div class="mt-6 border-t border-slate-100 pt-6 space-y-3">
+                    <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Daftar Semua Riwayat Pengalaman Kerja Kandidat:</h4>
+                    <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+                        <table class="w-full text-xs text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
+                                    <th class="py-3 px-4">Nama Perusahaan</th>
+                                    <th class="py-3 px-3">Jabatan</th>
+                                    <th class="py-3 px-3">Periode</th>
+                                    <th class="py-3 px-3">No. Telp Perusahaan</th>
+                                    <th class="py-3 px-3">Nama SPV</th>
+                                    <th class="py-3 px-3 text-center">Bukti Cek</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                @foreach($candidate->workExperiences as $exp)
+                                    <tr class="hover:bg-slate-50/70 transition-colors">
+                                        <td class="py-3 px-4 font-bold text-slate-900">{{ $exp->company_name }}</td>
+                                        <td class="py-3 px-3 text-slate-700">{{ $exp->position ?? '-' }}</td>
+                                        <td class="py-3 px-3 text-slate-500 whitespace-nowrap">{{ $exp->period_label }}</td>
+                                        <td class="py-3 px-3 text-slate-600">{{ $exp->company_phone ?? '-' }}</td>
+                                        <td class="py-3 px-3 text-slate-700">{{ $exp->supervisor_name ?? '-' }}</td>
+                                        <td class="py-3 px-3 text-center">
+                                            @if($exp->proof_url)
+                                                <button type="button" onclick="openCandidateMedia('image', '{{ $exp->proof_url }}', 'Bukti Referensi Cek: {{ addslashes($exp->company_name) }}')" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer">
+                                                    <i class="fa-solid fa-image mr-1"></i> Bukti
+                                                </button>
+                                            @else
+                                                <span class="text-slate-400 text-[11px] italic">-</span>
+                                            @endif
+                                        </td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            @endif
+        </div>
+
+        <!-- ============================================================= -->
+        <!-- TAB 3: TES KOMPUTER -->
+        <!-- ============================================================= -->
+        <div x-show="activeTab === 'kompt'" class="space-y-4">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
+                    <i class="fa-solid fa-stopwatch text-slate-500"></i>
+                    <span>Waktu Pengerjaan : <strong>{{ $komptDuration ?? '00:03:02' }}</strong></span>
+                </div>
+                <span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-md">
+                    Skor: {{ $komptSummaryLabel ?? 'Cukup (75%)' }}
+                </span>
+            </div>
+
+            @if(!$hasKompt)
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 flex items-center gap-3 text-xs text-amber-800">
+                <i class="fa-solid fa-circle-info text-amber-500 text-base flex-shrink-0"></i>
+                <span>Data penilaian awal tes komputer belum tersimpan / belum dinilai.</span>
+            </div>
+            @endif
+
+            <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
                 <table class="w-full text-xs text-left border-collapse">
                     <thead>
-                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[11px]">
-                            <th class="py-3 px-4">Nama Perusahaan</th>
-                            <th class="py-3 px-3">Jabatan</th>
-                            <th class="py-3 px-3">Periode</th>
-                            <th class="py-3 px-3">Kontak Referensi</th>
-                            <th class="py-3 px-4">Catatan Referensi Cek</th>
-                            <th class="py-3 px-3 text-center">Bukti SS</th>
+                        <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider text-[11px]">
+                            <th class="py-3 px-4 font-bold">Aspek Keahlian Komputer</th>
+                            <th class="py-3 px-3 text-center font-bold w-32">Baik</th>
+                            <th class="py-3 px-3 text-center font-bold w-32">Cukup</th>
+                            <th class="py-3 px-3 text-center font-bold w-32">Kurang</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @forelse($candidate->workExperiences as $exp)
-                            <tr class="hover:bg-slate-50/70 transition-colors">
-                                <td class="py-3.5 px-4 font-bold text-slate-900">{{ $exp->company_name }}</td>
-                                <td class="py-3.5 px-3 text-slate-700">{{ $exp->position ?? '-' }}</td>
-                                <td class="py-3.5 px-3 text-slate-500 whitespace-nowrap">{{ $exp->period_label }}</td>
-                                <td class="py-3.5 px-3 text-slate-600">
-                                    {{ $exp->contact_person ? "{$exp->contact_person} ({$exp->contact_number})" : '-' }}
-                                </td>
-                                <td class="py-3.5 px-4 text-slate-700 italic">
-                                    {{ $exp->notes ?: 'Tidak ada catatan referensi cek.' }}
-                                </td>
-                                <td class="py-3.5 px-3 text-center">
-                                    @if($exp->proof_url)
-                                        <button type="button" onclick="openCandidateMedia('image', '{{ $exp->proof_url }}', 'Bukti Referensi Cek: {{ addslashes($exp->company_name) }}')" class="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200 hover:bg-emerald-100 transition">
-                                            <i class="fa-solid fa-image mr-1"></i> Bukti
-                                        </button>
-                                    @else
-                                        <span class="text-slate-400 text-[11px] italic">-</span>
-                                    @endif
-                                </td>
-                            </tr>
-                        @empty
-                            <tr>
-                                <td colspan="6" class="py-8 text-center text-xs text-slate-400 italic bg-slate-50/50">
-                                    Belum ada data pengalaman kerja / referensi cek yang tercatat.
-                                </td>
-                            </tr>
-                        @endforelse
+                        @foreach($compSkills as $k => $label)
+                        @php
+                            $val = $savedComp[$k] ?? 'Cukup';
+                        @endphp
+                        <tr class="hover:bg-slate-50/70 transition-colors">
+                            <td class="py-3 px-4 font-bold text-slate-800 uppercase tracking-wider text-xs">{{ $label }}</td>
+                            <td class="py-3 px-3 text-center">
+                                <label class="inline-flex items-center gap-2 cursor-default">
+                                    <input type="radio" disabled {{ strtolower($val) === 'baik' ? 'checked' : '' }} class="w-4 h-4 text-primary-600 border-slate-300">
+                                    <span class="{{ strtolower($val) === 'baik' ? 'text-primary-700 font-bold' : 'text-slate-500' }}">Baik</span>
+                                </label>
+                            </td>
+                            <td class="py-3 px-3 text-center">
+                                <label class="inline-flex items-center gap-2 cursor-default">
+                                    <input type="radio" disabled {{ (strtolower($val) === 'cukup' || empty($val)) ? 'checked' : '' }} class="w-4 h-4 text-primary-600 border-slate-300">
+                                    <span class="{{ (strtolower($val) === 'cukup' || empty($val)) ? 'text-slate-900 font-bold' : 'text-slate-500' }}">Cukup</span>
+                                </label>
+                            </td>
+                            <td class="py-3 px-3 text-center">
+                                <label class="inline-flex items-center gap-2 cursor-default">
+                                    <input type="radio" disabled {{ strtolower($val) === 'kurang' ? 'checked' : '' }} class="w-4 h-4 text-primary-600 border-slate-300">
+                                    <span class="{{ strtolower($val) === 'kurang' ? 'text-rose-600 font-bold' : 'text-slate-500' }}">Kurang</span>
+                                </label>
+                            </td>
+                        </tr>
+                        @endforeach
                     </tbody>
                 </table>
             </div>
         </div>
 
         <!-- ============================================================= -->
-        <!-- TAB 3: TES KOMPUTER -->
-        <!-- ============================================================= -->
-        <div x-show="activeTab === 'kompt'" class="space-y-6">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-laptop-code text-primary"></i>
-                <span>Hasil Tes Komputer</span>
-            </h3>
-
-            @php $comp = $candidate->computer_test; @endphp
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">MS Word</span>
-                    <div class="text-lg font-black text-slate-800">{{ $comp['word'] ?? '-' }}</div>
-                </div>
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">MS Excel</span>
-                    <div class="text-lg font-black text-slate-800">{{ $comp['excel'] ?? '-' }}</div>
-                </div>
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">MS PowerPoint</span>
-                    <div class="text-lg font-black text-slate-800">{{ $comp['ppt'] ?? '-' }}</div>
-                </div>
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">Internet & Email</span>
-                    <div class="text-lg font-black text-slate-800">{{ $comp['internet'] ?? '-' }}</div>
-                </div>
-            </div>
-
-            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between">
-                <div>
-                    <span class="text-xs font-bold text-slate-700 block">Total Skor Tes Komputer:</span>
-                    <span class="text-sm font-black text-primary">{{ $comp['score'] ?? '-' }}</span>
-                </div>
-                @if(!empty($comp['proof_url']))
-                    <button type="button" onclick="openCandidateMedia('image', '{{ $comp['proof_url'] }}', 'Bukti Tes Komputer: {{ addslashes($candidate->full_name) }}')" class="px-3.5 py-2 rounded-xl bg-white border border-slate-200 shadow-sm text-xs font-bold text-slate-700 hover:bg-slate-50 transition flex items-center gap-2">
-                        <i class="fa-solid fa-file-image text-primary"></i>
-                        <span>Lihat Bukti Tes</span>
-                    </button>
-                @endif
-            </div>
-        </div>
-
-        <!-- ============================================================= -->
         <!-- TAB 4: TES KEPRIBADIAN -->
         <!-- ============================================================= -->
-        <div x-show="activeTab === 'kepribadian'" class="space-y-6">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-brain text-primary"></i>
-                <span>Evaluasi Tes Kepribadian</span>
-            </h3>
+        <div x-show="activeTab === 'kepribadian'" class="space-y-5">
+            @if($hasPsikotes)
+            <!-- Header Bar with Timer & 4 Answer Badges -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-slate-100">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
+                    <i class="fa-solid fa-clock text-slate-500"></i>
+                    <span>Waktu Pengerjaan : <strong>{{ $psikotesDuration }}</strong></span>
+                </div>
 
-            @php $personality = $candidate->personality_test; @endphp
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">Tipe Kepribadian (DISC)</span>
-                    <div class="text-base font-extrabold text-primary">{{ $personality['disc_type'] ?? ($personality['type'] ?? 'Belum Dinilai') }}</div>
-                </div>
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">Gaya Komunikasi</span>
-                    <div class="text-base font-extrabold text-slate-800">{{ $personality['communication_style'] ?? '-' }}</div>
-                </div>
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">Respon Tekanan Kerja</span>
-                    <div class="text-base font-extrabold text-slate-800">{{ $personality['stress_handling'] ?? '-' }}</div>
+                <div class="flex items-center flex-wrap gap-2 text-xs font-bold">
+                    <span class="px-3 py-1 rounded-lg bg-rose-50 text-rose-700 border border-rose-200">Jawaban A : {{ $psikotesCounts['A'] ?? 0 }}</span>
+                    <span class="px-3 py-1 rounded-lg bg-amber-50 text-amber-700 border border-amber-200">Jawaban B : {{ $psikotesCounts['B'] ?? 0 }}</span>
+                    <span class="px-3 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">Jawaban C : {{ $psikotesCounts['C'] ?? 0 }}</span>
+                    <span class="px-3 py-1 rounded-lg bg-blue-50 text-blue-700 border border-blue-200">Jawaban D : {{ $psikotesCounts['D'] ?? 0 }}</span>
                 </div>
             </div>
 
-            <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
-                <label class="block text-xs font-bold text-slate-700">Analisa Kepribadian & Rekomendasi Karakter:</label>
-                <p class="text-xs text-slate-700 leading-relaxed italic">
-                    {{ $personality['summary'] ?? ($personality['notes'] ?? 'Belum ada catatan deskriptif hasil tes kepribadian.') }}
+            <!-- Kesimpulan Box -->
+            <div class="bg-gradient-to-r from-amber-50/80 to-amber-100/50 border border-amber-200/80 rounded-2xl p-5 text-xs text-slate-800 leading-relaxed shadow-xs flex items-start gap-3.5">
+                <div class="w-8 h-8 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 text-sm shadow-sm">
+                    <i class="fa-solid fa-lightbulb"></i>
+                </div>
+                <div>
+                    <h4 class="font-bold text-amber-900 text-sm mb-1">Kesimpulan Karakter:</h4>
+                    <p class="text-slate-700 leading-relaxed">
+                        {{ $dominantDisc['summary'] }}
+                    </p>
+                </div>
+            </div>
+
+            <!-- 4-Column Table of Questions (Exact layout from interview.show) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                @for($col = 0; $col < 4; $col++)
+                <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs bg-white">
+                    <table class="w-full text-xs text-left">
+                        <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px]">
+                            <tr>
+                                <th class="py-2.5 px-2.5 w-8 text-center">No.</th>
+                                <th class="py-2.5 px-2 w-14 text-center">Jawaban</th>
+                                <th class="py-2.5 px-2.5">Jawaban yang Dipilih</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            @for($i = ($col * 10) + 1; $i <= ($col * 10) + 10; $i++)
+                            @php
+                                $item = $psikotesItems[$i] ?? ['ans' => '-', 'text' => '-'];
+                            @endphp
+                            <tr class="hover:bg-slate-50/70 transition-colors">
+                                <td class="py-2 px-2.5 text-center font-bold text-slate-400">{{ $i }}</td>
+                                <td class="py-2 px-2 text-center font-mono font-bold text-primary-700 bg-slate-50/50">{{ $item['ans'] }}</td>
+                                <td class="py-2 px-2.5 text-slate-700 leading-tight">{{ $item['text'] }}</td>
+                            </tr>
+                            @endfor
+                        </tbody>
+                    </table>
+                </div>
+                @endfor
+            </div>
+            @else
+            <div class="bg-slate-50 border border-slate-200 rounded-2xl p-8 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-brain"></i>
+                </div>
+                <h4 class="text-sm font-bold text-slate-800">Kandidat Belum Mengikuti Tes Kepribadian</h4>
+                <p class="text-xs text-slate-500 max-w-md mx-auto">
+                    Kandidat belum menyelesaikan Tes Kepribadian (DISC). Hasil tes dan rincian 40 butir jawaban akan otomatis tersinkronisasi di sini setelah kandidat menyelesaikan tes online.
                 </p>
             </div>
+            @endif
         </div>
 
         <!-- ============================================================= -->
         <!-- TAB 5: TES MATEMATIKA -->
         <!-- ============================================================= -->
-        <div x-show="activeTab === 'matematika'" class="space-y-6">
-            <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                <i class="fa-solid fa-calculator text-primary"></i>
-                <span>Hasil Tes Matematika Dasar</span>
-            </h3>
-
-            @php $math = $candidate->math_test; @endphp
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">Jawaban Benar</span>
-                    <div class="text-xl font-black text-emerald-600">{{ $math['correct'] ?? '-' }}</div>
-                </div>
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">Jawaban Salah</span>
-                    <div class="text-xl font-black text-rose-600">{{ $math['wrong'] ?? '-' }}</div>
-                </div>
-                <div class="p-4 rounded-xl border border-slate-200 bg-slate-50 text-center space-y-1">
-                    <span class="text-[11px] font-bold text-slate-500 uppercase">Skor Akhir Matematika</span>
-                    <div class="text-xl font-black text-primary">{{ $math['score'] ?? '-' }}</div>
+        <div x-show="activeTab === 'matematika'" class="space-y-5">
+            <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-3">
+                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
+                        <i class="fa-solid fa-stopwatch text-slate-500"></i>
+                        <span>Waktu Pengerjaan : <strong>{{ $mathDuration }}</strong></span>
+                    </div>
+                    <span class="text-xs font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+                        Tes Ke - {{ $mathTesKe }}
+                    </span>
                 </div>
             </div>
+
+            @if($hasMath && count($mathItems) > 0)
+            <!-- Table of Math Questions -->
+            <div class="border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
+                <table class="w-full text-xs text-left">
+                    <thead class="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px]">
+                        <tr>
+                            <th class="py-2.5 px-3 w-10 text-center">#</th>
+                            <th class="py-2.5 px-3">Pertanyaan</th>
+                            <th class="py-2.5 px-3 w-36">Jawaban Kandidat</th>
+                            <th class="py-2.5 px-3 w-36">Jawaban Benar</th>
+                            <th class="py-2.5 px-3 w-16 text-center">Hasil</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @foreach($mathItems as $idx => $m)
+                        <tr class="hover:bg-slate-50/70 transition-colors">
+                            <td class="py-2.5 px-3 text-center font-bold text-slate-400">{{ $idx }}</td>
+                            <td class="py-2.5 px-3 text-slate-800 leading-snug">{{ $m['q'] }}</td>
+                            <td class="py-2.5 px-3 font-mono font-bold {{ $m['correct'] ? 'text-slate-800' : 'text-rose-600 bg-rose-50/50 rounded px-1.5' }}">{{ $m['cand'] }}</td>
+                            <td class="py-2.5 px-3 font-mono font-bold text-slate-800">{{ $m['key'] }}</td>
+                            <td class="py-2.5 px-3 text-center text-sm font-bold">
+                                @if($m['correct'])
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-700 text-xs">&#10004;</span>
+                                @else
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-700 text-xs">&#10008;</span>
+                                @endif
+                            </td>
+                        </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Score Summary Cards -->
+            <div class="grid grid-cols-3 gap-4 pt-2">
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
+                    <span class="text-[11px] font-semibold text-emerald-700 block">Jawaban Benar</span>
+                    <span class="text-xl font-black text-emerald-900">{{ $mathCorrectCount }}</span>
+                </div>
+                <div class="bg-rose-50 border border-rose-200 rounded-xl p-3 text-center">
+                    <span class="text-[11px] font-semibold text-rose-700 block">Jawaban Salah</span>
+                    <span class="text-xl font-black text-rose-900">{{ $mathWrongCount }}</span>
+                </div>
+                <div class="bg-primary-50 border border-primary-200 rounded-xl p-3 text-center">
+                    <span class="text-[11px] font-semibold text-primary-700 block">Nilai Akhir</span>
+                    <span class="text-xl font-black text-primary-900">{{ $mathGrade }} ({{ $mathScorePercent }}%)</span>
+                </div>
+            </div>
+            @else
+            <div class="bg-amber-50/60 border border-amber-200 rounded-2xl p-8 text-center space-y-3">
+                <div class="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center mx-auto text-xl">
+                    <i class="fa-solid fa-calculator"></i>
+                </div>
+                @if($mathTesKe > 1)
+                    <h4 class="text-sm font-bold text-slate-800">Status Remidi Aktif (Tes Ke - {{ $mathTesKe }})</h4>
+                    <p class="text-xs text-slate-600 max-w-md mx-auto">
+                        Kandidat telah dijadwalkan untuk melakukan <strong>Remidi Tes Matematika (Tes Ke - {{ $mathTesKe }})</strong>. Status tes saat ini belum selesai (silang merah). Nilai dan butir jawaban akan otomatis diperbarui setelah kandidat mengerjakan ulang tes di portal CBT.
+                    </p>
+                @else
+                    <h4 class="text-sm font-bold text-slate-800">Kandidat Belum Mengikuti Tes Matematika</h4>
+                    <p class="text-xs text-slate-500 max-w-md mx-auto">
+                        Kandidat belum menyelesaikan Tes Matematika. Data nilai, rincian benar/salah, dan pembahasan butir soal akan otomatis terisi setelah kandidat menyelesaikan ujian.
+                    </p>
+                @endif
+            </div>
+            @endif
         </div>
 
         <!-- ============================================================= -->
@@ -1104,6 +1367,64 @@
             data.mediaModalOpen = true;
         } else {
             window.open(url, '_blank');
+        }
+    }
+
+    // --- REFERENSI CEK DROPDOWN & PROOF HANDLER ---
+    const candidateWorkExps = @json($candidate->workExperiences);
+    let currentExpProofUrl = '{{ $firstExp?->proof_url ?? "" }}';
+    let currentExpCompanyName = '{{ addslashes($firstExp?->company_name ?? "") }}';
+
+    function handleCompanySelect(val) {
+        const exp = candidateWorkExps.find(e => e.id == val);
+        if (exp) {
+            if (document.getElementById('refcek_spv')) document.getElementById('refcek_spv').value = exp.supervisor_name || '';
+            if (document.getElementById('refcek_phone')) document.getElementById('refcek_phone').value = exp.company_phone || '';
+            if (document.getElementById('refcek_performance')) document.getElementById('refcek_performance').value = exp.performance_notes || exp.performa || 'Baik';
+            if (document.getElementById('refcek_discipline')) document.getElementById('refcek_discipline').value = exp.discipline_notes || exp.disiplin || 'Tepat Waktu';
+            if (document.getElementById('refcek_responsibility')) document.getElementById('refcek_responsibility').value = exp.responsibility_notes || exp.tanggungjawab || 'Bertanggung Jawab';
+            if (document.getElementById('refcek_strengths')) document.getElementById('refcek_strengths').value = exp.strengths || exp.streng || '';
+            if (document.getElementById('refcek_weaknesses')) document.getElementById('refcek_weaknesses').value = exp.weaknesses || exp.week || '';
+            if (document.getElementById('refcek_reason')) document.getElementById('refcek_reason').value = exp.reason_for_leaving || exp.alasan_keluar || '';
+            if (document.getElementById('refcek_start_date')) document.getElementById('refcek_start_date').value = exp.start_date ? exp.start_date.substring(0, 10) : '';
+            if (document.getElementById('refcek_end_date')) document.getElementById('refcek_end_date').value = exp.end_date ? exp.end_date.substring(0, 10) : '';
+            if (document.getElementById('refcek_date')) document.getElementById('refcek_date').value = exp.check_date ? exp.check_date.substring(0, 10) : '{{ date("Y-m-d") }}';
+            updateRefcekProofUI(exp);
+        } else {
+            updateRefcekProofUI(null);
+        }
+    }
+
+    function updateRefcekProofUI(exp) {
+        const hasProofBox = document.getElementById('refcek_has_proof');
+        const noProofBox = document.getElementById('refcek_no_proof');
+        const filenameEl = document.getElementById('refcek_proof_filename');
+        const linkEl = document.getElementById('refcek_proof_link');
+
+        if (exp && exp.proof_url) {
+            currentExpProofUrl = exp.proof_url;
+            currentExpCompanyName = exp.company_name || '';
+            const fname = (exp.proof_attachment_path || '').split('/').pop().split('\\').pop();
+            if (filenameEl) filenameEl.textContent = fname;
+            if (linkEl) linkEl.href = exp.proof_url;
+            const thumbEl = document.getElementById('refcek_proof_thumb');
+            if (thumbEl) {
+                thumbEl.src = exp.proof_url;
+                thumbEl.onerror = () => { thumbEl.src = exp.proof_legacy_url || ''; };
+            }
+            if (hasProofBox) hasProofBox.style.display = 'flex';
+            if (noProofBox) noProofBox.style.display = 'none';
+        } else {
+            currentExpProofUrl = '';
+            currentExpCompanyName = '';
+            if (hasProofBox) hasProofBox.style.display = 'none';
+            if (noProofBox) noProofBox.style.display = 'block';
+        }
+    }
+
+    function previewCurrentRefcek() {
+        if (currentExpProofUrl) {
+            openCandidateMedia('image', currentExpProofUrl, 'Bukti Referensi Cek: ' + currentExpCompanyName);
         }
     }
 
