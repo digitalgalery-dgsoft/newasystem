@@ -153,12 +153,19 @@ class OdooSyncService
                 'limit'  => $limit,
             ]);
 
+            $today = date('Y-m-d');
+
             try {
-                // Hanya ambil employee aktif dari Odoo
+                // Ambil employee aktif dari Odoo (active=True dan departure_date kosong ATAU belum tiba)
                 $records = $this->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
                     $this->db, $uid, $this->apiKey,
                     'hr.employee', 'search_read',
-                    [[['active', '=', true], ['departure_date', '=', false]]],
+                    [[
+                        ['active', '=', true],
+                        '|',
+                        ['departure_date', '=', false],
+                        ['departure_date', '>', $today],
+                    ]],
                     [
                         'fields' => [
                             'id', 'name', 'registration_number', 'identification_id',
@@ -198,11 +205,14 @@ class OdooSyncService
                 $nik = $rawNik ?: ('OD-' . $odooId);
 
                 try {
-                    // Filter 1: Hanya Employee Aktif Saja
+                    // Filter 1: Hanya Employee Aktif Saja (active=true dan belum tiba tanggal departure)
                     $isActive = (bool)($rec['active'] ?? true);
-                    if (!$isActive || !empty($rec['departure_date'])) {
+                    $depDate = !empty($rec['departure_date']) ? (string)$rec['departure_date'] : null;
+                    $hasDeparted = !empty($depDate) && ($depDate <= $today);
+
+                    if (!$isActive || $hasDeparted) {
                         $skipped++;
-                        $log('item_skip', "⏭️ [{$entity->code}] Lewati ID {$odooId} - {$nama}: Resign/Non-Aktif", [
+                        $log('item_skip', "⏭️ [{$entity->code}] Lewati ID {$odooId} - {$nama}: Resign/Non-Aktif (Departure: " . ($depDate ?: 'Inactive') . ")", [
                             'action'    => 'skipped',
                             'reason'    => 'non_active',
                             'odoo_id'   => $odooId,
@@ -606,11 +616,13 @@ class OdooSyncService
                         continue;
                     }
 
+                    $today = date('Y-m-d');
                     $isActive = (bool)($rec['active'] ?? true);
-                    $departureDate = !empty($rec['departure_date']) ? $rec['departure_date'] : null;
+                    $departureDate = !empty($rec['departure_date']) ? (string)$rec['departure_date'] : null;
+                    $hasDeparted = !empty($departureDate) && ($departureDate <= $today);
 
-                    // 1. Check if Resigned
-                    if (!$isActive || !empty($departureDate)) {
+                    // 1. Check if Resigned (Hanya jika non-aktif ATAU tanggal departure sudah tiba/lewat)
+                    if (!$isActive || $hasDeparted) {
                         $localEmp->update([
                             'status'       => 'Resign',
                             'last_sync_at' => now(),
@@ -814,10 +826,17 @@ class OdooSyncService
             ];
         }
 
-        // Prioritaskan record karyawan yang masih aktif (active=true dan departure_date kosong), lalu ID terbesar
-        usort($records, function ($a, $b) {
-            $aActive = ((bool)($a['active'] ?? true)) && empty($a['departure_date']);
-            $bActive = ((bool)($b['active'] ?? true)) && empty($b['departure_date']);
+        // Prioritaskan record karyawan yang masih aktif (active=true dan belum tiba tanggal departure), lalu ID terbesar
+        $today = date('Y-m-d');
+        usort($records, function ($a, $b) use ($today) {
+            $aDep = !empty($a['departure_date']) ? (string)$a['departure_date'] : null;
+            $aHasDeparted = !empty($aDep) && ($aDep <= $today);
+            $aActive = ((bool)($a['active'] ?? true)) && !$aHasDeparted;
+
+            $bDep = !empty($b['departure_date']) ? (string)$b['departure_date'] : null;
+            $bHasDeparted = !empty($bDep) && ($bDep <= $today);
+            $bActive = ((bool)($b['active'] ?? true)) && !$bHasDeparted;
+
             if ($aActive !== $bActive) {
                 return $bActive ? 1 : -1;
             }
@@ -866,7 +885,9 @@ class OdooSyncService
         }
 
         $isActive = (bool)($rec['active'] ?? true);
-        $status = ($isActive && empty($rec['departure_date'])) ? 'Aktiv' : 'Resign';
+        $depDate = !empty($rec['departure_date']) ? (string)$rec['departure_date'] : null;
+        $hasDeparted = !empty($depDate) && ($depDate <= $today);
+        $status = ($isActive && !$hasDeparted) ? 'Aktiv' : 'Resign';
         $tipeKaryawan = Employee::determineTipeKaryawan($principleName);
 
         // Search existing employee in database
@@ -942,20 +963,21 @@ class OdooSyncService
             'employee'  => $employee,
             'data'      => $employee->toArray(),
             'odoo_raw'  => [
-                'id'            => $odooId,
-                'nama'          => $nama,
-                'nik'           => $finalNik,
-                'nip'           => $nip,
-                'jabatan'       => $jabatan,
-                'divisi'        => $divisi,
-                'prinsiple'     => $principleName,
-                'tipe_karyawan' => $tipeKaryawan,
-                'area'          => $area,
-                'status'        => $status,
-                'is_active'     => $isActive,
-                'email'         => $email,
-                'telepon'       => $telepon,
-                'tanggal_join'  => $tanggalJoin ?: $effectiveJoinDate,
+                'id'             => $odooId,
+                'nama'           => $nama,
+                'nik'            => $finalNik,
+                'nip'            => $nip,
+                'jabatan'        => $jabatan,
+                'divisi'         => $divisi,
+                'prinsiple'      => $principleName,
+                'tipe_karyawan'  => $tipeKaryawan,
+                'area'           => $area,
+                'status'         => $status,
+                'is_active'      => ($status === 'Aktiv'),
+                'departure_date' => $depDate,
+                'email'          => $email,
+                'telepon'        => $telepon,
+                'tanggal_join'   => $tanggalJoin ?: $effectiveJoinDate,
             ],
         ];
     }
@@ -1063,12 +1085,20 @@ class OdooSyncService
                     if ($isEmployeeActive) {
                         $bestResult = $res;
                         $bestEntity = $entity;
-                        break; // Prioritaskan entitas dengan status Aktiv
+                        break; // Prioritaskan entitas dengan status Aktiv dan segera selesaikan
                     }
 
                     if ($bestResult === null) {
                         $bestResult = $res;
                         $bestEntity = $entity;
+                    } else {
+                        // Jika ada beberapa entitas dan semua berstatus non-aktif, pilih entitas dengan tanggal paling mutakhir
+                        $currDate = $res['odoo_raw']['departure_date'] ?? ($res['odoo_raw']['tanggal_join'] ?? '');
+                        $bestDate = $bestResult['odoo_raw']['departure_date'] ?? ($bestResult['odoo_raw']['tanggal_join'] ?? '');
+                        if ($currDate >= $bestDate) {
+                            $bestResult = $res;
+                            $bestEntity = $entity;
+                        }
                     }
                 }
             } catch (\Throwable $e) {

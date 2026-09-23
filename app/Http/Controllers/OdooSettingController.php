@@ -362,9 +362,15 @@ class OdooSettingController extends Controller
                             break;
                         }
 
-                        // Jika pencarian ALL dan karyawan berstatus non-aktif/resign, simpan sebagai kandidat dan lanjutkan pencarian entitas lain
+                        // Jika pencarian ALL dan karyawan berstatus non-aktif/resign, utamakan entitas dengan record paling mutakhir
                         if ($bestResult === null) {
                             $bestResult = $candidateResult;
+                        } else {
+                            $currDate = $empData['departure_date'] ?? ($empData['tanggal_join'] ?? '');
+                            $bestDate = $bestResult['data']['departure_date'] ?? ($bestResult['data']['tanggal_join'] ?? '');
+                            if ($currDate >= $bestDate) {
+                                $bestResult = $candidateResult;
+                            }
                         }
                     }
                 } catch (\Throwable $e) {
@@ -692,11 +698,17 @@ class OdooSettingController extends Controller
                                 break;
                             }
 
-                            // Jika berstatus Resign/non-aktif pada pencarian ALL, simpan sebagai fallback kandidat sementara
-                            // dan lanjutkan memeriksa entitas lainnya untuk mencari status aktif di entitas baru
+                            // Jika berstatus Resign/non-aktif pada pencarian ALL, simpan entitas dengan record paling mutakhir
                             if ($bestRes === null) {
                                 $bestRes = $res;
                                 $bestEntity = $entity;
+                            } else {
+                                $currDate = $res['odoo_raw']['departure_date'] ?? ($res['odoo_raw']['tanggal_join'] ?? '');
+                                $bestDate = $bestRes['odoo_raw']['departure_date'] ?? ($bestRes['odoo_raw']['tanggal_join'] ?? '');
+                                if ($currDate >= $bestDate) {
+                                    $bestRes = $res;
+                                    $bestEntity = $entity;
+                                }
                             }
                         }
                     } catch (\Throwable $e) {

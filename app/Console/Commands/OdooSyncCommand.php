@@ -102,6 +102,13 @@ class OdooSyncCommand extends Command
                             $bestResult = $result;
                             $bestEntity = $entity;
                             $this->line("  <fg=yellow>ℹ Ditemukan di {$entity->code} dengan status '{$result['status']}'. Memeriksa entitas lain untuk status aktif...</>");
+                        } else {
+                            $currDate = $result['odoo_raw']['departure_date'] ?? ($result['odoo_raw']['tanggal_join'] ?? '');
+                            $bestDate = $bestResult['odoo_raw']['departure_date'] ?? ($bestResult['odoo_raw']['tanggal_join'] ?? '');
+                            if ($currDate >= $bestDate) {
+                                $bestResult = $result;
+                                $bestEntity = $entity;
+                            }
                         }
                     } else {
                         $this->line("  <fg=yellow>ℹ {$result['message']}</>");

@@ -1094,7 +1094,7 @@ function handleSyncByNik(event) {
                         </div>
                     </div>
                     <div class="p-2.5 bg-white/60 rounded-xl border border-rose-200 text-[11px] text-rose-700">
-                        <strong>Aturan Filter:</strong> Hanya karyawan yang berstatus <em>aktif</em> (field <code>active=True</code> dan tanggal resign/<code>departure_date</code> kosong) yang diizinkan untuk disinkronkan.
+                        <strong>Aturan Filter:</strong> Hanya karyawan yang berstatus <em>aktif</em> (field <code>active=True</code> dan tanggal resign/<code>departure_date</code> kosong atau belum tiba) yang diizinkan untuk disinkronkan.
                     </div>
                 </div>
             `;

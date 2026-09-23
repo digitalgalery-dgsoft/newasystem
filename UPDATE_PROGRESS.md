@@ -1932,6 +1932,31 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 41. 🔄 Perbaikan Kritis Sinkronisasi Odoo: Penanganan departure_date Terjadwal & Prioritas Entitas Aktif
+- **Akar Masalah**:
+  1. **Logika Resign Kaku pada `departure_date`**:
+     - Sebelumnya, sistem menganggap karyawan berstatus `Resign` jika kolom `departure_date` tidak kosong (`!empty($rec['departure_date'])`).
+     - Di Odoo HR, `departure_date` sering diisi terlebih dahulu untuk jadwal pengunduran diri / berakhirnya kontrak di masa depan (contoh: NIK `3671115505900003` aktif di ABO dengan `departure_date: 2026-09-30`, saat ini 23 September 2026).
+     - Akibatnya, karyawan yang masih aktif bekerja keliru ditandai sebagai `Resign`.
+  2. **Query XML-RPC Odoo Mengecualikan Karyawan Aktif dengan Tanggal Departure**:
+     - Query `syncEmployees()` menggunakan filter Odoo `['departure_date', '=', false]`, sehingga karyawan aktif yang memiliki jadwal berakhir di masa depan langsung dikeluarkan dari hasil pencarian dan tidak pernah disinkronkan ke Master Karyawan.
+  3. **Penentuan Entitas pada Pencarian Lintas Entitas (`ALL`)**:
+     - Ketika NIK diperiksa lintas seluruh entitas (AMK, AKP, ATK, ABO, ATB), jika entitas lama (misal AMK) mengembalikan `Resign` dan entitas baru (ABO) keliru terbaca `Resign`, sistem mempertahankan entitas AMK. Hal ini menyebabkan NIK terbaca AMK dan ditolak pada Live Chat Bantuan Login / Reset Password.
+- **Solusi & Implementasi**:
+  1. **Logika Tanggal Departure yang Akurat (`departure_date <= today`)**:
+     - Pada `OdooSyncService::syncSingleEmployee()`, `syncEmployees()`, dan `verifyAndCleanResignedEmployees()`, karyawan hanya dianggap `Resign` jika `active == false` ATAU `departure_date <= date('Y-m-d')`.
+     - Jika `active == true` dan `departure_date` berada di masa depan (`> today`), karyawan tetap berstatus **`Aktiv`**.
+  2. **Query XML-RPC Odoo yang Adaptif**:
+     - Query pencarian diperbarui menjadi `['active', '=', true], '|', ['departure_date', '=', false], ['departure_date', '>', date('Y-m-d')]`, sehingga karyawan aktif dengan tanggal departure di masa depan tetap ditarik saat Sync All.
+  3. **Prioritas Entitas Aktif & Komparasi Rekord Mutakhir**:
+     - Pada `findAndSyncByNik()`, `OdooSettingController::syncEmployeesByNik()`, `streamSyncNik()`, dan `OdooSyncCommand`, entitas yang mengembalikan status `Aktiv` **mutlak diprioritaskan** dan langsung menghentikan loop pencarian.
+     - Jika seluruh entitas berstatus non-aktif, sistem membandingkan tanggal departure / join date terbaru sehingga entitas terakhir yang tersimpan di database lokal.
+- **Hasil Pengujian**:
+  - NIK `3671115505900003` (MEITA ADRIAN SARI) berhasil terdeteksi sebagai **`found_active`** di entitas **`ABO`** (`PT VINDA INTERNASIONAL INDONESIA`, Jabatan: `ADMIN - Jakarta`).
+  - Master Karyawan dan Live Chat Bantuan Login kini berhasil memvalidasi dan memproses permintaan akses dengan lancar.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
