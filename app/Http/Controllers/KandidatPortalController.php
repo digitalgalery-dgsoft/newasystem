@@ -523,6 +523,57 @@ class KandidatPortalController extends Controller
                 ];
             });
 
+        // Statistik Distribusi Area Kandidat yang Belum Dianalisa AI (Score NULL atau 0)
+        $areaRaw = (clone $queueQuery)
+            ->selectRaw("UPPER(TRIM(COALESCE(NULLIF(area, ''), 'TIDAK DIKETAHUI'))) as area_name, count(*) as total")
+            ->groupBy('area_name')
+            ->orderByDesc('total')
+            ->get();
+
+        $totalUnanalyzed = $areaRaw->sum('total');
+
+        $allAreas = $areaRaw->map(function ($item) use ($totalUnanalyzed) {
+            $count = (int)$item->total;
+            $pct = $totalUnanalyzed > 0 ? round(($count / $totalUnanalyzed) * 100, 1) : 0;
+            return [
+                'area' => $item->area_name,
+                'count' => $count,
+                'percentage' => $pct,
+            ];
+        })->values();
+
+        // Siapkan data untuk Pie / Donut Chart (Top 8 + Lainnya)
+        $topLimit = 8;
+        $chartLabels = [];
+        $chartCounts = [];
+        $chartPercentages = [];
+
+        $topItems = $allAreas->take($topLimit);
+        $otherItems = $allAreas->slice($topLimit);
+        $otherCount = $otherItems->sum('count');
+
+        foreach ($topItems as $item) {
+            $chartLabels[] = $item['area'];
+            $chartCounts[] = $item['count'];
+            $chartPercentages[] = $item['percentage'];
+        }
+
+        if ($otherCount > 0) {
+            $otherPct = $totalUnanalyzed > 0 ? round(($otherCount / $totalUnanalyzed) * 100, 1) : 0;
+            $chartLabels[] = 'LAINNYA (' . $otherItems->count() . ' Area)';
+            $chartCounts[] = $otherCount;
+            $chartPercentages[] = $otherPct;
+        }
+
+        $areaStats = [
+            'total_unanalyzed' => $totalUnanalyzed,
+            'total_areas' => $allAreas->count(),
+            'chart_labels' => $chartLabels,
+            'chart_counts' => $chartCounts,
+            'chart_percentages' => $chartPercentages,
+            'all_areas' => $allAreas->toArray(),
+        ];
+
         $liveStatus = \App\Services\AiAnalyzerService::getLiveRunningStatus();
         $processLogs = \App\Services\AiAnalyzerService::getTodayLogs(80);
         $logDate = now('Asia/Jakarta')->translatedFormat('d F Y');
@@ -538,6 +589,7 @@ class KandidatPortalController extends Controller
             'process_logs' => $processLogs,
             'log_date' => $logDate,
             'live_status' => $liveStatus,
+            'area_stats' => $areaStats,
             'timestamp' => now('Asia/Jakarta')->format('H:i:s'),
         ];
     }

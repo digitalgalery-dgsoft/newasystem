@@ -32,7 +32,8 @@
          completedList: @js($completed_list ?? []),
          processLogs: @js($process_logs ?? []),
          logDate: '{{ $log_date ?? now("Asia/Jakarta")->translatedFormat("d F Y") }}',
-         liveStatus: @js($live_status ?? [])
+         liveStatus: @js($live_status ?? []),
+         areaStats: @js($area_stats ?? null)
      })"
      x-init="init()">
 
@@ -275,6 +276,177 @@
                     Gemini &bull; OpenRouter &bull; Sumo
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ==================================================================== -->
+    <!-- BAGIAN: PIE CHART DISTRIBUSI AREA KANDIDAT BELUM DIANALISA          -->
+    <!-- ==================================================================== -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <!-- Header Card -->
+        <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3 bg-gradient-to-r from-indigo-50/60 via-white to-purple-50/40">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 text-white flex items-center justify-center text-lg shadow-sm shrink-0">
+                    <i class="fa-solid fa-chart-pie"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="text-sm sm:text-base font-extrabold text-slate-900 tracking-tight">
+                            Persentase Area Kandidat Belum Dianalisa / Belum Discoring
+                        </h3>
+                        <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                            <i class="fa-solid fa-layer-group text-[10px]"></i>
+                            Job Portal
+                        </span>
+                    </div>
+                    <p class="text-xs text-slate-500 mt-0.5">
+                        Proporsi sebaran wilayah kandidat yang masih menunggu evaluasi dan penilaian otomatis AI.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Stats & Chart View Mode Toggles -->
+            <div class="flex flex-wrap items-center gap-2 sm:self-center">
+                <!-- Badges Summary -->
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700">
+                    <span class="text-slate-400">Total:</span>
+                    <span class="text-indigo-700 font-extrabold" x-text="(areaStats?.total_unanalyzed ?? queueCount) + ' Kandidat'"></span>
+                    <span class="text-slate-300">•</span>
+                    <span class="text-slate-600" x-text="(areaStats?.total_areas ?? 0) + ' Wilayah'"></span>
+                </div>
+
+                <!-- Toggle Donut / Pie -->
+                <div class="inline-flex items-center p-0.5 rounded-xl bg-slate-100 border border-slate-200 text-xs">
+                    <button type="button" 
+                            @click="setChartType('doughnut')" 
+                            class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
+                            :class="chartType === 'doughnut' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'">
+                        <i class="fa-solid fa-circle-notch text-[10px] mr-1"></i> Donut
+                    </button>
+                    <button type="button" 
+                            @click="setChartType('pie')" 
+                            class="px-2.5 py-1 rounded-lg font-bold text-[11px] transition-all cursor-pointer"
+                            :class="chartType === 'pie' ? 'bg-white text-indigo-700 shadow-2xs' : 'text-slate-600 hover:text-slate-900'">
+                        <i class="fa-solid fa-chart-pie text-[10px] mr-1"></i> Pie
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Card Body: Chart & Ranking Breakdown Grid -->
+        <div class="p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
+            
+            <!-- Sisi Kiri: Pie / Donut Chart Canvas Container (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col items-center justify-center relative">
+                <!-- Canvas Box -->
+                <div class="relative w-full max-w-[280px] sm:max-w-[320px] aspect-square flex items-center justify-center">
+                    <canvas id="areaPieChart"></canvas>
+
+                    <!-- Center stats overlay (khusus Donut mode) -->
+                    <div x-show="chartType === 'doughnut' && (areaStats?.total_unanalyzed || queueCount) > 0" 
+                         class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none select-none text-center">
+                        <span class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight leading-none" 
+                              x-text="areaStats?.total_unanalyzed ?? queueCount"></span>
+                        <span class="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider text-slate-400 mt-1">
+                            Belum Discoring
+                        </span>
+                        <span class="text-[9px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full mt-1 border border-indigo-100">
+                            Dalam Antrean
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Empty State jika antrean 0 -->
+                <div x-show="(areaStats?.total_unanalyzed ?? queueCount) === 0" 
+                     class="py-12 text-center text-slate-400 flex flex-col items-center">
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl mb-2">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <span class="font-bold text-slate-700 text-xs">Semua Data Sudah Selesai Discoring</span>
+                    <span class="text-[11px] text-slate-500">Tidak ada kandidat tertunda di area manapun.</span>
+                </div>
+            </div>
+
+            <!-- Sisi Kanan: Detailed Breakdown & Progress Bars (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col justify-center">
+                <div class="flex items-center justify-between pb-2 mb-3 border-b border-slate-100">
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-700 uppercase tracking-wider">Rincian Sebaran Wilayah</span>
+                        <span class="text-[11px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg border border-indigo-100" 
+                              x-text="showAllAreas ? 'Semua ' + (areaStats?.all_areas?.length || 0) + ' Area' : 'Top ' + (areaStats?.chart_labels?.length || 8) + ' Terbesar'">
+                        </span>
+                    </div>
+
+                    <!-- Toggle Lihat Semua / Ringkas -->
+                    <button type="button" 
+                            x-show="(areaStats?.all_areas?.length || 0) > 8"
+                            @click="showAllAreas = !showAllAreas" 
+                            class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1 cursor-pointer">
+                        <span x-text="showAllAreas ? 'Tampilkan Ringkas' : 'Lihat Semua (' + (areaStats?.all_areas?.length || 0) + ')'"></span>
+                        <i class="fa-solid" :class="showAllAreas ? 'fa-chevron-up' : 'fa-chevron-down'"></i>
+                    </button>
+                </div>
+
+                <!-- Scrollable Container untuk List Breakdown -->
+                <div class="max-h-72 overflow-y-auto pr-1 space-y-2.5" style="scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
+                    
+                    <!-- Loop Data Areas -->
+                    <template x-for="(item, idx) in (showAllAreas ? (areaStats?.all_areas || []) : (areaStats?.chart_labels ? areaStats.chart_labels.map((l, i) => ({ area: l, count: areaStats.chart_counts[i], percentage: areaStats.chart_percentages[i] })) : []))" :key="'area_' + idx">
+                        <div class="p-2.5 rounded-xl border border-slate-100 hover:border-indigo-200 bg-slate-50/50 hover:bg-white transition-all flex flex-col gap-1.5 shadow-2xs group">
+                            <div class="flex items-center justify-between gap-2 text-xs">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <!-- Rank Number -->
+                                    <span class="w-5 h-5 rounded-md text-[10px] font-black flex items-center justify-center shrink-0"
+                                          :class="idx === 0 ? 'bg-amber-100 text-amber-800 border border-amber-300' : (idx === 1 ? 'bg-slate-200 text-slate-800' : (idx === 2 ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-slate-100 text-slate-600'))"
+                                          x-text="idx + 1">
+                                    </span>
+
+                                    <!-- Color Indicator Dot -->
+                                    <span class="w-2.5 h-2.5 rounded-full shrink-0 shadow-2xs" 
+                                          :style="'background-color: ' + getSliceColor(idx)"></span>
+
+                                    <!-- Area Name -->
+                                    <span class="font-extrabold text-slate-800 truncate" x-text="item.area"></span>
+                                </div>
+
+                                <!-- Count & Percentage Badges -->
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span class="font-bold text-slate-600 text-xs" x-text="item.count + ' orang'"></span>
+                                    <span class="inline-flex items-center justify-center min-w-[52px] px-2 py-0.5 rounded-md text-[11px] font-black tracking-tight"
+                                          :style="'background-color: ' + getSliceColor(idx) + '18; color: ' + getSliceColor(idx) + '; border: 1px solid ' + getSliceColor(idx) + '40;'"
+                                          x-text="item.percentage + '%'">
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Progress Bar Persentase -->
+                            <div class="w-full h-1.5 bg-slate-200/80 rounded-full overflow-hidden">
+                                <div class="h-full rounded-full transition-all duration-500 ease-out" 
+                                     :style="'width: ' + Math.min(item.percentage, 100) + '%; background-color: ' + getSliceColor(idx)">
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Empty State List -->
+                    <template x-if="!areaStats || !areaStats.chart_labels || areaStats.chart_labels.length === 0">
+                        <div class="text-center py-6 text-slate-400 text-xs italic">
+                            Belum ada data wilayah antrean untuk ditampilkan.
+                        </div>
+                    </template>
+
+                </div>
+
+                <!-- Footer Summary Info -->
+                <div class="mt-3 pt-2.5 border-t border-slate-100 flex flex-wrap items-center justify-between text-[11px] text-slate-500">
+                    <span class="flex items-center gap-1.5">
+                        <i class="fa-solid fa-lightbulb text-amber-500"></i>
+                        <span>Urutan antrean analisa AI tetap memprioritaskan kandidat yang lebih awal mendaftar (FIFO).</span>
+                    </span>
+                    <span class="font-bold text-slate-700" x-text="'Total Belum Dinilai: ' + (areaStats?.total_unanalyzed ?? queueCount) + ' Kandidat'"></span>
+                </div>
+            </div>
+
         </div>
     </div>
 
@@ -638,6 +810,7 @@
 @endsection
 
 @section('scripts')
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
     function aiQueueLogManager(initData) {
         return {
@@ -650,8 +823,14 @@
             completedList: initData?.completedList || [],
             processLogs: initData?.processLogs || [],
             logDate: initData?.logDate || 'Hari Ini',
+            areaStats: initData?.areaStats || null,
             autoScrollLogs: true,
             isTriggering: false,
+            
+            // Area Chart State
+            chartType: 'doughnut',
+            showAllAreas: false,
+            chartInstance: null,
             
             // Live Status Ticker
             isProcessing: initData?.liveStatus?.is_processing || false,
@@ -669,10 +848,141 @@
 
             init() {
                 this.startCountdown();
+                this.initAreaChart();
                 this.$nextTick(() => {
                     const el = document.getElementById('ai-process-console');
                     if (el) el.scrollTop = el.scrollHeight;
                 });
+            },
+
+            getSliceColor(idx) {
+                const palette = [
+                    '#4f46e5', // 0: Indigo-600
+                    '#06b6d4', // 1: Cyan-500
+                    '#10b981', // 2: Emerald-500
+                    '#f59e0b', // 3: Amber-500
+                    '#ec4899', // 4: Pink-500
+                    '#8b5cf6', // 5: Purple-500
+                    '#3b82f6', // 6: Blue-500
+                    '#14b8a6', // 7: Teal-500
+                    '#f97316', // 8: Orange-500
+                    '#6366f1', // 9: Indigo-500
+                    '#84cc16', // 10: Lime-500
+                    '#e11d48', // 11: Rose-600
+                    '#0ea5e9', // 12: Sky-500
+                    '#d97706', // 13: Amber-600
+                    '#a855f7', // 14: Purple-500
+                    '#64748b'  // 15+: Slate-500
+                ];
+                return palette[idx % palette.length];
+            },
+
+            setChartType(type) {
+                if (this.chartType === type) return;
+                this.chartType = type;
+                if (this.chartInstance) {
+                    this.chartInstance.destroy();
+                    this.chartInstance = null;
+                }
+                this.initAreaChart();
+            },
+
+            initAreaChart() {
+                this.$nextTick(() => {
+                    const checkAndRender = () => {
+                        const canvas = document.getElementById('areaPieChart');
+                        if (!canvas) return;
+
+                        if (typeof Chart === 'undefined') {
+                            setTimeout(checkAndRender, 100);
+                            return;
+                        }
+
+                        const labels = this.areaStats?.chart_labels || [];
+                        const data = this.areaStats?.chart_counts || [];
+                        const percentages = this.areaStats?.chart_percentages || [];
+                        const bgColors = labels.map((_, i) => this.getSliceColor(i));
+
+                        if (this.chartInstance) {
+                            this.chartInstance.destroy();
+                            this.chartInstance = null;
+                        }
+
+                        if (labels.length === 0 || data.length === 0) {
+                            return;
+                        }
+
+                        const ctx = canvas.getContext('2d');
+                        this.chartInstance = new Chart(ctx, {
+                            type: this.chartType,
+                            data: {
+                                labels: labels,
+                                datasets: [{
+                                    data: data,
+                                    backgroundColor: bgColors,
+                                    borderColor: '#ffffff',
+                                    borderWidth: 2,
+                                    hoverOffset: 8,
+                                }]
+                            },
+                            options: {
+                                responsive: true,
+                                maintainAspectRatio: true,
+                                cutout: this.chartType === 'doughnut' ? '68%' : 0,
+                                plugins: {
+                                    legend: {
+                                        display: false,
+                                    },
+                                    tooltip: {
+                                        backgroundColor: 'rgba(15, 23, 42, 0.95)',
+                                        titleColor: '#ffffff',
+                                        titleFont: { weight: 'bold', size: 12 },
+                                        bodyColor: '#e2e8f0',
+                                        bodyFont: { size: 12 },
+                                        borderColor: '#334155',
+                                        borderWidth: 1,
+                                        padding: 10,
+                                        boxPadding: 4,
+                                        usePointStyle: true,
+                                        callbacks: {
+                                            label: (context) => {
+                                                const val = context.raw || 0;
+                                                const idx = context.dataIndex;
+                                                const total = this.areaStats?.total_unanalyzed || this.queueCount || 1;
+                                                const pct = (percentages && percentages[idx] !== undefined)
+                                                    ? percentages[idx]
+                                                    : ((val / total) * 100).toFixed(1);
+                                                return ` ${val} Kandidat (${pct}%)`;
+                                            }
+                                        }
+                                    }
+                                },
+                                animation: {
+                                    duration: 600,
+                                }
+                            }
+                        });
+                    };
+                    checkAndRender();
+                });
+            },
+
+            updateAreaChart() {
+                if (!this.chartInstance) {
+                    this.initAreaChart();
+                    return;
+                }
+
+                const labels = this.areaStats?.chart_labels || [];
+                const data = this.areaStats?.chart_counts || [];
+                const percentages = this.areaStats?.chart_percentages || [];
+                const bgColors = labels.map((_, i) => this.getSliceColor(i));
+
+                this.chartInstance.data.labels = labels;
+                this.chartInstance.data.datasets[0].data = data;
+                this.chartInstance.data.datasets[0].backgroundColor = bgColors;
+                this.chartInstance.options.cutout = this.chartType === 'doughnut' ? '68%' : 0;
+                this.chartInstance.update();
             },
 
             startCountdown() {
@@ -750,6 +1060,11 @@
                                 this.current = data.live_status.current;
                                 this.lastCompleted = data.live_status.last_completed;
                                 this.nextCandidate = data.live_status.next_candidate;
+                            }
+
+                            if (data.area_stats) {
+                                this.areaStats = data.area_stats;
+                                this.updateAreaChart();
                             }
 
                             this.lastUpdatedTime = (data.timestamp || new Date().toLocaleTimeString('id-ID')) + ' WIB';
