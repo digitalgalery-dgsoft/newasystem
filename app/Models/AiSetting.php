@@ -17,6 +17,9 @@ class AiSetting extends Model
     protected $casts = [
         'gemini_expired_keys' => 'array',
         'wa_use_pusat' => 'integer',
+        'gemini_models_list' => 'array',
+        'openrouter_models_list' => 'array',
+        'sumopod_models_list' => 'array',
     ];
 
     /**
@@ -110,6 +113,67 @@ class AiSetting extends Model
         $this->save();
     }
 
+    /**
+     * Get list of available Gemini models (including active model)
+     */
+    public function getGeminiModelsAttribute(): array
+    {
+        $raw = $this->gemini_models_list;
+        $defaults = [
+            'gemini-2.5-flash',
+            'gemini-2.0-flash',
+            'gemini-1.5-flash',
+            'gemini-1.5-pro',
+            'gemini-3.5-flash',
+        ];
+        $list = is_array($raw) ? $raw : (json_decode($raw, true) ?: $defaults);
+        if (!empty($this->gemini_model) && !in_array($this->gemini_model, $list)) {
+            $list[] = $this->gemini_model;
+        }
+        return array_values(array_unique(array_filter(array_map('trim', $list))));
+    }
+
+    /**
+     * Get list of available OpenRouter models (including active model)
+     */
+    public function getOpenrouterModelsAttribute(): array
+    {
+        $raw = $this->openrouter_models_list;
+        $defaults = [
+            'nvidia/nemotron-3-ultra-550b-a55b:free',
+            'meta-llama/llama-3.3-70b-instruct:free',
+            'deepseek/deepseek-r1:free',
+            'google/gemini-2.0-flash-exp:free',
+            'qwen/qwen-2.5-72b-instruct:free',
+            'openai/gpt-4o-mini',
+            'anthropic/claude-3.5-sonnet',
+        ];
+        $list = is_array($raw) ? $raw : (json_decode($raw, true) ?: $defaults);
+        if (!empty($this->openrouter_model) && !in_array($this->openrouter_model, $list)) {
+            $list[] = $this->openrouter_model;
+        }
+        return array_values(array_unique(array_filter(array_map('trim', $list))));
+    }
+
+    /**
+     * Get list of available Sumopod models (including active model)
+     */
+    public function getSumopodModelsAttribute(): array
+    {
+        $raw = $this->sumopod_models_list;
+        $defaults = [
+            'gpt-4o-mini',
+            'gpt-4o',
+            'claude-3-5-sonnet-20240620',
+            'deepseek-chat',
+        ];
+        $list = is_array($raw) ? $raw : (json_decode($raw, true) ?: $defaults);
+        if (!empty($this->sumopod_model) && !in_array($this->sumopod_model, $list)) {
+            $list[] = $this->sumopod_model;
+        }
+        return array_values(array_unique(array_filter(array_map('trim', $list))));
+    }
+
     protected static function booted()
     {
         static::saved(function ($model) {
@@ -124,6 +188,27 @@ class AiSetting extends Model
                     'wa_device' => $model->wa_device,
                     'wa_template' => $model->wa_template,
                 ];
+                if (Schema::hasColumn('tb_ai_setting', 'openrouter_key')) {
+                    $payload['openrouter_key'] = $model->openrouter_key;
+                }
+                if (Schema::hasColumn('tb_ai_setting', 'openrouter_model')) {
+                    $payload['openrouter_model'] = $model->openrouter_model;
+                }
+                if (Schema::hasColumn('tb_ai_setting', 'gemini_models_list')) {
+                    $payload['gemini_models_list'] = is_array($model->gemini_models_list) 
+                        ? json_encode($model->gemini_models_list) 
+                        : $model->gemini_models_list;
+                }
+                if (Schema::hasColumn('tb_ai_setting', 'openrouter_models_list')) {
+                    $payload['openrouter_models_list'] = is_array($model->openrouter_models_list) 
+                        ? json_encode($model->openrouter_models_list) 
+                        : $model->openrouter_models_list;
+                }
+                if (Schema::hasColumn('tb_ai_setting', 'sumopod_models_list')) {
+                    $payload['sumopod_models_list'] = is_array($model->sumopod_models_list) 
+                        ? json_encode($model->sumopod_models_list) 
+                        : $model->sumopod_models_list;
+                }
                 if (Schema::hasColumn('tb_ai_setting', 'gemini_expired_keys')) {
                     $payload['gemini_expired_keys'] = is_array($model->gemini_expired_keys) 
                         ? json_encode($model->gemini_expired_keys) 

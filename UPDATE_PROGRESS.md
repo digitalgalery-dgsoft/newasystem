@@ -2020,6 +2020,46 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 45. 🤖 Integrasi AI OpenRouter, Hierarki Fallback Kuota (Gemini ➔ OpenRouter ➔ Sumopod), & Model Kustom Dinamis
+- **Latar Belakang & Kebutuhan**:
+  - Untuk menjaga kelangsungan analisa CV kandidat secara terus menerus saat kuota token atau rate limit Google Gemini tercapai, ditambahkan provider AI perantara dari **OpenRouter**.
+  - Urutan hierarki eksekusi fallback yang ditentukan:
+    $$\text{API Key Gemini} \longrightarrow \text{OpenRouter} \longrightarrow \text{Sumopod}$$
+  - Jika seluruh provider API Key mengalami limitasi kuota atau kegagalan, proses analisa AI harus berhenti secara aman (*rate_limited*) tanpa perulangan tanpa batas (*infinite retry loop*).
+  - Admin memerlukan fleksibilitas untuk mengubah model OpenRouter yang digunakan, serta dapat menambahkan model-model baru secara dinamis untuk Google Gemini, OpenRouter, maupun Sumopod.
+- **Implementasi Skema Database & Model**:
+  1. **Migrasi Database (`2026_09_23_140000_add_openrouter_and_custom_models_to_ai_settings.php`)**:
+     - Menambahkan kolom `openrouter_key` dan `openrouter_model` pada tabel `ai_settings` dan tabel warisan `tb_ai_setting`.
+     - Menambahkan kolom JSON `gemini_models_list`, `openrouter_models_list`, dan `sumopod_models_list` untuk menyimpan daftar model kustom yang dapat dipilih.
+  2. **Model `AiSetting.php`**:
+     - Ditambahkan casting JSON array untuk list ketiga provider AI.
+     - Dibuat accessor cerdas `gemini_models`, `openrouter_models`, dan `sumopod_models` yang secara otomatis menggabungkan daftar model bawaan (*default curated list*) dengan model-model baru yang diinputkan pengguna.
+     - Sinkronisasi ganda (*dual-sync*) otomatis ke tabel warisan `tb_ai_setting`.
+- **Implementasi Service Analisa CV (`AiAnalyzerService.php`)**:
+  1. **Urutan Eksekusi Bertingkat**:
+     - **Tahap 1 — Google Gemini Pool**: Merotasi seluruh API Key Gemini aktif. Jika terkena limit (HTTP 429), key diistirahatkan 2 menit. Jika error permanen, dipindahkan ke daftar token expired.
+     - **Tahap 2 — OpenRouter Gateway**: Jika seluruh Gemini Key sedang dalam masa limit/cooldown, alur beralih ke OpenRouter API (`https://openrouter.ai/api/v1/chat/completions`) menggunakan Authorization Bearer key dan parameter penalaran `"reasoning": {"enabled": true}`.
+     - **Tahap 3 — Sumopod Fallback**: Jika OpenRouter juga limit atau tidak dapat diakses, alur beralih ke Sumopod/OpenAI fallback.
+     - **Tahap 4 — Penghentian Otomatis**: Jika seluruh provider limit/gagal, proses analisa otomatis berhenti dengan status `rate_limited` dan detail penyebab kegagalan dicatat pada kandidat.
+  2. **Metode `callOpenRouter()`**:
+     - Mengirimkan prompt evaluasi CV dan base64 lampiran file (PDF/gambar) via cURL dengan timeout 60 detik.
+     - Mendukung parsing multi-format (konten balasan atau reasoning) serta pembersihan JSON evaluasi otomatis.
+- **Pembaruan Halaman Pengaturan AI (`/ai-settings` & `AiSettingController.php`)**:
+  1. **Banner Alur Eksekusi Visual**:
+     - Menampilkan diagram alir hierarki: `1. Gemini ➔ 2. OpenRouter ➔ 3. Sumopod ➔ Berhenti Jika Semua Limit`.
+  2. **Kartu Konfigurasi OpenRouter**:
+     - Input API Key OpenRouter dengan tombol intip/sembunyikan kata sandi.
+     - Dropdown pilihan model OpenRouter (`nvidia/nemotron-3-ultra-550b-a55b:free`, `meta-llama/llama-3.3-70b-instruct:free`, `deepseek/deepseek-r1:free`, `google/gemini-2.0-flash-exp:free`, `qwen/qwen-2.5-72b-instruct:free`, `openai/gpt-4o-mini`, dll.).
+     - Input form dinamis `+ Tambah Model Baru OpenRouter`.
+     - Badges model aktif dengan tombol hapus model kustom.
+     - Tombol `Test Koneksi OpenRouter` dengan feedback SweetAlert2 dan pengukuran latensi riil.
+  3. **Peningkatan Kartu Gemini & Sumopod**:
+     - Menambahkan input dinamis `+ Tambah Model Baru` untuk Gemini dan Sumopod, memungkinkan pengguna mendaftarkan model AI generasi terbaru kapan saja.
+     - Tombol `Test Koneksi Sumopod` dan pengujian langsung ke server API.
+     - Route & Controller `removeModel()` untuk menghapus model kustom yang sudah tidak dipakai.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

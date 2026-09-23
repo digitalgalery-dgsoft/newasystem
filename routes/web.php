@@ -313,8 +313,11 @@ Route::middleware(['admin'])->group(function () {
     Route::get('/ai-settings', [AiSettingController::class, 'index'])->name('aisetting.index');
     Route::post('/ai-settings', [AiSettingController::class, 'update'])->name('aisetting.update');
     Route::post('/ai-settings/test-gemini', [AiSettingController::class, 'testGemini'])->name('aisetting.test_gemini');
+    Route::post('/ai-settings/test-openrouter', [AiSettingController::class, 'testOpenrouter'])->name('aisetting.test_openrouter');
+    Route::post('/ai-settings/test-sumopod', [AiSettingController::class, 'testSumopod'])->name('aisetting.test_sumopod');
     Route::post('/ai-settings/test-wa', [AiSettingController::class, 'testWa'])->name('aisetting.test_wa');
     Route::post('/ai-settings/remove-expired-key', [AiSettingController::class, 'removeExpiredKey'])->name('aisetting.remove_expired_key');
+    Route::post('/ai-settings/remove-model', [AiSettingController::class, 'removeModel'])->name('aisetting.remove_model');
 });
 Route::get('/ai_settings.php', function() { return redirect()->route('aisetting.index'); });
 Route::get('/cron_ai_analyzer.php', function() {

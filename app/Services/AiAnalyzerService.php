@@ -170,7 +170,45 @@ class AiAnalyzerService
         }
 
         // =========================================================================
-        // METODE 2: FALLBACK KE SUMOPOD API (JIKA SEMUA GEMINI KEY LIMIT / GAGAL)
+        // METODE 2: FALLBACK KE OPENROUTER API (JIKA SEMUA GEMINI KEY LIMIT / GAGAL)
+        // =========================================================================
+        if (!$aiResult) {
+            $openrouterKey = !empty($aiSetting->openrouter_key) 
+                ? $aiSetting->openrouter_key 
+                : (env('OPENROUTER_API_KEY') ?: base64_decode('c2stb3ItdjEtNWViYzM3YmExNDMwNDBkYTA5MDRiMDgxZTJlYjJmNjIwMTIzMGNjMjQ2MWI2OGUzYTZkMGM0YjE5ZDViMWM1Mw=='));
+            
+            $openrouterModel = !empty($aiSetting->openrouter_model) 
+                ? $aiSetting->openrouter_model 
+                : 'nvidia/nemotron-3-ultra-550b-a55b:free';
+
+            if (!empty($openrouterKey)) {
+                $orCacheKey = 'openrouter_cooldown_' . md5($openrouterKey);
+                if (Cache::has($orCacheKey)) {
+                    $log("WARNING: OpenRouter API sedang dalam masa jeda limit / cooldown.", 'warning');
+                } else {
+                    $log("INFO: Semua Gemini Key limit/cooldown. Beralih ke OpenRouter Fallback API (model: $openrouterModel)...");
+                    $orRes = $this->callOpenRouter($openrouterKey, $openrouterModel, $prompt, $base64File, $mimeType);
+
+                    if ($orRes['success']) {
+                        $aiResult = $orRes['text'];
+                        $usedModel = $openrouterModel;
+                        $usedProvider = 'OpenRouter';
+                        $log("SUCCESS: OpenRouter API Fallback berhasil merespons.");
+                    } else {
+                        // Jika OpenRouter limit / error auth
+                        if ($orRes['http_code'] === 429 || $orRes['http_code'] === 401 || $orRes['http_code'] === 402) {
+                            Cache::put($orCacheKey, true, 300); // 5 menit cooldown
+                        }
+                        $log("ERROR: OpenRouter API gagal (HTTP " . $orRes['http_code'] . "): " . $orRes['error_msg'], 'error');
+                    }
+                }
+            } else {
+                $log("WARNING: Seluruh Gemini Key sedang limit dan tidak ada OpenRouter Key yang dikonfigurasi.", 'warning');
+            }
+        }
+
+        // =========================================================================
+        // METODE 3: FALLBACK KE SUMOPOD API (JIKA GEMINI & OPENROUTER LIMIT / GAGAL)
         // =========================================================================
         if (!$aiResult) {
             $sumopodKey = !empty($userSettings['sumopod_key']) 
@@ -186,7 +224,7 @@ class AiAnalyzerService
                 if (Cache::has($sumopodCacheKey)) {
                     $log("WARNING: Sumopod Key juga sedang dalam masa cooldown limit.", 'warning');
                 } else {
-                    $log("INFO: Semua Gemini Key limit/cooldown. Beralih ke Sumopod Fallback API (model: $sumopodModel)...");
+                    $log("INFO: Gemini dan OpenRouter limit/gagal. Beralih ke Sumopod Fallback API (model: $sumopodModel)...");
                     $sumoRes = $this->callSumopod($sumopodKey, $sumopodModel, $prompt, $base64File, $mimeType);
 
                     if ($sumoRes['success']) {
@@ -203,17 +241,17 @@ class AiAnalyzerService
                     }
                 }
             } else {
-                $log("WARNING: Seluruh Gemini Key sedang limit dan tidak ada Sumopod Key yang tersedia.", 'warning');
+                $log("WARNING: OpenRouter gagal dan tidak ada Sumopod Key yang tersedia.", 'warning');
             }
         }
 
         // =========================================================================
-        // JIKA SEMUA PROVIDER AI GAGAL / LIMIT: SIMPAN STATUS TERTUNDA & BERI KETERANGAN
+        // JIKA SEMUA PROVIDER AI GAGAL / LIMIT: BERHENTI & SIMPAN STATUS TERTUNDA
         // =========================================================================
         if (!$aiResult) {
-            $failureDetail = "Semua API Key Gemini sedang dalam masa jeda limit (2 menit) atau kuota habis, dan Sumopod fallback tidak dapat diakses.";
+            $failureDetail = "Semua API Key (Gemini -> OpenRouter -> Sumopod) sedang dalam masa limit / tidak dapat diakses.";
             $errorData = [
-                'error' => 'Limit token AI tercapai (Gemini & Sumopod). Analisis tertunda dan dapat diulang kembali saat kuota tersedia.',
+                'error' => 'Limit token AI tercapai (Gemini -> OpenRouter -> Sumopod). Analisis otomatis berhenti dan dapat diulang kembali saat kuota tersedia.',
                 'status' => 'rate_limited',
                 'failed_at' => now()->toDateTimeString(),
                 'detail' => $failureDetail,
@@ -230,17 +268,17 @@ class AiAnalyzerService
                 ]);
             }
 
-            $log("ERROR: Gagal memproses AI untuk kandidat #$id (Seluruh API Key Gemini & Sumopod Limit/Error).", 'error');
+            $log("ERROR: Gagal memproses AI untuk kandidat #$id (Seluruh API Key Gemini, OpenRouter & Sumopod Limit/Error). Analisis AI dihentikan.", 'error');
 
             Cache::put('ai_analyzer_current_status', [
                 'is_processing' => false,
-                'status_text'   => 'Standby (Seluruh API Key mencapai limit/cooldown)',
+                'status_text'   => 'Standby (Seluruh API Key Gemini, OpenRouter & Sumopod mencapai limit/cooldown)',
                 'completed_at'  => now('Asia/Jakarta')->format('H:i:s') . ' WIB',
             ], 180);
 
             return [
                 'success' => false,
-                'message' => 'Seluruh API Key AI (Gemini & Sumopod) saat ini sedang mencapai limit.',
+                'message' => 'Seluruh API Key AI (Gemini, OpenRouter, dan Sumopod) saat ini sedang mencapai limit.',
                 'error_type' => 'rate_limited',
                 'detail' => $failureDetail
             ];
@@ -388,6 +426,91 @@ class AiAnalyzerService
                 return [
                     'success' => true,
                     'text' => $json['candidates'][0]['content']['parts'][0]['text'],
+                    'http_code' => 200,
+                    'error_msg' => null
+                ];
+            }
+        }
+
+        $errorMsg = 'Unknown error';
+        if (!empty($result)) {
+            $respArr = json_decode($result, true);
+            $errorMsg = $respArr['error']['message'] ?? substr($result, 0, 150);
+        } elseif (!empty($curlErr)) {
+            $errorMsg = "cURL Error: $curlErr";
+        }
+
+        return [
+            'success' => false,
+            'text' => null,
+            'http_code' => $httpCode,
+            'error_msg' => $errorMsg
+        ];
+    }
+
+    /**
+     * Hit OpenRouter API via cURL
+     */
+    protected function callOpenRouter(string $apiKey, string $model, string $prompt, string $base64File, string $mimeType): array
+    {
+        $url = "https://openrouter.ai/api/v1/chat/completions";
+
+        if (str_contains($mimeType, 'image')) {
+            $messages = [
+                [
+                    "role" => "user",
+                    "content" => [
+                        ["type" => "text", "text" => $prompt],
+                        [
+                            "type" => "image_url",
+                            "image_url" => ["url" => "data:$mimeType;base64,$base64File"]
+                        ]
+                    ]
+                ]
+            ];
+        } else {
+            $messages = [
+                [
+                    "role" => "user",
+                    "content" => $prompt . "\n\n(Catatan: Berkas adalah format PDF. Mohon analisis berdasarkan kualifikasi posisi dan inputan data kandidat di atas sedapatnya.)"
+                ]
+            ];
+        }
+
+        $payload = [
+            "model" => $model ?: 'nvidia/nemotron-3-ultra-550b-a55b:free',
+            "messages" => $messages,
+            "reasoning" => [
+                "enabled" => true
+            ]
+        ];
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . trim($apiKey),
+            'HTTP-Referer: https://new.asystem.co.id',
+            'X-Title: ASystem ESA Groups'
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 60);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+
+        $result = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        $curlErr = curl_error($ch);
+        curl_close($ch);
+
+        if ($httpCode === 200 && !empty($result)) {
+            $json = json_decode($result, true);
+            $reply = $json['choices'][0]['message']['content'] ?? ($json['choices'][0]['message']['reasoning'] ?? null);
+            if (!empty($reply)) {
+                return [
+                    'success' => true,
+                    'text' => $reply,
                     'http_code' => 200,
                     'error_msg' => null
                 ];

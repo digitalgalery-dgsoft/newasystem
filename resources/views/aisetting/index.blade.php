@@ -78,14 +78,49 @@
         </div>
     </div>
 
+    <!-- AI FALLBACK EXECUTION FLOW BANNER -->
+    <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 text-white p-5 rounded-2xl shadow-sm border border-indigo-900/60 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        <div>
+            <div class="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-cyan-400">
+                <i class="fa-solid fa-route"></i>
+                <span>Hierarki Alur Eksekusi AI Analisa CV</span>
+            </div>
+            <div class="mt-2.5 flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs font-bold">
+                <span class="px-3 py-1.5 rounded-xl bg-blue-500/20 text-blue-200 border border-blue-400/30 flex items-center gap-1.5 shadow-xs">
+                    <span class="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-black">1</span>
+                    <span>API Key Gemini</span>
+                </span>
+                <i class="fa-solid fa-chevron-right text-slate-500 text-[11px]"></i>
+                <span class="px-3 py-1.5 rounded-xl bg-purple-500/20 text-purple-200 border border-purple-400/30 flex items-center gap-1.5 shadow-xs">
+                    <span class="w-5 h-5 rounded-full bg-purple-500 text-white flex items-center justify-center text-[10px] font-black">2</span>
+                    <span>OpenRouter API</span>
+                </span>
+                <i class="fa-solid fa-chevron-right text-slate-500 text-[11px]"></i>
+                <span class="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-200 border border-amber-400/30 flex items-center gap-1.5 shadow-xs">
+                    <span class="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">3</span>
+                    <span>Sumopod Fallback</span>
+                </span>
+                <i class="fa-solid fa-chevron-right text-slate-500 text-[11px]"></i>
+                <span class="px-3 py-1.5 rounded-xl bg-rose-500/25 text-rose-300 border border-rose-400/40 flex items-center gap-1.5 shadow-xs">
+                    <i class="fa-solid fa-circle-stop text-rose-400 text-xs"></i>
+                    <span>Berhenti Jika Semua Limit</span>
+                </span>
+            </div>
+        </div>
+        <div class="text-[11px] text-slate-300 max-w-sm lg:text-right border-t lg:border-t-0 lg:border-l border-indigo-800/60 pt-3 lg:pt-0 lg:pl-5 leading-relaxed">
+            <span class="text-cyan-300 font-semibold">Kebijakan Kuota:</span> Jika seluruh API Key Gemini, OpenRouter & Sumopod gagal atau mencapai batas limit, proses analisis AI akan otomatis berhenti dan kandidat berstatus antrean tertunda.
+        </div>
+    </div>
+
     <!-- MAIN SETTING FORM -->
     <form action="{{ route('aisetting.update') }}" method="POST" class="space-y-6">
         @csrf
 
         <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             
-            <!-- LEFT: GEMINI & FALLBACK AI CONFIGURATION (7 COLS) -->
+            <!-- LEFT: GEMINI, OPENROUTER & SUMOPOD CONFIGURATION (7 COLS) -->
             <div class="lg:col-span-7 space-y-6">
+
                 <!-- 1. Google Gemini Configuration -->
                 <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-5">
                     <div class="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -94,7 +129,10 @@
                                 <i class="fa-solid fa-brain"></i>
                             </div>
                             <div>
-                                <h3 class="text-sm font-bold text-slate-800">Google Gemini AI Configuration</h3>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-sm font-bold text-slate-800">1. Google Gemini AI (Utama)</h3>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-primary">Priority #1</span>
+                                </div>
                                 <p class="text-xs text-slate-500">Model utama untuk ekstraksi CV dan penilaian kecocokan pelamar</p>
                             </div>
                         </div>
@@ -107,21 +145,49 @@
                     <div class="space-y-4">
                         <!-- Model Selection -->
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Model Gemini Aktif</label>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-bold text-slate-700">Model Gemini Aktif</label>
+                                <span class="text-[11px] font-medium text-slate-400">{{ count($setting->gemini_models) }} Model Tersedia</span>
+                            </div>
                             <select name="gemini_model" id="geminiModelSelect" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-primary-100 focus:border-primary outline-none">
-                                <option value="gemini-2.5-flash" {{ ($setting->gemini_model === 'gemini-2.5-flash' || empty($setting->gemini_model)) ? 'selected' : '' }}>Google Gemini 2.5 Flash (Sangat Cepat & Direkomendasikan)</option>
-                                <option value="gemini-3.5-flash" {{ (str_contains($setting->gemini_model, '3.5') || str_contains($setting->gemini_model, '3.6')) ? 'selected' : '' }}>Google Gemini 3.5 Flash (Generasi Terbaru & Handal)</option>
+                                @foreach($setting->gemini_models as $gm)
+                                    <option value="{{ $gm }}" {{ ($setting->gemini_model === $gm || (empty($setting->gemini_model) && $loop->first)) ? 'selected' : '' }}>
+                                        {{ $gm }} {{ ($gm === 'gemini-2.5-flash') ? '(Rekomendasi Cepat)' : '' }}
+                                    </option>
+                                @endforeach
                             </select>
+                        </div>
+
+                        <!-- Add New Custom Gemini Model -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Tambah Model Gemini Baru (Kustom)</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" name="new_gemini_model" placeholder="Ketik nama model baru (misal: gemini-2.0-flash-exp)..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-primary-100 focus:border-primary outline-none">
+                            </div>
+                            <!-- Model Chips List -->
+                            <div class="mt-2 flex flex-wrap gap-1.5 items-center">
+                                <span class="text-[10px] text-slate-400 font-semibold mr-1">Daftar Pilihan:</span>
+                                @foreach($setting->gemini_models as $gm)
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                    <span>{{ $gm }}</span>
+                                    @if(count($setting->gemini_models) > 1)
+                                    <button type="button" onclick="deleteModel('gemini', '{{ $gm }}')" class="text-slate-400 hover:text-rose-600 ml-0.5" title="Hapus model dari daftar">
+                                        <i class="fa-solid fa-xmark text-[9px]"></i>
+                                    </button>
+                                    @endif
+                                </span>
+                                @endforeach
+                            </div>
                         </div>
 
                         <!-- Gemini API Keys Pool -->
                         <div>
                             <div class="flex items-center justify-between mb-1.5">
                                 <label class="block text-xs font-bold text-slate-700">Daftar API Key Gemini (1 Baris = 1 Key)</label>
-                                <span class="text-[11px] font-bold text-slate-500">{{ count($setting->keys_list) }} Kunci Terdaftar</span>
+                                <span class="text-[11px] font-bold text-slate-500">{{ count($setting->keys_list) }} Kunci Aktif Terdaftar</span>
                             </div>
-                            <textarea name="gemini_keys" rows="4" class="w-full font-mono bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-primary-100 focus:border-primary outline-none" placeholder="Masukkan satu Google Gemini API Key per baris...">{{ $setting->gemini_keys }}</textarea>
-                            <p class="text-[11px] text-slate-400 mt-1 italic">* Sistem akan otomatis merotasi API Key jika kuota harian pada salah satu key telah tercapai.</p>
+                            <textarea name="gemini_keys" rows="3" class="w-full font-mono bg-slate-50 border border-slate-300 rounded-xl p-3 text-xs text-slate-800 focus:ring-2 focus:ring-primary-100 focus:border-primary outline-none" placeholder="Masukkan satu Google Gemini API Key per baris...">{{ $setting->gemini_keys }}</textarea>
+                            <p class="text-[11px] text-slate-400 mt-1 italic">* Sistem akan otomatis merotasi API Key jika salah satu key terkena limit, dengan jeda istirahat 2 menit.</p>
                         </div>
 
                         <!-- Add New Single Key -->
@@ -134,7 +200,7 @@
                     </div>
                 </div>
 
-                <!-- 1.1 List Token Gemini Expired / Error (Bukan Limit Sementara) -->
+                <!-- 1.1 List Token Gemini Expired / Error -->
                 @if(!empty($expiredKeys) && count($expiredKeys) > 0)
                 <div class="bg-rose-50/70 rounded-2xl border border-rose-200 shadow-xs p-5 space-y-3">
                     <div class="flex items-center justify-between pb-2.5 border-b border-rose-200/80">
@@ -144,7 +210,7 @@
                             </div>
                             <div>
                                 <h4 class="text-xs font-bold text-rose-900">List Token Gemini Expired / Error ({{ count($expiredKeys) }})</h4>
-                                <p class="text-[11px] text-rose-600">Token berikut mengalami error permanen (bukan limit sementara) dan dinonaktifkan otomatis agar tidak mengganggu antrean.</p>
+                                <p class="text-[11px] text-rose-600">Token berikut mengalami error permanen dan dinonaktifkan otomatis agar tidak mengganggu antrean.</p>
                             </div>
                         </div>
                     </div>
@@ -180,32 +246,162 @@
                 </div>
                 @endif
 
-                <!-- 2. Fallback AI Provider (Sumopod / OpenAI) -->
-                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
-                    <div class="flex items-center gap-2.5 pb-3 border-b border-slate-100">
-                        <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm">
-                            <i class="fa-solid fa-shield-halved"></i>
+                <!-- 2. OpenRouter AI Configuration (BARU) -->
+                <div class="bg-white rounded-2xl border border-purple-200 shadow-sm p-6 space-y-5 relative overflow-hidden">
+                    <div class="absolute top-0 right-0 w-32 h-32 bg-purple-50 rounded-full blur-2xl -z-10"></div>
+                    
+                    <div class="flex items-center justify-between pb-3 border-b border-purple-100">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold text-sm">
+                                <i class="fa-solid fa-network-wired"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-sm font-bold text-slate-800">2. OpenRouter AI Gateway</h3>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-purple-100 text-purple-700">Fallback #1</span>
+                                </div>
+                                <p class="text-xs text-slate-500">Cadangan otomatis pertama saat seluruh API Key Gemini mengalami rate limit</p>
+                            </div>
                         </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-800">Fallback Provider (Sumopod / OpenAI)</h3>
-                            <p class="text-xs text-slate-500">Cadangan otomatis jika seluruh kuota Google Gemini mengalami limitasi</p>
-                        </div>
+                        <button type="button" onclick="testOpenrouterConnection()" class="btn-att-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 text-purple-700 border-purple-300 hover:bg-purple-50">
+                            <i class="fa-solid fa-bolt text-xs text-purple-600"></i>
+                            <span>Test Koneksi</span>
+                        </button>
                     </div>
 
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div class="space-y-4">
+                        <!-- OpenRouter API Key -->
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Sumopod / OpenAI API Key</label>
-                            <input type="password" name="sumopod_key" value="{{ $setting->sumopod_key }}" placeholder="sk-..." class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-primary-100 focus:border-primary outline-none">
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-bold text-slate-700">OpenRouter API Key</label>
+                                <span class="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                                    <i class="fa-solid fa-check mr-1"></i>Bearer Auth Aktif
+                                </span>
+                            </div>
+                            <div class="relative">
+                                <input type="password" id="openrouterKeyInput" name="openrouter_key" value="{{ $setting->openrouter_key }}" placeholder="sk-or-v1-..." class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-purple-100 focus:border-purple-600 outline-none pr-10">
+                                <button type="button" onclick="togglePasswordVisibility('openrouterKeyInput', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
+
+                        <!-- OpenRouter Model Selection -->
                         <div>
-                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Model Cadangan</label>
-                            <select name="sumopod_model" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-primary-100 focus:border-primary outline-none">
-                                <option value="gpt-4o-mini" {{ $setting->sumopod_model === 'gpt-4o-mini' ? 'selected' : '' }}>GPT-4o Mini (Hemat & Responsif)</option>
-                                <option value="gpt-4o" {{ $setting->sumopod_model === 'gpt-4o' ? 'selected' : '' }}>GPT-4o (Kemampuan Penalaran Tinggi)</option>
+                            <div class="flex items-center justify-between mb-1.5">
+                                <label class="block text-xs font-bold text-slate-700">Model OpenRouter Aktif</label>
+                                <div class="flex items-center gap-1 text-[11px] text-purple-600 font-semibold">
+                                    <i class="fa-solid fa-brain"></i>
+                                    <span>Reasoning: Enabled</span>
+                                </div>
+                            </div>
+                            <select name="openrouter_model" id="openrouterModelSelect" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-purple-100 focus:border-purple-600 outline-none">
+                                @foreach($setting->openrouter_models as $orm)
+                                    <option value="{{ $orm }}" {{ ($setting->openrouter_model === $orm || (empty($setting->openrouter_model) && $orm === 'nvidia/nemotron-3-ultra-550b-a55b:free')) ? 'selected' : '' }}>
+                                        {{ $orm }} {{ ($orm === 'nvidia/nemotron-3-ultra-550b-a55b:free') ? '(Default Free Reasoning)' : '' }}
+                                    </option>
+                                @endforeach
                             </select>
+                        </div>
+
+                        <!-- Add New Custom OpenRouter Model -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Tambah Model OpenRouter Baru (Kustom)</label>
+                            <input type="text" name="new_openrouter_model" placeholder="Ketik nama model OpenRouter (misal: deepseek/deepseek-r1:free)..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-purple-100 focus:border-purple-600 outline-none">
+                            
+                            <!-- Model Chips List -->
+                            <div class="mt-2 flex flex-wrap gap-1.5 items-center">
+                                <span class="text-[10px] text-slate-400 font-semibold mr-1">Daftar Model:</span>
+                                @foreach($setting->openrouter_models as $orm)
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                    <span>{{ $orm }}</span>
+                                    @if(count($setting->openrouter_models) > 1)
+                                    <button type="button" onclick="deleteModel('openrouter', '{{ $orm }}')" class="text-purple-400 hover:text-rose-600 ml-0.5" title="Hapus model dari daftar">
+                                        <i class="fa-solid fa-xmark text-[9px]"></i>
+                                    </button>
+                                    @endif
+                                </span>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        <div class="p-3 bg-purple-50/60 rounded-xl border border-purple-200/80 text-[11px] text-purple-800 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-shield-halved text-purple-600"></i>
+                                <span>Payload cURL otomatis menyertakan parameter <code>"reasoning": {"enabled": true}</code></span>
+                            </span>
+                            <span class="font-mono font-semibold text-[10px] text-purple-600">openrouter.ai</span>
                         </div>
                     </div>
                 </div>
+
+                <!-- 3. Fallback AI Provider (Sumopod / OpenAI) -->
+                <div class="bg-white rounded-2xl border border-amber-200 shadow-sm p-6 space-y-5 relative overflow-hidden">
+                    <div class="flex items-center justify-between pb-3 border-b border-amber-100">
+                        <div class="flex items-center gap-2.5">
+                            <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm">
+                                <i class="fa-solid fa-shield-halved"></i>
+                            </div>
+                            <div>
+                                <div class="flex items-center gap-2">
+                                    <h3 class="text-sm font-bold text-slate-800">3. Sumopod / OpenAI API (Cadangan Akhir)</h3>
+                                    <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-700">Fallback #2</span>
+                                </div>
+                                <p class="text-xs text-slate-500">Cadangan tahap akhir jika Gemini dan OpenRouter keduanya limit atau gagal</p>
+                            </div>
+                        </div>
+                        <button type="button" onclick="testSumopodConnection()" class="btn-att-secondary text-xs px-3 py-1.5 flex items-center gap-1.5 text-amber-700 border-amber-300 hover:bg-amber-50">
+                            <i class="fa-solid fa-bolt text-xs text-amber-600"></i>
+                            <span>Test Koneksi</span>
+                        </button>
+                    </div>
+
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Sumopod / OpenAI API Key</label>
+                                <div class="relative">
+                                    <input type="password" id="sumopodKeyInput" name="sumopod_key" value="{{ $setting->sumopod_key }}" placeholder="sk-..." class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-amber-100 focus:border-amber-500 outline-none pr-10">
+                                    <button type="button" onclick="togglePasswordVisibility('sumopodKeyInput', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        <i class="fa-regular fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Model Sumopod Aktif</label>
+                                <select name="sumopod_model" id="sumopodModelSelect" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs font-semibold text-slate-800 focus:ring-2 focus:ring-amber-100 focus:border-amber-500 outline-none">
+                                    @foreach($setting->sumopod_models as $sm)
+                                        <option value="{{ $sm }}" {{ ($setting->sumopod_model === $sm || (empty($setting->sumopod_model) && $sm === 'gpt-4o-mini')) ? 'selected' : '' }}>
+                                            {{ $sm }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Add New Custom Sumopod Model -->
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">Tambah Model Sumopod Baru (Kustom)</label>
+                            <input type="text" name="new_sumopod_model" placeholder="Ketik nama model Sumopod (misal: claude-3-7-sonnet)..." class="w-full bg-slate-50 border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-amber-100 focus:border-amber-500 outline-none">
+                            
+                            <!-- Model Chips List -->
+                            <div class="mt-2 flex flex-wrap gap-1.5 items-center">
+                                <span class="text-[10px] text-slate-400 font-semibold mr-1">Daftar Model:</span>
+                                @foreach($setting->sumopod_models as $sm)
+                                <span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                    <span>{{ $sm }}</span>
+                                    @if(count($setting->sumopod_models) > 1)
+                                    <button type="button" onclick="deleteModel('sumopod', '{{ $sm }}')" class="text-amber-400 hover:text-rose-600 ml-0.5" title="Hapus model dari daftar">
+                                        <i class="fa-solid fa-xmark text-[9px]"></i>
+                                    </button>
+                                    @endif
+                                </span>
+                                @endforeach
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
 
             <!-- RIGHT: WHATSAPP AUTOMATION & NOTIFICATION (5 COLS) -->
@@ -235,7 +431,12 @@
 
                         <div>
                             <label class="block text-xs font-bold text-slate-700 mb-1.5">API Key WhatsApp</label>
-                            <input type="password" name="wa_api_key" value="{{ $setting->wa_api_key }}" placeholder="Token API Gateway" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-primary-100 focus:border-primary outline-none">
+                            <div class="relative">
+                                <input type="password" id="waApiKeyInput" name="wa_api_key" value="{{ $setting->wa_api_key }}" placeholder="Token API Gateway" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2 text-xs font-mono text-slate-800 focus:ring-2 focus:ring-primary-100 focus:border-primary outline-none pr-10">
+                                <button type="button" onclick="togglePasswordVisibility('waApiKeyInput', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                    <i class="fa-regular fa-eye"></i>
+                                </button>
+                            </div>
                         </div>
 
                         <div>
@@ -274,12 +475,12 @@
                 </div>
 
                 <!-- SAVE BUTTON BAR -->
-                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex items-center justify-between">
+                <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div class="flex items-center gap-2 text-xs text-emerald-700 font-bold bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-xl">
                         <i class="fa-solid fa-circle-check text-emerald-600"></i>
-                        <span>API Key AI & WhatsApp Gateway Aktif Menggunakan Settingan Global Admin (Pusat)</span>
+                        <span>Pengaturan Global Admin (Pusat)</span>
                     </div>
-                    <button type="submit" class="btn-att-primary text-xs font-bold px-6 py-2.5 flex items-center gap-2 shadow-md shadow-primary/20">
+                    <button type="submit" class="w-full sm:w-auto btn-att-primary text-xs font-bold px-6 py-2.5 flex items-center justify-center gap-2 shadow-md shadow-primary/20">
                         <i class="fa-solid fa-floppy-disk"></i>
                         <span>Simpan Konfigurasi Global</span>
                     </button>
@@ -513,6 +714,140 @@ function testWaModal() {
     });
 }
 
+function togglePasswordVisibility(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const icon = btn.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        if (icon) {
+            icon.classList.remove('fa-eye');
+            icon.classList.add('fa-eye-slash');
+        }
+    } else {
+        input.type = 'password';
+        if (icon) {
+            icon.classList.remove('fa-eye-slash');
+            icon.classList.add('fa-eye');
+        }
+    }
+}
+
+function testOpenrouterConnection() {
+    const key = document.getElementById('openrouterKeyInput') ? document.getElementById('openrouterKeyInput').value : '';
+    const model = document.getElementById('openrouterModelSelect') ? document.getElementById('openrouterModelSelect').value : 'nvidia/nemotron-3-ultra-550b-a55b:free';
+
+    Swal.fire({
+        title: 'Menguji Koneksi OpenRouter...',
+        text: 'Menghubungkan ke API OpenRouter (' + model + ') dengan reasoning enabled...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+            fetch("{{ route('aisetting.test_openrouter') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ key: key, model: model })
+            })
+            .then(res => res.json().then(data => ({ status: res.status, ok: res.ok, data: data })))
+            .then(res => {
+                if (res.ok && res.data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Koneksi OpenRouter Berhasil!',
+                        html: '<p class="text-sm">' + res.data.message + '</p>' + (res.data.reply ? '<p class="text-xs font-mono text-slate-500 mt-2 bg-slate-100 p-2 rounded">Balasan: ' + res.data.reply + '</p>' : ''),
+                        confirmButtonColor: '#7c3aed'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Koneksi OpenRouter Gagal',
+                        text: res.data.message || 'Tidak dapat terhubung ke OpenRouter.',
+                        confirmButtonColor: '#7c3aed'
+                    });
+                }
+            })
+            .catch(err => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Koneksi Gagal',
+                    text: 'Terjadi kendala jaringan saat menghubungi OpenRouter.',
+                    confirmButtonColor: '#7c3aed'
+                });
+            });
+        }
+    });
+}
+
+function testSumopodConnection() {
+    const key = document.getElementById('sumopodKeyInput') ? document.getElementById('sumopodKeyInput').value : '';
+    const model = document.getElementById('sumopodModelSelect') ? document.getElementById('sumopodModelSelect').value : 'gpt-4o-mini';
+
+    Swal.fire({
+        title: 'Menguji Koneksi Sumopod...',
+        text: 'Menghubungkan ke API Sumopod (' + model + ')...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+            fetch("{{ route('aisetting.test_sumopod') }}", {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ key: key, model: model })
+            })
+            .then(res => res.json().then(data => ({ status: res.status, ok: res.ok, data: data })))
+            .then(res => {
+                if (res.ok && res.data.status === 'success') {
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Koneksi Sumopod Berhasil!',
+                        html: '<p class="text-sm">' + res.data.message + '</p>' + (res.data.reply ? '<p class="text-xs font-mono text-slate-500 mt-2 bg-slate-100 p-2 rounded">Balasan: ' + res.data.reply + '</p>' : ''),
+                        confirmButtonColor: '#d97706'
+                    });
+                } else {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Koneksi Sumopod Gagal',
+                        text: res.data.message || 'Tidak dapat terhubung ke Sumopod.',
+                        confirmButtonColor: '#d97706'
+                    });
+                }
+            })
+            .catch(err => {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Koneksi Gagal',
+                    text: 'Terjadi kendala jaringan saat menghubungi Sumopod.',
+                    confirmButtonColor: '#d97706'
+                });
+            });
+        }
+    });
+}
+
+function deleteModel(type, model) {
+    Swal.fire({
+        title: 'Hapus Model dari Daftar?',
+        html: `Apakah Anda yakin ingin menghapus model <b class="font-mono text-primary">${model}</b> dari daftar pilihan?`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#e11d48',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Ya, Hapus',
+        cancelButtonText: 'Batal'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('deleteModelType').value = type;
+            document.getElementById('deleteModelName').value = model;
+            document.getElementById('deleteModelForm').submit();
+        }
+    });
+}
+
 function deleteExpiredKey(key) {
     Swal.fire({
         title: 'Hapus Token Expired?',
@@ -535,6 +870,12 @@ function deleteExpiredKey(key) {
 <form id="deleteExpiredKeyForm" action="{{ route('aisetting.remove_expired_key') }}" method="POST" class="hidden">
     @csrf
     <input type="hidden" name="key" id="expiredKeyInput">
+</form>
+
+<form id="deleteModelForm" action="{{ route('aisetting.remove_model') }}" method="POST" class="hidden">
+    @csrf
+    <input type="hidden" name="type" id="deleteModelType">
+    <input type="hidden" name="model" id="deleteModelName">
 </form>
 @endsection
 
