@@ -574,6 +574,115 @@ class KandidatPortalController extends Controller
             'all_areas' => $allAreas->toArray(),
         ];
 
+        // -------------------------------------------------------------
+        // Statistik Distribusi User / Rekruter Kandidat yang Belum Dianalisa AI
+        // -------------------------------------------------------------
+        $candidatesForUser = (clone $queueQuery)->get(['id', 'useras', 'recruiter_id']);
+
+        $userEmails = [];
+        $recruiterIds = [];
+        foreach ($candidatesForUser as $c) {
+            $u = trim($c->useras ?? '');
+            if (str_contains($u, '@')) {
+                $userEmails[] = strtolower($u);
+            }
+            if (!empty($c->recruiter_id)) {
+                $recruiterIds[] = $c->recruiter_id;
+            }
+        }
+        $userEmails = array_values(array_unique($userEmails));
+        $recruiterIds = array_values(array_unique($recruiterIds));
+
+        $employeeMap = !empty($userEmails) 
+            ? Employee::whereIn(DB::raw('LOWER(TRIM(email))'), $userEmails)
+                ->whereNotNull('nama_karyawan')
+                ->where('nama_karyawan', '!=', '')
+                ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
+                ->get(['email', 'nama_karyawan'])
+                ->keyBy(fn($e) => strtolower(trim($e->email)))
+            : collect();
+
+        $userEmailMap = !empty($userEmails)
+            ? User::whereIn(DB::raw('LOWER(TRIM(email))'), $userEmails)
+                ->whereNotNull('name')
+                ->where('name', '!=', '')
+                ->get(['email', 'name'])
+                ->keyBy(fn($u) => strtolower(trim($u->email)))
+            : collect();
+
+        $userRecruiterMap = !empty($recruiterIds)
+            ? User::whereIn('id', $recruiterIds)
+                ->pluck('name', 'id')
+            : collect();
+
+        $userCounts = [];
+        foreach ($candidatesForUser as $c) {
+            $rawUser = trim($c->useras ?? '');
+            if (empty($rawUser) && !empty($c->recruiter_id) && isset($userRecruiterMap[$c->recruiter_id])) {
+                $rawUser = $userRecruiterMap[$c->recruiter_id];
+            }
+            if (empty($rawUser)) {
+                $name = 'TIDAK DIKETAHUI';
+            } elseif (str_contains($rawUser, '@')) {
+                $lower = strtolower($rawUser);
+                if (isset($employeeMap[$lower])) {
+                    $name = trim($employeeMap[$lower]->nama_karyawan);
+                } elseif (isset($userEmailMap[$lower])) {
+                    $name = trim($userEmailMap[$lower]->name);
+                } else {
+                    $name = $rawUser;
+                }
+            } else {
+                $name = trim($rawUser);
+            }
+
+            $name = strtoupper($name);
+            $userCounts[$name] = ($userCounts[$name] ?? 0) + 1;
+        }
+
+        arsort($userCounts);
+
+        $allUsers = [];
+        foreach ($userCounts as $userName => $count) {
+            $pct = $totalUnanalyzed > 0 ? round(($count / $totalUnanalyzed) * 100, 1) : 0;
+            $allUsers[] = [
+                'user' => $userName,
+                'count' => $count,
+                'percentage' => $pct,
+            ];
+        }
+
+        // Siapkan data untuk Pie / Donut Chart User (Top 8 + Lainnya)
+        $userChartLabels = [];
+        $userChartCounts = [];
+        $userChartPercentages = [];
+
+        $topUsers = array_slice($allUsers, 0, $topLimit);
+        $otherUsers = array_slice($allUsers, $topLimit);
+        $otherUserCount = array_sum(array_column($otherUsers, 'count'));
+
+        foreach ($topUsers as $item) {
+            $userChartLabels[] = $item['user'];
+            $userChartCounts[] = $item['count'];
+            $userChartPercentages[] = $item['percentage'];
+        }
+
+        if ($otherUserCount > 0) {
+            $otherUserPct = $totalUnanalyzed > 0 ? round(($otherUserCount / $totalUnanalyzed) * 100, 1) : 0;
+            $userChartLabels[] = 'LAINNYA (' . count($otherUsers) . ' User)';
+            $userChartCounts[] = $otherUserCount;
+            $userChartPercentages[] = $otherUserPct;
+        }
+
+        $userStats = [
+            'total_unanalyzed' => $totalUnanalyzed,
+            'total_users' => count($allUsers),
+            'chart_labels' => $userChartLabels,
+            'chart_counts' => $userChartCounts,
+            'chart_percentages' => $userChartPercentages,
+            'all_users' => $allUsers,
+        ];
+
         $liveStatus = \App\Services\AiAnalyzerService::getLiveRunningStatus();
         $processLogs = \App\Services\AiAnalyzerService::getTodayLogs(80);
         $logDate = now('Asia/Jakarta')->translatedFormat('d F Y');
@@ -590,6 +699,7 @@ class KandidatPortalController extends Controller
             'log_date' => $logDate,
             'live_status' => $liveStatus,
             'area_stats' => $areaStats,
+            'user_stats' => $userStats,
             'timestamp' => now('Asia/Jakarta')->format('H:i:s'),
         ];
     }
