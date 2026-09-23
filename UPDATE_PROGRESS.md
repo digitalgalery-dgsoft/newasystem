@@ -1465,6 +1465,41 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 | Commit ID | Deskripsi Pembaruan |
 | :--- | :--- |
+| `c4a70b5` | fix(interviewinhouse): synchronize evaluation tabs (interview, refcek, kompt, psikotes, math) with actual test and assessment data |
+| `94cc238` | fix(inhouse): restrict head dashboard to review head step and fix undefined variable isHrd in show |
+| `7e1b312` | feat(ai-queue): add side-by-side user distribution pie chart beside area chart |
+| `b39ea24` | fix(inhouse-approval): resolve correct OM/Head approver for Inhouse candidates (prioritize entity OM OPS over admin support) |
+| `b4bb434` | feat(ai-queue): add Area distribution pie chart for unanalyzed candidates |
+| `9c521ba` | feat(ai): support AI analysis for Job Portal candidates without uploaded CV using form input data |
+| `55b78ba` | fix(ai): prepend prompt instruction and set max_tokens to 8000 for Sumopod GLM reasoning |
+| `e6f63ea` | fix(ai): increase Sumopod timeout to 120s and optimize reasoning prompt and tokens |
+| `cbd13e0` | Order AI queue candidates strictly by earliest registration entry date with score 0 and job portal |
+| `639bde9` | Add realtime Live Console Log with auto-prune yesterday logs and manual trigger feature |
+| `e25b983` | Fix registration date 30 Nov -0001 bug and remove Score/Kategori column from AI queue table |
+| `10adc4e` | feat: ubah layout log antrean AI menjadi berdampingan kanan-kiri dan tambahkan informasi model AI pada list selesai dianalisa |
+| `1ddaaa3` | fix: perbaiki modal Alihkan ke AS dan Ganti Area portal serta buat halaman Log Antrean & Hasil Analisa AI dengan auto reload realtime |
+| `d19e22c` | feat: tambahkan fitur searchable dropdown modal Ganti Area & Prinsiple serta daftar Nama AS / Rekrutor pada modal Alihkan ke AS |
+| `fb0f6f9` | docs: add milestone 38 for master prinsiple search enhancement |
+| `f86dae8` | fix(master-prinsiple): enhance search logic with case-insensitive token matching and smart entity fallback |
+| `002e13c` | feat(ai-settings): add OpenRouter fallback (Gemini -> OpenRouter -> Sumopod) and dynamic custom model management |
+| `2c1425a` | fix(career): allow archived candidates from portal and interview to re-apply to job postings |
+| `61c654c` | fix(odoo-sync): exclude non-employee OD- dummy accounts and delete existing OD- records |
+| `8f1a42d` | fix(odoo-sync): protect existing employee email and password from being overwritten during sync |
+| `d5b9e33` | fix(odoo-sync): handle future departure_date as active and prioritize active ABO over resigned AMK |
+| `7840994` | feat: show reset password notification in navbar bell, persistent bottom-right toast, and restrict group chat messages to members only |
+| `152f9ad` | feat(auth): fitur lupa kata sandi via live chat ke admin dengan auto-sync Odoo & kirim akses |
+| `781bf51` | fix(odoo-sync): perbaiki undefined variable tanggalJoin pada syncSingleEmployee |
+| `5db403a` | fix(odoo-sync): penanganan mutasi entitas karyawan resign dan reaktivasi status |
+| `030ad80` | fix(interview): batasi approval inhouse khusus 5 entitas resmi dan pulihkan approval prinsiple |
+| `86f8043` | docs: update progress documentation with inhouse approval module, step locking, and tab bug fix |
+| `253c764` | fix(interview): lock nama approver inhouse to user pimpinan on Step 1 to prevent manual selection |
+| `4cf9a40` | fix(interview): close unclosed odoo sync form tag and add explicit type=button on tab navigation buttons |
+| `b87e0ab` | feat(interview): unify candidate profile view, include all test tabs in interviewinhouse, and enforce strict step locking for inhouse approval |
+| `7a9479e` | feat(interview): implement inhouse approval flow and approver views for 5 inhouse entities |
+| `e346436` | docs: add milestone 18 for demo account cleanup and candidate ownership revert |
+| `2332af4` | fix: revert candidate interview users from demo account jamil@asystem.co.id to legitimate users and clean controller fallbacks |
+| `95ea357` | fix(region): align job statistics and candidate portal regions with tb_area master data |
+| `3c18aec` | feat(workplan): resolve case-sensitivity matching, archive tasks access, date grouping and date filtering |
 | `fe69c99` | feat(job): sesuaikan QR Code dan format broadcast WhatsApp dengan link langsung detail lowongan |
 | `61d9fab` | feat(walkin): tampilkan jabatan pada dropdown Nama AS dan perbagus input Tanggal Lahir dengan label dan deteksi usia |
 | `99ed017` | fix(walkin): filter dropdown nama AS hanya karyawan inhouse dengan jabatan AS/AM/RM/Rekrutor/Rekrutmen |
@@ -2060,7 +2095,7 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
-### 38. 🏢 Peningkatan Fitur Search Master Prinsiple & Smart Entity Fallback
+### 46. 🏢 Peningkatan Fitur Search Master Prinsiple & Smart Entity Fallback
 - **Penyebab Utama Masalah Pencarian Kosong**:
   - Ditemukan melalui investigasi log server Nginx live bahwa pengguna mencari `ICI PAINT` saat filter entitas `ATK` sedang aktif (`search=ICI+PAINT&entity=ATK`).
   - Di database resmi, prinsiple `PT ICI PAINTS INDONESIA` terdaftar di entitas `AMK` dan `AKP`, bukan di `ATK`. Karena query sebelumnya menggabungkan pencarian dan entitas secara kaku (`where entity = ATK`), sistem mengembalikan 0 hasil (tabel kosong).
@@ -2077,6 +2112,107 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   - Menambahkan tombol clear *(X)* pada kotak input pencarian.
   - Tab cepat entitas (Semua, AMK, AKP, ATK, ABO, ATB) kini mempertahankan parameter pencarian yang sedang aktif saat berpindah tab.
   - Empty state lebih ramah dengan penjelasan detail serta tombol *"Reset Semua Filter"*.
+
+---
+
+### 47. 📊 Dashboard Log Antrean & Realtime AI Live Console Analyzer, Distribusi Dual Chart (Area & User), serta Analisa Kandidat Tanpa CV
+- **Latar Belakang & Kebutuhan**:
+  - Tim HR dan rekrutmen membutuhkan visibilitas mendalam terhadap antrean pemrosesan AI CV Analyzer, distribusi kandidat berdasarkan wilayah kerja (Area) dan PIC rekrutor/user, serta konsol log yang dapat dipantau langsung secara live (*real-time*).
+  - Banyak kandidat dari Job Portal publik yang mendaftar tanpa melampirkan berkas CV PDF/gambar, melainkan mengisi seluruh data pengalaman, pendidikan, dan deskripsi diri langsung pada formulir web. Kandidat ini sebelumnya tidak dapat diproses oleh AI CV Analyzer karena engine hanya mencari berkas fisik.
+- **Implementasi Fitur & Peningkatan**:
+  1. **Dual Visualisasi Chart Antrean AI (`ai_queue.blade.php`)**:
+     - Menghadirkan 2 grafik berdampingan (*side-by-side*) interaktif berbasis Chart.js:
+       - **Donut Chart Distribusi Area**: Menampilkan sebaran kandidat dalam antrean berdasarkan area penempatan kerja.
+       - **Donut/Pie Chart Distribusi User / Rekrutor**: Menampilkan beban kerja antrean kandidat per PIC rekrutor.
+     - **Smart Recruiter Name Resolution**: Mengonversi alamat email atau ID user menjadi nama lengkap karyawan resmi dari database `employees` / `users`, sehingga grafik menampilkan nama asli yang ramah dibaca (bukan raw email).
+  2. **Split Layout 2 Kolom Antrean & Hasil Analisa**:
+     - Kolom Kiri: Daftar antrean kandidat yang belum dianalisa dengan status pendaftaran, asal portal, dan prioritas antrean.
+     - Kolom Kanan: Riwayat kandidat yang baru saja selesai dianalisa lengkap dengan badge skor AI, kategori rekomendasi, dan nama model AI yang mengeksekusi (contoh: *Gemini 2.5 Flash*, *OpenRouter Llama 3.3 70B*, atau *Sumopod GLM-4*).
+  3. **Live Console Log Real-Time & Auto-Prune**:
+     - Terminal log real-time beralaskan tema gelap (*dark terminal style*) yang menampilkan setiap proses pemanggilan API, evaluasi token, pergantian provider AI, dan hasil parsing score.
+     - Fitur pembersihan otomatis log kemarin (*auto-prune yesterday logs*) untuk menjaga performa database tetap optimal.
+     - Tombol eksekusi manual antrean (*Run AI Queue Now*) untuk memicu batch analisa secara langsung tanpa menunggu jadwal cron.
+  4. **Analisa Kandidat Tanpa Unggahan Berkas CV (Form Input Compilation)**:
+     - Memperbarui [AiAnalyzerService.php](file:///d:/ASystem/newasystem/app/Services/AiAnalyzerService.php) agar mendukung kandidat yang tidak memiliki file CV terunggah.
+     - Sistem secara cerdas mengompilasi seluruh data teks formulir pendaftaran pelamar (Nama, Usia, Pendidikan Terakhir, Jurusan, Pengalaman Kerja, Keterampilan Teknis, serta Deskripsi Diri/Summary) menjadi dokumen evaluasi terstruktur dan mengirimkannya ke engine AI untuk evaluasi komprehensif.
+  5. **Pengurutan Antrean Berdasarkan Pendaftar Pertama (*FIFO Earliest Entry Date*)**:
+     - Kueri antrean AI diprioritaskan ketat berdasarkan tanggal pendaftaran paling awal (`created_at ASC` / `tgl_masuk ASC`), memastikan keadilan seleksi di mana pelamar yang mendaftar lebih awal diproses terlebih dahulu.
+     - Menuntaskan bug format tanggal `30 Nov -0001` pada kandidat lama dengan nilai tanggal kosong (*null-safe date formatting*).
+
+---
+
+### 48. 🏢 Penyempurnaan Routing Approver Head Inhouse (Prioritas OM Operasional Cabang vs Admin Support)
+- **Akar Masalah & Identifikasi**:
+  - Pada pengajuan approval kandidat inhouse (Step 1: Head Approver), sistem sebelumnya mengambil pimpinan karyawan rekrutor/AS dari kolom `employees.pimpinan`.
+  - Pada beberapa cabang/area (contoh: Area Surabaya), pimpinan langsung di struktur Odoo tercatat sebagai staf admin operasional (`DEWI NOER HAYATI - ADMIN OPERASIONAL SURABAYA`).
+  - Akibatnya, form Step 1 mengunci nama approver ke staf admin, bukan ke pimpinan manajerial operasional cabang yang berwenang memberikan persetujuan kerja inhouse.
+- **Solusi & Logika Hierarki Approver Baru ([InterviewController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php) & [InterviewInhouseController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewInhouseController.php))**:
+  - Memperbarui algoritma resolusi approver pimpinan:
+    1. **Pemeriksaan Jabatan Pimpinan Langsung**: Jika pimpinan langsung memiliki kata kunci non-manajerial seperti `ADMIN`, `SUPPORT`, atau `STAFF`, sistem tidak langsung menggunakannya sebagai Head Approver.
+    2. **Prioritas Operasional Leadership Cabang**: Sistem menelusuri pimpinan hierarki di atasnya atau mencari karyawan aktif di area cabang terkait yang memiliki jabatan struktural operasional resmi:
+       - `Operation Manager (OM)`
+       - `Branch Manager (BM)`
+       - `Area Manager (AM)`
+       - `Head` / `Pimpinan Cabang`
+       - `Supervisor (SPV)`
+    3. **Fallback Head Operasional Inhouse Resmi**:
+       - Jika tidak ditemukan di level cabang, approver diarahkan ke Kepala Operasional Inhouse Perusahaan: `David Oscar Sahala G Sibuea - OM (Operation Manager)`.
+  - Kandidat inhouse Area Surabaya kini secara tepat dialihkan approval-nya ke pimpinan operasional yang sah.
+
+---
+
+### 49. 🛡️ Restriksi Dashboard Head Inhouse Khusus Step `Review Head` & Perbaikan Bug Otorisasi `$isHrd`
+- **Latar Belakang Masalah**:
+  - Pimpinan Head yang login ke dashboard Kandidat Inhouse (`/interviewinhouse`) sebelumnya melihat seluruh kandidat inhouse di semua tahapan (termasuk kandidat yang masih draft di rekrutor, kandidat yang sudah naik ke HRD Pusat, maupun yang sudah disetujui penuh).
+  - Ketika Head mengklik tombol detail data kandidat, muncul error fatal:
+    > `ErrorException: Undefined variable $isHrd in file .../interviewinhouse/show.blade.php`
+- **Perbaikan & Implementasi**:
+  1. **Restriksi Ketat Dashboard Head ([InterviewInhouseController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewInhouseController.php))**:
+     - Menambahkan filter hak akses pada method `index()`: Jika pengguna yang login adalah pimpinan Head (dan bukan Super Admin / HRD Pusat), daftar kandidat inhouse **hanya menampilkan kandidat yang sedang menunggu persetujuan Head** (`where('status_approval', 'Review Head')`).
+     - Head dapat fokus memproses berkas yang menjadi tanggung jawabnya tanpa terdistraksi oleh berkas di luar wewenangnya.
+  2. **Resolusi Fatal Error `$isHrd` ([InterviewInhouseController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewInhouseController.php))**:
+     - Menambahkan penentuan flag perizinan lengkap sebelum me-render view:
+       ```php
+       $isHrd = (auth()->user()->role === 'admin' || auth()->user()->role === 'hrd' || str_contains(strtolower(auth()->user()->name), 'hrd'));
+       $isHead = ($candidate->nama_approver && str_contains(strtolower($candidate->nama_approver), strtolower(auth()->user()->name)));
+       ```
+     - Memastikan seluruh variabel otorisasi (`$isHrd`, `$isHead`, `$isUserAs`, `$canApproveInhouse`) terdefinisi dengan aman di controller dan view.
+
+---
+
+### 50. 📋 Penyelarasan Menyeluruh Data Riil Evaluasi Kandidat Inhouse (Interview, Refcek, Komputer, Kepribadian, & Matematika)
+- **Latar Belakang & Analisa Kebutuhan**:
+  - Halaman detail kandidat inhouse (`/interviewinhouse/{id}`) sebelumnya menggunakan template tampilan dengan data statis / default mockup yang tidak mencerminkan data riil hasil tes dan evaluasi dari database kandidat.
+  - Tampilan evaluasi harus diselaraskan sepenuhnya dengan halaman detail kandidat interview (`/interview/{id}`) yang sudah memiliki standar data evaluasi 5 pilar seleksi lengkap.
+- **Implementasi Service Terpadu `CandidateEvaluationDataService`**:
+  - Dibuat service sentral [CandidateEvaluationDataService.php](file:///d:/ASystem/newasystem/app/Services/CandidateEvaluationDataService.php) dengan method `getEvaluationData($candidate)` untuk menyatukan dan menstandarisasi pemrosesan data evaluasi kandidat di seluruh modul sistem.
+- **Penyelarasan 5 Tab Evaluasi pada `interviewinhouse/show.blade.php`**:
+  1. **Tab 1: Hasil Wawancara (Interview)**:
+     - Menampilkan 4 pilar penilaian wawancara:
+       - **Penampilan**: Skala 1-4 (Kurang, Cukup, Baik, Sangat Baik).
+       - **Komunikasi**: Skala 1-4.
+       - **Pemahaman Tugas**: Skala 1-4.
+       - **Kepribadian**: Skala 1-4.
+     - Total skor wawancara, catatan detail hasil interview, nama pewawancara, serta **tanda tangan digital riil** Rekrutor / AS yang tersimpan di sistem.
+  2. **Tab 2: Referensi Cek (Refcek)**:
+     - Dropdown interaktif perusahaan yang dicek berdasarkan riwayat pekerjaan aktual pelamar (`tb_riwayat_pekerjaan`).
+     - Data lengkap informan/PIC referensi, nomor kontak, hubungan kerja, serta catatan verifikasi rekam jejak (kinerja, integritas, kedisiplinan, alasan keluar).
+     - Pratinjau berkas / tangkapan layar bukti percakapan WhatsApp referensi cek dengan modal lightbox zoom.
+  3. **Tab 3: Hasil Tes Komputer**:
+     - 9 Pilar Keterampilan Komputer riil: *MS Word, MS Excel, Formula/Rumus Excel, Power Point, Email & Internet, Mengetik 10 Jari, Kecepatan Kerja, Kerapian Data, Sikap Kerja*.
+     - Skor kumulatif, nilai persentase, dan predikat kelulusan (Grade A, B, C, D).
+     - Catatan evaluator penguji serta viewer berkas bukti lembar tes komputer.
+  4. **Tab 4: Hasil Tes Kepribadian (DISC / Florence Littauer)**:
+     - Skor 4 tipe kepribadian: *Sanguinis (Popular), Koleris (Powerful), Melankolis (Perfect), Plegmatis (Peaceful)*.
+     - Daftar 40 butir soal kepribadian lengkap dengan jawaban riil yang dipilih kandidat beserta tipe kepribadian tiap butir.
+     - Ringkasan profil kepribadian dominan dan analisa kecocokan jabatan kerja.
+  5. **Tab 5: Hasil Tes Matematika CBT**:
+     - Nilai riil tes matematika (skor total, persentase kelulusan, grade A/B/C/D).
+     - Rincian seluruh butir soal tes matematika CBT yang dikerjakan kandidat, kunci jawaban benar, jawaban yang dipilih kandidat, dan indikator visual status Benar (hijau) / Salah (merah).
+     - Riwayat nomor percobaan tes (`tes_ke`) dan status remedial.
+- **Hasil & Verifikasi**:
+  - Halaman detail inhouse kini 100% menampilkan data riil seleksi yang terintegrasi langsung dengan tabel `candidates`, `tb_kandidat`, `tb_riwayat_pekerjaan`, `tb_jawaban_kepribadian`, dan `tb_jawaban_matematika`.
+  - Tampilan visual rapi, konsisten, responsif, dan siap digunakan oleh pimpinan Head maupun HRD Pusat.
 
 ---
 
