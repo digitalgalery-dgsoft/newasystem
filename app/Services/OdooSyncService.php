@@ -165,6 +165,9 @@ class OdooSyncService
                         '|',
                         ['departure_date', '=', false],
                         ['departure_date', '>', $today],
+                        '|',
+                        ['identification_id', '!=', false],
+                        ['registration_number', '!=', false],
                     ]],
                     [
                         'fields' => [
@@ -202,7 +205,23 @@ class OdooSyncService
                 $odooId = $rec['id'] ?? null;
                 $nama = trim((string)($rec['name'] ?? 'Tanpa Nama'));
                 $rawNik = trim((string)($rec['identification_id'] ?: $rec['registration_number'] ?: ''));
-                $nik = $rawNik ?: ('OD-' . $odooId);
+
+                // Filter 0: Abaikan akun non-employee (tanpa NIK/NIP valid atau berawalan OD-)
+                if (empty($rawNik) || str_starts_with(strtoupper($rawNik), 'OD-')) {
+                    $skipped++;
+                    $log('item_skip', "⏭️ [{$entity->code}] Lewati ID {$odooId} - {$nama}: Bukan data employee (NIK/NIP kosong atau berawalan OD-)", [
+                        'action'    => 'skipped',
+                        'reason'    => 'invalid_nik',
+                        'odoo_id'   => $odooId,
+                        'name'      => $nama,
+                        'processed' => $processed,
+                        'created'   => $created,
+                        'updated'   => $updated,
+                        'skipped'   => $skipped,
+                    ]);
+                    continue;
+                }
+                $nik = $rawNik;
 
                 try {
                     // Filter 1: Hanya Employee Aktif Saja (active=true dan belum tiba tanggal departure)
@@ -774,8 +793,8 @@ class OdooSyncService
     public function syncSingleEmployee(OdooEntity $entity, string $nik): array
     {
         $cleanNik = trim($nik);
-        if (empty($cleanNik)) {
-            throw new \Exception('NIK tidak boleh kosong.');
+        if (empty($cleanNik) || str_starts_with(strtoupper($cleanNik), 'OD-')) {
+            throw new \Exception("NIK '{$cleanNik}' tidak valid atau bukan data employee riil.");
         }
 
         $uid = $this->authenticate();
@@ -852,6 +871,14 @@ class OdooSyncService
         $odooId = $rec['id'];
         $rawNik = trim((string)($rec['identification_id'] ?: $rec['registration_number'] ?: ''));
         $finalNik = $rawNik ?: $cleanNik;
+
+        if (empty($finalNik) || str_starts_with(strtoupper($finalNik), 'OD-')) {
+            return [
+                'success' => false,
+                'message' => "Record Odoo ID #{$odooId} ({$nama}) bukan data employee riil (tidak memiliki NIK/NIP valid).",
+                'data'    => null,
+            ];
+        }
         $nip = trim((string)($rec['registration_number'] ?: '')) ?: null;
         $nama = trim((string)($rec['name'] ?? 'Tanpa Nama'));
         $email = $rec['work_email'] ?: ($rec['private_email'] ?: null);
@@ -1054,6 +1081,17 @@ class OdooSyncService
     }
 
     /**
+     * Hapus seluruh data dummy / non-employee berawalan OD- dari database.
+     */
+    public static function cleanupDummyOdEmployees(): int
+    {
+        return Employee::where('nik', 'like', 'OD-%')
+            ->orWhereNull('nik')
+            ->orWhere('nik', '')
+            ->delete();
+    }
+
+    /**
      * Cari dan sinkronkan karyawan secara otomatis berdasarkan NIK lintas seluruh entitas Odoo yang aktif.
      * Mengembalikan status: found_active, found_resign, atau not_found.
      * Jika ditemukan aktif di Odoo, otomatis tersimpan/terupdate ke database lokal (Employee model).
@@ -1061,10 +1099,10 @@ class OdooSyncService
     public static function findAndSyncByNik(string $nik): array
     {
         $cleanNik = trim($nik);
-        if (empty($cleanNik)) {
+        if (empty($cleanNik) || str_starts_with(strtoupper($cleanNik), 'OD-')) {
             return [
                 'status'   => 'not_found',
-                'message'  => 'NIK tidak boleh kosong.',
+                'message'  => "NIK '{$cleanNik}' tidak valid atau bukan data employee riil.",
                 'employee' => null,
             ];
         }

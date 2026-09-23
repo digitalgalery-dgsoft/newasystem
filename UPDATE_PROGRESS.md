@@ -1976,6 +1976,27 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 43. 🧹 Pengecualian Akun Sistem/Dummy (Prefix OD-) dari Sinkronisasi Odoo & Pembersihan Database
+- **Latar Belakang & Akar Masalah**:
+  - Di Odoo ERP, terdapat record akun sistem / operasional cabang (contoh: `aro-yogyakarta-dennihendra`, `aro-cirebon-hendra`, `ro-cirebon, tasikmalaya-hendra`, `as-kediri-canny`, dll.) yang tidak memiliki NIK (`identification_id`) maupun NIP (`registration_number`).
+  - Sebelumnya, sistem menghasilkan fallback NIK dummy berupa prefix `OD-` diikuti Odoo ID (contoh: `OD-16191`, `OD-48408`, `OD-54335`) sehingga akun-akun tersebut ikut tersedot ke Master Karyawan sebagai karyawan aktif.
+- **Implementasi Pengecualian pada Sinkronisasi Odoo (`OdooSyncService.php`)**:
+  1. **Query XML-RPC Odoo**:
+     - Ditambahkan filter ketat pada query Odoo:
+       ```php
+       ['|', ['identification_id', '!=', false], ['registration_number', '!=', false]]
+       ```
+       Memastikan record yang tidak memiliki NIK/NIP tidak lagi diambil dari server Odoo.
+  2. **Filter Validasi PHP**:
+     - Pada `syncEmployees()`, record dengan NIK kosong atau diawali `OD-` langsung di-skip dan tidak diproses.
+     - Pada `syncSingleEmployee()` dan `findAndSyncByNik()`, input NIK dummy atau berawalan `OD-` ditolak dengan keterangan bukan data employee riil.
+- **Pembersihan Database & Migrasi**:
+  - Migrasi `2026_09_23_130000_delete_dummy_od_employees.php`:
+    - Menghapus seluruh data karyawan dummy berawalan `OD-%` serta data dengan NIK kosong/null dari tabel `employees`.
+  - Fungsi statis `OdooSyncService::cleanupDummyOdEmployees()` disediakan untuk pemeliharaan rutin.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
