@@ -530,7 +530,7 @@ class KandidatPortalController extends Controller
             ->orderByDesc('total')
             ->get();
 
-        $totalUnanalyzed = $areaRaw->sum('total');
+        $totalUnanalyzed = $queueCount > 0 ? $queueCount : (int)$areaRaw->sum('total');
 
         $allAreas = $areaRaw->map(function ($item) use ($totalUnanalyzed) {
             $count = (int)$item->total;
@@ -725,7 +725,9 @@ class KandidatPortalController extends Controller
      */
     public function aiQueueData()
     {
-        return response()->json(array_merge(['success' => true], $this->getAiQueueLogPayload()));
+        return response()->json(array_merge(['success' => true], $this->getAiQueueLogPayload()))
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->header('Pragma', 'no-cache');
     }
 
     /**

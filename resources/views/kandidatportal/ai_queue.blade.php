@@ -387,7 +387,7 @@
 
                     <!-- Scrollable Container untuk List Breakdown -->
                     <div class="max-h-64 overflow-y-auto pr-1 space-y-2" style="scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
-                        <template x-for="(item, idx) in (showAllAreas ? (areaStats?.all_areas || []) : (areaStats?.chart_labels ? areaStats.chart_labels.map((l, i) => ({ area: l, count: areaStats.chart_counts[i], percentage: areaStats.chart_percentages[i] })) : []))" :key="'area_' + idx">
+                        <template x-for="(item, idx) in (showAllAreas ? (areaStats?.all_areas || []) : (areaStats?.chart_labels ? areaStats.chart_labels.map((l, i) => ({ area: l, count: areaStats.chart_counts[i], percentage: areaStats.chart_percentages[i] })) : []))" :key="'area_' + (item.area || idx) + '_' + item.count + '_' + item.percentage">
                             <div class="p-2 rounded-xl border border-slate-100 hover:border-indigo-200 bg-slate-50/50 hover:bg-white transition-all flex flex-col gap-1 shadow-2xs group">
                                 <div class="flex items-center justify-between gap-2 text-xs">
                                     <div class="flex items-center gap-2 min-w-0">
@@ -536,7 +536,7 @@
 
                     <!-- Scrollable Container untuk List Breakdown -->
                     <div class="max-h-64 overflow-y-auto pr-1 space-y-2" style="scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
-                        <template x-for="(item, idx) in (showAllUsers ? (userStats?.all_users || []) : (userStats?.chart_labels ? userStats.chart_labels.map((l, i) => ({ user: l, count: userStats.chart_counts[i], percentage: userStats.chart_percentages[i] })) : []))" :key="'user_' + idx">
+                        <template x-for="(item, idx) in (showAllUsers ? (userStats?.all_users || []) : (userStats?.chart_labels ? userStats.chart_labels.map((l, i) => ({ user: l, count: userStats.chart_counts[i], percentage: userStats.chart_percentages[i] })) : []))" :key="'user_' + (item.user || idx) + '_' + item.count + '_' + item.percentage">
                             <div class="p-2 rounded-xl border border-slate-100 hover:border-sky-200 bg-slate-50/50 hover:bg-white transition-all flex flex-col gap-1 shadow-2xs group">
                                 <div class="flex items-center justify-between gap-2 text-xs">
                                     <div class="flex items-center gap-2 min-w-0">
@@ -1127,8 +1127,9 @@
                                                 const val = context.raw || 0;
                                                 const idx = context.dataIndex;
                                                 const total = this.areaStats?.total_unanalyzed || this.queueCount || 1;
-                                                const pct = (percentages && percentages[idx] !== undefined)
-                                                    ? percentages[idx]
+                                                const currentPcts = this.areaStats?.chart_percentages || [];
+                                                const pct = (currentPcts && currentPcts[idx] !== undefined)
+                                                    ? currentPcts[idx]
                                                     : ((val / total) * 100).toFixed(1);
                                                 return ` ${val} Kandidat (${pct}%)`;
                                             }
@@ -1146,21 +1147,39 @@
             },
 
             updateAreaChart() {
-                if (!this.areaChartInstance) {
-                    this.initAreaChart();
-                    return;
+                try {
+                    const labels = this.areaStats?.chart_labels || [];
+                    const data = this.areaStats?.chart_counts || [];
+                    const bgColors = labels.map((_, i) => this.getSliceColor(i));
+
+                    if (!this.areaChartInstance) {
+                        this.initAreaChart();
+                        return;
+                    }
+
+                    // Jika jumlah slice berubah atau label berubah, re-init chart untuk mencegah error rendering Chart.js
+                    if (!this.areaChartInstance.data || !this.areaChartInstance.data.labels || this.areaChartInstance.data.labels.length !== labels.length) {
+                        this.areaChartInstance.destroy();
+                        this.areaChartInstance = null;
+                        this.initAreaChart();
+                        return;
+                    }
+
+                    this.areaChartInstance.data.labels = labels;
+                    this.areaChartInstance.data.datasets[0].data = data;
+                    this.areaChartInstance.data.datasets[0].backgroundColor = bgColors;
+                    this.areaChartInstance.options.cutout = this.areaChartType === 'doughnut' ? '68%' : 0;
+                    this.areaChartInstance.update('none');
+                } catch (e) {
+                    console.warn("Gagal memperbarui Area Chart, mencoba init ulang:", e);
+                    try {
+                        if (this.areaChartInstance) {
+                            this.areaChartInstance.destroy();
+                            this.areaChartInstance = null;
+                        }
+                        this.initAreaChart();
+                    } catch (e2) {}
                 }
-
-                const labels = this.areaStats?.chart_labels || [];
-                const data = this.areaStats?.chart_counts || [];
-                const percentages = this.areaStats?.chart_percentages || [];
-                const bgColors = labels.map((_, i) => this.getSliceColor(i));
-
-                this.areaChartInstance.data.labels = labels;
-                this.areaChartInstance.data.datasets[0].data = data;
-                this.areaChartInstance.data.datasets[0].backgroundColor = bgColors;
-                this.areaChartInstance.options.cutout = this.areaChartType === 'doughnut' ? '68%' : 0;
-                this.areaChartInstance.update();
             },
 
             initUserChart() {
@@ -1225,8 +1244,9 @@
                                                 const val = context.raw || 0;
                                                 const idx = context.dataIndex;
                                                 const total = this.userStats?.total_unanalyzed || this.queueCount || 1;
-                                                const pct = (percentages && percentages[idx] !== undefined)
-                                                    ? percentages[idx]
+                                                const currentPcts = this.userStats?.chart_percentages || [];
+                                                const pct = (currentPcts && currentPcts[idx] !== undefined)
+                                                    ? currentPcts[idx]
                                                     : ((val / total) * 100).toFixed(1);
                                                 return ` ${val} Kandidat (${pct}%)`;
                                             }
@@ -1244,21 +1264,39 @@
             },
 
             updateUserChart() {
-                if (!this.userChartInstance) {
-                    this.initUserChart();
-                    return;
+                try {
+                    const labels = this.userStats?.chart_labels || [];
+                    const data = this.userStats?.chart_counts || [];
+                    const bgColors = labels.map((_, i) => this.getUserSliceColor(i));
+
+                    if (!this.userChartInstance) {
+                        this.initUserChart();
+                        return;
+                    }
+
+                    // Jika jumlah slice berubah atau label berubah, re-init chart untuk mencegah error rendering Chart.js
+                    if (!this.userChartInstance.data || !this.userChartInstance.data.labels || this.userChartInstance.data.labels.length !== labels.length) {
+                        this.userChartInstance.destroy();
+                        this.userChartInstance = null;
+                        this.initUserChart();
+                        return;
+                    }
+
+                    this.userChartInstance.data.labels = labels;
+                    this.userChartInstance.data.datasets[0].data = data;
+                    this.userChartInstance.data.datasets[0].backgroundColor = bgColors;
+                    this.userChartInstance.options.cutout = this.userChartType === 'doughnut' ? '68%' : 0;
+                    this.userChartInstance.update('none');
+                } catch (e) {
+                    console.warn("Gagal memperbarui User Chart, mencoba init ulang:", e);
+                    try {
+                        if (this.userChartInstance) {
+                            this.userChartInstance.destroy();
+                            this.userChartInstance = null;
+                        }
+                        this.initUserChart();
+                    } catch (e2) {}
                 }
-
-                const labels = this.userStats?.chart_labels || [];
-                const data = this.userStats?.chart_counts || [];
-                const percentages = this.userStats?.chart_percentages || [];
-                const bgColors = labels.map((_, i) => this.getUserSliceColor(i));
-
-                this.userChartInstance.data.labels = labels;
-                this.userChartInstance.data.datasets[0].data = data;
-                this.userChartInstance.data.datasets[0].backgroundColor = bgColors;
-                this.userChartInstance.options.cutout = this.userChartType === 'doughnut' ? '68%' : 0;
-                this.userChartInstance.update();
             },
 
             startCountdown() {
@@ -1317,17 +1355,25 @@
                 if (this.isLoading) return;
                 this.isLoading = true;
                 try {
-                    const res = await fetch('{{ route("kandidatportal.ai_queue_data") }}');
+                    const cacheBuster = '_t=' + Date.now();
+                    const url = '{{ route("kandidatportal.ai_queue_data") }}' + (('{{ route("kandidatportal.ai_queue_data") }}'.indexOf('?') !== -1) ? '&' : '?') + cacheBuster;
+                    const res = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'Cache-Control': 'no-cache'
+                        }
+                    });
                     if (res.ok) {
                         const data = await res.json();
                         if (data.success) {
+                            // 1. Perbarui state data reaktif terlebih dahulu
                             this.queueCount = data.queue_count;
                             this.completedCount = data.completed_count;
                             this.greenCount = data.green_count;
                             this.yellowCount = data.yellow_count;
                             this.redCount = data.red_count;
-                            this.queueList = data.queue_list;
-                            this.completedList = data.completed_list;
+                            this.queueList = data.queue_list || [];
+                            this.completedList = data.completed_list || [];
                             this.processLogs = data.process_logs || [];
                             this.logDate = data.log_date || this.logDate;
                             
@@ -1340,15 +1386,22 @@
 
                             if (data.area_stats) {
                                 this.areaStats = data.area_stats;
-                                this.updateAreaChart();
                             }
 
                             if (data.user_stats) {
                                 this.userStats = data.user_stats;
-                                this.updateUserChart();
                             }
 
                             this.lastUpdatedTime = (data.timestamp || new Date().toLocaleTimeString('id-ID')) + ' WIB';
+
+                            // 2. Perbarui visual chart secara terpisah (error di satu chart tidak membatalkan chart lain/data)
+                            if (data.area_stats) {
+                                this.updateAreaChart();
+                            }
+
+                            if (data.user_stats) {
+                                this.updateUserChart();
+                            }
 
                             this.$nextTick(() => {
                                 if (this.autoScrollLogs) {

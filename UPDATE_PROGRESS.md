@@ -2238,6 +2238,37 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
      - Lowongan **SPG 01** (ID 572 - Semarang) $\rightarrow$ dialihkan ke `viandhikatytho@gmail.com` (Tytho Viandhika Pratama).
      - Lowongan **Team Leader Motoris Forisa Dessert 1** (ID 562 - Malang) $\rightarrow$ dialihkan ke `novandsabtian16@gmail.com` (Novand Sabtian).
 
+
+---
+
+### 52. ⚡ Perbaikan Realtime Update Persentase & Sebaran User pada Log Antrean AI (23 September 2026)
+- **Latar Belakang & Gejala Masalah**:
+  - Pada halaman Log Antrean AI (`/kandidatportal/ai-queue`), metrik antrean dan kartu sisi kiri (*Persentase Area Belum Dianalisa*) berhasil terupdate berkurang secara realtime saat background AI memproses kandidat.
+  - Namun, kartu sisi kanan (*Persentase Berdasarkan Nama User*) sempat tertahan pada angka awal saat halaman pertama kali dibuka (misal: antrean tertahan di 482, sebaran user dan donut chart tidak berubah), sehingga terjadi ketidaksinkronan angka antara kartu area dan kartu user.
+- **Akar Penyebab (*Root Causes*)**:
+  1. **Blokade Eksekusi State Alpine.js**:
+     - Pada `fetchData()`, pembaruan `this.userStats` diletakkan setelah fungsi update visual `updateAreaChart()`. Jika Chart.js pada chart area mengalami perubahan jumlah slice/label saat animasi berlangsung, pemanggilan `.update()` dapat memicu error internal Chart.js sehingga pembaruan `this.userStats` terlewat (*skipped*).
+  2. **Chart.js Arc Dataset Length Mismatch**:
+     - Baik `updateAreaChart()` maupun `updateUserChart()` langsung mengubah array `data` dan memanggil `.update()`. Ketika jumlah peringkat user atau area berubah dari Top 8 ke 9 atau sebaliknya, Chart.js gagal menginterpolasi elemen arc yang berbeda panjangnya.
+  3. **Reaktivitas Key Template Alpine.js**:
+     - Penggunaan `:key="'user_' + idx"` pada `template x-for` menyebabkan Alpine.js mempertahankan node DOM lama karena index-nya tidak berubah, sehingga progress bar dan persentase tidak di-render ulang secara reaktif saat nilainya bergeser.
+  4. **Browser/Proxy HTTP Caching**:
+     - Request polling `fetch()` ke endpoint `/kandidatportal/ai-queue-data` belum dilengkapi parameter *cache-buster* timestamp serta header respons `no-store, no-cache, must-revalidate`.
+- **Implementasi Solusi & Perbaikan**:
+  1. **Pembaruan State Data Mendahului Visualisasi**:
+     - Pada `fetchData()`, nilai reaktif `this.areaStats` dan `this.userStats` langsung diperbarui seketika respons JSON diterima, sebelum memanggil update chart.
+     - Setiap pembaruan visual chart (`updateAreaChart()` dan `updateUserChart()`) diisolasi dengan penanganan `try...catch` mandiri sehingga error visual pada satu chart tidak akan pernah menghentikan data atau chart lainnya.
+  2. **Safeguard Render Chart.js**:
+     - Ditambahkan deteksi perubahan panjang label/slice (`labels.length !== instance.data.labels.length`). Jika jumlah slice berubah, instance chart lama dihancurkan (`destroy()`) dan diinisialisasi ulang secara bersih untuk menghindari arc collision.
+     - Pembaruan berkala menggunakan mode `.update('none')` agar rendering super ringan, instan, dan responsif.
+  3. **Kunci Reaktif Dinamis pada Alpine.js (`:key`)**:
+     - Mengubah `:key` pada `x-for` menjadi berbasis nilai: `:key="'user_' + (item.user || idx) + '_' + item.count + '_' + item.percentage"`. Setiap ada pergeseran jumlah kandidat atau persentase, baris langsung di-morphing dan di-update secara reaktif.
+  4. **Cache-Busting & Header Anti-Cache**:
+     - Menambahkan parameter query `_t=${Date.now()}` dan header `Cache-Control: no-cache` pada request `fetch()`.
+     - Menambahkan header HTTP `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` dan `Pragma: no-cache` pada controller `KandidatPortalController::aiQueueData()`.
+  5. **Sinkronisasi Total Ground Truth**:
+     - Memastikan `$totalUnanalyzed` pada backend merujuk langsung ke `$queueCount` sehingga kedua kartu dan metrik antrean selalu memiliki angka dasar yang 100% identik dan sinkron.
+
 ---
 
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
