@@ -2060,6 +2060,26 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 38. 🏢 Peningkatan Fitur Search Master Prinsiple & Smart Entity Fallback
+- **Penyebab Utama Masalah Pencarian Kosong**:
+  - Ditemukan melalui investigasi log server Nginx live bahwa pengguna mencari `ICI PAINT` saat filter entitas `ATK` sedang aktif (`search=ICI+PAINT&entity=ATK`).
+  - Di database resmi, prinsiple `PT ICI PAINTS INDONESIA` terdaftar di entitas `AMK` dan `AKP`, bukan di `ATK`. Karena query sebelumnya menggabungkan pencarian dan entitas secara kaku (`where entity = ATK`), sistem mengembalikan 0 hasil (tabel kosong).
+- **Multi-Word & Case-Insensitive Token Matching**:
+  - Mengimplementasikan pencarian token multi-kata dengan `LOWER(...) LIKE ?` pada `PrincipleController.php`.
+  - Mendukung urutan kata acak (`PAINT ICI` atau `ICI INDONESIA` tetap menemukan `PT ICI PAINTS INDONESIA`).
+  - Mengabaikan tanda baca perusahaan seperti `PT.` atau `CV.`.
+- **Smart Entity Fallback (Fallback Lintas Entitas)**:
+  - Jika pengguna melakukan pencarian pada entitas tertentu dan tidak ditemukan (0 data), sistem secara cerdas mengecek apakah prinsiple ada di entitas lain.
+  - Jika ada di entitas lain, sistem otomatis menampilkan hasil dari entitas terkait dan menampilkan alert informatif:
+    > *"Tidak ada prinsiple dengan kata kunci '...' di Entitas ATK. Ditemukan X data pada entitas lain (AMK, AKP). Data dari entitas lain otomatis ditampilkan di bawah."*
+  - Dilengkapi tombol cepat *"Tampilkan Semua Entitas"*.
+- **Penyempurnaan Tampilan & Filter UX (`index.blade.php`)**:
+  - Menambahkan tombol clear *(X)* pada kotak input pencarian.
+  - Tab cepat entitas (Semua, AMK, AKP, ATK, ABO, ATB) kini mempertahankan parameter pencarian yang sedang aktif saat berpindah tab.
+  - Empty state lebih ramah dengan penjelasan detail serta tombol *"Reset Semua Filter"*.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
