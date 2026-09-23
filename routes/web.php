@@ -93,6 +93,14 @@ Route::middleware(['admin'])->prefix('master')->name('master.')->group(function 
     // Master Soal Kepribadian (DISC)
     Route::get('/personality', [\App\Http\Controllers\PersonalityQuestionController::class, 'index'])->name('personality.index');
     Route::put('/personality/{id}', [\App\Http\Controllers\PersonalityQuestionController::class, 'update'])->name('personality.update');
+
+    // Master Alur Approval Dinamis
+    Route::get('/approval-workflow', [\App\Http\Controllers\ApprovalWorkflowController::class, 'index'])->name('approval-workflow.index');
+    Route::post('/approval-workflow/step', [\App\Http\Controllers\ApprovalWorkflowController::class, 'storeStep'])->name('approval-workflow.step.store');
+    Route::put('/approval-workflow/step/{id}', [\App\Http\Controllers\ApprovalWorkflowController::class, 'updateStep'])->name('approval-workflow.step.update');
+    Route::delete('/approval-workflow/step/{id}', [\App\Http\Controllers\ApprovalWorkflowController::class, 'destroyStep'])->name('approval-workflow.step.destroy');
+    Route::post('/approval-workflow/reorder', [\App\Http\Controllers\ApprovalWorkflowController::class, 'reorderSteps'])->name('approval-workflow.step.reorder');
+    Route::get('/approval-workflow/search-approvers', [\App\Http\Controllers\ApprovalWorkflowController::class, 'searchApprovers'])->name('approval-workflow.search-approvers');
 });
 
 // ==========================================

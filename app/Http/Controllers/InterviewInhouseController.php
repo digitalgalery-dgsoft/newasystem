@@ -106,9 +106,13 @@ class InterviewInhouseController extends Controller
             return redirect()->route('login');
         }
 
-        // Halaman kandidat inhouse HANYA untuk user HRD dan Head dari user (Rekrutor / AS)
-        if (!$user->isHrdOrHead()) {
-            return redirect()->route('interview.index')->with('error', 'Akses Ditolak! Halaman Kandidat Inhouse hanya dapat diakses oleh HRD dan Head / Pimpinan untuk proses approval.');
+        // Halaman kandidat inhouse untuk HRD, Head, dan Approver yang ditugaskan pada workflow
+        $isStepUser = \App\Models\ApprovalWorkflowStepUser::where('user_id', $user->id)
+            ->orWhere('user_email', $user->email)
+            ->exists();
+
+        if (!$user->isHrdOrHead() && !$isStepUser && !$user->isAdmin()) {
+            return redirect()->route('interview.index')->with('error', 'Akses Ditolak! Halaman Kandidat Inhouse hanya dapat diakses oleh HRD, Head, dan Approver yang ditugaskan.');
         }
 
         $salam = $this->getSalam();
@@ -123,7 +127,7 @@ class InterviewInhouseController extends Controller
             'ABADI BERKAT ODELIA', 'ARINA BINTANG OETAMA', 'ANUGRAH TALENTA BERKARYA', 'ANUGRAH TRI BERKAH'
         ];
 
-        $baseQuery = Candidate::with(['principle', 'recruiter', 'testResults', 'inhouseApprovals'])
+        $baseQuery = Candidate::with(['principle', 'recruiter', 'testResults', 'inhouseApprovals', 'currentApprovalStep'])
             ->whereNotIn('status', ['Arsip', 'archived'])
             ->where(function ($q) use ($inhouseIds, $inhouseNames) {
                 if (!empty($inhouseIds)) {
@@ -136,16 +140,21 @@ class InterviewInhouseController extends Controller
                 });
             });
 
-        // 2. Hak Akses: HRD melihat semua inhouse, Head HANYA melihat kandidat yang dihandle rekruter/AS binaannya & ditugaskan kepadanya
-        if ($user->isHrd()) {
-            // HRD / Super Admin: Melihat seluruh kandidat inhouse (dibatasi scope bila diset)
+        // 2. Hak Akses: HRD / Admin melihat semua inhouse; Head & Step Approver melihat yang ditugaskan kepada mereka
+        if ($user->isHrd() || $user->isAdmin()) {
             $user->applyRoleScopeToCandidates($baseQuery);
         } else {
-            // Head: Hanya kandidat yang ditujukan ke Head ini (nama_approver) atau dihandle tim binaannya
             $userName = trim($user->name);
+            $userEmail = trim($user->email);
             $subIdentifiers = $user->getSubordinateRecruiterIdentifiers();
 
-            $baseQuery->where(function ($q) use ($userName, $subIdentifiers, $user) {
+            // Ambil ID step approval yang menugaskan user ini
+            $assignedStepIds = \App\Models\ApprovalWorkflowStepUser::where('user_id', $user->id)
+                ->orWhere('user_email', $userEmail)
+                ->pluck('step_id')
+                ->toArray();
+
+            $baseQuery->where(function ($q) use ($userName, $subIdentifiers, $user, $assignedStepIds) {
                 $hasCondition = false;
                 if (!empty($userName)) {
                     $q->where('nama_approver', 'like', "%{$userName}%");
@@ -159,11 +168,17 @@ class InterviewInhouseController extends Controller
                         $hasCondition = true;
                     }
                 }
+                if (!empty($assignedStepIds)) {
+                    $q->orWhereIn('current_approval_step_id', $assignedStepIds);
+                }
                 $q->orWhere('recruiter_id', $user->id);
             });
 
-            // Di dashboard Head: kandidat yang relevan adalah yang masuk proses approval inhouse (Review Head, Review HRD, Approve)
-            $baseQuery->whereIn('status_approval', ['Review Head', 'Review HRD', 'Approve']);
+            // Di dashboard non-HRD: kandidat yang masuk proses approval
+            $baseQuery->where(function ($q) {
+                $q->where('status_approval', '!=', 'Arsip')
+                  ->whereNotNull('status_approval');
+            });
         }
 
         // Hitung Statistik
@@ -301,8 +316,12 @@ class InterviewInhouseController extends Controller
             return redirect()->route('login');
         }
 
-        if (!$user->isHrdOrHead()) {
-            return redirect()->route('interview.index')->with('error', 'Akses Ditolak! Halaman Detail Inhouse hanya dapat diakses oleh HRD dan Head / Pimpinan.');
+        $isStepUser = \App\Models\ApprovalWorkflowStepUser::where('user_id', $user->id)
+            ->orWhere('user_email', $user->email)
+            ->exists();
+
+        if (!$user->isHrdOrHead() && !$isStepUser && !$user->isAdmin()) {
+            return redirect()->route('interview.index')->with('error', 'Akses Ditolak! Halaman Detail Inhouse hanya dapat diakses oleh HRD, Head / Pimpinan, atau Approver yang ditugaskan.');
         }
 
         $candidate = Candidate::with([
@@ -311,7 +330,8 @@ class InterviewInhouseController extends Controller
             'workExperiences',
             'interviewAssessment',
             'testResults',
-            'inhouseApprovals'
+            'inhouseApprovals',
+            'currentApprovalStep'
         ])->findOrFail($id);
 
         if (!self::isCandidateInhouse($candidate)) {
@@ -321,8 +341,14 @@ class InterviewInhouseController extends Controller
         $isHrd = $user->isHrd();
         $isHead = $user->isHead();
 
-        // Jika user adalah Head (dan bukan HRD), periksa apakah kandidat ini dihandle oleh timnya atau ditugaskan ke Head ini
-        if (!$isHrd) {
+        // Alur Approval Dinamis
+        $applicableSteps = \App\Services\ApprovalWorkflowService::getApplicableStepsForCandidate($candidate);
+        $currentStep = \App\Services\ApprovalWorkflowService::getCurrentStep($candidate, $applicableSteps);
+        $canApproveCurrentStep = \App\Services\ApprovalWorkflowService::canUserApprove($candidate, $user, $currentStep);
+        $isDireksi = \App\Services\ApprovalWorkflowService::isPimpinanDireksi($candidate);
+
+        // Jika user adalah non-HRD & non-Admin, pastikan memiliki keterkaitan (bawahan, ditugaskan ke Head, atau approver aktif)
+        if (!$isHrd && !$user->isAdmin()) {
             $userName = trim($user->name);
             $isApproverMatch = !empty($candidate->nama_approver) && !empty($userName) && str_contains(strtolower($candidate->nama_approver), strtolower($userName));
             $subIdentifiers = $user->getSubordinateRecruiterIdentifiers();
@@ -333,8 +359,8 @@ class InterviewInhouseController extends Controller
             $allowedAreas = array_map('strtoupper', $user->getEffectiveAreas());
             $isAreaMatch = (!empty($allowedAreas) && in_array($candArea, $allowedAreas)) || (!empty($headArea) && $candArea === $headArea);
 
-            if (!$isApproverMatch && !$isSub && !$isAreaMatch) {
-                return redirect()->route('interviewinhouse.index')->with('error', 'Akses Ditolak! Anda bukan Head yang menangani kandidat inhouse ini.');
+            if (!$isApproverMatch && !$isSub && !$isAreaMatch && !$canApproveCurrentStep && !$isStepUser) {
+                return redirect()->route('interviewinhouse.index')->with('error', 'Akses Ditolak! Anda bukan Approver yang menangani kandidat inhouse ini.');
             }
         }
 
@@ -387,7 +413,7 @@ class InterviewInhouseController extends Controller
             'Tolak' => ['text' => 'Tolak', 'class' => 'bg-rose-50 text-rose-700 border-rose-200'],
             'Review HRD' => ['text' => 'Review HRD', 'class' => 'bg-sky-50 text-sky-700 border-sky-200'],
             'Review Head' => ['text' => 'Review Head', 'class' => 'bg-indigo-50 text-indigo-700 border-indigo-200'],
-            default => ['text' => 'Proses Review', 'class' => 'bg-amber-50 text-amber-700 border-amber-200']
+            default => ['text' => $statusApproval, 'class' => 'bg-amber-50 text-amber-700 border-amber-200']
         };
 
         $evalData = \App\Services\CandidateEvaluationDataService::getEvaluationData($candidate);
@@ -451,12 +477,16 @@ class InterviewInhouseController extends Controller
             'asDetails' => $asDetails,
             'candidateAsName' => $candidateAsName,
             'initialInterviewerSig' => $initialInterviewerSig,
+            'applicableSteps' => $applicableSteps,
+            'currentStep' => $currentStep,
+            'canApproveCurrentStep' => $canApproveCurrentStep,
+            'isDireksi' => $isDireksi,
         ], $evalData));
     }
 
 
     /**
-     * Simpan Approval & Tanda Tangan Digital Inhouse (Replikasi savettdhrd.php & savettdhead.php)
+     * Simpan Approval & Tanda Tangan Digital Inhouse (Alur Dinamis)
      */
     public function storeApproval(Request $request, $id)
     {
@@ -464,11 +494,8 @@ class InterviewInhouseController extends Controller
         $user = $this->getCurrentUser();
         $isJson = $request->isJson() || $request->wantsJson() || $request->header('Content-Type') === 'application/json';
 
-        if (!$user || !$user->isHrdOrHead()) {
-            if ($isJson) {
-                return response()->json(['status' => 'error', 'message' => 'Akses ditolak! Anda bukan HRD atau Head approver.'], 403);
-            }
-            return back()->with('error', 'Akses ditolak! Anda bukan HRD atau Head approver.');
+        if (!$user) {
+            return $isJson ? response()->json(['status' => 'error', 'message' => 'Unauthorized'], 401) : redirect()->route('login');
         }
 
         if (!self::isCandidateInhouse($candidate)) {
@@ -478,33 +505,26 @@ class InterviewInhouseController extends Controller
             return back()->with('error', 'Kandidat ini bukan kandidat inhouse 5 entitas.');
         }
 
+        $applicableSteps = \App\Services\ApprovalWorkflowService::getApplicableStepsForCandidate($candidate);
+        $currentStep = \App\Services\ApprovalWorkflowService::getCurrentStep($candidate, $applicableSteps);
+
+        if (!$currentStep) {
+            $msg = 'Kandidat ini sudah tidak memiliki tahapan approval yang aktif (telah selesai atau ditolak).';
+            return $isJson ? response()->json(['status' => 'error', 'message' => $msg], 422) : back()->with('error', $msg);
+        }
+
+        if (!\App\Services\ApprovalWorkflowService::canUserApprove($candidate, $user, $currentStep)) {
+            $msg = "Akses ditolak! Anda tidak memiliki hak akses approver untuk tahap [{$currentStep->step_name}].";
+            return $isJson ? response()->json(['status' => 'error', 'message' => $msg], 403) : back()->with('error', $msg);
+        }
+
         $catatan = $request->input('catatan');
         $approval = $request->input('approval') ?? $request->input('status') ?? 'Approve';
         $imageData = $request->input('image') ?? $request->input('signature_data');
-        $submitType = $request->input('submit_type', 'head'); // 'hrd' atau 'head'
 
         if (empty($catatan) || empty($approval)) {
-            if ($isJson) {
-                return response()->json(['status' => 'error', 'message' => 'Catatan dan hasil keputusan wajib diisi!'], 422);
-            }
-            return back()->with('error', 'Catatan dan hasil keputusan wajib diisi!');
-        }
-
-        // Proteksi Step Locking
-        if ($submitType === 'hrd') {
-            if (!$user->isHrd()) {
-                $msg = 'Akses ditolak! Hanya role HRD yang berhak melakukan submit persetujuan HRD Pusat.';
-                return $isJson ? response()->json(['status' => 'error', 'message' => $msg], 403) : back()->with('error', $msg);
-            }
-            if ($candidate->status_approval === 'Review Head') {
-                $msg = 'Akses ditolak! Kandidat belum disetujui oleh Head Approver (Step 1). Menunggu persetujuan Head terlebih dahulu.';
-                return $isJson ? response()->json(['status' => 'error', 'message' => $msg], 422) : back()->with('error', $msg);
-            }
-        } elseif ($submitType === 'head') {
-            if (in_array($candidate->status_approval, ['Review HRD', 'Approve'])) {
-                $msg = 'Kandidat ini sudah disetujui oleh Head Approver dan telah berada di tahap HRD Pusat.';
-                return $isJson ? response()->json(['status' => 'error', 'message' => $msg], 422) : back()->with('error', $msg);
-            }
+            $msg = 'Catatan dan hasil keputusan wajib diisi!';
+            return $isJson ? response()->json(['status' => 'error', 'message' => $msg], 422) : back()->with('error', $msg);
         }
 
         // Tanda tangan image processing (Simpan file PNG jika data URL)
@@ -524,90 +544,21 @@ class InterviewInhouseController extends Controller
             }
         }
 
-        if ($submitType === 'hrd') {
-            // Replikasi savettdhrd.php
-            $finalStatus = ($approval === 'Yes' || $approval === 'Approve') ? 'Approve' : 'Tolak';
-            
-            $candidate->update([
-                'status_approval' => $finalStatus,
-                'note_principle' => $catatan,
-                'ttd_prinsiple' => $fileName ?? $candidate->ttd_prinsiple ?? $candidate->signature_path,
-                'time_prinsiple' => Carbon::now('Asia/Jakarta'),
-            ]);
-
-            // Catat juga ke inhouse_approvals
-            InhouseApproval::create([
-                'candidate_id' => $candidate->id,
-                'nama_approver' => $user->name,
-                'jabatan_approver' => $user->job_title ?? 'ADMIN HRD Jakarta',
-                'catatan_approver' => $catatan,
-                'status' => $finalStatus,
-                'ttd_approver' => $fileName,
-                'time_approver' => Carbon::now('Asia/Jakarta'),
-            ]);
-
-            // Sinkronisasi ke tb_catataninhouse
-            try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('tb_catataninhouse')) {
-                    \Illuminate\Support\Facades\DB::table('tb_catataninhouse')->insert([
-                        'id_kandidat' => $candidate->id,
-                        'nama_approver' => $user->name,
-                        'jabatan_aprover' => $user->job_title ?? 'ADMIN HRD',
-                        'catatan_approver' => $catatan,
-                        'status' => ($approval === 'Yes' || $approval === 'Approve') ? 'Yes' : 'No',
-                        'ttd_approver' => $fileName ? basename($fileName) : null,
-                        'time_approver' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
-                    ]);
-                }
-            } catch (\Throwable $e) {}
-
-            $msg = 'Persetujuan & Tanda Tangan HRD Pusat berhasil disimpan! Kandidat selesai diproses.';
-        } else {
-            // Replikasi savettdhead.php
-            $finalStatus = ($approval === 'Yes' || $approval === 'Approve') ? 'Approve' : 'Tolak';
-
-            InhouseApproval::create([
-                'candidate_id' => $candidate->id,
-                'nama_approver' => $user->name,
-                'jabatan_approver' => $user->job_title ?? 'Head Approver',
-                'catatan_approver' => $catatan,
-                'status' => $finalStatus,
-                'ttd_approver' => $fileName,
-                'time_approver' => Carbon::now('Asia/Jakarta'),
-            ]);
-
-            // Update candidate status ke Review HRD
-            $candidate->update([
-                'status_approval' => ($approval === 'Yes' || $approval === 'Approve') ? 'Review HRD' : 'Tolak',
-            ]);
-
-            // Sinkronisasi ke tb_catataninhouse
-            try {
-                if (\Illuminate\Support\Facades\Schema::hasTable('tb_catataninhouse')) {
-                    \Illuminate\Support\Facades\DB::table('tb_catataninhouse')->insert([
-                        'id_kandidat' => $candidate->id,
-                        'nama_approver' => $user->name,
-                        'jabatan_aprover' => $user->job_title ?? 'OM',
-                        'catatan_approver' => $catatan,
-                        'status' => ($approval === 'Yes' || $approval === 'Approve') ? 'Yes' : 'No',
-                        'ttd_approver' => $fileName ? basename($fileName) : null,
-                        'time_approver' => Carbon::now('Asia/Jakarta')->toDateTimeString(),
-                    ]);
-                }
-            } catch (\Throwable $e) {}
-
-            $msg = 'Persetujuan Head Approver berhasil disubmit! Kandidat kini diteruskan ke HRD Pusat.';
-        }
+        $result = \App\Services\ApprovalWorkflowService::processApproval($candidate, $user, [
+            'catatan' => $catatan,
+            'approval' => $approval,
+            'signature_path' => $fileName,
+        ]);
 
         if ($isJson) {
             return response()->json([
                 'status' => 'success',
-                'message' => $msg,
+                'message' => $result['message'],
                 'redirect' => route('interviewinhouse.show', $candidate->id)
             ]);
         }
 
-        return redirect()->route('interviewinhouse.show', $candidate->id)->with('success', $msg);
+        return redirect()->route('interviewinhouse.show', $candidate->id)->with('success', $result['message']);
     }
 
     /**

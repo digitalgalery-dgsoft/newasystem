@@ -19,4 +19,14 @@ class InhouseApproval extends Model
     {
         return $this->belongsTo(Candidate::class);
     }
+
+    public function step()
+    {
+        return $this->belongsTo(ApprovalWorkflowStep::class, 'step_id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

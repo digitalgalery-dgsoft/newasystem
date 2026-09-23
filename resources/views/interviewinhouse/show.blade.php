@@ -867,51 +867,99 @@
         </div>
 
         <!-- ============================================================= -->
-        <!-- TAB 7: APPROVAL INHOUSE (FORM KEPUTUSAN APPROVER & RIWAYAT) -->
-        <!-- ============================================================= -->
+        <!-- TAB 7: APPROVAL INHOUSE (ALUR DINAMIS, FORM KEPUTUSAN APPROVER & RIWAYAT) -->
+        <!-- ========================================================================= -->
         <div x-show="activeTab === 'approval'" class="space-y-6">
             
-            <!-- STEP INDICATOR STATUS -->
+            <!-- STEP INDICATOR STATUS DINAMIS -->
             @php
                 $statusAppr = $candidate->status_approval ?? 'Proses';
-                $isApprovedHead = in_array($statusAppr, ['Review HRD', 'Approve']);
-                $isApprovedHrd = ($statusAppr === 'Approve');
+                $isCandidateDone = ($statusAppr === 'Approve');
+                $isCandidateRejected = ($statusAppr === 'Tolak');
+                $currStepId = $currentStep?->id;
+                $currStepOrder = $currentStep?->step_order ?? 999;
+                $totalStepsCount = $applicableSteps->count();
             @endphp
 
-            <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-2">
-                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500 block">Status Alur Approval:</span>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                    <div class="p-3 rounded-xl border {{ $isApprovedHead ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : ($statusAppr === 'Review Head' ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-white border-slate-200 text-slate-500') }}">
-                        <div class="text-[10.5px] font-bold">STEP 1: PERSETUJUAN HEAD</div>
-                        <div class="text-xs font-black flex items-center gap-1.5 mt-1">
-                            @if($isApprovedHead)
-                                <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i> Disetujui Head
-                            @elseif($statusAppr === 'Review Head')
-                                <i class="fa-solid fa-clock text-amber-500 text-sm"></i> Sedang Menunggu Head
-                            @elseif($statusAppr === 'Tolak')
-                                <i class="fa-solid fa-circle-xmark text-rose-500 text-sm"></i> Ditolak
-                            @else
-                                <i class="fa-solid fa-circle-dot text-slate-400 text-sm"></i> Belum Diajukan
-                            @endif
-                        </div>
+            <div class="p-5 bg-white border border-slate-200/90 rounded-2xl shadow-xs space-y-3">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-diagram-project text-primary text-sm"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-700">Alur &amp; Tahapan Approval Kandidat Ini</span>
+                        <span class="text-[10.5px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                            {{ $totalStepsCount }} Tahap
+                        </span>
                     </div>
 
-                    <div class="p-3 rounded-xl border {{ $isApprovedHrd ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : ($statusAppr === 'Review HRD' ? 'bg-amber-50 border-amber-300 text-amber-900' : 'bg-white border-slate-200 text-slate-400') }}">
-                        <div class="text-[10.5px] font-bold">STEP 2: PERSETUJUAN HRD PUSAT</div>
-                        <div class="text-xs font-black flex items-center gap-1.5 mt-1">
-                            @if($isApprovedHrd)
-                                <i class="fa-solid fa-circle-check text-emerald-600 text-sm"></i> Selesai (Disetujui Penuh)
-                            @elseif($statusAppr === 'Review HRD')
-                                <i class="fa-solid fa-clock text-amber-500 text-sm"></i> Sedang Menunggu HRD
-                            @else
-                                <i class="fa-solid fa-lock text-slate-400 text-sm"></i> Terkunci (Menunggu Head)
-                            @endif
+                    @if(!empty($isDireksi))
+                        <div class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10.5px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                            <i class="fa-solid fa-bolt text-indigo-600"></i>
+                            <span>Pimpinan Rekruter Direksi (Step Head Di-Bypass)</span>
                         </div>
-                    </div>
+                    @endif
+                </div>
+
+                <!-- DYNAMIC GRID OF APPLICABLE STEPS -->
+                <div class="grid grid-cols-1 sm:grid-cols-{{ min(max($totalStepsCount, 1), 4) }} gap-3 text-xs">
+                    @forelse($applicableSteps as $idx => $st)
+                        @php
+                            $stepApprovals = $candidate->inhouseApprovals->where('step_id', $st->id);
+                            if ($stepApprovals->isEmpty() && $st->approver_type === 'head') {
+                                // Fallback pencocokan riwayat legacy jika step_id null
+                                $stepApprovals = $candidate->inhouseApprovals->filter(fn($a) => !str_contains(strtolower($a->jabatan_approver ?? ''), 'hrd'));
+                            }
+                            $isApprovedThisStep = $stepApprovals->whereIn('status', ['Approve', 'Yes'])->isNotEmpty();
+                            $isRejectedThisStep = $stepApprovals->whereIn('status', ['Tolak', 'No'])->isNotEmpty();
+                            
+                            $isCurrentActiveStep = ($currStepId === $st->id && !$isCandidateDone && !$isCandidateRejected);
+                            $isPassed = ($isCandidateDone || ($currentStep && $st->step_order < $currStepOrder) || $isApprovedThisStep);
+                        @endphp
+
+                        <div class="p-3.5 rounded-xl border transition-all {{ $isPassed ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900 shadow-xs' : ($isCurrentActiveStep ? 'bg-amber-50/90 border-amber-300 text-amber-950 ring-2 ring-amber-200/60 shadow-xs' : ($isRejectedThisStep ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-slate-50 border-slate-200 text-slate-400')) }}">
+                            <div class="flex items-center justify-between text-[10.5px] font-bold">
+                                <span>STEP {{ $st->step_order }}: {{ strtoupper($st->step_name) }}</span>
+                                @if($st->approver_type === 'head')
+                                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800 font-extrabold">HEAD</span>
+                                @else
+                                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-sky-100 text-sky-800 font-extrabold">USER</span>
+                                @endif
+                            </div>
+
+                            <div class="text-xs font-black flex items-center gap-1.5 mt-2">
+                                @if($isPassed)
+                                    <i class="fa-solid fa-circle-check text-emerald-600 text-sm shrink-0"></i>
+                                    <span class="truncate">Disetujui</span>
+                                @elseif($isCurrentActiveStep)
+                                    <i class="fa-solid fa-clock text-amber-500 text-sm shrink-0 animate-pulse"></i>
+                                    <span class="truncate">Sedang Menunggu</span>
+                                @elseif($isRejectedThisStep)
+                                    <i class="fa-solid fa-circle-xmark text-rose-500 text-sm shrink-0"></i>
+                                    <span class="truncate">Ditolak</span>
+                                @else
+                                    <i class="fa-solid fa-lock text-slate-400 text-sm shrink-0"></i>
+                                    <span class="truncate">Terkunci</span>
+                                @endif
+                            </div>
+
+                            <!-- Keterangan Approver Target -->
+                            <div class="text-[10px] text-slate-500 mt-1 truncate">
+                                @if($st->approver_type === 'head')
+                                    Pimpinan: {{ $candidate->nama_approver ?: 'Head Rekruter' }}
+                                @else
+                                    @php $approverNames = $st->stepUsers->pluck('user_name')->take(2)->implode(', '); @endphp
+                                    Approver: {{ $approverNames ?: 'Akun HRD' }}{{ $st->stepUsers->count() > 2 ? ' +' . ($st->stepUsers->count() - 2) : '' }}
+                                @endif
+                            </div>
+                        </div>
+                    @empty
+                        <div class="col-span-full p-4 text-center text-slate-400 italic">
+                            Belum ada konfigurasi alur step approval inhouse.
+                        </div>
+                    @endforelse
                 </div>
             </div>
 
-            <!-- MAIN APPROVER GRID (Persis Gambar 3) -->
+            <!-- MAIN APPROVER GRID -->
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
                 
                 <!-- KOLOM KIRI: Form Keputusan & Tanda Tangan Digital -->
@@ -919,74 +967,79 @@
                     <div class="pb-2 border-b border-slate-100 flex items-center justify-between">
                         <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
                             <i class="fa-solid fa-signature text-primary"></i>
-                            <span>Form Approval {{ $isHrd ? 'HRD Pusat' : 'Head Approver' }}</span>
+                            <span>Form Approval: {{ $currentStep ? $currentStep->step_name : 'Keputusan Final' }}</span>
                         </h3>
-                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full {{ $isHrd ? 'bg-purple-100 text-purple-800' : 'bg-blue-100 text-blue-800' }}">
-                            {{ $isHrd ? 'Step HRD' : 'Step Head' }}
-                        </span>
+                        @if($currentStep)
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full {{ $currentStep->approver_type === 'head' ? 'bg-indigo-100 text-indigo-800' : 'bg-purple-100 text-purple-800' }}">
+                                Step {{ $currentStep->step_order }}
+                            </span>
+                        @endif
                     </div>
 
-                    <!-- STEP LOCKING VALIDATION CHECK -->
-                    @if($isHrd && $statusAppr === 'Review Head')
-                        <!-- HRD melihat kandidat yang masih menunggu persetujuan Head -->
-                        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
-                            <div class="flex items-center gap-2 font-bold text-sm text-amber-950">
-                                <i class="fa-solid fa-lock text-amber-600"></i>
-                                <span>Menunggu Persetujuan Head Approver (Step 1)</span>
-                            </div>
-                            <p class="text-[11.5px] leading-relaxed text-amber-800">
-                                Kandidat ini masih dalam antrean evaluasi Head Approver. Form persetujuan HRD Pusat akan otomatis aktif setelah Head memberikan keputusan persetujuan.
-                            </p>
-                        </div>
-                    @elseif(!$isHrd && in_array($statusAppr, ['Review HRD', 'Approve']))
-                        <!-- Head melihat kandidat yang sudah diapprove oleh Head -->
-                        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-2">
-                            <div class="flex items-center gap-2 font-bold text-sm text-emerald-950">
-                                <i class="fa-solid fa-circle-check text-emerald-600"></i>
-                                <span>Persetujuan Head Telah Selesai Disubmit</span>
-                            </div>
-                            <p class="text-[11.5px] leading-relaxed text-emerald-800">
-                                Anda telah menyetujui kandidat ini. Berkas saat ini sedang dalam proses evaluasi oleh HRD Pusat.
-                            </p>
-                        </div>
-                    @elseif($statusAppr === 'Approve')
-                        <!-- Selesai Disetujui HRD -->
+                    <!-- STEP STATUS & PERMISSION CHECKS -->
+                    @if($isCandidateDone)
+                        <!-- Selesai Disetujui Penuh -->
                         <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-2">
                             <div class="flex items-center gap-2 font-bold text-sm text-emerald-950">
                                 <i class="fa-solid fa-circle-check text-emerald-600"></i>
                                 <span>Kandidat Telah Selesai Disetujui (Approved)</span>
                             </div>
                             <p class="text-[11.5px] leading-relaxed text-emerald-800">
-                                Proses persetujuan inhouse telah selesai. Kandidat telah dipindahkan ke tab Selesai.
+                                Seluruh tahapan approval inhouse telah selesai diproses dan disetujui. Berkas kandidat telah dipindahkan ke tab Selesai.
+                            </p>
+                        </div>
+                    @elseif($isCandidateRejected)
+                        <!-- Ditolak -->
+                        <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs space-y-2">
+                            <div class="flex items-center gap-2 font-bold text-sm text-rose-950">
+                                <i class="fa-solid fa-circle-xmark text-rose-600"></i>
+                                <span>Pengajuan Kandidat Ditolak</span>
+                            </div>
+                            <p class="text-[11.5px] leading-relaxed text-rose-800">
+                                Pengajuan kandidat inhouse ini telah ditolak pada proses evaluasi.
+                            </p>
+                        </div>
+                    @elseif(!$canApproveCurrentStep)
+                        <!-- User Saat Ini Tidak Memiliki Hak Akses Pada Step Aktif -->
+                        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs space-y-2">
+                            <div class="flex items-center gap-2 font-bold text-sm text-amber-950">
+                                <i class="fa-solid fa-lock text-amber-600"></i>
+                                <span>Menunggu Persetujuan: {{ $currentStep ? $currentStep->step_name : 'Tahap Approval' }}</span>
+                            </div>
+                            <p class="text-[11.5px] leading-relaxed text-amber-800">
+                                @if($currentStep && $currentStep->approver_type === 'head')
+                                    Kandidat ini saat ini sedang menunggu evaluasi dan persetujuan dari <strong>Head / Pimpinan</strong> yang ditugaskan ({{ $candidate->nama_approver ?: 'Pimpinan Rekruter' }}). Form akan terbuka otomatis setelah disetujui atau jika Anda login dengan akun approver yang berhak.
+                                @else
+                                    Kandidat ini saat ini sedang menunggu evaluasi dan persetujuan dari akun approver yang ditugaskan pada tahap ini.
+                                @endif
                             </p>
                         </div>
                     @else
-                        <!-- FORM AKTIF UNTUK APPROVER -->
+                        <!-- FORM AKTIF UNTUK APPROVER YANG BERHAK -->
                         <form action="{{ route('interviewinhouse.approval', $candidate->id) }}" method="POST" id="inhouseApprovalForm" class="space-y-4">
                             @csrf
-                            <input type="hidden" name="submit_type" value="{{ $isHrd ? 'hrd' : 'head' }}">
                             <input type="hidden" name="signature_data" id="signatureDataInput" value="">
 
                             <!-- 1. Keputusan -->
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Keputusan</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Hasil Keputusan <span class="text-rose-500">*</span></label>
                                 <select name="approval" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
-                                    <option value="" disabled selected>Hasil Keputusan</option>
-                                    <option value="Approve">Approve</option>
-                                    <option value="Tolak">Tolak</option>
+                                    <option value="" disabled selected>Pilih Hasil Keputusan</option>
+                                    <option value="Approve">Approve (Setujui &amp; Teruskan)</option>
+                                    <option value="Tolak">Tolak (Batalkan Pengajuan)</option>
                                 </select>
                             </div>
 
                             <!-- 2. Catatan -->
                             <div>
-                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Catatan</label>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Catatan Evaluasi <span class="text-rose-500">*</span></label>
                                 <textarea name="catatan" rows="3" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none" placeholder="Masukkan catatan hasil evaluasi dan rekomendasi..." required></textarea>
                             </div>
 
                             <!-- 3. Tanda Tangan Canvas -->
                             <div>
                                 <div class="flex items-center justify-between mb-1.5">
-                                    <label class="text-xs font-bold text-slate-700">Tanda Tangan</label>
+                                    <label class="text-xs font-bold text-slate-700">Tanda Tangan Digital <span class="text-rose-500">*</span></label>
                                     <div class="flex items-center gap-2">
                                         @if(!empty($user->signature_path))
                                             <button type="button" onclick="pasteMySavedSig()" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 underline flex items-center gap-1 cursor-pointer">
@@ -1011,21 +1064,21 @@
                             <div class="pt-2">
                                 <button type="submit" onclick="syncSigDataBeforeSubmit()" class="w-full py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
                                     <i class="fa-solid fa-check-double text-xs"></i>
-                                    <span>Simpan & Submit Keputusan {{ $isHrd ? 'HRD Pusat' : 'Head' }}</span>
+                                    <span>Simpan &amp; Submit Keputusan {{ $currentStep ? $currentStep->step_name : '' }}</span>
                                 </button>
                             </div>
                         </form>
                     @endif
                 </div>
 
-                <!-- KOLOM KANAN: Kandidat Info & List Head Approve (Persis Gambar 3) -->
+                <!-- KOLOM KANAN: Kandidat Info & Riwayat Persetujuan Inhouse -->
                 <div class="lg:col-span-6 space-y-6">
                     
                     <!-- 1. Ringkasan Status Kandidat -->
                     <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
                         <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
                             <i class="fa-solid fa-user-check text-primary"></i>
-                            <span>Kandidat</span>
+                            <span>Informasi Pengajuan Formasi</span>
                         </h3>
 
                         <div class="bg-slate-50 border border-slate-200/80 rounded-xl p-3.5 space-y-2 text-xs">
@@ -1033,6 +1086,13 @@
                                 <span class="text-slate-500 font-medium">Status Formasi:</span>
                                 <span class="font-bold text-slate-800">
                                     {{ $candidate->status_replace === 'Replace' ? 'Replace (Penggantian)' : 'New (Formasi Baru)' }}
+                                </span>
+                            </div>
+
+                            <div class="flex items-center justify-between border-t border-slate-200/60 pt-2">
+                                <span class="text-slate-500 font-medium">Area &amp; Entitas:</span>
+                                <span class="font-bold text-slate-800">
+                                    {{ $candidate->area ?: '-' }} &bull; {{ $candidate->principle?->name ?: $candidate->principle ?: '-' }}
                                 </span>
                             </div>
 
@@ -1060,95 +1120,23 @@
                         </div>
                     </div>
 
-                    <!-- 2. List Head Approve (Tabel Persis Gambar 3) -->
+                    <!-- 2. Tabel Riwayat Approval Inhouse Lengkap -->
                     <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fa-solid fa-list-check text-primary"></i>
-                            <span>List Head Approve</span>
+                        <h3 class="text-sm font-bold text-slate-800 flex items-center justify-between">
+                            <span class="flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-primary"></i>
+                                <span>Riwayat Persetujuan Inhouse</span>
+                            </span>
+                            <span class="text-[11px] font-bold text-slate-400">
+                                {{ $candidate->inhouseApprovals->count() }} Catatan
+                            </span>
                         </h3>
 
                         <div class="border border-slate-200 rounded-xl overflow-hidden">
                             <table class="w-full text-xs text-left border-collapse">
                                 <thead>
-                                    <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10.5px]">
-                                        <th class="py-2.5 px-3">Nama</th>
-                                        <th class="py-2.5 px-3">Catatan</th>
-                                        <th class="py-2.5 px-2.5 text-center">Hasil Keputusan</th>
-                                        <th class="py-2.5 px-2.5 text-center">Tanda Tangan</th>
-                                        <th class="py-2.5 px-3 text-center">Waktu Submit</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="divide-y divide-slate-100">
-                                    @php
-                                        $headApprovals = $candidate->inhouseApprovals->filter(function($appr) {
-                                            $job = strtolower($appr->jabatan_approver ?? '');
-                                            return !str_contains($job, 'admin hrd') && !str_contains($job, 'hr lead');
-                                        });
-                                    @endphp
-                                    @forelse($headApprovals as $hAppr)
-                                        <tr class="hover:bg-slate-50/70 transition-colors">
-                                            <td class="py-3 px-3 font-bold text-slate-800">
-                                                <div>{{ $hAppr->nama_approver }}</div>
-                                                <div class="text-[9.5px] text-slate-400 font-normal">{{ $hAppr->jabatan_approver ?: 'Head' }}</div>
-                                            </td>
-                                            <td class="py-3 px-3 text-slate-600 leading-relaxed max-w-[150px]">
-                                                {{ $hAppr->catatan_approver ?: '-' }}
-                                            </td>
-                                            <td class="py-3 px-2.5 text-center">
-                                                @if(in_array(strtolower($hAppr->status ?? ''), ['approve', 'yes']))
-                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">Approve</span>
-                                                @else
-                                                    <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">Tolak</span>
-                                                @endif
-                                            </td>
-                                            <td class="py-3 px-2.5 text-center">
-                                                @if($hAppr->ttd_approver)
-                                                    @php
-                                                        $sigSrc = $hAppr->ttd_approver;
-                                                        if (!str_starts_with($sigSrc, 'data:image') && !str_starts_with($sigSrc, 'http')) {
-                                                            $sigSrc = asset($sigSrc);
-                                                        }
-                                                    @endphp
-                                                    <img src="{{ $sigSrc }}" alt="TTD Head" class="h-8 max-w-[80px] mx-auto object-contain" onerror="this.src='/lampiran/{{ basename($hAppr->ttd_approver) }}';">
-                                                @else
-                                                    <span class="text-[9.5px] text-slate-400 italic">Belum TTD</span>
-                                                @endif
-                                            </td>
-                                            <td class="py-3 px-3 text-center text-[10.5px] text-slate-500 whitespace-nowrap">
-                                                {{ $hAppr->time_approver ? \Carbon\Carbon::parse($hAppr->time_approver)->format('d/m/Y H:i') : '-' }}
-                                            </td>
-                                        </tr>
-                                    @empty
-                                        <tr>
-                                            <td colspan="5" class="py-6 text-center text-xs text-slate-400 italic bg-slate-50/50">
-                                                Belum ada approval dari Head
-                                            </td>
-                                        </tr>
-                                    @endforelse
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <!-- 3. List Approval HRD jika sudah diapprove HRD -->
-                    @php
-                        $hrdApprovals = $candidate->inhouseApprovals->filter(function($appr) {
-                            $job = strtolower($appr->jabatan_approver ?? '');
-                            return str_contains($job, 'admin hrd') || str_contains($job, 'hr lead') || str_contains($job, 'hrd');
-                        });
-                    @endphp
-                    @if($hrdApprovals->isNotEmpty())
-                    <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm space-y-3">
-                        <h3 class="text-sm font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fa-solid fa-stamp text-emerald-600"></i>
-                            <span>Approval HRD Pusat</span>
-                        </h3>
-
-                        <div class="border border-slate-200 rounded-xl overflow-hidden">
-                            <table class="w-full text-xs text-left border-collapse">
-                                <thead>
-                                    <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10.5px]">
-                                        <th class="py-2.5 px-3">Nama</th>
+                                    <tr class="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                                        <th class="py-2.5 px-3">Tahap &amp; Approver</th>
                                         <th class="py-2.5 px-3">Catatan</th>
                                         <th class="py-2.5 px-2.5 text-center">Hasil</th>
                                         <th class="py-2.5 px-2.5 text-center">Tanda Tangan</th>
@@ -1156,45 +1144,55 @@
                                     </tr>
                                 </thead>
                                 <tbody class="divide-y divide-slate-100">
-                                    @foreach($hrdApprovals as $hrdAppr)
+                                    @forelse($candidate->inhouseApprovals as $appr)
                                         <tr class="hover:bg-slate-50/70 transition-colors">
-                                            <td class="py-3 px-3 font-bold text-slate-800">
-                                                <div>{{ $hrdAppr->nama_approver }}</div>
-                                                <div class="text-[9.5px] text-slate-400 font-normal">{{ $hrdAppr->jabatan_approver ?: 'ADMIN HRD' }}</div>
+                                            <td class="py-3 px-3">
+                                                <div class="font-bold text-slate-800">{{ $appr->nama_approver }}</div>
+                                                <div class="text-[10px] text-primary font-semibold">
+                                                    {{ $appr->step_name ?: ($appr->jabatan_approver ?: 'Approver') }}
+                                                </div>
+                                                @if($appr->jabatan_approver && $appr->step_name)
+                                                    <div class="text-[9px] text-slate-400">{{ $appr->jabatan_approver }}</div>
+                                                @endif
                                             </td>
-                                            <td class="py-3 px-3 text-slate-600 leading-relaxed max-w-[150px]">
-                                                {{ $hrdAppr->catatan_approver ?: '-' }}
+                                            <td class="py-3 px-3 text-slate-600 leading-relaxed max-w-[160px]">
+                                                {{ $appr->catatan_approver ?: '-' }}
                                             </td>
                                             <td class="py-3 px-2.5 text-center">
-                                                @if(in_array(strtolower($hrdAppr->status ?? ''), ['approve', 'yes']))
+                                                @if(in_array(strtolower($appr->status ?? ''), ['approve', 'yes']))
                                                     <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">Approve</span>
                                                 @else
                                                     <span class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-200">Tolak</span>
                                                 @endif
                                             </td>
                                             <td class="py-3 px-2.5 text-center">
-                                                @if($hrdAppr->ttd_approver)
+                                                @if($appr->ttd_approver)
                                                     @php
-                                                        $sigSrcHrd = $hrdAppr->ttd_approver;
-                                                        if (!str_starts_with($sigSrcHrd, 'data:image') && !str_starts_with($sigSrcHrd, 'http')) {
-                                                            $sigSrcHrd = asset($sigSrcHrd);
+                                                        $sigSrc = $appr->ttd_approver;
+                                                        if (!str_starts_with($sigSrc, 'data:image') && !str_starts_with($sigSrc, 'http')) {
+                                                            $sigSrc = asset($sigSrc);
                                                         }
                                                     @endphp
-                                                    <img src="{{ $sigSrcHrd }}" alt="TTD HRD" class="h-8 max-w-[80px] mx-auto object-contain" onerror="this.src='/lampiran/{{ basename($hrdAppr->ttd_approver) }}';">
+                                                    <img src="{{ $sigSrc }}" alt="TTD Approver" class="h-8 max-w-[80px] mx-auto object-contain" onerror="this.src='/lampiran/{{ basename($appr->ttd_approver) }}';">
                                                 @else
                                                     <span class="text-[9.5px] text-slate-400 italic">Belum TTD</span>
                                                 @endif
                                             </td>
                                             <td class="py-3 px-3 text-center text-[10.5px] text-slate-500 whitespace-nowrap">
-                                                {{ $hrdAppr->time_approver ? \Carbon\Carbon::parse($hrdAppr->time_approver)->format('d/m/Y H:i') : '-' }}
+                                                {{ $appr->time_approver ? \Carbon\Carbon::parse($appr->time_approver)->format('d/m/Y H:i') : '-' }}
                                             </td>
                                         </tr>
-                                    @endforeach
+                                    @empty
+                                        <tr>
+                                            <td colspan="5" class="py-6 text-center text-xs text-slate-400 italic bg-slate-50/50">
+                                                Belum ada approval yang disubmit untuk kandidat ini.
+                                            </td>
+                                        </tr>
+                                    @endforelse
                                 </tbody>
                             </table>
                         </div>
                     </div>
-                    @endif
 
                 </div>
 

@@ -2409,6 +2409,10 @@ class InterviewController extends Controller
             $userRequest = "{$user->name} - {$userTitle} {$userArea}";
         }
 
+        $applicableSteps = \App\Services\ApprovalWorkflowService::getApplicableStepsForCandidate($candidate);
+        $firstStep = $applicableSteps->first();
+        $initialStatus = $firstStep ? ('Review ' . $firstStep->step_name) : 'Review Head';
+
         $candidate->update([
             'is_inhouse' => 1,
             'nama_approver' => $request->nama_approver,
@@ -2416,7 +2420,9 @@ class InterviewController extends Controller
             'menggantikan' => $statusReplace === 'Replace' ? $request->menggantikan : null,
             'tgl_resign' => $statusReplace === 'Replace' ? $request->tgl_resign : null,
             'alasan_resign' => $statusReplace === 'Replace' ? $request->alasan_resign : null,
-            'status_approval' => 'Review Head',
+            'current_approval_step_id' => $firstStep?->id,
+            'current_step_order' => $firstStep?->step_order ?? 1,
+            'status_approval' => $initialStatus,
             'user_request' => $userRequest ?? $candidate->user_request,
         ]);
 

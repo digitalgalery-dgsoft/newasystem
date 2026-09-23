@@ -126,6 +126,11 @@ class Candidate extends Model
         return $this->hasMany(InhouseApproval::class)->orderBy('id', 'desc');
     }
 
+    public function currentApprovalStep()
+    {
+        return $this->belongsTo(ApprovalWorkflowStep::class, 'current_approval_step_id');
+    }
+
     public function getUserAsNameAttribute(): string
     {
         return $this->user_display_name;
