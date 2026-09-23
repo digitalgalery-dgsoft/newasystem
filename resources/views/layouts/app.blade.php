@@ -1219,10 +1219,24 @@
                                 <!-- 3. Kandidat Portal -->
                                 <a href="{{ route('kandidatportal.index') }}" 
                                    title="Kandidat Portal"
-                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('kandidatportal.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('kandidatportal.index', 'kandidatportal.show') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-globe text-[11px] w-4 text-center"></i>
                                     <span>Kandidat Portal</span>
-                                    @if(request()->routeIs('kandidatportal.*'))
+                                    @if(request()->routeIs('kandidatportal.index', 'kandidatportal.show'))
+                                        <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
+                                    @endif
+                                </a>
+
+                                <!-- 3b. Log Antrean AI -->
+                                <a href="{{ route('kandidatportal.ai_queue') }}" 
+                                   title="Log Antrean & Hasil Analisa AI"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('kandidatportal.ai_queue*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
+                                    <i class="fa-solid fa-list-check text-[11px] w-4 text-center {{ request()->routeIs('kandidatportal.ai_queue*') ? 'text-white' : 'text-indigo-500' }}"></i>
+                                    <span>Log Antrean AI</span>
+                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('kandidatportal.ai_queue*') ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700' }}">
+                                        Live
+                                    </span>
+                                    @if(request()->routeIs('kandidatportal.ai_queue*'))
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
                                 </a>

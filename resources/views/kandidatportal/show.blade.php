@@ -3,7 +3,12 @@
 @section('title', 'Detail & Evaluasi Kandidat - ' . $candidate->full_name)
 
 @section('content')
-<div class="space-y-6" x-data="kandidatDetailManager()">
+<div class="space-y-6" x-data="{
+    alihkanModalOpen: false,
+    gantiAreaModalOpen: false,
+    arsipModalOpen: false,
+    editPrincipleModal: false
+}">
 
     <!-- TOP BAR / BREADCRUMB & HEADER -->
     <div class="page-header-card flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -1618,7 +1623,7 @@
 
             </div>
         </div>
-
+    </div>
     </div>
 
     <!-- MODAL EDIT PRINSIPLE -->
@@ -1659,6 +1664,8 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
 
             @php
         $principleSelectOptions = $principles->map(function($p) {

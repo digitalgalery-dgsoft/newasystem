@@ -26,6 +26,11 @@
         </div>
 
         <div class="flex items-center gap-2">
+            <a href="{{ route('kandidatportal.ai_queue') }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition-all shadow-sm">
+                <i class="fa-solid fa-list-check text-indigo-600"></i>
+                <span>Log Antrean AI</span>
+                <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-ping"></span>
+            </a>
             <a href="{{ route('airanking.index') }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 hover:bg-amber-100 transition-all shadow-sm">
                 <i class="fa-solid fa-ranking-star text-amber-500"></i>
                 <span>AI Ranking Leaderboard</span>
@@ -162,19 +167,22 @@
                 </div>
             </div>
 
-            <!-- Badge Kanan: Counter & Shortcut Leaderboard -->
+            <!-- Badge Kanan: Counter & Shortcut Antrean / Leaderboard -->
             <div class="hidden lg:flex items-center gap-2.5 px-3.5 py-2 bg-indigo-950/95 border-l border-indigo-500/30 flex-shrink-0 text-right z-10 backdrop-blur-sm">
-                <div class="text-right">
-                    <div class="text-[9px] font-bold text-indigo-300 uppercase tracking-wider">Antrean AI</div>
+                <a href="{{ route('kandidatportal.ai_queue') }}" class="text-right hover:opacity-90 transition block cursor-pointer" title="Buka Halaman Log Antrean & Riwayat AI">
+                    <div class="text-[9px] font-bold text-indigo-300 uppercase tracking-wider flex items-center justify-end gap-1">
+                        <span>Antrean AI</span>
+                        <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+                    </div>
                     <div class="text-xs font-black text-white flex items-center justify-end gap-1">
                         <span x-text="queueCount"></span>
                         <span class="text-[10px] text-indigo-300 font-normal">Kandidat</span>
                     </div>
-                </div>
-                <a href="{{ route('airanking.index') }}" 
+                </a>
+                <a href="{{ route('kandidatportal.ai_queue') }}" 
                    class="w-7 h-7 rounded-xl bg-indigo-800/80 hover:bg-indigo-700 text-indigo-200 hover:text-white flex items-center justify-center text-xs transition-all shadow-xs" 
-                   title="Lihat AI Ranking Leaderboard">
-                    <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                   title="Buka Log Antrean & Riwayat Hasil Analisa AI">
+                    <i class="fa-solid fa-list-check text-[10px]"></i>
                 </a>
             </div>
         </div>

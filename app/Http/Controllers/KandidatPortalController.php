@@ -398,6 +398,111 @@ class KandidatPortalController extends Controller
     }
 
     /**
+     * Helper untuk mengambil data log antrean dan riwayat analisa AI
+     */
+    protected function getAiQueueLogPayload(): array
+    {
+        $queueQuery = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+            ->where(function ($q) {
+                $q->whereNull('ai_score')->orWhere('ai_score', 0);
+            });
+
+        $queueCount = (clone $queueQuery)->count();
+
+        $queueList = (clone $queueQuery)
+            ->orderByRaw("CASE WHEN cv_path IS NOT NULL AND cv_path != '' AND cv_path != '-' THEN 0 ELSE 1 END, id ASC")
+            ->limit(10)
+            ->get(['id', 'full_name', 'applied_job', 'area', 'created_at', 'cv_path', 'ai_score', 'kategori_kandidat', 'ai_cv_analysis'])
+            ->map(function ($c, $idx) {
+                return [
+                    'id' => $c->id,
+                    'queue_num' => $idx + 1,
+                    'full_name' => $c->full_name,
+                    'applied_job' => $c->applied_job ?? '-',
+                    'area' => $c->area ?? 'JAKARTA',
+                    'created_at_formatted' => $c->created_at ? $c->created_at->translatedFormat('d M Y, H:i') : '-',
+                    'has_cv' => $c->hasCv(),
+                    'cv_name' => $c->cv_path ? basename($c->cv_path) : null,
+                    'score' => '-',
+                    'category' => 'Menunggu Antrean',
+                    'completed_at' => 'Dalam Antrean #' . ($idx + 1),
+                    'detail_url' => route('kandidatportal.show', $c->id),
+                ];
+            });
+
+        $completedQuery = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+            ->whereNotNull('ai_score')
+            ->where('ai_score', '>', 0);
+
+        $completedCount = (clone $completedQuery)->count();
+        $greenCount = (clone $completedQuery)->where('ai_score', '>=', 85)->count();
+        $yellowCount = (clone $completedQuery)->whereBetween('ai_score', [60, 84])->count();
+        $redCount = (clone $completedQuery)->where('ai_score', '<', 60)->count();
+
+        $completedList = (clone $completedQuery)
+            ->orderByDesc('updated_at')
+            ->limit(10)
+            ->get(['id', 'full_name', 'applied_job', 'area', 'ai_score', 'kategori_kandidat', 'created_at', 'updated_at', 'photo_path'])
+            ->map(function ($c, $idx) {
+                $cat = $c->kategori_kandidat;
+                if (empty($cat)) {
+                    $score = intval($c->ai_score);
+                    $cat = ($score >= 85) ? 'Green' : (($score >= 60) ? 'Yellow' : 'Red');
+                }
+                return [
+                    'id' => $c->id,
+                    'num' => $idx + 1,
+                    'full_name' => $c->full_name,
+                    'applied_job' => $c->applied_job ?? '-',
+                    'area' => $c->area ?? 'JAKARTA',
+                    'created_at_formatted' => $c->created_at ? $c->created_at->translatedFormat('d M Y') : '-',
+                    'score' => intval($c->ai_score),
+                    'category' => $cat,
+                    'completed_at' => $c->updated_at ? $c->updated_at->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB' : '-',
+                    'detail_url' => route('kandidatportal.show', $c->id),
+                ];
+            });
+
+        $liveStatus = \App\Services\AiAnalyzerService::getLiveRunningStatus();
+
+        return [
+            'queue_count' => $queueCount,
+            'completed_count' => $completedCount,
+            'green_count' => $greenCount,
+            'yellow_count' => $yellowCount,
+            'red_count' => $redCount,
+            'queue_list' => $queueList,
+            'completed_list' => $completedList,
+            'live_status' => $liveStatus,
+            'timestamp' => now('Asia/Jakarta')->format('H:i:s'),
+        ];
+    }
+
+    /**
+     * Halaman Log Antrean & Riwayat Hasil Analisa AI
+     */
+    public function aiQueueLog(Request $request)
+    {
+        $payload = $this->getAiQueueLogPayload();
+
+        if ($request->wantsJson() || $request->query('format') === 'json') {
+            return response()->json(array_merge(['success' => true], $payload));
+        }
+
+        return view('kandidatportal.ai_queue', array_merge([
+            'user' => $this->getCurrentUser(),
+        ], $payload));
+    }
+
+    /**
+     * Endpoint API Data Log Antrean & Hasil Analisa AI untuk Auto-Reload Realtime
+     */
+    public function aiQueueData()
+    {
+        return response()->json(array_merge(['success' => true], $this->getAiQueueLogPayload()));
+    }
+
+    /**
      * Halaman Detail & Evaluasi Kandidat Portal (Replikasi hasilportal.php & detailkandidat.php)
      */
     public function show($id)
