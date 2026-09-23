@@ -31,3 +31,6 @@ scratch/
 !/public/approval/.gitkeep
 /public/refcekfile/*
 !/public/refcekfile/.gitkeep
+graphify-out/cache/
+graphify-out/converted/
+
