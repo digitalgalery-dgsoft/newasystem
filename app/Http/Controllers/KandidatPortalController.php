@@ -402,6 +402,28 @@ class KandidatPortalController extends Controller
      */
     protected function getAiQueueLogPayload(): array
     {
+        $formatValidDate = function ($date, $fallbackDate = null, $format = 'd M Y, H:i') {
+            $candidates = [$date, $fallbackDate];
+            foreach ($candidates as $d) {
+                if (empty($d)) {
+                    continue;
+                }
+                $str = is_string($d) ? trim($d) : (string)$d;
+                if (str_starts_with($str, '0000') || $str === '-' || $str === '0') {
+                    continue;
+                }
+                try {
+                    $carbon = $d instanceof \Carbon\Carbon ? $d : \Carbon\Carbon::parse($d);
+                    if ($carbon->year > 1970) {
+                        return $carbon->translatedFormat($format);
+                    }
+                } catch (\Throwable $e) {
+                    // Abaikan kegagalan parse
+                }
+            }
+            return '-';
+        };
+
         $queueQuery = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
             ->where(function ($q) {
                 $q->whereNull('ai_score')->orWhere('ai_score', 0);
@@ -412,19 +434,17 @@ class KandidatPortalController extends Controller
         $queueList = (clone $queueQuery)
             ->orderByRaw("CASE WHEN cv_path IS NOT NULL AND cv_path != '' AND cv_path != '-' THEN 0 ELSE 1 END, id ASC")
             ->limit(10)
-            ->get(['id', 'full_name', 'applied_job', 'area', 'created_at', 'cv_path', 'ai_score', 'kategori_kandidat', 'ai_cv_analysis'])
-            ->map(function ($c, $idx) {
+            ->get(['id', 'full_name', 'applied_job', 'area', 'created_at', 'updated_at', 'cv_path', 'ai_score', 'kategori_kandidat', 'ai_cv_analysis'])
+            ->map(function ($c, $idx) use ($formatValidDate) {
                 return [
                     'id' => $c->id,
                     'queue_num' => $idx + 1,
                     'full_name' => $c->full_name,
                     'applied_job' => $c->applied_job ?? '-',
                     'area' => $c->area ?? 'JAKARTA',
-                    'created_at_formatted' => $c->created_at ? $c->created_at->translatedFormat('d M Y, H:i') : '-',
+                    'created_at_formatted' => $formatValidDate($c->created_at, $c->updated_at, 'd M Y, H:i'),
                     'has_cv' => $c->hasCv(),
                     'cv_name' => $c->cv_path ? basename($c->cv_path) : null,
-                    'score' => '-',
-                    'category' => 'Menunggu Antrean',
                     'completed_at' => 'Dalam Antrean #' . ($idx + 1),
                     'detail_url' => route('kandidatportal.show', $c->id),
                 ];
@@ -447,7 +467,7 @@ class KandidatPortalController extends Controller
             ->orderByDesc('updated_at')
             ->limit(10)
             ->get(['id', 'full_name', 'applied_job', 'area', 'ai_score', 'kategori_kandidat', 'ai_cv_analysis', 'created_at', 'updated_at', 'photo_path'])
-            ->map(function ($c, $idx) use ($defaultModel, $lastCompletedCache) {
+            ->map(function ($c, $idx) use ($defaultModel, $lastCompletedCache, $formatValidDate) {
                 $cat = $c->kategori_kandidat;
                 if (empty($cat)) {
                     $score = intval($c->ai_score);
@@ -478,18 +498,23 @@ class KandidatPortalController extends Controller
                     $providerName = 'Gemini';
                 }
 
+                $completedAtFormatted = '-';
+                if ($c->updated_at && $c->updated_at->year > 1970) {
+                    $completedAtFormatted = $c->updated_at->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB';
+                }
+
                 return [
                     'id' => $c->id,
                     'num' => $idx + 1,
                     'full_name' => $c->full_name,
                     'applied_job' => $c->applied_job ?? '-',
                     'area' => $c->area ?? 'JAKARTA',
-                    'created_at_formatted' => $c->created_at ? $c->created_at->translatedFormat('d M Y') : '-',
+                    'created_at_formatted' => $formatValidDate($c->created_at, $c->updated_at, 'd M Y'),
                     'score' => intval($c->ai_score),
                     'category' => $cat,
                     'model' => $modelName,
                     'provider' => $providerName,
-                    'completed_at' => $c->updated_at ? $c->updated_at->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB' : '-',
+                    'completed_at' => $completedAtFormatted,
                     'detail_url' => route('kandidatportal.show', $c->id),
                 ];
             });

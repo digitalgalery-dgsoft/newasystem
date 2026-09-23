@@ -316,7 +316,6 @@
                             <th class="py-2.5 px-3">Tgl Daftar</th>
                             <th class="py-2.5 px-3">Nama Kandidat</th>
                             <th class="py-2.5 px-3">Jabatan & Area</th>
-                            <th class="py-2.5 px-3 text-center">Score / Kategori</th>
                             <th class="py-2.5 px-3">Status Antrean</th>
                             <th class="py-2.5 px-3 text-center w-16">Aksi</th>
                         </tr>
@@ -356,14 +355,6 @@
                                     </div>
                                 </td>
 
-                                <!-- Score & Kategori -->
-                                <td class="py-2.5 px-3 text-center whitespace-nowrap">
-                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">
-                                        <i class="fa-solid fa-clock text-[8px]"></i>
-                                        <span>Antrean</span>
-                                    </span>
-                                </td>
-
                                 <!-- Status Antrean / Estimasi Selesai -->
                                 <td class="py-2.5 px-3 whitespace-nowrap">
                                     <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg"
@@ -385,7 +376,7 @@
 
                         <!-- Empty State Antrean -->
                         <tr x-show="queueList.length === 0">
-                            <td colspan="7" class="py-12 text-center text-slate-400">
+                            <td colspan="6" class="py-12 text-center text-slate-400">
                                 <div class="flex flex-col items-center justify-center gap-2">
                                     <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
                                         <i class="fa-solid fa-circle-check"></i>

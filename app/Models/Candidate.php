@@ -386,7 +386,18 @@ class Candidate extends Model
 
     public function getTanggalAttribute()
     {
-        return $this->created_at ? $this->created_at->format('Y-m-d') : null;
+        return ($this->created_at && $this->created_at->year > 1970) ? $this->created_at->format('Y-m-d') : null;
+    }
+
+    public function getFormattedCreatedAtAttribute(): string
+    {
+        if ($this->created_at && $this->created_at->year > 1970) {
+            return $this->created_at->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i');
+        }
+        if ($this->updated_at && $this->updated_at->year > 1970) {
+            return $this->updated_at->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i');
+        }
+        return '-';
     }
 
     public function getAgeAttribute(): int

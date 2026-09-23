@@ -555,11 +555,16 @@
                         
                         <!-- Tgl Daftar -->
                         <td>
+                            @php
+                                $validReg = ($cand->created_at && $cand->created_at->year > 1970)
+                                    ? $cand->created_at
+                                    : (($cand->updated_at && $cand->updated_at->year > 1970) ? $cand->updated_at : null);
+                            @endphp
                             <div class="font-semibold text-slate-800 text-[11px]">
-                                {{ $cand->created_at ? $cand->created_at->timezone('Asia/Jakarta')->format('d M Y') : '-' }}
+                                {{ $validReg ? $validReg->timezone('Asia/Jakarta')->format('d M Y') : '-' }}
                             </div>
                             <div class="text-[10px] text-slate-400">
-                                {{ $cand->created_at ? $cand->created_at->timezone('Asia/Jakarta')->format('H:i') : '' }} WIB
+                                {{ $validReg ? $validReg->timezone('Asia/Jakarta')->format('H:i') . ' WIB' : '' }}
                             </div>
                         </td>
 
