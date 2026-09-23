@@ -2376,6 +2376,50 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 56. 📝 Form Job Apply: Seluruh Field Menjadi Mandatory (Wajib Diisi) & Notifikasi Interaktif Bagian yang Kurang (23 September 2026)
+- **Latar Belakang & Kebutuhan Pengguna**:
+  - Formulir pendaftaran lowongan kerja publik (`/job/{id}/apply`) sebelumnya masih memiliki beberapa field opsional (*nullable*), seperti pas foto, tinggi & berat badan, ringkasan pengalaman, motivasi, dan kelebihan diri.
+  - Pengguna menginstruksikan agar seluruh field dibuat menjadi **mandatory (wajib diisi)** oleh kandidat pelamar, dan jika terdapat bagian yang masih kosong/kurang lengkap, sistem harus memunculkan **notifikasi interaktif yang merinci secara jelas bagian-bagian mana saja yang masih kurang**.
+- **Pembaruan Backend Controller (`app/Http/Controllers/PublicJobController.php`)**:
+  - Memperketat aturan validasi pada metode `submitApply` untuk 18 field secara komprehensif:
+    1. `foto_profil`: Wajib diunggah (`required|file|mimes:jpeg,png,jpg,webp|max:5120`).
+    2. `file_cv`: Berkas CV wajib diunggah (`required|file|mimes:pdf,jpeg,png,jpg|max:10240`).
+    3. `nik`: Wajib 16 digit angka (`required|string|size:16|regex:/^[0-9]+$/`).
+    4. `nama_lengkap`: Wajib diisi sesuai KTP (`required|string|max:255`).
+    5. `tgl_lahir`: Wajib diisi (`required|date`).
+    6. `gender`: Wajib dipilih (`required|in:Laki-laki,Perempuan`).
+    7. `tinggi`: Wajib diisi angka antara 50 - 250 cm (`required|numeric|min:50|max:250`).
+    8. `berat`: Wajib diisi angka antara 20 - 300 kg (`required|numeric|min:20|max:300`).
+    9. `alamat_ktp`: Wajib diisi minimal 5 karakter (`required|string|min:5`).
+    10. `alamat_domisili`: Wajib diisi minimal 5 karakter (`required|string|min:5`).
+    11. `no_wa`: Wajib diisi minimal 9 digit angka (`required|string|min:9|max:20`).
+    12. `pendidikan`: Wajib dipilih (`required|string`).
+    13. `propinsi_domisili`: Wajib dipilih (`required|string|max:100`).
+    14. `kota_domisili`: Wajib dipilih (`required|string|max:100`).
+    15. `info_lowongan`: Wajib dipilih (`required|string|max:100`).
+    16. `ringkasan_pengalaman`: Wajib diisi minimal 3 karakter (`required|string|min:3`).
+    17. `motivasi`: Wajib diisi minimal 3 karakter (`required|string|min:3`).
+    18. `kelebihan`: Wajib diisi minimal 3 karakter (`required|string|min:3`).
+  - Menambahkan *custom validation error messages* dalam Bahasa Indonesia yang formal, sopan, dan informatif untuk setiap field.
+- **Pembaruan Frontend Antarmuka & Validasi Client-Side (`resources/views/job/apply.blade.php`)**:
+  - **Tanda Visual Wajib (*Mandatory Asterisk*)**:
+    - Seluruh label input, textarea, select, dan kartu upload (Pas Foto & CV) kini dilengkapi badge merah `*Wajib` atau bintang merah `<span class="text-rose-500">*</span>`.
+    - Menghilangkan default placeholder dummy agar kandidat benar-benar memilih dan mengisikan data mereka sendiri.
+  - **Validasi JavaScript Interaktif Sebelum Submit**:
+    - Menggunakan atribut `novalidate` pada form agar tidak tertahan oleh tooltip native browser yang kaku, melainkan dihandle secara cerdas oleh script validasi kustom.
+    - Mengaudit seluruh 18 input secara bersamaan sebelum berkas dikirim.
+    - Jika terdapat field yang belum diisi atau tidak valid, memunculkan popup **SweetAlert2** bertema warning modern:
+      - Menampilkan jumlah total bagian yang belum diisi (misal: *18 bagian yang belum diisi*).
+      - Menampilkan daftar rincian terformat (*scrollable card*) yang mencantumkan Nomor, Nama Field, Kategori Seksi, serta pesan panduan pengisian yang jelas.
+      - Menyediakan tombol konfirmasi *"Lengkapi Bagian Ini"* yang secara otomatis melakukan *smooth scrolling* dan memfokuskan kursor ke field error pertama.
+  - **Highlighting Merah & Real-Time Error Clearing**:
+    - Setiap input/kontainer yang kurang lengkap secara dinamis diberi efek border merah (`border-rose-500`), bayangan fokus merah (`ring-2 ring-rose-200`), dan pesan error dengan ikon `fa-circle-exclamation` di bawah field.
+    - Begitu kandidat mulai mengetik atau memilih opsi pada field terkait (`input` & `change` event), efek merah dan pesan error otomatis hilang seketika (*real-time auto-clear*).
+    - Menambahkan sinkronisasi *real-time* alamat KTP ke domisili saat opsi *"Domisili Sama dengan KTP"* dicentang.
+    - Integrasi otomatis penanganan server error (`$errors->any()`) jika terjadi penolakan dari backend, memunculkan SweetAlert2 merah rincian error saat halaman dimuat ulang.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
