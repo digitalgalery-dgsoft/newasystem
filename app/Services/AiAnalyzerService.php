@@ -295,6 +295,12 @@ class AiAnalyzerService
             return ['success' => false, 'message' => 'Format response AI tidak valid', 'raw' => $aiResult];
         }
 
+        // Simpan metadata model & provider yang sukses digunakan
+        $decoded['_model'] = $usedModel;
+        $decoded['_provider'] = $usedProvider;
+        $decoded['_analyzed_at'] = now('Asia/Jakarta')->toIso8601String();
+        $cleanJson = json_encode($decoded, JSON_UNESCAPED_UNICODE);
+
         $aiScore = intval($decoded['evaluation_match_score']);
         $aiScore = max(0, min(100, $aiScore)); // Clamp between 0 - 100
 

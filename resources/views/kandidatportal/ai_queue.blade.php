@@ -276,249 +276,259 @@
         </div>
     </div>
 
-    <!-- TABEL 1: 10 KANDIDAT DALAM ANTREAN ANALISA AI -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <!-- Header Tabel Antrean -->
-        <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-amber-50/30">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-lg font-bold">
-                    <i class="fa-solid fa-hourglass-half"></i>
+    <!-- DUAL COLUMN LAYOUT (KANAN - KIRI) -->
+    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+        
+        <!-- ==================================================================== -->
+        <!-- KOLOM KIRI: 10 KANDIDAT DALAM ANTREAN ANALISA AI                    -->
+        <!-- ==================================================================== -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <!-- Header Kolom Antrean -->
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-amber-50/40">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center text-base font-bold shrink-0">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2 truncate">
+                            <span>Antrean Analisa AI</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800 shrink-0" x-text="'10 Terdepan dari ' + queueCount"></span>
+                        </h3>
+                        <p class="text-[11px] text-slate-500 truncate">
+                            Prioritas antrean evaluasi berkas CV oleh background AI.
+                        </p>
+                    </div>
                 </div>
-                <div>
-                    <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                        <span>List Kandidat Sedang dalam Antrean Analisa AI</span>
-                        <span class="text-xs px-2 py-0.5 rounded-full font-bold bg-amber-100 text-amber-800" x-text="'10 Terdepan dari ' + queueCount"></span>
-                    </h3>
-                    <p class="text-xs text-slate-500">
-                        Urutan prioritas antrean evaluasi berkas CV oleh background AI worker.
-                    </p>
+                <div class="shrink-0">
+                    <span class="inline-flex items-center gap-1 text-[11px] text-amber-800 font-bold bg-amber-100/70 px-2 py-1 rounded-lg">
+                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        ~30d / orang
+                    </span>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
-                <span class="inline-flex items-center gap-1.5 text-xs text-slate-500 bg-white px-3 py-1.5 rounded-xl border border-slate-200">
-                    <i class="fa-solid fa-gauge text-slate-400"></i>
-                    <span>Estimasi: <b>~30 detik / kandidat</b></span>
-                </span>
-            </div>
-        </div>
 
-        <!-- Tabel Antrean -->
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                    <tr class="border-b border-slate-100 bg-slate-50/70 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                        <th class="py-3 px-4 text-center w-16">Antrean</th>
-                        <th class="py-3 px-4">Tgl Daftar</th>
-                        <th class="py-3 px-4">Nama Kandidat</th>
-                        <th class="py-3 px-4">Jabatan Dilamar</th>
-                        <th class="py-3 px-4">Area</th>
-                        <th class="py-3 px-4 text-center">Score</th>
-                        <th class="py-3 px-4 text-center">Kategori</th>
-                        <th class="py-3 px-4">Tgl & Jam Selesai Analisa</th>
-                        <th class="py-3 px-4 text-center w-24">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    <template x-for="cand in queueList" :key="'queue_' + cand.id">
-                        <tr class="hover:bg-amber-50/40 transition-colors">
-                            <!-- Posisi Antrean -->
-                            <td class="py-3 px-4 text-center font-black">
-                                <span class="inline-flex items-center justify-center w-7 h-7 rounded-lg text-xs font-black shadow-2xs"
-                                      :class="cand.queue_num === 1 ? 'bg-amber-500 text-white ring-2 ring-amber-300' : 'bg-slate-100 text-slate-700'"
-                                      x-text="'#' + cand.queue_num">
-                                </span>
-                            </td>
+            <!-- Tabel Antrean (Kiri) -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-100 bg-slate-50/70 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                            <th class="py-2.5 px-3 text-center w-12">#</th>
+                            <th class="py-2.5 px-3">Tgl Daftar</th>
+                            <th class="py-2.5 px-3">Nama Kandidat</th>
+                            <th class="py-2.5 px-3">Jabatan & Area</th>
+                            <th class="py-2.5 px-3 text-center">Score / Kategori</th>
+                            <th class="py-2.5 px-3">Status Antrean</th>
+                            <th class="py-2.5 px-3 text-center w-16">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <template x-for="cand in queueList" :key="'queue_' + cand.id">
+                            <tr class="hover:bg-amber-50/40 transition-colors">
+                                <!-- Posisi Antrean -->
+                                <td class="py-2.5 px-3 text-center">
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-lg text-xs font-black shadow-2xs"
+                                          :class="cand.queue_num === 1 ? 'bg-amber-500 text-white ring-2 ring-amber-300' : 'bg-slate-100 text-slate-700'"
+                                          x-text="'#' + cand.queue_num">
+                                    </span>
+                                </td>
 
-                            <!-- Tgl Daftar -->
-                            <td class="py-3 px-4 font-semibold text-slate-600 whitespace-nowrap" x-text="cand.created_at_formatted"></td>
+                                <!-- Tgl Daftar -->
+                                <td class="py-2.5 px-3 font-semibold text-slate-600 whitespace-nowrap text-[11px]" x-text="cand.created_at_formatted"></td>
 
-                            <!-- Nama Kandidat -->
-                            <td class="py-3 px-4">
-                                <a :href="cand.detail_url" class="font-bold text-slate-900 hover:text-primary transition flex items-center gap-1.5">
-                                    <span x-text="cand.full_name"></span>
-                                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-slate-400"></i>
-                                </a>
-                                <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1" x-show="cand.has_cv">
-                                    <i class="fa-regular fa-file-pdf text-rose-500"></i>
-                                    <span class="truncate max-w-[200px]" x-text="cand.cv_name || 'Berkas CV Terlampir'"></span>
+                                <!-- Nama Kandidat -->
+                                <td class="py-2.5 px-3">
+                                    <a :href="cand.detail_url" class="font-bold text-slate-900 hover:text-primary transition flex items-center gap-1">
+                                        <span class="truncate max-w-[130px]" x-text="cand.full_name"></span>
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[8px] text-slate-400"></i>
+                                    </a>
+                                    <div class="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1" x-show="cand.has_cv">
+                                        <i class="fa-regular fa-file-pdf text-rose-500 text-[9px]"></i>
+                                        <span class="truncate max-w-[120px]" x-text="cand.cv_name || 'Ada CV'"></span>
+                                    </div>
+                                </td>
+
+                                <!-- Jabatan & Area -->
+                                <td class="py-2.5 px-3">
+                                    <div class="font-semibold text-slate-800 truncate max-w-[140px]" x-text="cand.applied_job || '-'"></div>
+                                    <div class="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                        <i class="fa-solid fa-location-dot text-slate-400 text-[8px]"></i>
+                                        <span class="truncate max-w-[120px]" x-text="cand.area || 'JAKARTA'"></span>
+                                    </div>
+                                </td>
+
+                                <!-- Score & Kategori -->
+                                <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-500">
+                                        <i class="fa-solid fa-clock text-[8px]"></i>
+                                        <span>Antrean</span>
+                                    </span>
+                                </td>
+
+                                <!-- Status Antrean / Estimasi Selesai -->
+                                <td class="py-2.5 px-3 whitespace-nowrap">
+                                    <span class="inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-lg"
+                                          :class="cand.queue_num === 1 ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-600'">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" x-show="cand.queue_num === 1"></span>
+                                        <span x-text="cand.queue_num === 1 ? 'Berikutnya' : 'Antrean #' + cand.queue_num"></span>
+                                    </span>
+                                </td>
+
+                                <!-- Aksi -->
+                                <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                                    <a :href="cand.detail_url" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-primary bg-primary/10 hover:bg-primary/20 transition">
+                                        <span>Detail</span>
+                                        <i class="fa-solid fa-chevron-right text-[8px]"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        </template>
+
+                        <!-- Empty State Antrean -->
+                        <tr x-show="queueList.length === 0">
+                            <td colspan="7" class="py-12 text-center text-slate-400">
+                                <div class="flex flex-col items-center justify-center gap-2">
+                                    <div class="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
+                                        <i class="fa-solid fa-circle-check"></i>
+                                    </div>
+                                    <span class="font-bold text-slate-700 text-xs">Semua Berkas Selesai Dianalisa</span>
+                                    <span class="text-[11px] text-slate-500">Tidak ada kandidat dalam antrean menunggu analisa AI.</span>
                                 </div>
                             </td>
-
-                            <!-- Jabatan -->
-                            <td class="py-3 px-4 font-medium text-slate-700" x-text="cand.applied_job || '-'"></td>
-
-                            <!-- Area -->
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700">
-                                    <i class="fa-solid fa-location-dot text-slate-400 text-[9px]"></i>
-                                    <span x-text="cand.area || 'JAKARTA'"></span>
-                                </span>
-                            </td>
-
-                            <!-- Score -->
-                            <td class="py-3 px-4 text-center whitespace-nowrap">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-500">
-                                    <i class="fa-solid fa-minus text-[9px]"></i>
-                                    <span>Belum Dinilai</span>
-                                </span>
-                            </td>
-
-                            <!-- Kategori -->
-                            <td class="py-3 px-4 text-center whitespace-nowrap">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
-                                    <i class="fa-solid fa-clock text-[9px]"></i>
-                                    <span>Menunggu Antrean</span>
-                                </span>
-                            </td>
-
-                            <!-- Tgl & Jam Selesai Analisa -->
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="inline-flex items-center gap-1.5 text-xs text-amber-800 font-semibold bg-amber-50 px-2.5 py-1 rounded-xl border border-amber-200/70">
-                                    <span class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
-                                    <span x-text="cand.queue_num === 1 ? 'Diproses Berikutnya' : 'Antrean #' + cand.queue_num"></span>
-                                </span>
-                            </td>
-
-                            <!-- Aksi -->
-                            <td class="py-3 px-4 text-center whitespace-nowrap">
-                                <a :href="cand.detail_url" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 transition">
-                                    <span>Detail</span>
-                                    <i class="fa-solid fa-chevron-right text-[9px]"></i>
-                                </a>
-                            </td>
                         </tr>
-                    </template>
-
-                    <!-- Empty State Antrean -->
-                    <tr x-show="queueList.length === 0">
-                        <td colspan="9" class="py-10 text-center text-slate-400">
-                            <div class="flex flex-col items-center justify-center gap-2">
-                                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
-                                    <i class="fa-solid fa-circle-check"></i>
-                                </div>
-                                <span class="font-bold text-slate-700 text-sm">Semua Berkas Selesai Dianalisa</span>
-                                <span class="text-xs text-slate-500">Saat ini tidak ada kandidat dalam antrean menunggu analisa AI.</span>
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-
-    <!-- TABEL 2: 10 KANDIDAT YANG BARU SELESAI DI ANALISA -->
-    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-        <!-- Header Tabel Selesai -->
-        <div class="p-4 sm:p-5 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-emerald-50/30">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-lg font-bold">
-                    <i class="fa-solid fa-circle-check"></i>
-                </div>
-                <div>
-                    <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                        <span>List Kandidat yang Baru Selesai di Analisa</span>
-                        <span class="text-xs px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800" x-text="'10 Terakhir dari ' + completedCount"></span>
-                    </h3>
-                    <p class="text-xs text-slate-500">
-                        Data kandidat yang baru selesai dinilai oleh engine AI secara otomatis.
-                    </p>
-                </div>
-            </div>
-            <div class="flex items-center gap-2">
-                <a href="{{ route('airanking.index') }}" class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 bg-white hover:bg-emerald-50 px-3 py-1.5 rounded-xl border border-emerald-300 shadow-2xs transition">
-                    <i class="fa-solid fa-ranking-star text-amber-500"></i>
-                    <span>Buka AI Leaderboard Lengkap</span>
-                </a>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <!-- Tabel Selesai -->
-        <div class="overflow-x-auto">
-            <table class="w-full text-left border-collapse text-xs">
-                <thead>
-                    <tr class="border-b border-slate-100 bg-slate-50/70 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
-                        <th class="py-3 px-4 text-center w-12">No</th>
-                        <th class="py-3 px-4">Tgl Daftar</th>
-                        <th class="py-3 px-4">Nama Kandidat</th>
-                        <th class="py-3 px-4">Jabatan Dilamar</th>
-                        <th class="py-3 px-4">Area</th>
-                        <th class="py-3 px-4 text-center">Score</th>
-                        <th class="py-3 px-4 text-center">Kategori</th>
-                        <th class="py-3 px-4">Tgl & Jam Selesai Analisa</th>
-                        <th class="py-3 px-4 text-center w-24">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-100">
-                    <template x-for="cand in completedList" :key="'comp_' + cand.id">
-                        <tr class="hover:bg-emerald-50/30 transition-colors">
-                            <!-- No -->
-                            <td class="py-3 px-4 text-center font-bold text-slate-500" x-text="cand.num"></td>
+        <!-- ==================================================================== -->
+        <!-- KOLOM KANAN: 10 KANDIDAT YANG BARU SELESAI DI ANALISA (DENGAN MODEL) -->
+        <!-- ==================================================================== -->
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+            <!-- Header Kolom Selesai -->
+            <div class="p-4 border-b border-slate-100 flex items-center justify-between gap-3 bg-gradient-to-r from-slate-50 to-emerald-50/40">
+                <div class="flex items-center gap-2.5 min-w-0">
+                    <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-base font-bold shrink-0">
+                        <i class="fa-solid fa-circle-check"></i>
+                    </div>
+                    <div class="min-w-0">
+                        <h3 class="text-sm font-extrabold text-slate-900 flex items-center gap-2 truncate">
+                            <span>Baru Selesai di Analisa</span>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 shrink-0" x-text="'10 Terakhir dari ' + completedCount"></span>
+                        </h3>
+                        <p class="text-[11px] text-slate-500 truncate">
+                            Kandidat yang baru saja rampung dievaluasi oleh engine AI.
+                        </p>
+                    </div>
+                </div>
+                <div class="shrink-0">
+                    <a href="{{ route('airanking.index') }}" class="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-800 bg-white hover:bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-300 shadow-2xs transition" title="Buka AI Ranking Leaderboard">
+                        <i class="fa-solid fa-ranking-star text-amber-500 text-[10px]"></i>
+                        <span>Leaderboard</span>
+                    </a>
+                </div>
+            </div>
 
-                            <!-- Tgl Daftar -->
-                            <td class="py-3 px-4 font-semibold text-slate-600 whitespace-nowrap" x-text="cand.created_at_formatted"></td>
+            <!-- Tabel Selesai (Kanan) -->
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse text-xs">
+                    <thead>
+                        <tr class="border-b border-slate-100 bg-slate-50/70 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                            <th class="py-2.5 px-3 text-center w-10">No</th>
+                            <th class="py-2.5 px-3">Tgl Daftar</th>
+                            <th class="py-2.5 px-3">Nama Kandidat</th>
+                            <th class="py-2.5 px-3">Jabatan & Area</th>
+                            <th class="py-2.5 px-3 text-center">Score & Kategori</th>
+                            <th class="py-2.5 px-3">Model AI</th>
+                            <th class="py-2.5 px-3">Selesai Analisa</th>
+                            <th class="py-2.5 px-3 text-center w-16">Aksi</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <template x-for="cand in completedList" :key="'comp_' + cand.id">
+                            <tr class="hover:bg-emerald-50/30 transition-colors">
+                                <!-- No -->
+                                <td class="py-2.5 px-3 text-center font-bold text-slate-400 text-[11px]" x-text="cand.num"></td>
 
-                            <!-- Nama Kandidat -->
-                            <td class="py-3 px-4 font-bold text-slate-900">
-                                <a :href="cand.detail_url" class="hover:text-primary transition flex items-center gap-1.5">
-                                    <span x-text="cand.full_name"></span>
-                                    <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-slate-400"></i>
-                                </a>
-                            </td>
+                                <!-- Tgl Daftar -->
+                                <td class="py-2.5 px-3 font-semibold text-slate-600 whitespace-nowrap text-[11px]" x-text="cand.created_at_formatted"></td>
 
-                            <!-- Jabatan -->
-                            <td class="py-3 px-4 font-medium text-slate-700" x-text="cand.applied_job || '-'"></td>
+                                <!-- Nama Kandidat -->
+                                <td class="py-2.5 px-3">
+                                    <a :href="cand.detail_url" class="font-bold text-slate-900 hover:text-primary transition flex items-center gap-1">
+                                        <span class="truncate max-w-[130px]" x-text="cand.full_name"></span>
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[8px] text-slate-400"></i>
+                                    </a>
+                                </td>
 
-                            <!-- Area -->
-                            <td class="py-3 px-4 whitespace-nowrap">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-700">
-                                    <i class="fa-solid fa-location-dot text-slate-400 text-[9px]"></i>
-                                    <span x-text="cand.area || 'JAKARTA'"></span>
-                                </span>
-                            </td>
+                                <!-- Jabatan & Area -->
+                                <td class="py-2.5 px-3">
+                                    <div class="font-semibold text-slate-800 truncate max-w-[130px]" x-text="cand.applied_job || '-'"></div>
+                                    <div class="text-[10px] text-slate-500 flex items-center gap-1 mt-0.5">
+                                        <i class="fa-solid fa-location-dot text-slate-400 text-[8px]"></i>
+                                        <span class="truncate max-w-[110px]" x-text="cand.area || 'JAKARTA'"></span>
+                                    </div>
+                                </td>
 
-                            <!-- Score -->
-                            <td class="py-3 px-4 text-center whitespace-nowrap">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-black shadow-2xs"
-                                      :class="cand.score >= 85 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (cand.score >= 60 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-rose-100 text-rose-800 border border-rose-300')">
-                                    <i class="fa-solid fa-bolt text-[9px]"></i>
-                                    <span x-text="cand.score + '%'"></span>
-                                </span>
-                            </td>
+                                <!-- Score & Kategori -->
+                                <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                                    <div class="inline-flex items-center gap-1.5">
+                                        <span class="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-xs font-black shadow-2xs"
+                                              :class="cand.score >= 85 ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : (cand.score >= 60 ? 'bg-amber-100 text-amber-800 border border-amber-300' : 'bg-rose-100 text-rose-800 border border-rose-300')">
+                                            <i class="fa-solid fa-bolt text-[8px]"></i>
+                                            <span x-text="cand.score + '%'"></span>
+                                        </span>
+                                        <span class="text-[10px] font-bold"
+                                              :class="cand.category === 'Green' ? 'text-emerald-700' : (cand.category === 'Yellow' ? 'text-amber-700' : 'text-rose-700')"
+                                              x-text="cand.category === 'Green' ? '🟢' : (cand.category === 'Yellow' ? '🟡' : '🔴')">
+                                        </span>
+                                    </div>
+                                </td>
 
-                            <!-- Kategori -->
-                            <td class="py-3 px-4 text-center whitespace-nowrap">
-                                <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold"
-                                      :class="cand.category === 'Green' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : (cand.category === 'Yellow' ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-rose-50 text-rose-700 border border-rose-200')">
-                                    <span x-text="cand.category === 'Green' ? '🟢 Green' : (cand.category === 'Yellow' ? '🟡 Yellow' : '🔴 Red')"></span>
-                                </span>
-                            </td>
+                                <!-- Informasi Model AI yang Digunakan -->
+                                <td class="py-2.5 px-3 whitespace-nowrap">
+                                    <div class="inline-flex flex-col gap-0.5">
+                                        <!-- Provider & Model Pill -->
+                                        <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold border"
+                                              :class="cand.provider === 'OpenRouter' ? 'bg-purple-50 text-purple-700 border-purple-200' : (cand.provider === 'Sumopod' ? 'bg-teal-50 text-teal-700 border-teal-200' : 'bg-blue-50 text-blue-700 border-blue-200')"
+                                              :title="'Provider: ' + (cand.provider || 'Gemini') + ' • Model: ' + (cand.model || 'gemini-2.5-flash')">
+                                            <i class="text-[9px]" :class="cand.provider === 'OpenRouter' ? 'fa-solid fa-network-wired text-purple-600' : (cand.provider === 'Sumopod' ? 'fa-solid fa-server text-teal-600' : 'fa-solid fa-sparkles text-blue-600')"></i>
+                                            <span class="truncate max-w-[110px]" x-text="cand.model || 'gemini-2.5-flash'"></span>
+                                        </span>
+                                        <span class="text-[9px] text-slate-400 pl-0.5" x-text="'via ' + (cand.provider || 'Gemini')"></span>
+                                    </div>
+                                </td>
 
-                            <!-- Tgl & Jam Selesai Analisa -->
-                            <td class="py-3 px-4 whitespace-nowrap font-mono text-xs font-bold text-slate-700 flex items-center gap-1.5 pt-3.5">
-                                <i class="fa-regular fa-clock text-slate-400 text-[10px]"></i>
-                                <span x-text="cand.completed_at"></span>
-                            </td>
+                                <!-- Tgl & Jam Selesai Analisa -->
+                                <td class="py-2.5 px-3 whitespace-nowrap font-mono text-[11px] text-slate-700">
+                                    <div class="flex items-center gap-1 font-bold">
+                                        <i class="fa-regular fa-clock text-slate-400 text-[9px]"></i>
+                                        <span x-text="cand.completed_at"></span>
+                                    </div>
+                                </td>
 
-                            <!-- Aksi -->
-                            <td class="py-3 px-4 text-center whitespace-nowrap">
-                                <a :href="cand.detail_url" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition">
-                                    <span>Hasil AI</span>
-                                    <i class="fa-solid fa-chevron-right text-[9px]"></i>
-                                </a>
+                                <!-- Aksi -->
+                                <td class="py-2.5 px-3 text-center whitespace-nowrap">
+                                    <a :href="cand.detail_url" class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[11px] font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition">
+                                        <span>Hasil</span>
+                                        <i class="fa-solid fa-chevron-right text-[8px]"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                        </template>
+
+                        <!-- Empty State Selesai -->
+                        <tr x-show="completedList.length === 0">
+                            <td colspan="8" class="py-12 text-center text-slate-400">
+                                Belum ada riwayat hasil analisa AI.
                             </td>
                         </tr>
-                    </template>
-
-                    <!-- Empty State Selesai -->
-                    <tr x-show="completedList.length === 0">
-                        <td colspan="9" class="py-8 text-center text-slate-400">
-                            Belum ada riwayat hasil analisa AI.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                    </tbody>
+                </table>
+            </div>
         </div>
+
     </div>
+
 </div>
 
 @endsection

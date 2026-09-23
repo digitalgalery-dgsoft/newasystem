@@ -439,16 +439,45 @@ class KandidatPortalController extends Controller
         $yellowCount = (clone $completedQuery)->whereBetween('ai_score', [60, 84])->count();
         $redCount = (clone $completedQuery)->where('ai_score', '<', 60)->count();
 
+        $aiSetting = \App\Models\AiSetting::first();
+        $defaultModel = $aiSetting?->gemini_model ?: 'gemini-2.5-flash';
+        $lastCompletedCache = \Illuminate\Support\Facades\Cache::get('ai_analyzer_last_completed');
+
         $completedList = (clone $completedQuery)
             ->orderByDesc('updated_at')
             ->limit(10)
-            ->get(['id', 'full_name', 'applied_job', 'area', 'ai_score', 'kategori_kandidat', 'created_at', 'updated_at', 'photo_path'])
-            ->map(function ($c, $idx) {
+            ->get(['id', 'full_name', 'applied_job', 'area', 'ai_score', 'kategori_kandidat', 'ai_cv_analysis', 'created_at', 'updated_at', 'photo_path'])
+            ->map(function ($c, $idx) use ($defaultModel, $lastCompletedCache) {
                 $cat = $c->kategori_kandidat;
                 if (empty($cat)) {
                     $score = intval($c->ai_score);
                     $cat = ($score >= 85) ? 'Green' : (($score >= 60) ? 'Yellow' : 'Red');
                 }
+
+                $modelName = null;
+                $providerName = null;
+
+                // 1. Coba dari JSON ai_cv_analysis
+                if (!empty($c->ai_cv_analysis)) {
+                    $parsed = json_decode($c->ai_cv_analysis, true);
+                    if (is_array($parsed)) {
+                        $modelName = $parsed['_model'] ?? $parsed['model'] ?? null;
+                        $providerName = $parsed['_provider'] ?? $parsed['provider'] ?? null;
+                    }
+                }
+
+                // 2. Coba dari cache last completed jika ID sama
+                if (empty($modelName) && $lastCompletedCache && ($lastCompletedCache['candidate_id'] ?? null) == $c->id) {
+                    $modelName = $lastCompletedCache['model'] ?? null;
+                    $providerName = $lastCompletedCache['provider'] ?? null;
+                }
+
+                // 3. Fallback default model aktif
+                if (empty($modelName)) {
+                    $modelName = $defaultModel;
+                    $providerName = 'Gemini';
+                }
+
                 return [
                     'id' => $c->id,
                     'num' => $idx + 1,
@@ -458,6 +487,8 @@ class KandidatPortalController extends Controller
                     'created_at_formatted' => $c->created_at ? $c->created_at->translatedFormat('d M Y') : '-',
                     'score' => intval($c->ai_score),
                     'category' => $cat,
+                    'model' => $modelName,
+                    'provider' => $providerName,
                     'completed_at' => $c->updated_at ? $c->updated_at->timezone('Asia/Jakarta')->translatedFormat('d M Y, H:i:s') . ' WIB' : '-',
                     'detail_url' => route('kandidatportal.show', $c->id),
                 ];
