@@ -3,6 +3,31 @@
 @section('title', 'Alur Approver Dinamis - ESA Groups')
 
 @section('content')
+@php
+    // Siapkan daftar opsi Area untuk Searchable Dropdown
+    $areaOptionsList = [
+        ['value' => 'ALL', 'label' => 'Semua Area (Nasional)', 'desc' => 'Berlaku untuk seluruh area / nasional'],
+        ['value' => 'JAKARTA', 'label' => 'Khusus Area Jakarta', 'desc' => 'Kandidat formasi wilayah DKI Jakarta'],
+        ['value' => 'OUTSIDE_JAKARTA', 'label' => 'Selain Area Jakarta (Luar Jakarta / Daerah)', 'desc' => 'Kandidat penempatan kantor cabang / luar kota'],
+    ];
+    foreach($areas as $ar) {
+        $areaOptionsList[] = ['value' => $ar, 'label' => $ar, 'desc' => 'Area Penempatan ' . $ar];
+    }
+
+    // Siapkan daftar opsi Prinsiple / Entitas untuk Searchable Dropdown
+    $principleOptionsList = [
+        ['value' => 'ALL', 'label' => 'Semua Prinsiple / Entitas', 'desc' => 'Berlaku untuk seluruh entitas inhouse & prinsiple'],
+    ];
+    foreach($entities as $code => $entName) {
+        $principleOptionsList[] = ['value' => $code, 'label' => $code . ' - ' . $entName, 'desc' => 'Entitas Resmi Inhouse ' . $code];
+    }
+    if (!empty($principles)) {
+        foreach($principles as $pName) {
+            $principleOptionsList[] = ['value' => $pName, 'label' => $pName, 'desc' => 'Master Prinsiple Rekanan'];
+        }
+    }
+@endphp
+
 <div class="space-y-6" x-data="workflowManager()">
 
     <!-- Header Section -->
@@ -38,7 +63,7 @@
             <i class="fa-solid fa-circle-check text-emerald-600 text-base"></i>
             <span>{{ session('success') }}</span>
         </div>
-        <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700">
+        <button type="button" onclick="this.parentElement.remove()" class="text-emerald-500 hover:text-emerald-700 cursor-pointer">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
@@ -50,7 +75,7 @@
             <i class="fa-solid fa-triangle-exclamation text-rose-600 text-base"></i>
             <span>{{ session('error') }}</span>
         </div>
-        <button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700">
+        <button type="button" onclick="this.parentElement.remove()" class="text-rose-500 hover:text-rose-700 cursor-pointer">
             <i class="fa-solid fa-xmark"></i>
         </button>
     </div>
@@ -225,7 +250,7 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-black text-slate-800" x-text="isEdit ? 'Edit Step Approval' : 'Tambah Step Approval Baru'"></h3>
-                        <p class="text-[11px] text-slate-500">Konfigurasi hak akses approver, kondisi area &amp; entitas dinamis</p>
+                        <p class="text-[11px] text-slate-500">Konfigurasi hak akses approver, kondisi area &amp; entitas dinamis (searchable)</p>
                     </div>
                 </div>
                 <button type="button" @click="showModal = false" class="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
@@ -305,16 +330,17 @@
                                 Aturan Pemetaan Area, Prinsiple &amp; Approver (Dinamis)
                             </label>
                             <p class="text-[11px] text-slate-500">
-                                Tambahkan kombinasi Area dan Prinsiple beserta PIC User yang ditugaskan.
+                                Tambahkan kombinasi Area dan Prinsiple beserta PIC User yang ditugaskan. Seluruh pilihan kini <strong>Searchable</strong>.
                             </p>
                         </div>
                         <span class="text-[10.5px] text-primary font-bold px-2 py-0.5 rounded-lg bg-primary/10" x-text="formData.rules.length + ' Aturan'"></span>
                     </div>
 
                     <!-- Repeater Baris Aturan -->
-                    <div class="space-y-3">
+                    <div class="space-y-3.5">
                         <template x-for="(rule, rIdx) in formData.rules" :key="rule.id">
                             <div class="p-4 rounded-2xl border border-slate-200 bg-slate-50/70 space-y-3 relative shadow-2xs">
+                                
                                 <!-- Header Baris Aturan -->
                                 <div class="flex items-center justify-between border-b border-slate-200/60 pb-2">
                                     <div class="flex items-center gap-2">
@@ -326,49 +352,130 @@
                                     </button>
                                 </div>
 
-                                <!-- Grid Pilihan Area & Prinsiple -->
+                                <!-- Grid Pilihan Area & Prinsiple (Keduanya Searchable) -->
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-slate-600 mb-1">
-                                            <i class="fa-solid fa-location-dot text-indigo-500 mr-1"></i> Area
+                                    
+                                    <!-- 1. Pilihan Area (Searchable Dropdown) -->
+                                    <div class="relative" x-data="{ open: false, search: '' }" @click.outside="open = false; search = ''">
+                                        <label class="block text-[11px] font-bold text-slate-600 mb-1 flex items-center justify-between">
+                                            <span class="flex items-center gap-1">
+                                                <i class="fa-solid fa-location-dot text-indigo-500"></i>
+                                                <span>Area Penempatan</span>
+                                            </span>
+                                            <span class="text-[9.5px] text-slate-400 font-normal">Searchable</span>
                                         </label>
-                                        <select x-model="rule.area" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer">
-                                            <option value="ALL">Semua Area (Nasional)</option>
-                                            <option value="JAKARTA">Khusus Area Jakarta</option>
-                                            <option value="OUTSIDE_JAKARTA">Selain Area Jakarta (Luar Jakarta / Daerah)</option>
-                                            @foreach($areas as $ar)
-                                                <option value="{{ $ar }}">{{ $ar }}</option>
-                                            @endforeach
-                                        </select>
+                                        
+                                        <!-- Trigger Button -->
+                                        <button type="button" 
+                                                @click="open = !open; if(open) $nextTick(() => $refs.areaSearchInput.focus())" 
+                                                class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white hover:border-primary/50 text-left flex items-center justify-between gap-2 shadow-2xs cursor-pointer transition-all">
+                                            <span class="font-bold text-slate-800 truncate" x-text="getAreaLabel(rule.area)"></span>
+                                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-150" :class="{ 'rotate-180': open }"></i>
+                                        </button>
+
+                                        <!-- Dropdown Menu Popover -->
+                                        <div x-show="open" 
+                                             x-cloak
+                                             x-transition:enter="transition ease-out duration-100"
+                                             x-transition:enter-start="opacity-0 translate-y-1"
+                                             x-transition:enter-end="opacity-100 translate-y-0"
+                                             class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl p-2 space-y-1.5 max-h-64 overflow-hidden flex flex-col">
+                                            
+                                            <!-- Search Input -->
+                                            <div class="relative shrink-0">
+                                                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"></i>
+                                                <input type="text" 
+                                                       x-ref="areaSearchInput"
+                                                       x-model="search" 
+                                                       placeholder="Ketik untuk mencari area..." 
+                                                       class="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+                                            </div>
+
+                                            <!-- Options List -->
+                                            <div class="overflow-y-auto divide-y divide-slate-50 flex-1 max-h-48">
+                                                <template x-for="opt in filterAreaOptions(search)" :key="opt.value">
+                                                    <button type="button" 
+                                                            @click="rule.area = opt.value; open = false; search = ''" 
+                                                            class="w-full p-2 rounded-lg text-left hover:bg-slate-50 flex items-center justify-between text-xs cursor-pointer transition-colors"
+                                                            :class="rule.area === opt.value ? 'bg-primary/10 text-primary font-bold' : 'text-slate-700'">
+                                                        <div class="min-w-0">
+                                                            <div class="truncate font-semibold" x-text="opt.label"></div>
+                                                            <div class="text-[9.5px] text-slate-400 truncate" x-text="opt.desc"></div>
+                                                        </div>
+                                                        <i class="fa-solid fa-check text-xs text-primary" x-show="rule.area === opt.value"></i>
+                                                    </button>
+                                                </template>
+                                                <div x-show="filterAreaOptions(search).length === 0" class="p-3 text-center text-xs text-slate-400 italic">
+                                                    Area tidak ditemukan
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
 
-                                    <div>
-                                        <label class="block text-[11px] font-bold text-slate-600 mb-1">
-                                            <i class="fa-solid fa-building text-amber-500 mr-1"></i> Prinsiple / Entitas
+                                    <!-- 2. Pilihan Prinsiple / Entitas (Searchable Dropdown) -->
+                                    <div class="relative" x-data="{ open: false, search: '' }" @click.outside="open = false; search = ''">
+                                        <label class="block text-[11px] font-bold text-slate-600 mb-1 flex items-center justify-between">
+                                            <span class="flex items-center gap-1">
+                                                <i class="fa-solid fa-building text-amber-500"></i>
+                                                <span>Prinsiple / Entitas</span>
+                                            </span>
+                                            <span class="text-[9.5px] text-slate-400 font-normal">Searchable</span>
                                         </label>
-                                        <select x-model="rule.prinsiple" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer">
-                                            <option value="ALL">Semua Prinsiple / Entitas</option>
-                                            <optgroup label="5 Entitas Inhouse Resmi">
-                                                @foreach($entities as $code => $entName)
-                                                    <option value="{{ $code }}">{{ $code }} - {{ $entName }}</option>
-                                                @endforeach
-                                            </optgroup>
-                                            @if(!empty($principles) && $principles->count() > 0)
-                                            <optgroup label="Master Prinsiple Rekanan">
-                                                @foreach($principles->take(60) as $pName)
-                                                    <option value="{{ $pName }}">{{ $pName }}</option>
-                                                @endforeach
-                                            </optgroup>
-                                            @endif
-                                        </select>
+                                        
+                                        <!-- Trigger Button -->
+                                        <button type="button" 
+                                                @click="open = !open; if(open) $nextTick(() => $refs.prinSearchInput.focus())" 
+                                                class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white hover:border-primary/50 text-left flex items-center justify-between gap-2 shadow-2xs cursor-pointer transition-all">
+                                            <span class="font-bold text-slate-800 truncate" x-text="getPrinLabel(rule.prinsiple)"></span>
+                                            <i class="fa-solid fa-chevron-down text-[10px] text-slate-400 transition-transform duration-150" :class="{ 'rotate-180': open }"></i>
+                                        </button>
+
+                                        <!-- Dropdown Menu Popover -->
+                                        <div x-show="open" 
+                                             x-cloak
+                                             x-transition:enter="transition ease-out duration-100"
+                                             x-transition:enter-start="opacity-0 translate-y-1"
+                                             x-transition:enter-end="opacity-100 translate-y-0"
+                                             class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl p-2 space-y-1.5 max-h-64 overflow-hidden flex flex-col">
+                                            
+                                            <!-- Search Input -->
+                                            <div class="relative shrink-0">
+                                                <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-[10px]"></i>
+                                                <input type="text" 
+                                                       x-ref="prinSearchInput"
+                                                       x-model="search" 
+                                                       placeholder="Ketik kode entitas (AMK, AKP...) atau nama..." 
+                                                       class="w-full pl-8 pr-2.5 py-1.5 text-xs rounded-lg border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+                                            </div>
+
+                                            <!-- Options List -->
+                                            <div class="overflow-y-auto divide-y divide-slate-50 flex-1 max-h-48">
+                                                <template x-for="opt in filterPrinOptions(search)" :key="opt.value">
+                                                    <button type="button" 
+                                                            @click="rule.prinsiple = opt.value; open = false; search = ''" 
+                                                            class="w-full p-2 rounded-lg text-left hover:bg-slate-50 flex items-center justify-between text-xs cursor-pointer transition-colors"
+                                                            :class="rule.prinsiple === opt.value ? 'bg-primary/10 text-primary font-bold' : 'text-slate-700'">
+                                                        <div class="min-w-0">
+                                                            <div class="truncate font-semibold" x-text="opt.label"></div>
+                                                            <div class="text-[9.5px] text-slate-400 truncate" x-text="opt.desc"></div>
+                                                        </div>
+                                                        <i class="fa-solid fa-check text-xs text-primary" x-show="rule.prinsiple === opt.value"></i>
+                                                    </button>
+                                                </template>
+                                                <div x-show="filterPrinOptions(search).length === 0" class="p-3 text-center text-xs text-slate-400 italic">
+                                                    Prinsiple / Entitas tidak ditemukan
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <!-- Pilihan Akun Approver (Bisa Multiple) -->
-                                <div class="space-y-1.5 pt-1">
+                                <!-- 3. Pilihan Akun Approver (Searchable Multi-Select) -->
+                                <div class="space-y-1.5 pt-1" x-data="{ open: false, search: '' }" @click.outside="open = false; search = ''">
                                     <div class="flex items-center justify-between">
-                                        <label class="block text-[11px] font-bold text-slate-700">
-                                            Pilih Akun Approver <span class="text-primary font-normal">(Bisa memilih lebih dari 1 user)</span>
+                                        <label class="block text-[11px] font-bold text-slate-700 flex items-center gap-1.5">
+                                            <i class="fa-solid fa-user-check text-primary text-[11px]"></i>
+                                            <span>Pilih Akun Approver <span class="text-primary font-normal">(Bisa memilih lebih dari 1 user)</span></span>
                                         </label>
                                         <span class="text-[10px] text-slate-500 font-semibold" x-text="rule.user_ids.length + ' User Terpilih'"></span>
                                     </div>
@@ -376,26 +483,85 @@
                                     <!-- Tag list user yang terpilih -->
                                     <div class="flex flex-wrap gap-1.5 min-h-[36px] p-2 bg-white rounded-xl border border-slate-200">
                                         <template x-for="uid in rule.user_ids" :key="uid">
-                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-semibold bg-primary/10 text-primary border border-primary/20 shadow-2xs">
+                                                <i class="fa-solid fa-user-check text-[9px] text-primary"></i>
                                                 <span x-text="getUserName(uid)"></span>
-                                                <button type="button" @click="toggleUserInRule(rIdx, uid)" class="hover:text-rose-600 cursor-pointer">
+                                                <button type="button" @click="toggleUserInRule(rIdx, uid)" class="hover:text-rose-600 cursor-pointer ml-0.5">
                                                     <i class="fa-solid fa-xmark text-[10px]"></i>
                                                 </button>
                                             </span>
                                         </template>
                                         <span x-show="rule.user_ids.length === 0" class="text-[11px] text-slate-400 italic py-0.5">
-                                            Pilih user approver dari menu di bawah...
+                                            Belum ada user dipilih. Klik tombol di bawah untuk mencari &amp; menambah approver...
                                         </span>
                                     </div>
 
-                                    <!-- Dropdown Tambah User ke Rule ini -->
+                                    <!-- Trigger Button & Popover Searchable Users -->
                                     <div class="relative">
-                                        <select @change="addUserToRule(rIdx, $event.target.value); $event.target.value = ''" class="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none cursor-pointer">
-                                            <option value="">+ Tambah User Approver untuk Kondisi Ini...</option>
-                                            @foreach($availableUsers as $u)
-                                                <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->job_title ?: $u->role }}) &bull; {{ $u->email }}</option>
-                                            @endforeach
-                                        </select>
+                                        <button type="button" 
+                                                @click="open = !open; if(open) $nextTick(() => $refs.userSearchInput.focus())" 
+                                                class="w-full px-3.5 py-2 text-xs rounded-xl border border-slate-300 bg-white hover:border-primary/50 text-slate-600 hover:text-slate-900 text-left flex items-center justify-between gap-2 shadow-2xs cursor-pointer transition-all">
+                                            <span class="font-medium text-slate-600 flex items-center gap-1.5">
+                                                <i class="fa-solid fa-user-plus text-primary text-xs"></i>
+                                                <span>+ Tambah User Approver untuk Kondisi Ini...</span>
+                                            </span>
+                                            <div class="flex items-center gap-1 text-slate-400">
+                                                <span class="text-[10px] bg-slate-100 px-1.5 py-0.5 rounded font-bold">Searchable</span>
+                                                <i class="fa-solid fa-chevron-down text-[10px] transition-transform duration-150" :class="{ 'rotate-180': open }"></i>
+                                            </div>
+                                        </button>
+
+                                        <!-- Dropdown Popover Searchable Users -->
+                                        <div x-show="open" 
+                                             x-cloak
+                                             x-transition:enter="transition ease-out duration-100"
+                                             x-transition:enter-start="opacity-0 translate-y-1"
+                                             x-transition:enter-end="opacity-100 translate-y-0"
+                                             class="absolute z-50 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl p-2 space-y-2 max-h-72 overflow-hidden flex flex-col">
+                                            
+                                            <!-- Search Box -->
+                                            <div class="relative shrink-0">
+                                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                                                <input type="text" 
+                                                       x-ref="userSearchInput"
+                                                       x-model="search" 
+                                                       placeholder="Ketik nama, email, jabatan, atau area karyawan..." 
+                                                       class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none">
+                                            </div>
+
+                                            <!-- List of Filtered Users -->
+                                            <div class="overflow-y-auto divide-y divide-slate-100 flex-1 max-h-56">
+                                                <template x-for="u in filterUsersList(search)" :key="u.id">
+                                                    <button type="button" 
+                                                            @click="toggleUserInRule(rIdx, u.id)" 
+                                                            class="w-full p-2.5 rounded-xl text-left hover:bg-slate-50 flex items-center justify-between gap-3 text-xs cursor-pointer transition-colors"
+                                                            :class="rule.user_ids.includes(u.id) ? 'bg-primary/5 text-primary' : 'text-slate-800'">
+                                                        <div class="min-w-0">
+                                                            <div class="font-bold flex items-center gap-1.5 truncate">
+                                                                <span x-text="u.name"></span>
+                                                                <span x-show="rule.user_ids.includes(u.id)" class="text-[9.5px] px-1.5 py-0.2 rounded bg-primary text-white font-bold">Terpilih</span>
+                                                            </div>
+                                                            <div class="text-[10.5px] text-slate-400 truncate">
+                                                                <span x-text="u.email"></span> &bull; 
+                                                                <span x-text="u.job_title || u.role"></span>
+                                                                <span x-show="u.area" x-text="' (' + u.area + ')'"></span>
+                                                            </div>
+                                                        </div>
+                                                        <div class="shrink-0">
+                                                            <span x-show="rule.user_ids.includes(u.id)" class="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center text-[10px]">
+                                                                <i class="fa-solid fa-check"></i>
+                                                            </span>
+                                                            <span x-show="!rule.user_ids.includes(u.id)" class="w-5 h-5 rounded-full border border-slate-300 text-slate-400 flex items-center justify-center text-[10px] hover:border-primary hover:text-primary">
+                                                                <i class="fa-solid fa-plus"></i>
+                                                            </span>
+                                                        </div>
+                                                    </button>
+                                                </template>
+                                                <div x-show="filterUsersList(search).length === 0" class="p-4 text-center text-xs text-slate-400 italic">
+                                                    Karyawan / user tidak ditemukan
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -437,6 +603,8 @@ function workflowManager() {
         showModal: false,
         isEdit: false,
         formAction: '',
+        areaOptions: @json($areaOptionsList),
+        principleOptions: @json($principleOptionsList),
         usersList: @json($availableUsers),
         formData: {
             step_name: '',
@@ -451,6 +619,37 @@ function workflowManager() {
             const uid = parseInt(userId);
             const u = this.usersList.find(x => x.id === uid);
             return u ? u.name : 'User #' + uid;
+        },
+
+        getAreaLabel(areaValue) {
+            const found = this.areaOptions.find(o => o.value === areaValue);
+            return found ? found.label : (areaValue === 'ALL' ? 'Semua Area (Nasional)' : areaValue);
+        },
+
+        filterAreaOptions(query) {
+            if (!query || !query.trim()) return this.areaOptions;
+            const q = query.toLowerCase().trim();
+            return this.areaOptions.filter(o => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
+        },
+
+        getPrinLabel(prinValue) {
+            const found = this.principleOptions.find(o => o.value === prinValue);
+            return found ? found.label : (prinValue === 'ALL' ? 'Semua Prinsiple / Entitas' : prinValue);
+        },
+
+        filterPrinOptions(query) {
+            if (!query || !query.trim()) return this.principleOptions;
+            const q = query.toLowerCase().trim();
+            return this.principleOptions.filter(o => o.label.toLowerCase().includes(q) || o.value.toLowerCase().includes(q));
+        },
+
+        filterUsersList(query) {
+            if (!query || !query.trim()) return this.usersList.slice(0, 100);
+            const q = query.toLowerCase().trim();
+            return this.usersList.filter(u => {
+                const text = (u.name + ' ' + u.email + ' ' + (u.job_title || '') + ' ' + (u.area || '')).toLowerCase();
+                return text.includes(q);
+            }).slice(0, 100);
         },
 
         addRule() {
@@ -479,7 +678,9 @@ function workflowManager() {
         toggleUserInRule(rIdx, userId) {
             const uid = parseInt(userId);
             const idx = this.formData.rules[rIdx].user_ids.indexOf(uid);
-            if (idx !== -1) {
+            if (idx === -1) {
+                this.formData.rules[rIdx].user_ids.push(uid);
+            } else {
                 this.formData.rules[rIdx].user_ids.splice(idx, 1);
             }
         },

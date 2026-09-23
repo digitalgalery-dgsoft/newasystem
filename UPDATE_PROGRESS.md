@@ -2338,8 +2338,11 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 - **Penyempurnaan Antarmuka Form Master (`/master/approval-workflow`)**:
   - **Dynamic Rule Repeater (Alpine.js)**:
     - Opsi radio tipe approver: **Head / Pimpinan** vs **Akun User Tertentu**.
-    - Jika Akun User dipilih: Menyajikan antarmuka dinamis dengan tombol `+ Tambah Aturan Area & Prinsiple Baru`.
-    - Tiap baris aturan dilengkapi: Pilihan Area (Semua Area, Jakarta, Luar Jakarta, dan master area), Pilihan Prinsiple/Entitas (Semua, 5 entitas inhouse, dan master prinsiple), Komponen Multi-Select User dengan tag/chips terpilih yang dapat dihapus `(x)`, dropdown penambahan user cepat, serta tombol hapus baris.
+    - Tiap baris aturan kini dilengkapi **Searchable Dropdown** untuk:
+      1. **Area Penempatan**: Kotak pencarian interaktif untuk memilih Semua Area, Jakarta, Luar Jakarta, ataupun kota cabang spesifik.
+      2. **Prinsiple / Entitas**: Kotak pencarian untuk memilih Semua Entitas, 5 entitas inhouse resmi (AMK, AKP, ATK, ABO, ATB), maupun master prinsiple mitra rekanan.
+      3. **Akun Approver (User / Karyawan)**: Multi-select searchable popover dengan kotak pencarian nama/email/jabatan karyawan secara instan, lengkap dengan indikator badge "Terpilih" dan tag chips yang dapat dihapus `(x)`.
+    - Tombol `+ Tambah Aturan Area & Prinsiple Baru` dan tombol hapus baris (*trash*).
   - **Visual Pipeline Step Cards**:
     - Step cards menampilkan badge pill ringkas untuk tiap aturan yang terpasang (`📍 Area • 🏢 Prinsiple → 👤 Users`).
 - **Penyempurnaan Stepper Detail Kandidat (`/interviewinhouse/{id}`)**:
