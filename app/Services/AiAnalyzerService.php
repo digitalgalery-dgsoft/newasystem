@@ -1115,7 +1115,11 @@ Catatan:
                 $q->whereNull('ai_cv_analysis')
                   ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
             })
-            ->orderBy('id', 'asc')
+            ->orderByRaw("CASE 
+                WHEN created_at IS NOT NULL AND created_at > '1970-01-01' THEN created_at 
+                WHEN updated_at IS NOT NULL AND updated_at > '1970-01-01' THEN updated_at 
+                ELSE '9999-12-31' 
+            END ASC, id ASC")
             ->first(['id', 'full_name', 'applied_job', 'area']);
 
         $isProcessing = !empty($current['is_processing']);

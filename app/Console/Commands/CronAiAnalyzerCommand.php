@@ -58,10 +58,14 @@ class CronAiAnalyzerCommand extends Command
                 });
             }
 
-            // Urutkan ID tertua ke terbaru khusus kandidat Job Portal
-            $candidates = $query->orderBy('id', 'asc')
-                                ->limit($limit)
-                                ->get();
+            // Urutkan kandidat yang pertama masuk (paling awal mendaftar)
+            $candidates = $query->orderByRaw("CASE 
+                WHEN created_at IS NOT NULL AND created_at > '1970-01-01' THEN created_at 
+                WHEN updated_at IS NOT NULL AND updated_at > '1970-01-01' THEN updated_at 
+                ELSE '9999-12-31' 
+            END ASC, id ASC")
+            ->limit($limit)
+            ->get();
         }
 
         if ($candidates->isEmpty()) {

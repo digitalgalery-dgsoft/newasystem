@@ -432,7 +432,11 @@ class KandidatPortalController extends Controller
         $queueCount = (clone $queueQuery)->count();
 
         $queueList = (clone $queueQuery)
-            ->orderByRaw("CASE WHEN cv_path IS NOT NULL AND cv_path != '' AND cv_path != '-' THEN 0 ELSE 1 END, id ASC")
+            ->orderByRaw("CASE 
+                WHEN created_at IS NOT NULL AND created_at > '1970-01-01' THEN created_at 
+                WHEN updated_at IS NOT NULL AND updated_at > '1970-01-01' THEN updated_at 
+                ELSE '9999-12-31' 
+            END ASC, id ASC")
             ->limit(10)
             ->get(['id', 'full_name', 'applied_job', 'area', 'created_at', 'updated_at', 'cv_path', 'ai_score', 'kategori_kandidat', 'ai_cv_analysis'])
             ->map(function ($c, $idx) use ($formatValidDate) {
@@ -578,7 +582,11 @@ class KandidatPortalController extends Controller
             ->whereNotNull('cv_path')
             ->where('cv_path', '!=', '')
             ->where('cv_path', '!=', '-')
-            ->orderBy('id', 'asc')
+            ->orderByRaw("CASE 
+                WHEN created_at IS NOT NULL AND created_at > '1970-01-01' THEN created_at 
+                WHEN updated_at IS NOT NULL AND updated_at > '1970-01-01' THEN updated_at 
+                ELSE '9999-12-31' 
+            END ASC, id ASC")
             ->first();
 
         if (!$candidate) {
