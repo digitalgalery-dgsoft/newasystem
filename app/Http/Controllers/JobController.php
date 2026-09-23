@@ -306,6 +306,14 @@ class JobController extends Controller
                 ->with('error', "Gagal menyimpan! Nama Job '{$validated['job_title']}' sudah ada dan sedang aktif.");
         }
 
+        // Sanitasi field Summernote dari gambar base64 besar yang tidak sengaja tertempel
+        foreach (['job_desc', 'job_quals', 'job_exp', 'job_skills', 'additional_info'] as $richField) {
+            if (!empty($validated[$richField])) {
+                $validated[$richField] = preg_replace('/<img[^>]*>/is', '', $validated[$richField]);
+                $validated[$richField] = preg_replace('/data:image\/[a-zA-Z0-9\+\-\.]+;base64,[A-Za-z0-9+\/=\s]+/is', '', $validated[$richField]);
+            }
+        }
+
         if ($editId > 0) {
             $job = JobSpec::findOrFail($editId);
             if (!$isAdmin) {

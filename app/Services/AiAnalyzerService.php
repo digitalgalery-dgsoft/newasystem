@@ -80,6 +80,15 @@ class AiAnalyzerService
 
         // 4. Bangun Full Prompt
         $prompt = $this->buildPrompt($candidate, $jobSpecsText, $biodataText, $hasUsableCv);
+        $promptLen = strlen($prompt);
+        $estTokens = intval($promptLen / 4);
+        $log("INFO: Prompt AI siap diproses. Panjang: {$promptLen} karakter (~{$estTokens} token teks).");
+
+        // Pengaman ekstra: Jika prompt melampaui batas wajar (misal > 25.000 karakter), potong agar tidak jebol token limit
+        if ($promptLen > 25000) {
+            $prompt = mb_substr($prompt, 0, 25000) . "\n\n[Catatan: Konten dipotong otomatis demi menjaga batas konteks token AI]";
+            $log("WARNING: Prompt AI dipotong otomatis dari {$promptLen} karakter menjadi 25.000 karakter demi efisiensi token.", 'warning');
+        }
 
         // 6. Ambil Pengaturan AI
         $aiSetting = AiSetting::first();
@@ -706,7 +715,7 @@ class AiAnalyzerService
     }
 
     /**
-     * Ambil Spesifikasi Pekerjaan dari JobSpec
+     * Ambil Spesifikasi Pekerjaan dari JobSpec dengan pembersihan HTML & gambar base64
      */
     protected function buildJobSpecsText(?string $appliedJob): string
     {
@@ -723,13 +732,19 @@ class AiAnalyzerService
         }
 
         if ($job) {
+            $quals = $this->sanitizeTextForPrompt($job->job_quals, 2000);
+            $skills = $this->sanitizeTextForPrompt($job->job_skills, 1500);
+            $exp = $this->sanitizeTextForPrompt($job->job_exp, 1500);
+            $desc = $this->sanitizeTextForPrompt($job->job_desc, 2500);
+            $info = $this->sanitizeTextForPrompt($job->additional_info, 1000);
+
             $text = "Persyaratan Pekerjaan ({$job->job_title}):\n" .
-                    "- Pendidikan & Kualifikasi: " . ($job->job_quals ?? '-') . "\n" .
-                    "- Keterampilan (Skills): " . ($job->job_skills ?? '-') . "\n" .
-                    "- Pengalaman: " . ($job->job_exp ?? '-') . "\n" .
-                    "- Deskripsi Pekerjaan: " . ($job->job_desc ?? '-');
-            if (!empty(trim(strip_tags($job->additional_info ?? '')))) {
-                $text .= "\n- Informasi Tambahan: " . strip_tags($job->additional_info);
+                    "- Pendidikan & Kualifikasi: " . $quals . "\n" .
+                    "- Keterampilan (Skills): " . $skills . "\n" .
+                    "- Pengalaman: " . $exp . "\n" .
+                    "- Deskripsi Pekerjaan: " . $desc;
+            if ($info !== '-') {
+                $text .= "\n- Informasi Tambahan: " . $info;
             }
             return $text;
         }
@@ -738,12 +753,20 @@ class AiAnalyzerService
     }
 
     /**
-     * Ambil Biodata Inputan Kandidat
+     * Ambil Biodata Inputan Kandidat dengan sanitasi teks
      */
     protected function buildBiodataText(Candidate $candidate): string
     {
         $dob = $candidate->birth_date ? Carbon::parse($candidate->birth_date)->format('d F Y') : '-';
         $age = $candidate->birth_date ? Carbon::parse($candidate->birth_date)->age . ' tahun' : '-';
+
+        $workMotivation = $this->sanitizeTextForPrompt($candidate->work_motivation, 500);
+        $strengths = $this->sanitizeTextForPrompt($candidate->strengths, 500);
+        $weaknesses = $this->sanitizeTextForPrompt($candidate->weaknesses, 500);
+        $compSkill = $this->sanitizeTextForPrompt($candidate->computer_skill, 300);
+        $engSkill = $this->sanitizeTextForPrompt($candidate->english_skill, 300);
+        $otherSkills = $this->sanitizeTextForPrompt($candidate->other_skills, 300);
+        $currentAct = $this->sanitizeTextForPrompt($candidate->current_activity, 400);
 
         $text = "Data Form Inputan Kandidat:\n" .
                "- NIK: " . ($candidate->nik ?? '-') . "\n" .
@@ -758,14 +781,14 @@ class AiAnalyzerService
                "- Alamat Domisili: " . ($candidate->address_domicile ?? '-') . "\n" .
                "- Kota / Provinsi Domisili: " . ($candidate->city_domicile ?? '-') . " / " . ($candidate->province_domicile ?? '-') . "\n" .
                "- Kota Penempatan (Tujuan): " . ($candidate->area ?? '-') . "\n" .
-               "- Motivasi Kerja: " . ($candidate->work_motivation ?? '-') . "\n" .
-               "- Kelebihan Diri: " . ($candidate->strengths ?? '-') . "\n" .
-               "- Kekurangan Diri: " . ($candidate->weaknesses ?? '-') . "\n" .
-               "- Keterampilan Komputer: " . ($candidate->computer_skill ?? '-') . "\n" .
-               "- Kemampuan Bahasa Inggris: " . ($candidate->english_skill ?? '-') . "\n" .
-               "- Keahlian Lain: " . ($candidate->other_skills ?? '-') . "\n" .
+               "- Motivasi Kerja: " . $workMotivation . "\n" .
+               "- Kelebihan Diri: " . $strengths . "\n" .
+               "- Kekurangan Diri: " . $weaknesses . "\n" .
+               "- Keterampilan Komputer: " . $compSkill . "\n" .
+               "- Kemampuan Bahasa Inggris: " . $engSkill . "\n" .
+               "- Keahlian Lain: " . $otherSkills . "\n" .
                "- Kendaraan / SIM: " . ($candidate->vehicle ?? '-') . " / " . ($candidate->driving_license ?? '-') . "\n" .
-               "- Aktivitas Saat Ini: " . ($candidate->current_activity ?? '-');
+               "- Aktivitas Saat Ini: " . $currentAct;
 
         if (!empty($candidate->expected_salary)) {
             $text .= "\n- Gaji yang Diharapkan: Rp " . number_format((float)$candidate->expected_salary, 0, ',', '.');
@@ -780,14 +803,59 @@ class AiAnalyzerService
                 $end = $we->end_date ? $we->end_date->format('M Y') : 'Sekarang';
                 $text .= "\n" . ($idx + 1) . ". {$we->company_name} - Posisi: {$we->position} ({$start} s/d {$end})";
                 if (!empty($we->reason_for_leaving)) {
-                    $text .= " [Alasan Keluar: {$we->reason_for_leaving}]";
+                    $text .= " [Alasan Keluar: " . $this->sanitizeTextForPrompt($we->reason_for_leaving, 200) . "]";
                 }
             }
         } elseif (!empty($candidate->experience_summary)) {
-            $text .= "\n\nRingkasan Pengalaman Kerja:\n" . $candidate->experience_summary;
+            $text .= "\n\nRingkasan Pengalaman Kerja:\n" . $this->sanitizeTextForPrompt($candidate->experience_summary, 1500);
         }
 
         return $text;
+    }
+
+    /**
+     * Bersihkan teks dari tag HTML, gambar base64, dan batasi panjang karakter untuk prompt AI.
+     */
+    protected function sanitizeTextForPrompt(?string $text, int $maxLength = 2500): string
+    {
+        if (empty($text)) {
+            return '-';
+        }
+
+        // 1. Hapus tag gambar <img ...> dan inline data URI base64
+        $cleaned = preg_replace('/<img[^>]*>/is', ' ', $text);
+        $cleaned = preg_replace('/data:image\/[a-zA-Z0-9\+\-\.]+;base64,[A-Za-z0-9+\/=\s]+/is', ' ', $cleaned);
+
+        // 2. Hapus script, style, svg jika ada
+        $cleaned = preg_replace('/<script\b[^>]*>(.*?)<\/script>/is', ' ', $cleaned);
+        $cleaned = preg_replace('/<style\b[^>]*>(.*?)<\/style>/is', ' ', $cleaned);
+        $cleaned = preg_replace('/<svg\b[^>]*>(.*?)<\/svg>/is', ' ', $cleaned);
+
+        // 3. Konversi <br> dan tag penutup blok menjadi newline agar struktur teks tetap rapi
+        $cleaned = preg_replace('/<br\s*\/?>/i', "\n", $cleaned);
+        $cleaned = preg_replace('/<\/(p|div|li|tr|h[1-6])>/i', "\n", $cleaned);
+
+        // 4. Strip seluruh tag HTML sisanya
+        $cleaned = strip_tags($cleaned);
+
+        // 5. Decode HTML entities
+        $cleaned = html_entity_decode($cleaned, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+
+        // 6. Normalisasi whitespace dan baris baru
+        $cleaned = preg_replace('/[ \t]+/', ' ', $cleaned);
+        $cleaned = preg_replace('/\n\s*\n+/', "\n", $cleaned);
+        $cleaned = trim($cleaned);
+
+        if (empty($cleaned)) {
+            return '-';
+        }
+
+        // 7. Batasi panjang karakter untuk efisiensi token
+        if (mb_strlen($cleaned) > $maxLength) {
+            $cleaned = mb_substr($cleaned, 0, $maxLength) . '... (dipotong untuk efisiensi prompt)';
+        }
+
+        return $cleaned;
     }
 
     /**

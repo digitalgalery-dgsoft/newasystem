@@ -930,11 +930,21 @@
             height: 130,
             toolbar: [
                 ['style', ['style']],
-                ['font', ['bold', 'italic']],
+                ['font', ['bold', 'italic', 'underline', 'clear']],
                 ['para', ['ul', 'ol', 'paragraph']],
-                ['insert', ['link', 'picture', 'table', 'video']],
+                ['insert', ['link', 'table']],
                 ['misc', ['undo', 'redo']]
-            ]
+            ],
+            callbacks: {
+                onImageUpload: function(files) {
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Gambar Tidak Diizinkan',
+                        text: 'Penyisipan gambar ke dalam formulir lowongan kerja tidak diizinkan. Mohon masukkan rincian dalam format teks atau poin.',
+                        confirmButtonColor: '#4f46e5'
+                    });
+                }
+            }
         };
 
         $('#job_quals').summernote($.extend({}, summernoteConfig, {

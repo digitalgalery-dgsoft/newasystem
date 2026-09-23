@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 23 September 2026*
+*Terakhir diperbarui: 24 September 2026*
 
 ---
 
@@ -2417,6 +2417,36 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
     - Begitu kandidat mulai mengetik atau memilih opsi pada field terkait (`input` & `change` event), efek merah dan pesan error otomatis hilang seketika (*real-time auto-clear*).
     - Menambahkan sinkronisasi *real-time* alamat KTP ke domisili saat opsi *"Domisili Sama dengan KTP"* dicentang.
     - Integrasi otomatis penanganan server error (`$errors->any()`) jika terjadi penolakan dari backend, memunculkan SweetAlert2 merah rincian error saat halaman dimuat ulang.
+
+---
+
+### 57. ⚡ Perbaikan Masalah Input Token AI CV Analyzer Melonjak Ekstrem (2.114.589 Token) & Sanitasi Gambar Base64 Job Requirement (24 September 2026)
+- **Investigasi Akar Masalah (*Root Cause Analysis*)**:
+  - Ditemukan bahwa kandidat (seperti Rubiyanto - NIK `3301212002030002` untuk posisi *SALES PROMOTION BOY (MITRA BELANJA WINGS - PRIA)*) mengalami kegagalan analisa AI dengan status *"Limit token AI tercapai (Gemini -> OpenRouter -> Sumopod)"* dan mencatat lonjakan input token hingga **2.114.589 token**.
+  - Padahal berkas CV berformat PDF kandidat hanya berukuran normal (154 KB, 1 halaman) dan deskripsi pekerjaan relatif singkat.
+  - **Penyebab Utama**: Pada tabel `job_specs` (Job ID #63), terdapat gambar brosur/flyer berukuran 2,98 MB yang ditempel (*paste*) ke dalam editor teks Summernote pada kolom kualifikasi (`job_quals`). Summernote mengonversi gambar tersebut menjadi string mentah `<img src="data:image/png;base64,...">` sepanjang **2.980.919 karakter**.
+  - Ketika `AiAnalyzerService::buildJobSpecsText()` memuat spesifikasi lowongan, teks HTML mentah tersebut digabungkan langsung ke dalam prompt AI tanpa proses pembersihan tag/gambar, sehingga satu prompt teks mencapai **~746.228 token**.
+  - Saat engine AI memicu Gemini API beberapa kali (retry/rotasi key), total konsumsi token seketika melonjak menembus **2.114.589 token** dan memicu HTTP 429 limit pada seluruh API Key. Fallback OpenRouter juga menolak permintaan (*HTTP 400: requested about 746228 tokens exceeds context limit 262144*), begitu pula Sumopod (*context window exceeds limit*).
+- **Pembersihan & Perbaikan Basis Data Produksi**:
+  - Menjalankan pembersihan langsung pada baris data `job_specs` ID #63 di server produksi, membuang tag base64 image sebesar 2,98 MB dan menyisakan teks murni kualifikasi pekerjaan (panjang string berkurang dari 2.980.919 karakter menjadi hanya 245 karakter).
+  - Melakukan pemindaian menyeluruh terhadap seluruh 545 data lowongan kerja aktif lainnya untuk memastikan tidak ada data base64 lain yang tersisa.
+- **Pembaruan Engine AI (`app/Services/AiAnalyzerService.php`)**:
+  - **Sanitasi Ketat Teks Prompt (`sanitizeTextForPrompt`)**:
+    - Otomatis membuang seluruh tag `<img[^>]*>` dan pola inline base64 `data:image/...;base64,...`.
+    - Menghapus tag script, style, svg.
+    - Mengonversi tag pemisah blok (`<br>`, `<p>`, `<li>`, dsb.) menjadi baris baru (*newline*) agar format teks tetap terstruktur rapi dan terbaca jelas oleh AI.
+    - Menjalankan `strip_tags()` dan `html_entity_decode()`.
+    - Membatasi panjang maksimal per seksi (kualifikasi maks 2.000 karakter, deskripsi maks 2.500 karakter, skills maks 1.500 karakter, pengalaman kerja maks 1.500 karakter).
+  - **Pengamanan Input Biodata & Pengalaman Kandidat**:
+    - Menerapkan sanitasi serupa pada seluruh isian teks bebas kandidat (`work_motivation`, `strengths`, `weaknesses`, `experience_summary`, dsb.).
+  - **Monitoring & Safety Truncation**:
+    - Menambahkan log info pencatatan panjang karakter prompt dan estimasi token sebelum panggilan API dilakukan.
+    - Memasang batas aman pemotongan otomatis (*safety cap*) jika prompt kumulatif melampaui 25.000 karakter demi menjamin tidak akan pernah terjadi ledakan kuota token di masa mendatang.
+- **Pembaruan Form Input & Controller Job Requirement (`app/Http/Controllers/JobController.php` & `resources/views/job/input.blade.php`)**:
+  - **Sanitasi Backend**: Controller secara otomatis memfilter dan menghapus tag gambar base64 sebelum data lowongan disimpan atau diperbarui ke dalam tabel `job_specs`.
+  - **Pengaturan Summernote Frontend**:
+    - Menghapus opsi 'picture' dan 'video' dari toolbar Summernote form input lowongan kerja.
+    - Menambahkan event callback `onImageUpload` yang menampilkan SweetAlert2 peringatan apabila pengguna mencoba melakukan drag-and-drop atau copy-paste file gambar ke dalam kolom teks persyaratan.
 
 ---
 
