@@ -128,7 +128,7 @@ class User extends Authenticatable
         if (str_contains($job, 'staff') || str_contains($job, 'promotor') || ((str_contains($job, 'recruiter') || str_contains($job, 'rekrutmen')) && !str_contains($job, 'head') && !str_contains($job, 'lead') && !str_contains($job, 'manager'))) {
             return false;
         }
-        $headKeywords = ['head', 'spv', 'supervisor', 'manager', 'lead', 'koordinator', 'pimpinan'];
+        $headKeywords = ['head', 'spv', 'supervisor', 'manager', 'lead', 'koordinator', 'pimpinan', 'om ops', 'om '];
         foreach ($headKeywords as $kw) {
             if (str_contains($job, $kw)) {
                 return true;
