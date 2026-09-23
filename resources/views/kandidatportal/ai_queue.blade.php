@@ -346,9 +346,9 @@
                                         <i class="fa-regular fa-file-pdf text-rose-500 text-[9px]"></i>
                                         <span class="truncate max-w-[120px]" x-text="cand.cv_name || 'Ada CV'"></span>
                                     </div>
-                                    <div class="text-[10px] text-amber-600 mt-0.5 flex items-center gap-1" x-show="!cand.has_cv">
-                                        <i class="fa-solid fa-triangle-exclamation text-[9px] text-amber-500"></i>
-                                        <span>Belum ada CV</span>
+                                    <div class="text-[10px] text-sky-600 mt-0.5 flex items-center gap-1 font-medium" x-show="!cand.has_cv" title="Kandidat tidak upload CV, AI akan menganalisa berdasarkan Data Form Inputan">
+                                        <i class="fa-solid fa-file-lines text-[9px] text-sky-500"></i>
+                                        <span>Data Form Input</span>
                                     </div>
                                 </td>
 

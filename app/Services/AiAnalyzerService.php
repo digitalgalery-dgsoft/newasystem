@@ -52,42 +52,34 @@ class AiAnalyzerService
             'status_text'      => 'Memindai CV dan analisis AI Gemini...',
         ], 180);
 
-        // 1. Validasi berkas CV
-        if (!$candidate->hasCv()) {
-            $errorMsg = 'File CV tidak ditemukan atau kandidat belum mengunggah CV.';
-            $candidate->update([
-                'ai_cv_analysis' => json_encode(['error' => $errorMsg, 'status' => 'no_cv', 'failed_at' => now()->toDateTimeString()]),
-                'ai_score' => null,
-                'kategori_kandidat' => null,
-            ]);
-            $log("WARNING: Candidate #$id ($candidateName) tidak memiliki berkas CV yang valid.", 'warning');
-            return ['success' => false, 'message' => $errorMsg, 'error_type' => 'no_cv'];
+        // 1. Cek ketersediaan berkas CV (jika ada file dan valid, muat; jika tidak ada, tetap lanjut analisis dengan form input)
+        $hasCvFile = $candidate->hasCv();
+        $fileData = null;
+        if ($hasCvFile) {
+            $fileData = $this->loadCvFile($candidate);
+            if (!$fileData) {
+                $log("INFO: Berkas CV kandidat #$id tidak dapat dibaca dari server. Analisis AI dialihkan menggunakan Data Form Inputan.", 'warning');
+            }
         }
 
-        $log("PROCESSING: Memulai analisis CV untuk #$id - $candidateName (Posisi: " . ($candidate->applied_job ?? '-') . ")...");
+        $base64File = $fileData['base64'] ?? null;
+        $mimeType = $fileData['mime'] ?? null;
+        $hasUsableCv = !empty($base64File);
 
-        // 2. Ambil berkas CV (lokal / remote) dan konversi ke base64
-        $fileData = $this->loadCvFile($candidate);
-        if (!$fileData) {
-            $errorMsg = 'Berkas CV tidak dapat dibaca dari server penyimpanan.';
-            $candidate->update([
-                'ai_cv_analysis' => json_encode(['error' => $errorMsg, 'status' => 'file_error', 'failed_at' => now()->toDateTimeString()]),
-            ]);
-            $log("ERROR: Gagal membaca isi berkas CV untuk candidate #$id.", 'error');
-            return ['success' => false, 'message' => $errorMsg, 'error_type' => 'file_error'];
+        if ($hasUsableCv) {
+            $log("PROCESSING: Memulai analisis CV untuk #$id - $candidateName (Posisi: " . ($candidate->applied_job ?? '-') . ")...");
+        } else {
+            $log("PROCESSING: Memulai analisis profil untuk #$id - $candidateName (Tanpa berkas CV, evaluasi berbasis Data Form Inputan, Posisi: " . ($candidate->applied_job ?? '-') . ")...");
         }
 
-        $base64File = $fileData['base64'];
-        $mimeType = $fileData['mime'];
-
-        // 3. Bangun Job Specs Text
+        // 2. Bangun Job Specs Text
         $jobSpecsText = $this->buildJobSpecsText($candidate->applied_job);
 
-        // 4. Bangun Biodata Input Text
+        // 3. Bangun Biodata Input Text
         $biodataText = $this->buildBiodataText($candidate);
 
-        // 5. Bangun Full Prompt
-        $prompt = $this->buildPrompt($candidate, $jobSpecsText, $biodataText);
+        // 4. Bangun Full Prompt
+        $prompt = $this->buildPrompt($candidate, $jobSpecsText, $biodataText, $hasUsableCv);
 
         // 6. Ambil Pengaturan AI
         $aiSetting = AiSetting::first();
@@ -388,22 +380,27 @@ class AiAnalyzerService
     /**
      * Hit Google Gemini API via cURL
      */
-    protected function callGemini(string $apiKey, string $model, string $prompt, string $mimeType, string $base64File, int $keyIndex): array
+    protected function callGemini(string $apiKey, string $model, string $prompt, ?string $mimeType, ?string $base64File, int $keyIndex): array
     {
         $url = "https://generativelanguage.googleapis.com/v1beta/models/" . trim($model) . ":generateContent?key=" . trim($apiKey);
+
+        $parts = [
+            ["text" => $prompt]
+        ];
+
+        if (!empty($base64File) && !empty($mimeType)) {
+            $parts[] = [
+                "inline_data" => [
+                    "mime_type" => $mimeType,
+                    "data" => $base64File
+                ]
+            ];
+        }
 
         $payload = [
             "contents" => [
                 [
-                    "parts" => [
-                        ["text" => $prompt],
-                        [
-                            "inline_data" => [
-                                "mime_type" => $mimeType,
-                                "data" => $base64File
-                            ]
-                        ]
-                    ]
+                    "parts" => $parts
                 ]
             ],
             "generationConfig" => [
@@ -457,11 +454,11 @@ class AiAnalyzerService
     /**
      * Hit OpenRouter API via cURL
      */
-    protected function callOpenRouter(string $apiKey, string $model, string $prompt, string $base64File, string $mimeType): array
+    protected function callOpenRouter(string $apiKey, string $model, string $prompt, ?string $base64File, ?string $mimeType): array
     {
         $url = "https://openrouter.ai/api/v1/chat/completions";
 
-        if (str_contains($mimeType, 'image')) {
+        if (!empty($base64File) && !empty($mimeType) && str_contains($mimeType, 'image')) {
             $messages = [
                 [
                     "role" => "user",
@@ -475,10 +472,14 @@ class AiAnalyzerService
                 ]
             ];
         } else {
+            $content = $prompt;
+            if (!empty($base64File)) {
+                $content .= "\n\n(Catatan: Berkas adalah format PDF. Mohon analisis berdasarkan kualifikasi posisi dan inputan data kandidat di atas sedapatnya.)";
+            }
             $messages = [
                 [
                     "role" => "user",
-                    "content" => $prompt . "\n\n(Catatan: Berkas adalah format PDF. Mohon analisis berdasarkan kualifikasi posisi dan inputan data kandidat di atas sedapatnya.)"
+                    "content" => $content
                 ]
             ];
         }
@@ -542,7 +543,7 @@ class AiAnalyzerService
     /**
      * Hit Sumopod / OpenAI compatible API via cURL
      */
-    protected function callSumopod(string $apiKey, string $model, string $prompt, string $base64File, string $mimeType): array
+    protected function callSumopod(string $apiKey, string $model, string $prompt, ?string $base64File, ?string $mimeType): array
     {
         $url = "https://ai.sumopod.com/v1/chat/completions";
 
@@ -558,12 +559,12 @@ class AiAnalyzerService
             ]
         ];
 
-        if (str_contains($mimeType, 'image')) {
+        if (!empty($base64File) && !empty($mimeType) && str_contains($mimeType, 'image')) {
             $messages[0]['content'][] = [
                 "type" => "image_url",
                 "image_url" => ["url" => "data:$mimeType;base64,$base64File"]
             ];
-        } else {
+        } elseif (!empty($base64File)) {
             $messages[0]['content'][0]['text'] .= "\n\n(Catatan: Berkas adalah format PDF. Mohon analisis berdasarkan kualifikasi posisi dan inputan data kandidat di atas sedapatnya.)";
         }
 
@@ -741,32 +742,75 @@ class AiAnalyzerService
      */
     protected function buildBiodataText(Candidate $candidate): string
     {
-        return "Data Form Inputan Kandidat:\n" .
+        $dob = $candidate->birth_date ? Carbon::parse($candidate->birth_date)->format('d F Y') : '-';
+        $age = $candidate->birth_date ? Carbon::parse($candidate->birth_date)->age . ' tahun' : '-';
+
+        $text = "Data Form Inputan Kandidat:\n" .
                "- NIK: " . ($candidate->nik ?? '-') . "\n" .
                "- Nama Lengkap: " . ($candidate->full_name ?? '-') . "\n" .
-               "- Tanggal Lahir: " . ($candidate->birth_date ? Carbon::parse($candidate->birth_date)->format('d F Y') : '-') . "\n" .
-               "- Tinggi/Berat Badan: " . ($candidate->height ?? '-') . " cm / " . ($candidate->weight ?? '-') . " kg\n" .
+               "- Jenis Kelamin: " . ($candidate->gender ?? '-') . "\n" .
+               "- Tempat / Tanggal Lahir: " . ($candidate->birth_place ?? '-') . " / " . $dob . " (Usia: $age)\n" .
+               "- Tinggi / Berat Badan: " . ($candidate->height ?? '-') . " cm / " . ($candidate->weight ?? '-') . " kg\n" .
+               "- Pendidikan Terakhir: " . ($candidate->education ?? '-') . "\n" .
+               "- Status Pernikahan: " . ($candidate->marital_status ?? '-') . "\n" .
+               "- Kontak / HP: " . ($candidate->phone ?? $candidate->whatsapp ?? '-') . " | Email: " . ($candidate->email ?? '-') . "\n" .
                "- Alamat KTP: " . ($candidate->address_ktp ?? '-') . "\n" .
                "- Alamat Domisili: " . ($candidate->address_domicile ?? '-') . "\n" .
-               "- Kota Domisili: " . ($candidate->city_domicile ?? '-') . "\n" .
-               "- Provinsi Domisili: " . ($candidate->province_domicile ?? '-') . "\n" .
+               "- Kota / Provinsi Domisili: " . ($candidate->city_domicile ?? '-') . " / " . ($candidate->province_domicile ?? '-') . "\n" .
                "- Kota Penempatan (Tujuan): " . ($candidate->area ?? '-') . "\n" .
-               "- Pendidikan: " . ($candidate->education ?? '-') . "\n" .
-               "- Motivasi: " . ($candidate->work_motivation ?? '-') . "\n" .
-               "- Kelebihan: " . ($candidate->strengths ?? '-');
+               "- Motivasi Kerja: " . ($candidate->work_motivation ?? '-') . "\n" .
+               "- Kelebihan Diri: " . ($candidate->strengths ?? '-') . "\n" .
+               "- Kekurangan Diri: " . ($candidate->weaknesses ?? '-') . "\n" .
+               "- Keterampilan Komputer: " . ($candidate->computer_skill ?? '-') . "\n" .
+               "- Kemampuan Bahasa Inggris: " . ($candidate->english_skill ?? '-') . "\n" .
+               "- Keahlian Lain: " . ($candidate->other_skills ?? '-') . "\n" .
+               "- Kendaraan / SIM: " . ($candidate->vehicle ?? '-') . " / " . ($candidate->driving_license ?? '-') . "\n" .
+               "- Aktivitas Saat Ini: " . ($candidate->current_activity ?? '-');
+
+        if (!empty($candidate->expected_salary)) {
+            $text .= "\n- Gaji yang Diharapkan: Rp " . number_format((float)$candidate->expected_salary, 0, ',', '.');
+        }
+
+        // Muat riwayat pengalaman kerja kandidat jika ada
+        $workExps = $candidate->workExperiences;
+        if ($workExps && $workExps->count() > 0) {
+            $text .= "\n\nRiwayat Pengalaman Kerja:";
+            foreach ($workExps as $idx => $we) {
+                $start = $we->start_date ? $we->start_date->format('M Y') : '?';
+                $end = $we->end_date ? $we->end_date->format('M Y') : 'Sekarang';
+                $text .= "\n" . ($idx + 1) . ". {$we->company_name} - Posisi: {$we->position} ({$start} s/d {$end})";
+                if (!empty($we->reason_for_leaving)) {
+                    $text .= " [Alasan Keluar: {$we->reason_for_leaving}]";
+                }
+            }
+        } elseif (!empty($candidate->experience_summary)) {
+            $text .= "\n\nRingkasan Pengalaman Kerja:\n" . $candidate->experience_summary;
+        }
+
+        return $text;
     }
 
     /**
-     * Bangun Prompt Evaluasi AI Sesuai Standar Legacy Sistem
+     * Bangun Prompt Evaluasi AI Sesuai Standar Sistem (Mendukung Evaluasi Berkas CV maupun Data Form)
      */
-    protected function buildPrompt(Candidate $candidate, string $jobSpecsText, string $biodataText): string
+    protected function buildPrompt(Candidate $candidate, string $jobSpecsText, string $biodataText, bool $hasCvFile = true): string
     {
         $currentDate = now()->translatedFormat('d F Y');
 
-        return "Anda adalah AI CV Analyzer Profesional. INFO PENTING: Hari ini adalah tanggal " . $currentDate . " (semua tahun sebelum atau sama dengan tahun ini adalah masa lalu/sekarang, bukan masa depan). Tugas Anda adalah menganalisis CV kandidat ini untuk posisi: " . ($candidate->applied_job ?? 'Karyawan') . ".\n\n" .
+        if ($hasCvFile) {
+            $instructionCv = "Tolong baca teks atau gambar CV yang saya berikan dan evaluasi kecocokannya dengan Persyaratan Pekerjaan di atas. Selain itu, Anda HARUS mencocokkan data pada file CV dengan Data Form Inputan Kandidat di atas. Khusus untuk Kota Penempatan (Tujuan), mohon cocokkan dengan Kota/Provinsi Domisili yang diinputkan kandidat atau domisili di CV. Jika jaraknya sangat jauh (beda kota/provinsi/pulau) dan kandidat tidak mencantumkan keterangan bersedia ditempatkan di mana saja pada CV/Kelebihan/Motivasi, jadikan ini pertimbangan dalam evaluasi.";
+            $discrepancyGuide = "Tuliskan 'Tidak ada perbedaan' jika data inputan cocok dengan CV. Jika berbeda, jelaskan detail perbedaannya secara lengkap dan tegas (misal: 'Nama di form Budi, di CV Andi').";
+            $scoreGuide = "- evaluation_match_score adalah angka 0-100, mencerminkan seberapa cocok CV dan profil kandidat dengan spesifikasi pekerjaan yang diminta. Jika sangat tidak cocok, berikan skor rendah.\n- Kurangi evaluation_match_score secara signifikan jika terdapat ketidaksesuaian/manipulasi (data_discrepancy) yang fatal (seperti nama beda, dll).";
+        } else {
+            $instructionCv = "CATATAN PENTING: Kandidat ini TIDAK MELAMPIRKAN BERKAS CV (file CV kosong atau belum diunggah). Oleh karena itu, lakukan evaluasi profil kandidat SEPENUHNYA berdasarkan Data Form Inputan Kandidat di atas (Pendidikan, Pengalaman Kerja, Keterampilan, Motivasi, Kelebihan, Domisili, dsb) terhadap Persyaratan Pekerjaan.";
+            $discrepancyGuide = "Kandidat tidak mengunggah file CV, evaluasi dinilai berdasarkan data form pendaftaran.";
+            $scoreGuide = "- evaluation_match_score adalah angka 0-100, mencerminkan seberapa cocok data isian formulir kandidat dengan spesifikasi pekerjaan yang diminta. Berikan penilaian objektif berdasarkan kelengkapan dan kesesuaian kualifikasi form terhadap kriteria posisi.";
+        }
+
+        return "Anda adalah AI CV Analyzer Profesional. INFO PENTING: Hari ini adalah tanggal " . $currentDate . " (semua tahun sebelum atau sama dengan tahun ini adalah masa lalu/sekarang, bukan masa depan). Tugas Anda adalah menganalisis profil kandidat ini untuk posisi: " . ($candidate->applied_job ?? 'Karyawan') . ".\n\n" .
                $jobSpecsText . "\n\n" .
                $biodataText . "\n\n" .
-               "Tolong baca teks atau gambar CV yang saya berikan dan evaluasi kecocokannya dengan Persyaratan Pekerjaan di atas. Selain itu, Anda HARUS mencocokkan data pada file CV dengan Data Form Inputan Kandidat di atas. Khusus untuk Kota Penempatan (Tujuan), mohon cocokkan dengan Kota/Provinsi Domisili yang diinputkan kandidat atau domisili di CV. Jika jaraknya sangat jauh (beda kota/provinsi/pulau) dan kandidat tidak mencantumkan keterangan bersedia ditempatkan di mana saja pada CV/Kelebihan/Motivasi, jadikan ini pertimbangan dalam evaluasi. Hasilkan output JSON murni tanpa markdown ```json.
+               $instructionCv . " Hasilkan output JSON murni tanpa markdown ```json.
 Struktur dan keys (berbahasa inggris) persis seperti ini:
 {
   \"evaluation_match_score\": 85,
@@ -776,12 +820,11 @@ Struktur dan keys (berbahasa inggris) persis seperti ini:
   \"psychological_traits\": {\"personality\": [\"trait1\", \"trait2\"], \"work_style\": \"...\", \"cultural_fit\": \"...\"},
   \"work_history\": [\"history 1\", \"history 2\"],
   \"core_skills\": [\"skill 1\", \"skill 2\"],
-  \"data_discrepancy\": \"Tuliskan 'Tidak ada perbedaan' jika data inputan cocok dengan CV. Jika berbeda, jelaskan detail perbedaannya secara lengkap dan tegas (misal: 'Nama di form Budi, di CV Andi').\",
+  \"data_discrepancy\": \"" . $discrepancyGuide . "\",
   \"recommendation\": \"SANGAT DIREKOMENDASIKAN. [alasan...]\"
 }
 Catatan:
-- evaluation_match_score adalah angka 0-100, mencerminkan seberapa cocok CV kandidat dengan spesifikasi pekerjaan yang diminta. Jika sangat tidak cocok (misal: posisi IT tapi CV kecantikan), berikan skor rendah.
-- Kurangi evaluation_match_score secara signifikan jika terdapat ketidaksesuaian/manipulasi (data_discrepancy) yang fatal (seperti nama beda, dll).
+" . $scoreGuide . "
 - Isi value dalam bahasa Indonesia yang formal dan profesional.
 - Pastikan response hanya berupa string JSON valid tanpa tambahan teks lain.";
     }
@@ -1107,18 +1150,11 @@ Catatan:
                   ->orWhere('ai_score', 0);
             })->count();
 
-        // Kandidat Job Portal berikutnya yang siap diproses (memiliki berkas CV dan belum ada file_error)
+        // Kandidat Job Portal berikutnya yang siap diproses
         $nextCandidate = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
             ->where(function ($q) {
-                $q->whereNotNull('cv_path')
-                  ->where('cv_path', '!=', '')
-                  ->where('cv_path', '!=', '-');
-            })->where(function ($q) {
                 $q->whereNull('ai_score')
                   ->orWhere('ai_score', 0);
-            })->where(function ($q) {
-                $q->whereNull('ai_cv_analysis')
-                  ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
             })
             ->orderByRaw("CASE 
                 WHEN created_at IS NOT NULL AND created_at > '1970-01-01' THEN created_at 

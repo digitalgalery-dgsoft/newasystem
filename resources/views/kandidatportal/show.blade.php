@@ -20,7 +20,7 @@
                 <div>
                     <div class="flex items-center gap-2">
                         <h1 class="text-xl font-extrabold text-slate-900 tracking-tight">{{ $candidate->full_name }}</h1>
-                        @if($candidate->hasCv() && !empty($candidate->ai_score))
+                        @if(!empty($candidate->ai_score) && $candidate->ai_score > 0)
                             <span class="badge-pill {{ $candidate->ai_badge_class }}">
                                 <i class="fa-solid fa-bolt text-[9px]"></i> AI Match: {{ $candidate->ai_score }}%
                             </span>
@@ -31,10 +31,21 @@
                             @elseif($candidate->kategori_kandidat === 'Red')
                                 <span class="badge-pill bg-rose-50 text-rose-700 border-rose-200">🔴 Red</span>
                             @endif
+                            @if(!$candidate->hasCv())
+                                <span class="badge-pill bg-sky-50 text-sky-700 border-sky-200" title="Analisis dievaluasi berdasarkan data form pendaftaran">
+                                    <i class="fa-solid fa-file-lines text-[9px] mr-0.5"></i> Form Input
+                                </span>
+                            @endif
                         @else
-                            <span class="badge-pill bg-slate-100 text-slate-500 border-slate-200">
-                                <i class="fa-regular fa-file-pdf text-[9px] mr-0.5"></i> Belum Ada CV
-                            </span>
+                            @if($candidate->hasCv())
+                                <span class="badge-pill bg-amber-50 text-amber-700 border-amber-200">
+                                    <i class="fa-solid fa-hourglass-half text-[9px] mr-0.5"></i> Belum Dianalisa
+                                </span>
+                            @else
+                                <span class="badge-pill bg-slate-100 text-slate-500 border-slate-200">
+                                    <i class="fa-solid fa-file-lines text-[9px] mr-0.5"></i> Tanpa CV
+                                </span>
+                            @endif
                         @endif
                     </div>
                     <p class="text-xs text-slate-500 font-medium mt-0.5">
@@ -1116,8 +1127,8 @@
                 </div>
 
                 <div class="flex items-center gap-2 flex-wrap">
-                    @if($candidate->hasCv() && !empty($candidate->ai_score))
-                        <!-- Download PDF Button (Sesuai Skrip Aslinya!) -->
+                    @if(!empty($candidate->ai_score) && $candidate->ai_score > 0)
+                        <!-- Download PDF Button -->
                         <a href="{{ route('kandidatportal.cetak-ai', $candidate->id) }}" target="_blank" class="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all shadow-sm shadow-rose-600/20 flex items-center gap-2">
                             <i class="fa-solid fa-file-pdf text-sm"></i>
                             <span>Download PDF</span>
@@ -1127,13 +1138,20 @@
                             @csrf
                             <button type="submit" class="px-3.5 py-2 rounded-xl bg-white border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50 transition-all shadow-sm flex items-center gap-1.5">
                                 <i class="fa-solid fa-arrows-rotate text-primary"></i>
-                                <span>Analisis Ulang CV</span>
+                                <span>Analisis Ulang AI</span>
                             </button>
                         </form>
                     @else
-                        <button type="button" onclick="openUploadModal()" class="px-4 py-2 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-2">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                            <span>Unggah CV Kandidat</span>
+                        <form action="{{ route('kandidatportal.analyze_cv', $candidate->id) }}" method="POST" class="inline">
+                            @csrf
+                            <button type="submit" class="px-3.5 py-2 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5">
+                                <i class="fa-solid fa-bolt text-amber-300"></i>
+                                <span>Analisis AI Sekarang</span>
+                            </button>
+                        </form>
+                        <button type="button" onclick="openUploadModal()" class="px-3.5 py-2 rounded-xl bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all shadow-sm flex items-center gap-2">
+                            <i class="fa-solid fa-cloud-arrow-up text-primary"></i>
+                            <span>Unggah CV</span>
                         </button>
                     @endif
                 </div>

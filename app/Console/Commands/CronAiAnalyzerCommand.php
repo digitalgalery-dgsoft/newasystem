@@ -41,20 +41,12 @@ class CronAiAnalyzerCommand extends Command
         if ($specificId) {
             $candidates = Candidate::where('id', $specificId)->get();
         } else {
-            $query = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
-                ->where(function ($q) {
-                    $q->whereNotNull('cv_path')
-                      ->where('cv_path', '!=', '')
-                      ->where('cv_path', '!=', '-');
-                });
+            $query = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'");
 
             if (!$force) {
                 $query->where(function ($q) {
                     $q->whereNull('ai_score')
                       ->orWhere('ai_score', 0);
-                })->where(function ($q) {
-                    $q->whereNull('ai_cv_analysis')
-                      ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
                 });
             }
 

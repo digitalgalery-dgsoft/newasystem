@@ -454,7 +454,7 @@ class Candidate extends Model
 
     public function getAiScoreColorHexAttribute(): string
     {
-        if (!$this->hasCv() || empty($this->ai_score)) {
+        if (empty($this->ai_score) || $this->ai_score <= 0) {
             return '#94a3b8'; // slate-400
         }
         $score = intval($this->ai_score);
@@ -465,7 +465,7 @@ class Candidate extends Model
 
     public function getAiBadgeClassAttribute(): string
     {
-        if (!$this->hasCv() || empty($this->ai_score)) {
+        if (empty($this->ai_score) || $this->ai_score <= 0) {
             return 'bg-slate-50 text-slate-500 border-slate-200';
         }
         $score = intval($this->ai_score);

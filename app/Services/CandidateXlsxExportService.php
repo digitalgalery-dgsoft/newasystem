@@ -504,8 +504,8 @@ class CandidateXlsxExportService
                 $hasCv = true;
             }
 
-            // AI Analisis: HANYA DITAMPILKAN JIKA KANDIDAT MEMILIKI BERKAS CV VALID
-            $hasAiAnalysis = $hasCv && ($c->ai_score !== null && $c->ai_score > 0);
+            // AI Analisis: Tampilkan jika kandidat telah memiliki skor AI (baik dari berkas CV maupun data form)
+            $hasAiAnalysis = ($c->ai_score !== null && $c->ai_score > 0);
             $pdfUrl = $hasAiAnalysis ? ($baseUrl . '/kandidatportal/' . $c->id . '/cetak-ai') : null;
 
             $statusKandidat = !empty($c->status_kandidat) ? trim($c->status_kandidat) : 'Baru';

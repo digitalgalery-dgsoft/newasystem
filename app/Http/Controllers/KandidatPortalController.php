@@ -575,13 +575,6 @@ class KandidatPortalController extends Controller
             ->where(function ($q) {
                 $q->whereNull('ai_score')->orWhere('ai_score', 0);
             })
-            ->where(function ($q) {
-                $q->whereNull('ai_cv_analysis')
-                  ->orWhere('ai_cv_analysis', 'not like', '%file_error%');
-            })
-            ->whereNotNull('cv_path')
-            ->where('cv_path', '!=', '')
-            ->where('cv_path', '!=', '-')
             ->orderByRaw("CASE 
                 WHEN created_at IS NOT NULL AND created_at > '1970-01-01' THEN created_at 
                 WHEN updated_at IS NOT NULL AND updated_at > '1970-01-01' THEN updated_at 
@@ -592,7 +585,7 @@ class KandidatPortalController extends Controller
         if (!$candidate) {
             return response()->json([
                 'success' => false,
-                'message' => 'Tidak ada kandidat dalam antrean yang memiliki berkas CV valid untuk dianalisis.'
+                'message' => 'Tidak ada kandidat dalam antrean Job Portal yang belum dianalisis.'
             ]);
         }
 
@@ -805,15 +798,11 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
-        if (!$candidate->hasCv()) {
-            return back()->with('error', 'Kandidat ' . $candidate->full_name . ' belum memiliki berkas CV. Silakan unggah berkas CV terlebih dahulu.');
-        }
-
         $analyzer = app(AiAnalyzerService::class);
         $res = $analyzer->analyzeCandidate($candidate);
 
         if ($res['success']) {
-            return back()->with('success', 'Analisis AI berkas CV kandidat ' . $candidate->full_name . ' berhasil diselesaikan! Skor Match: ' . $res['score'] . ' (' . $res['category'] . ') via ' . $res['provider'] . '.');
+            return back()->with('success', 'Analisis AI profil kandidat ' . $candidate->full_name . ' berhasil diselesaikan! Skor Match: ' . $res['score'] . '% (' . $res['category'] . ') via ' . $res['provider'] . '.');
         }
 
         if (($res['error_type'] ?? '') === 'rate_limited') {
