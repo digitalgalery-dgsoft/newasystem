@@ -160,9 +160,29 @@ class PublicJobController extends Controller
 
         $nik = $request->input('nik');
 
-        // Cari atau buat candidate
-        $candidate = Candidate::where('nik', $nik)->first();
-        if ($candidate && $candidate->status === 'Active' && $candidate->applied_job === $job->job_title) {
+        // Cari record kandidat yang sudah ada berdasarkan NIK (paling baru)
+        $candidate = Candidate::where('nik', $nik)->orderByDesc('id')->first();
+
+        // Cek apakah kandidat berstatus arsip (baik di portal maupun interview)
+        $isArchived = $candidate && (
+            in_array(strtolower($candidate->status ?? ''), ['arsip', 'archived'])
+            || strtolower($candidate->status_kandidat ?? '') === 'arsip'
+        );
+
+        // Cek apakah ada berkas lamaran aktif yang SEDANG berjalan dan BELUM diarsipkan untuk posisi yang sama
+        $hasActiveSameJob = Candidate::where('nik', $nik)
+            ->where('applied_job', $job->job_title)
+            ->where('status', 'Active')
+            ->where(function ($q) {
+                $q->whereNull('status_kandidat')
+                  ->orWhere(function ($sq) {
+                      $sq->whereRaw('LOWER(status_kandidat) != ?', ['arsip'])
+                         ->whereRaw('LOWER(status) NOT IN (?, ?)', ['arsip', 'archived']);
+                  });
+            })
+            ->exists();
+
+        if ($hasActiveSameJob) {
             return back()->with('info', "Anda sudah pernah mendaftar posisi {$job->job_title} dengan NIK {$nik}. Akun Anda telah aktif, silakan login ke portal tes online.");
         }
 
@@ -231,6 +251,7 @@ class PublicJobController extends Controller
             'jenis' => 'Job Portal',
             'status' => 'Active',
             'status_kandidat' => 'Baru',
+            'archive_reason' => null,
             'photo_path' => $photoPath,
             'cv_path' => $cvPath,
             'experience_summary' => $request->input('ringkasan_pengalaman'),
@@ -242,7 +263,26 @@ class PublicJobController extends Controller
             'is_profile_complete' => 1,
             'password' => Hash::make($birthDateFormatted),
             'useras' => $job->created_by ?? 'Publik',
+            'created_at' => now(),
+            'updated_at' => now(),
         ];
+
+        // Jika kandidat sebelumnya dalam status arsip, reset approval, evaluasi, dan modul tes untuk seleksi baru
+        if ($isArchived) {
+            $candidateData['status_approval'] = null;
+            $candidateData['idprinsiple'] = null;
+            $candidateData['ttd_prinsiple'] = null;
+            $candidateData['time_prinsiple'] = null;
+            $candidateData['note_principle'] = null;
+            $candidateData['tes_ke'] = max(1, intval($candidate->tes_ke ?? 1)) + 1;
+            $candidateData['tes_kepribadian'] = null;
+            $candidateData['tes_matematika'] = null;
+            $candidateData['tes_komputer'] = null;
+            $candidateData['buktikomputer'] = null;
+            $candidateData['statement_agreed'] = 0;
+            $candidateData['odoo_stage_name'] = null;
+            $candidateData['odoo_applicant_id'] = null;
+        }
 
         if ($candidate) {
             $candidate->update($candidateData);
@@ -272,37 +312,51 @@ class PublicJobController extends Controller
 
         // Sinkronisasi ke legacy tb_kandidat jika tabel tersedia
         if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+            $tbData = [
+                'applicants_name' => $candidateData['full_name'],
+                'gender' => $candidateData['gender'],
+                'tanggal_lahir' => $candidateData['birth_date'],
+                'height' => $candidateData['height'],
+                'weight' => $candidateData['weight'],
+                'alamat_ktp' => $candidateData['address_ktp'],
+                'alamat_domisili' => $candidateData['address_domicile'],
+                'province_domicile' => $candidateData['province_domicile'],
+                'city_domicile' => $candidateData['city_domicile'],
+                'secondary_city' => $candidateData['city_domicile'],
+                'phone' => $candidateData['phone'],
+                'mobile' => $candidateData['whatsapp'],
+                'pendidikan_terakhir' => $candidateData['education'],
+                'applied_job' => $candidateData['applied_job'],
+                'area' => $candidateData['area'],
+                'info' => $candidateData['info_lowongan'],
+                'info_lowongan' => $candidateData['info_lowongan'],
+                'experience_summary' => $candidateData['experience_summary'],
+                'motivasi_kerja' => $candidateData['work_motivation'],
+                'kelebihan' => $candidateData['strengths'],
+                'status' => 'Active',
+                'status_kandidat' => 'Baru',
+                'useras' => $candidateData['useras'],
+                'fotoprofil' => $photoPath,
+                'filecv' => $cvPath,
+                'waktukirim' => now(),
+                'password' => $birthDateFormatted,
+            ];
+
+            if ($isArchived) {
+                if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'tes_ke')) {
+                    $tbData['tes_ke'] = $candidateData['tes_ke'];
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'tes_kepribadian')) {
+                    $tbData['tes_kepribadian'] = null;
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'tes_matematika')) {
+                    $tbData['tes_matematika'] = null;
+                }
+            }
+
             \Illuminate\Support\Facades\DB::table('tb_kandidat')->updateOrInsert(
                 ['no_ktp' => $nik],
-                [
-                    'applicants_name' => $candidateData['full_name'],
-                    'gender' => $candidateData['gender'],
-                    'tanggal_lahir' => $candidateData['birth_date'],
-                    'height' => $candidateData['height'],
-                    'weight' => $candidateData['weight'],
-                    'alamat_ktp' => $candidateData['address_ktp'],
-                    'alamat_domisili' => $candidateData['address_domicile'],
-                    'province_domicile' => $candidateData['province_domicile'],
-                    'city_domicile' => $candidateData['city_domicile'],
-                    'secondary_city' => $candidateData['city_domicile'],
-                    'phone' => $candidateData['phone'],
-                    'mobile' => $candidateData['whatsapp'],
-                    'pendidikan_terakhir' => $candidateData['education'],
-                    'applied_job' => $candidateData['applied_job'],
-                    'area' => $candidateData['area'],
-                    'info' => $candidateData['info_lowongan'],
-                    'info_lowongan' => $candidateData['info_lowongan'],
-                    'experience_summary' => $candidateData['experience_summary'],
-                    'motivasi_kerja' => $candidateData['work_motivation'],
-                    'kelebihan' => $candidateData['strengths'],
-                    'status' => 'Active',
-                    'status_kandidat' => 'Baru',
-                    'useras' => $candidateData['useras'],
-                    'fotoprofil' => $photoPath,
-                    'filecv' => $cvPath,
-                    'waktukirim' => now(),
-                    'password' => $birthDateFormatted,
-                ]
+                $tbData
             );
         }
 

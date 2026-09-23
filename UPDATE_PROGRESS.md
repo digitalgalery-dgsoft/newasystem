@@ -1997,6 +1997,29 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 44. 🔄 Izin Pendaftaran Ulang (Re-apply) untuk Kandidat Berstatus Arsip (Portal & Interview)
+- **Latar Belakang Masalah**:
+  - Kandidat yang statusnya sudah diarsipkan (`status_kandidat = 'Arsip'` atau `status IN ('Arsip', 'archived')`) terblokir saat mendaftar kembali lowongan pekerjaan melalui portal publik (`/job/{id}/apply`).
+  - Muncul notifikasi penghalang: *"Anda sudah pernah mendaftar posisi [Posisi] dengan NIK [NIK]. Akun Anda telah aktif, silakan login ke portal tes online."*
+  - Hal ini terjadi karena pengecekan duplikasi lama di `PublicJobController@submitApply` hanya memeriksa `$candidate->status === 'Active'` dan `$candidate->applied_job === $job->job_title` tanpa mengecek apakah kandidat tersebut sebenarnya sudah berstatus Arsip.
+- **Perubahan & Perbaikan**:
+  1. **Logika Duplicate Check yang Presisi ([PublicJobController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/PublicJobController.php))**:
+     - Notifikasi penolakan kini **hanya** muncul jika pelamar memiliki berkas lamaran yang sedang aktif berjalan dan **belum diarsipkan** (`hasActiveSameJob`).
+     - Jika kandidat tercatat berstatus arsip (baik di Kandidat Portal maupun Interview), pelamar **diizinkan mendaftar kembali**.
+  2. **Re-aktivasi & Reset Data Seleksi Bersih**:
+     - Status kandidat diperbarui menjadi `status = 'Active'` dan `status_kandidat = 'Baru'`.
+     - Posisi lamaran dan area diperbarui sesuai lowongan yang dilamar.
+     - Alasan arsip lama (`archive_reason`) dibersihkan menjadi `null`.
+     - Waktu pendaftaran diperbarui (`created_at = now()`, `updated_at = now()`) agar langsung muncul di tab *Kandidat Baru* dan terhitung di statistik *Masuk Hari Ini*.
+     - Data approval/evaluasi lama (`status_approval`, `idprinsiple`, `ttd_prinsiple`, `time_prinsiple`, `note_principle`) di-reset ke `null`.
+     - Modul tes online di-reset bersih: nomor percobaan tes (`tes_ke`) dinaikkan, indikator `tes_kepribadian`, `tes_matematika`, `tes_komputer`, `buktikomputer`, dan `statement_agreed` di-reset ke `null`/`0` sehingga kandidat dapat mengikuti tes online CBT kembali untuk lamaran barunya.
+  3. **Penyelarasan Legacy `tb_kandidat`**:
+     - Menyinkronkan update status `Active`, `status_kandidat = 'Baru'`, `tes_ke`, dan pembersihan data tes pada tabel legacy `tb_kandidat`.
+  4. **Prioritas Login CBT ([CbtController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CbtController.php))**:
+     - Kueri pencarian kandidat saat login CBT kini memprioritaskan akun yang aktif dan tidak diarsipkan (`status = 'Active' AND status_kandidat != 'Arsip'`), memastikan kandidat yang mendaftar ulang langsung masuk ke akun seleksi aktif terbarunya.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

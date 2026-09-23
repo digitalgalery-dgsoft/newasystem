@@ -46,7 +46,12 @@ class CbtController extends Controller
                     $q->orWhere('no_kk', $nik);
                 }
             })
-            ->orderByRaw("CASE WHEN (status IS NULL OR status NOT IN ('Arsip', 'archived')) AND (jenis IS NULL OR jenis = '') THEN 0 ELSE 1 END")
+            ->orderByRaw("CASE 
+                WHEN (status = 'Active' OR status IS NULL) 
+                     AND (status_kandidat IS NULL OR status_kandidat != 'Arsip') 
+                     AND (status NOT IN ('Arsip', 'archived') OR status IS NULL) THEN 0 
+                ELSE 1 
+            END")
             ->orderByDesc('id')
             ->first();
 
