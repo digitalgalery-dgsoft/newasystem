@@ -11,28 +11,87 @@ class PrincipleController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Principle::withCount(['candidates', 'employees']);
+        $search = $request->input('search');
+        $entity = $request->input('entity');
+        $induk = $request->input('induk');
+        $status = $request->input('status');
 
-        if ($search = $request->input('search')) {
-            $query->where(function($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('code', 'like', "%{$search}%")
-                  ->orWhere('parent_company', 'like', "%{$search}%")
-                  ->orWhere('entity', 'like', "%{$search}%")
-                  ->orWhere('pic_name', 'like', "%{$search}%");
+        $applySearch = function($q, $searchStr) {
+            $rawLower = strtolower(trim($searchStr));
+            $cleanForWords = preg_replace('/[^\p{L}\p{N}]+/u', ' ', $rawLower);
+            $words = array_values(array_filter(explode(' ', $cleanForWords), function($w) {
+                return strlen($w) >= 2;
+            }));
+            if (empty($words)) {
+                $words = array_values(array_filter(explode(' ', $rawLower)));
+            }
+
+            $q->where(function($outer) use ($rawLower, $searchStr, $words) {
+                // Direct match on code, name, pic_name, pic_email
+                $outer->where(function($exactQ) use ($rawLower, $searchStr) {
+                    $exactQ->whereRaw('LOWER(name) LIKE ?', ["%{$rawLower}%"])
+                           ->orWhere('code', 'like', "%{$searchStr}%")
+                           ->orWhereRaw('LOWER(pic_name) LIKE ?', ["%{$rawLower}%"])
+                           ->orWhereRaw('LOWER(pic_email) LIKE ?', ["%{$rawLower}%"]);
+                });
+
+                // Multi-word match: each word must match name, code, or pic_name
+                if (count($words) > 1) {
+                    $outer->orWhere(function($multiQ) use ($words) {
+                        foreach ($words as $word) {
+                            $multiQ->where(function($wordQ) use ($word) {
+                                $wordQ->whereRaw('LOWER(name) LIKE ?', ["%{$word}%"])
+                                      ->orWhereRaw('LOWER(code) LIKE ?', ["%{$word}%"])
+                                      ->orWhereRaw('LOWER(pic_name) LIKE ?', ["%{$word}%"]);
+                            });
+                        }
+                    });
+                }
             });
-        }
+        };
 
-        if ($entity = $request->input('entity')) {
-            $query->where('entity', $entity);
-        }
+        $buildBaseQuery = function($withEntity = true) use ($applySearch, $search, $entity, $induk, $status) {
+            $q = Principle::withCount(['candidates', 'employees']);
 
-        if ($induk = $request->input('induk')) {
-            $query->where('parent_company', $induk);
-        }
+            if (!empty($search)) {
+                $applySearch($q, $search);
+            }
 
-        if ($request->has('status') && $request->input('status') !== '') {
-            $query->where('is_active', $request->boolean('status'));
+            if ($withEntity && !empty($entity)) {
+                $q->where('entity', $entity);
+            }
+
+            if (!empty($induk)) {
+                $q->where('parent_company', $induk);
+            }
+
+            if ($status !== null && $status !== '') {
+                $q->where('is_active', (bool)$status);
+            }
+
+            return $q;
+        };
+
+        $query = $buildBaseQuery(true);
+
+        $allEntitiesFallback = false;
+        $foundInEntities = [];
+        $searchedEntity = null;
+
+        // Smart Entity Fallback: If search was provided with a specific entity filter but 0 results were found,
+        // automatically search across other entities and present them with a helpful notice banner.
+        if (!empty($search) && !empty($entity)) {
+            $filteredCount = (clone $query)->count();
+            if ($filteredCount === 0) {
+                $fallbackQuery = $buildBaseQuery(false);
+                $fallbackCount = (clone $fallbackQuery)->count();
+                if ($fallbackCount > 0) {
+                    $allEntitiesFallback = true;
+                    $searchedEntity = $entity;
+                    $foundInEntities = array_values(array_unique((clone $fallbackQuery)->pluck('entity')->toArray()));
+                    $query = $fallbackQuery;
+                }
+            }
         }
 
         $principles = $query->orderBy('entity', 'asc')->orderBy('code', 'asc')->paginate(15)->withQueryString();
@@ -55,7 +114,15 @@ class PrincipleController extends Controller
         $distinctParents = Principle::select('parent_company')->distinct()->whereNotNull('parent_company')->pluck('parent_company');
         $availableEntities = ['AMK', 'AKP', 'ATK', 'ABO', 'ATB'];
 
-        return view('master.prinsiple.index', compact('principles', 'stats', 'distinctParents', 'availableEntities'));
+        return view('master.prinsiple.index', compact(
+            'principles', 
+            'stats', 
+            'distinctParents', 
+            'availableEntities',
+            'allEntitiesFallback',
+            'foundInEntities',
+            'searchedEntity'
+        ));
     }
 
     public function store(Request $request)

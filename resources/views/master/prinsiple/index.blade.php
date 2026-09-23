@@ -112,27 +112,27 @@
 
     <!-- Entity Quick Filters -->
     <div class="flex flex-wrap items-center gap-2 pt-1 pb-1">
-        <a href="{{ route('master.prinsiple.index') }}" 
+        <a href="{{ route('master.prinsiple.index', request()->except('entity', 'page')) }}" 
            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border {{ !request('entity') ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50' }}">
             Semua ({{ $stats['total'] }})
         </a>
-        <a href="{{ route('master.prinsiple.index', ['entity' => 'AMK']) }}" 
+        <a href="{{ route('master.prinsiple.index', array_merge(request()->query(), ['entity' => 'AMK', 'page' => 1])) }}" 
            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border {{ request('entity') === 'AMK' ? 'bg-blue-600 text-white border-blue-600 shadow-sm' : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100' }}">
             AMK - Arina ({{ $stats['by_entity']['AMK'] ?? 0 }})
         </a>
-        <a href="{{ route('master.prinsiple.index', ['entity' => 'AKP']) }}" 
+        <a href="{{ route('master.prinsiple.index', array_merge(request()->query(), ['entity' => 'AKP', 'page' => 1])) }}" 
            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border {{ request('entity') === 'AKP' ? 'bg-amber-600 text-white border-amber-600 shadow-sm' : 'bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100' }}">
             AKP - Alva ({{ $stats['by_entity']['AKP'] ?? 0 }})
         </a>
-        <a href="{{ route('master.prinsiple.index', ['entity' => 'ATK']) }}" 
+        <a href="{{ route('master.prinsiple.index', array_merge(request()->query(), ['entity' => 'ATK', 'page' => 1])) }}" 
            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border {{ request('entity') === 'ATK' ? 'bg-emerald-600 text-white border-emerald-600 shadow-sm' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100' }}">
             ATK - Anugrah Terpercaya ({{ $stats['by_entity']['ATK'] ?? 0 }})
         </a>
-        <a href="{{ route('master.prinsiple.index', ['entity' => 'ABO']) }}" 
+        <a href="{{ route('master.prinsiple.index', array_merge(request()->query(), ['entity' => 'ABO', 'page' => 1])) }}" 
            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border {{ request('entity') === 'ABO' ? 'bg-purple-600 text-white border-purple-600 shadow-sm' : 'bg-purple-50 text-purple-700 border-purple-200 hover:bg-purple-100' }}">
             ABO - Abadi Berkat ({{ $stats['by_entity']['ABO'] ?? 0 }})
         </a>
-        <a href="{{ route('master.prinsiple.index', ['entity' => 'ATB']) }}" 
+        <a href="{{ route('master.prinsiple.index', array_merge(request()->query(), ['entity' => 'ATB', 'page' => 1])) }}" 
            class="px-3 py-1.5 rounded-xl text-xs font-bold transition-all border {{ request('entity') === 'ATB' ? 'bg-rose-600 text-white border-rose-600 shadow-sm' : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100' }}">
             ATB - Anugrah Talenta ({{ $stats['by_entity']['ATB'] ?? 0 }})
         </a>
@@ -147,7 +147,14 @@
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                         <input type="text" name="search" value="{{ request('search') }}" placeholder="Cari Kode, Nama Prinsiple..." 
-                               class="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600 bg-slate-50/50">
+                               class="w-full pl-9 {{ request('search') ? 'pr-8' : 'pr-3' }} py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-purple-600 bg-slate-50/50">
+                        @if(request('search'))
+                            <a href="{{ route('master.prinsiple.index', request()->except('search', 'page')) }}" 
+                               class="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-slate-200 hover:bg-slate-300 text-slate-600 flex items-center justify-center text-[10px] transition-all" 
+                               title="Hapus kata kunci pencarian">
+                                <i class="fa-solid fa-xmark"></i>
+                            </a>
+                        @endif
                     </div>
                 </div>
 
@@ -196,12 +203,46 @@
         </form>
     </div>
 
+    <!-- Smart Search Fallback Alert -->
+    @if(isset($allEntitiesFallback) && $allEntitiesFallback)
+        <div class="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-sm">
+            <div class="flex items-start sm:items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm text-sm">
+                    <i class="fa-solid fa-circle-info"></i>
+                </div>
+                <div>
+                    <div class="font-bold text-xs text-amber-900">
+                        Tidak ada prinsiple dengan kata kunci &ldquo;<span class="text-amber-800 font-extrabold underline">{{ request('search') }}</span>&rdquo; di Entitas {{ $searchedEntity }}.
+                    </div>
+                    <div class="text-[11px] text-amber-700 mt-0.5">
+                        Ditemukan <span class="font-bold">{{ $principles->total() }} data</span> pada entitas lain (<strong>{{ implode(', ', $foundInEntities) }}</strong>). Data dari entitas lain otomatis ditampilkan di bawah.
+                    </div>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 self-end sm:self-center">
+                <a href="{{ route('master.prinsiple.index', array_merge(request()->except('entity', 'page'), ['search' => request('search')])) }}" 
+                   class="px-3 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-globe text-[11px]"></i>
+                    <span>Tampilkan Semua Entitas</span>
+                </a>
+            </div>
+        </div>
+    @endif
+
     <!-- Principles Custom Table Card -->
     <div class="table-card">
-        <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+        <div class="px-6 py-4 border-b border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
                 <h2 class="text-sm font-bold text-slate-900">Daftar Mitra Prinsiple</h2>
-                <p class="text-[11px] text-slate-500">Menampilkan {{ $principles->firstItem() ?? 0 }} - {{ $principles->lastItem() ?? 0 }} dari {{ $principles->total() }} mitra kerja</p>
+                <p class="text-[11px] text-slate-500">
+                    Menampilkan {{ $principles->firstItem() ?? 0 }} - {{ $principles->lastItem() ?? 0 }} dari {{ $principles->total() }} mitra kerja
+                    @if(request('search'))
+                        <span class="text-purple-600 font-semibold">&bull; Kata kunci: "{{ request('search') }}"</span>
+                    @endif
+                    @if(request('entity') && empty($allEntitiesFallback))
+                        <span class="text-slate-600 font-semibold">&bull; Entitas {{ request('entity') }}</span>
+                    @endif
+                </p>
             </div>
         </div>
 
@@ -306,7 +347,21 @@
                                     <i class="fa-solid fa-building-circle-xmark"></i>
                                 </div>
                                 <div class="text-sm font-bold text-slate-700">Tidak ada data prinsiple ditemukan</div>
-                                <div class="text-xs text-slate-400 mt-1">Coba sesuaikan kata kunci pencarian atau reset filter.</div>
+                                <div class="text-xs text-slate-400 mt-1 max-w-md mx-auto">
+                                    @if(request('search'))
+                                        Tidak ditemukan prinsiple yang cocok dengan kata kunci &ldquo;<span class="text-slate-600 font-medium">{{ request('search') }}</span>&rdquo; di seluruh entitas.
+                                    @else
+                                        Coba sesuaikan kata kunci pencarian atau reset filter untuk menampilkan data.
+                                    @endif
+                                </div>
+                                @if(request()->hasAny(['search', 'entity', 'induk', 'status']))
+                                    <div class="mt-4">
+                                        <a href="{{ route('master.prinsiple.index') }}" class="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-100 transition-all shadow-sm">
+                                            <i class="fa-solid fa-rotate-left text-[11px]"></i>
+                                            <span>Reset Semua Filter</span>
+                                        </a>
+                                    </div>
+                                @endif
                             </td>
                         </tr>
                     @endforelse
