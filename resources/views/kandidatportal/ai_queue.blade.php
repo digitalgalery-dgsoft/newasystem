@@ -387,7 +387,7 @@
 
                     <!-- Scrollable Container untuk List Breakdown -->
                     <div class="max-h-64 overflow-y-auto pr-1 space-y-2" style="scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
-                        <template x-for="(item, idx) in (showAllAreas ? (areaStats?.all_areas || []) : (areaStats?.chart_labels ? areaStats.chart_labels.map((l, i) => ({ area: l, count: areaStats.chart_counts[i], percentage: areaStats.chart_percentages[i] })) : []))" :key="'area_' + (item.area || idx) + '_' + item.count + '_' + item.percentage">
+                        <template x-for="(item, idx) in (showAllAreas ? (areaStats?.all_areas || []) : (areaStats?.chart_labels ? areaStats.chart_labels.map((l, i) => ({ area: l, count: areaStats.chart_counts[i], percentage: areaStats.chart_percentages[i] })) : []))" :key="'area_' + (item.area || ('idx_' + idx))">
                             <div class="p-2 rounded-xl border border-slate-100 hover:border-indigo-200 bg-slate-50/50 hover:bg-white transition-all flex flex-col gap-1 shadow-2xs group">
                                 <div class="flex items-center justify-between gap-2 text-xs">
                                     <div class="flex items-center gap-2 min-w-0">
@@ -536,7 +536,7 @@
 
                     <!-- Scrollable Container untuk List Breakdown -->
                     <div class="max-h-64 overflow-y-auto pr-1 space-y-2" style="scrollbar-width: thin; scrollbar-color: #cbd5e1 #f8fafc;">
-                        <template x-for="(item, idx) in (showAllUsers ? (userStats?.all_users || []) : (userStats?.chart_labels ? userStats.chart_labels.map((l, i) => ({ user: l, count: userStats.chart_counts[i], percentage: userStats.chart_percentages[i] })) : []))" :key="'user_' + (item.user || idx) + '_' + item.count + '_' + item.percentage">
+                        <template x-for="(item, idx) in (showAllUsers ? (userStats?.all_users || []) : (userStats?.chart_labels ? userStats.chart_labels.map((l, i) => ({ user: l, count: userStats.chart_counts[i], percentage: userStats.chart_percentages[i] })) : []))" :key="'user_' + (item.user || ('idx_' + idx))">
                             <div class="p-2 rounded-xl border border-slate-100 hover:border-sky-200 bg-slate-50/50 hover:bg-white transition-all flex flex-col gap-1 shadow-2xs group">
                                 <div class="flex items-center justify-between gap-2 text-xs">
                                     <div class="flex items-center gap-2 min-w-0">
@@ -1136,9 +1136,7 @@
                                         }
                                     }
                                 },
-                                animation: {
-                                    duration: 600,
-                                }
+                                animation: false
                             }
                         });
                     };
@@ -1157,28 +1155,13 @@
                         return;
                     }
 
-                    // Jika jumlah slice berubah atau label berubah, re-init chart untuk mencegah error rendering Chart.js
-                    if (!this.areaChartInstance.data || !this.areaChartInstance.data.labels || this.areaChartInstance.data.labels.length !== labels.length) {
-                        this.areaChartInstance.destroy();
-                        this.areaChartInstance = null;
-                        this.initAreaChart();
-                        return;
-                    }
-
                     this.areaChartInstance.data.labels = labels;
                     this.areaChartInstance.data.datasets[0].data = data;
                     this.areaChartInstance.data.datasets[0].backgroundColor = bgColors;
                     this.areaChartInstance.options.cutout = this.areaChartType === 'doughnut' ? '68%' : 0;
                     this.areaChartInstance.update('none');
                 } catch (e) {
-                    console.warn("Gagal memperbarui Area Chart, mencoba init ulang:", e);
-                    try {
-                        if (this.areaChartInstance) {
-                            this.areaChartInstance.destroy();
-                            this.areaChartInstance = null;
-                        }
-                        this.initAreaChart();
-                    } catch (e2) {}
+                    console.warn("Gagal memperbarui Area Chart:", e);
                 }
             },
 
@@ -1253,9 +1236,7 @@
                                         }
                                     }
                                 },
-                                animation: {
-                                    duration: 600,
-                                }
+                                animation: false
                             }
                         });
                     };
@@ -1274,28 +1255,13 @@
                         return;
                     }
 
-                    // Jika jumlah slice berubah atau label berubah, re-init chart untuk mencegah error rendering Chart.js
-                    if (!this.userChartInstance.data || !this.userChartInstance.data.labels || this.userChartInstance.data.labels.length !== labels.length) {
-                        this.userChartInstance.destroy();
-                        this.userChartInstance = null;
-                        this.initUserChart();
-                        return;
-                    }
-
                     this.userChartInstance.data.labels = labels;
                     this.userChartInstance.data.datasets[0].data = data;
                     this.userChartInstance.data.datasets[0].backgroundColor = bgColors;
                     this.userChartInstance.options.cutout = this.userChartType === 'doughnut' ? '68%' : 0;
                     this.userChartInstance.update('none');
                 } catch (e) {
-                    console.warn("Gagal memperbarui User Chart, mencoba init ulang:", e);
-                    try {
-                        if (this.userChartInstance) {
-                            this.userChartInstance.destroy();
-                            this.userChartInstance = null;
-                        }
-                        this.initUserChart();
-                    } catch (e2) {}
+                    console.warn("Gagal memperbarui User Chart:", e);
                 }
             },
 

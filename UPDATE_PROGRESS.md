@@ -2258,11 +2258,12 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   1. **Pembaruan State Data Mendahului Visualisasi**:
      - Pada `fetchData()`, nilai reaktif `this.areaStats` dan `this.userStats` langsung diperbarui seketika respons JSON diterima, sebelum memanggil update chart.
      - Setiap pembaruan visual chart (`updateAreaChart()` dan `updateUserChart()`) diisolasi dengan penanganan `try...catch` mandiri sehingga error visual pada satu chart tidak akan pernah menghentikan data atau chart lainnya.
-  2. **Safeguard Render Chart.js**:
-     - Ditambahkan deteksi perubahan panjang label/slice (`labels.length !== instance.data.labels.length`). Jika jumlah slice berubah, instance chart lama dihancurkan (`destroy()`) dan diinisialisasi ulang secara bersih untuk menghindari arc collision.
-     - Pembaruan berkala menggunakan mode `.update('none')` agar rendering super ringan, instan, dan responsif.
-  3. **Kunci Reaktif Dinamis pada Alpine.js (`:key`)**:
-     - Mengubah `:key` pada `x-for` menjadi berbasis nilai: `:key="'user_' + (item.user || idx) + '_' + item.count + '_' + item.percentage"`. Setiap ada pergeseran jumlah kandidat atau persentase, baris langsung di-morphing dan di-update secara reaktif.
+  2. **Safeguard & Anti-Flicker Render Chart.js**:
+     - Menghilangkan proses penghancuran instance canvas (`destroy()`) saat polling berkala dan menonaktifkan sweep animation (`animation: false`).
+     - Pembaruan berkala langsung memutakhirkan dataset objek in-place via mode `chart.update('none')`, sehingga grafik donat tidak berkedip, tidak memutar/sweep ulang dari nol, dan hanya proporsi busur irisannya yang bergeser lembut.
+  3. **Kunci Reaktif Stabil pada Alpine.js (`:key`)**:
+     - Mengubah `:key` pada `x-for` menjadi berbasis identitas nama: `:key="'user_' + (item.user || ('idx_' + idx))"` dan `:key="'area_' + (item.area || ('idx_' + idx))"`.
+     - Node DOM kartu baris dipertahankan secara utuh tanpa dihancurkan/dibuat ulang saat jumlah antrean berkurang, sehingga **hanya angkanya saja yang berganti** secara bersih dan progress bar menyusut secara halus via transisi CSS.
   4. **Cache-Busting & Header Anti-Cache**:
      - Menambahkan parameter query `_t=${Date.now()}` dan header `Cache-Control: no-cache` pada request `fetch()`.
      - Menambahkan header HTTP `Cache-Control: no-store, no-cache, must-revalidate, max-age=0` dan `Pragma: no-cache` pada controller `KandidatPortalController::aiQueueData()`.
