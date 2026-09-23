@@ -6,6 +6,7 @@ use App\Models\ApprovalWorkflow;
 use App\Models\ApprovalWorkflowStep;
 use App\Models\ApprovalWorkflowStepUser;
 use App\Models\Employee;
+use App\Models\Principle;
 use App\Models\User;
 use App\Models\TbArea;
 use App\Services\ActivityLogger;
@@ -50,6 +51,9 @@ class ApprovalWorkflowController extends Controller
             'MALANG', 'BOGOR', 'BEKASI', 'TANGERANG', 'DEPOK'
         ];
 
+        // Daftar Master Prinsiple untuk opsi pemilihan prinsiple spesifik
+        $principles = Principle::orderBy('name', 'asc')->pluck('name')->unique()->values();
+
         // Daftar Akun Pengguna Aktif untuk Pilihan Approver
         $availableUsers = User::where('is_active', true)
             ->orderBy('name', 'asc')
@@ -59,8 +63,68 @@ class ApprovalWorkflowController extends Controller
             'workflow',
             'entities',
             'areas',
+            'principles',
             'availableUsers'
         ));
+    }
+
+    /**
+     * Helper untuk mengompilasi aturan dinamis (Area + Prinsiple + Users) dari input request
+     */
+    private function compileRulesFromRequest(Request $request): ?array
+    {
+        if ($request->approver_type !== 'user') {
+            return null;
+        }
+
+        $rawRules = $request->input('rules');
+        if (is_string($rawRules)) {
+            $rawRules = json_decode($rawRules, true);
+        }
+        if (empty($rawRules) && $request->filled('rules_json')) {
+            $rawRules = json_decode($request->input('rules_json'), true);
+        }
+
+        // Fallback jika hanya dikirim via parameter legacy user_ids[]
+        if (empty($rawRules) && !empty($request->user_ids)) {
+            $userIds = is_array($request->user_ids) ? $request->user_ids : explode(',', (string)$request->user_ids);
+            $rawRules = [
+                [
+                    'id' => 'rule_' . uniqid(),
+                    'area' => $request->area_scope ?: 'ALL',
+                    'prinsiple' => $request->entity_scope ?: 'ALL',
+                    'user_ids' => array_values(array_filter(array_map('intval', $userIds))),
+                ]
+            ];
+        }
+
+        if (empty($rawRules) || !is_array($rawRules)) {
+            return null;
+        }
+
+        $compiled = [];
+        foreach ($rawRules as $r) {
+            $uIds = !empty($r['user_ids']) ? (is_array($r['user_ids']) ? $r['user_ids'] : explode(',', (string)$r['user_ids'])) : [];
+            $uIds = array_values(array_filter(array_map('intval', $uIds)));
+
+            $users = User::whereIn('id', $uIds)->get(['id', 'name', 'email', 'job_title', 'role']);
+
+            $compiled[] = [
+                'id' => $r['id'] ?? ('rule_' . uniqid()),
+                'area' => $r['area'] ?? 'ALL',
+                'prinsiple' => $r['prinsiple'] ?? 'ALL',
+                'user_ids' => $uIds,
+                'users' => $users->map(fn($u) => [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'email' => $u->email,
+                    'job_title' => $u->job_title,
+                    'role' => $u->role,
+                ])->toArray(),
+            ];
+        }
+
+        return !empty($compiled) ? $compiled : null;
     }
 
     /**
@@ -73,38 +137,43 @@ class ApprovalWorkflowController extends Controller
             'step_name' => 'required|string|max:255',
             'approver_type' => 'required|in:head,user',
             'step_order' => 'required|integer|min:1',
-            'area_scope' => 'required|string',
-            'entity_scope' => 'required|string',
+            'area_scope' => 'nullable|string',
+            'entity_scope' => 'nullable|string',
             'description' => 'nullable|string|max:500',
         ]);
 
         DB::beginTransaction();
         try {
             $skipIfDireksi = $request->boolean('skip_if_direksi', $request->approver_type === 'head');
+            $compiledRules = $this->compileRulesFromRequest($request);
 
             $step = ApprovalWorkflowStep::create([
                 'workflow_id' => $request->workflow_id,
                 'step_order' => (int)$request->step_order,
                 'step_name' => trim($request->step_name),
                 'approver_type' => $request->approver_type,
-                'area_scope' => $request->area_scope,
-                'entity_scope' => $request->entity_scope,
+                'area_scope' => $request->area_scope ?: 'ALL',
+                'entity_scope' => $request->entity_scope ?: 'ALL',
                 'skip_if_direksi' => $skipIfDireksi,
+                'approval_rules' => $compiledRules,
                 'description' => $request->description,
             ]);
 
-            // Jika tipe user: hubungkan user-user yang dipilih (Multiple Users)
-            if ($request->approver_type === 'user' && !empty($request->user_ids)) {
-                $userIds = is_array($request->user_ids) ? $request->user_ids : explode(',', (string)$request->user_ids);
-                $users = User::whereIn('id', array_filter($userIds))->get();
-
-                foreach ($users as $u) {
-                    ApprovalWorkflowStepUser::create([
-                        'step_id' => $step->id,
-                        'user_id' => $u->id,
-                        'user_name' => $u->name,
-                        'user_email' => $u->email,
-                    ]);
+            // Sinkronisasi ke tabel pivot approval_workflow_step_users
+            if ($request->approver_type === 'user' && !empty($compiledRules)) {
+                foreach ($compiledRules as $cRule) {
+                    $ruleArea = $cRule['area'] ?? 'ALL';
+                    $rulePrin = $cRule['prinsiple'] ?? 'ALL';
+                    foreach ($cRule['users'] as $u) {
+                        ApprovalWorkflowStepUser::create([
+                            'step_id' => $step->id,
+                            'user_id' => $u['id'],
+                            'area' => $ruleArea,
+                            'prinsiple' => $rulePrin,
+                            'user_name' => $u['name'],
+                            'user_email' => $u['email'] ?? null,
+                        ]);
+                    }
                 }
             }
 
@@ -137,8 +206,8 @@ class ApprovalWorkflowController extends Controller
             'step_name' => 'required|string|max:255',
             'approver_type' => 'required|in:head,user',
             'step_order' => 'required|integer|min:1',
-            'area_scope' => 'required|string',
-            'entity_scope' => 'required|string',
+            'area_scope' => 'nullable|string',
+            'entity_scope' => 'nullable|string',
             'description' => 'nullable|string|max:500',
         ]);
 
@@ -148,36 +217,37 @@ class ApprovalWorkflowController extends Controller
                 ? $request->boolean('skip_if_direksi') 
                 : ($request->approver_type === 'head');
 
+            $compiledRules = $this->compileRulesFromRequest($request);
+
             $step->update([
                 'step_order' => (int)$request->step_order,
                 'step_name' => trim($request->step_name),
                 'approver_type' => $request->approver_type,
-                'area_scope' => $request->area_scope,
-                'entity_scope' => $request->entity_scope,
+                'area_scope' => $request->area_scope ?: 'ALL',
+                'entity_scope' => $request->entity_scope ?: 'ALL',
                 'skip_if_direksi' => $skipIfDireksi,
+                'approval_rules' => $compiledRules,
                 'description' => $request->description,
             ]);
 
             // Sinkronisasi Approver Users
-            if ($request->approver_type === 'user') {
-                $step->stepUsers()->delete();
+            $step->stepUsers()->delete();
 
-                if (!empty($request->user_ids)) {
-                    $userIds = is_array($request->user_ids) ? $request->user_ids : explode(',', (string)$request->user_ids);
-                    $users = User::whereIn('id', array_filter($userIds))->get();
-
-                    foreach ($users as $u) {
+            if ($request->approver_type === 'user' && !empty($compiledRules)) {
+                foreach ($compiledRules as $cRule) {
+                    $ruleArea = $cRule['area'] ?? 'ALL';
+                    $rulePrin = $cRule['prinsiple'] ?? 'ALL';
+                    foreach ($cRule['users'] as $u) {
                         ApprovalWorkflowStepUser::create([
                             'step_id' => $step->id,
-                            'user_id' => $u->id,
-                            'user_name' => $u->name,
-                            'user_email' => $u->email,
+                            'user_id' => $u['id'],
+                            'area' => $ruleArea,
+                            'prinsiple' => $rulePrin,
+                            'user_name' => $u['name'],
+                            'user_email' => $u['email'] ?? null,
                         ]);
                     }
                 }
-            } else {
-                // Jika tipe diubah ke head, kosongkan daftar akun spesifik
-                $step->stepUsers()->delete();
             }
 
             DB::commit();
@@ -209,11 +279,21 @@ class ApprovalWorkflowController extends Controller
         DB::beginTransaction();
         try {
             $step->delete();
+
+            // Re-order urutan sisa step agar berurutan kembali
+            $remainingSteps = ApprovalWorkflowStep::where('workflow_id', $step->workflow_id)
+                ->orderBy('step_order', 'asc')
+                ->get();
+
+            foreach ($remainingSteps as $index => $s) {
+                $s->update(['step_order' => $index + 1]);
+            }
+
             DB::commit();
 
             ActivityLogger::log('DELETE', 'Alur Approval', "Menghapus step approval [{$name}]", $step);
 
-            return back()->with('success', "Step approval [{$name}] berhasil dihapus!");
+            return back()->with('success', "Step approval [{$name}] berhasil dihapus.");
         } catch (\Throwable $e) {
             DB::rollBack();
             return back()->with('error', 'Gagal menghapus step: ' . $e->getMessage());
@@ -221,7 +301,7 @@ class ApprovalWorkflowController extends Controller
     }
 
     /**
-     * Ubah Urutan Step (Reorder Up / Down)
+     * Mengatur ulang urutan step approval (AJAX drag/order)
      */
     public function reorderSteps(Request $request)
     {
@@ -232,9 +312,12 @@ class ApprovalWorkflowController extends Controller
 
         DB::beginTransaction();
         try {
-            foreach ($request->step_ids as $index => $id) {
-                ApprovalWorkflowStep::where('id', $id)->update(['step_order' => $index + 1]);
+            foreach ($request->step_ids as $order => $stepId) {
+                ApprovalWorkflowStep::where('id', $stepId)->update([
+                    'step_order' => $order + 1,
+                ]);
             }
+
             DB::commit();
 
             return response()->json(['status' => 'success', 'message' => 'Urutan step approval berhasil diperbarui!']);
@@ -245,24 +328,22 @@ class ApprovalWorkflowController extends Controller
     }
 
     /**
-     * API Pencarian User / Karyawan untuk Select Approver
+     * Endpoint API pencarian pengguna untuk approver (autocomplete)
      */
     public function searchApprovers(Request $request)
     {
-        $q = trim($request->query('q', ''));
-        if (empty($q)) {
-            $users = User::where('is_active', true)->limit(20)->get(['id', 'name', 'email', 'job_title', 'area']);
-        } else {
-            $users = User::where('is_active', true)
-                ->where(function ($sub) use ($q) {
-                    $sub->where('name', 'like', "%{$q}%")
-                        ->orWhere('email', 'like', "%{$q}%")
-                        ->orWhere('job_title', 'like', "%{$q}%")
-                        ->orWhere('area', 'like', "%{$q}%");
-                })
-                ->limit(30)
-                ->get(['id', 'name', 'email', 'job_title', 'area']);
-        }
+        $query = trim($request->input('q', ''));
+        $users = User::where('is_active', true)
+            ->when(!empty($query), function ($q) use ($query) {
+                $q->where(function ($sub) use ($query) {
+                    $sub->where('name', 'like', "%{$query}%")
+                        ->orWhere('email', 'like', "%{$query}%")
+                        ->orWhere('job_title', 'like', "%{$query}%");
+                });
+            })
+            ->orderBy('name', 'asc')
+            ->limit(20)
+            ->get(['id', 'name', 'email', 'job_title', 'role', 'area']);
 
         return response()->json($users);
     }

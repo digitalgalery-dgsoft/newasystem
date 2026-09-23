@@ -942,12 +942,13 @@
                             </div>
 
                             <!-- Keterangan Approver Target -->
-                            <div class="text-[10px] text-slate-500 mt-1 truncate">
-                                @if($st->approver_type === 'head')
-                                    Pimpinan: {{ $candidate->nama_approver ?: 'Head Rekruter' }}
-                                @else
-                                    @php $approverNames = $st->stepUsers->pluck('user_name')->take(2)->implode(', '); @endphp
-                                    Approver: {{ $approverNames ?: 'Akun HRD' }}{{ $st->stepUsers->count() > 2 ? ' +' . ($st->stepUsers->count() - 2) : '' }}
+                            @php
+                                $stepInfo = \App\Services\ApprovalWorkflowService::getStepApproverDisplayInfo($candidate, $st);
+                            @endphp
+                            <div class="text-[10px] text-slate-600 mt-1 truncate" title="{{ $stepInfo['label'] }} ({{ $stepInfo['rule_condition'] }})">
+                                <span class="font-bold text-slate-700">Approver:</span> {{ $stepInfo['label'] }}
+                                @if(!empty($stepInfo['rule_condition']) && $stepInfo['rule_condition'] !== 'Atasan Langsung Rekruter')
+                                    <span class="text-[9px] text-slate-400 font-normal">({{ $stepInfo['rule_condition'] }})</span>
                                 @endif
                             </div>
                         </div>
@@ -1007,10 +1008,13 @@
                                 <span>Menunggu Persetujuan: {{ $currentStep ? $currentStep->step_name : 'Tahap Approval' }}</span>
                             </div>
                             <p class="text-[11.5px] leading-relaxed text-amber-800">
+                                @php
+                                    $currStepInfo = $currentStep ? \App\Services\ApprovalWorkflowService::getStepApproverDisplayInfo($candidate, $currentStep) : null;
+                                @endphp
                                 @if($currentStep && $currentStep->approver_type === 'head')
-                                    Kandidat ini saat ini sedang menunggu evaluasi dan persetujuan dari <strong>Head / Pimpinan</strong> yang ditugaskan ({{ $candidate->nama_approver ?: 'Pimpinan Rekruter' }}). Form akan terbuka otomatis setelah disetujui atau jika Anda login dengan akun approver yang berhak.
+                                    Kandidat ini saat ini sedang menunggu evaluasi dan persetujuan dari <strong>Head / Pimpinan</strong> yang ditugaskan ({{ $currStepInfo['label'] ?? ($candidate->nama_approver ?: 'Pimpinan Rekruter') }}). Form akan terbuka otomatis setelah disetujui atau jika Anda login dengan akun approver yang berhak.
                                 @else
-                                    Kandidat ini saat ini sedang menunggu evaluasi dan persetujuan dari akun approver yang ditugaskan pada tahap ini.
+                                    Kandidat ini saat ini sedang menunggu evaluasi dan persetujuan dari <strong>{{ $currStepInfo['label'] ?? 'Approver Inhouse' }}</strong>@if(!empty($currStepInfo['rule_condition'])) ({{ $currStepInfo['rule_condition'] }})@endif. Form akan terbuka otomatis jika Anda login dengan akun approver yang ditugaskan.
                                 @endif
                             </p>
                         </div>

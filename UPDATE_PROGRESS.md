@@ -2318,6 +2318,36 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 54. 🏢 Penambahan Konfigurasi Dinamis Area, Prinsiple & Multi-User pada Form Step Approval Kandidat Inhouse (23 September 2026)
+- **Latar Belakang & Kebutuhan Pengguna**:
+  - Pada form konfigurasi step sebelumnya, kondisi Area (*Area Scope*) dan Entitas (*Entity Scope*) hanya berupa single-dropdown statis untuk satu step keseluruhan.
+  - Pengguna membutuhkan fleksibilitas tingkat lanjut di mana dalam satu tahapan step (misal: *Review HRD*), pengguna dapat menambahkan pemetaan kondisi **Area**, **Prinsiple**, dan **User** secara dinamis (+ Tambah Baris Aturan):
+    - Contoh:
+      - Jakarta + AMK &rarr; PIC Approver: **Yeneniya (HRD AMK)** (bisa multiple user).
+      - Jakarta + AKP &rarr; PIC Approver: **Uriyanto (HRD AKP)** (bisa multiple user).
+      - Luar Jakarta + Semua Entitas &rarr; PIC Approver: **HRD Pusat**.
+    - Pilihan user pada tiap kombinasi kondisi tetap mendukung pemilihan **lebih dari satu user (multiple user)**.
+- **Skema Basis Data & Migrasi (`2026_09_23_210000_add_dynamic_rules_to_approval_workflow_steps_tables.php`)**:
+  - Menambahkan kolom `approval_rules` (`JSON`, nullable) pada tabel `approval_workflow_steps` untuk menyimpan data pemetaan array aturan dinamis secara terstruktur.
+  - Menambahkan kolom `area` (`varchar(100)`, default `'ALL'`) dan `prinsiple` (`varchar(100)`, default `'ALL'`) pada tabel `approval_workflow_step_users` agar integritas data relasional dan pencarian foreign key tetap optimal.
+- **Penyempurnaan Model & Workflow Engine (`ApprovalWorkflowStep.php` & `ApprovalWorkflowService.php`)**:
+  - `getMatchingRuleForCandidate($candidate)`: Algoritma cerdas pencocokan spesifik berbasis bobot (*scoring specificity*). Aturan dengan kondisi spesifik (misal Jakarta + AMK) diprioritaskan di atas aturan umum (Luar Jakarta / Semua Area / Semua Prinsiple).
+  - `getMatchingApproversForCandidate($candidate)`: Mengembalikan daftar PIC approver yang berwenang spesifik untuk kandidat tersebut.
+  - `canUserApprove($candidate, $user, $currentStep)`: Memvalidasi kecocokan ID pengguna terhadap daftar user yang ditugaskan pada aturan yang cocok untuk kandidat (kandidat Jakarta AMK hanya dapat di-approve oleh Yeneniya, bukan oleh Uriyanto).
+  - `getStepApproverDisplayInfo($candidate, $step)`: Menghasilkan informasi detail nama PIC dan kondisi aturan yang cocok untuk dirender pada stepper dan pesan form terkunci.
+- **Penyempurnaan Antarmuka Form Master (`/master/approval-workflow`)**:
+  - **Dynamic Rule Repeater (Alpine.js)**:
+    - Opsi radio tipe approver: **Head / Pimpinan** vs **Akun User Tertentu**.
+    - Jika Akun User dipilih: Menyajikan antarmuka dinamis dengan tombol `+ Tambah Aturan Area & Prinsiple Baru`.
+    - Tiap baris aturan dilengkapi: Pilihan Area (Semua Area, Jakarta, Luar Jakarta, dan master area), Pilihan Prinsiple/Entitas (Semua, 5 entitas inhouse, dan master prinsiple), Komponen Multi-Select User dengan tag/chips terpilih yang dapat dihapus `(x)`, dropdown penambahan user cepat, serta tombol hapus baris.
+  - **Visual Pipeline Step Cards**:
+    - Step cards menampilkan badge pill ringkas untuk tiap aturan yang terpasang (`📍 Area • 🏢 Prinsiple → 👤 Users`).
+- **Penyempurnaan Stepper Detail Kandidat (`/interviewinhouse/{id}`)**:
+  - Stepper menampilkan nama PIC approver yang relevan secara otomatis sesuai formasi kandidat (misal untuk kandidat Jakarta AMK langsung menampilkan *"Approver: Yeneniya (HRD AMK)"*).
+  - Kotak informasi pada form yang terkunci secara transparan menampilkan nama PIC penanggung jawab dan kondisinya.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

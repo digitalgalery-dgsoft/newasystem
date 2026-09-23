@@ -239,9 +239,35 @@ class ApprovalWorkflowService
 
         // 3. Step bertipe 'user': approver adalah user yang terdaftar pada step tersebut (Multiple Users)
         if ($step->approver_type === 'user') {
-            // HRD role / Head HR memiliki hak akses HRD
+            // Jika step memiliki dynamic rules (Area + Prinsiple + Users)
+            if (!empty($step->approval_rules) && is_array($step->approval_rules)) {
+                $matchingRule = $step->getMatchingRuleForCandidate($candidate);
+                if ($matchingRule) {
+                    $ruleUserIds = array_map('intval', $matchingRule['user_ids'] ?? []);
+                    if (in_array((int)$user->id, $ruleUserIds, true)) {
+                        return true;
+                    }
+
+                    // Cek jika ada objek users di dalam rule
+                    if (!empty($matchingRule['users']) && is_array($matchingRule['users'])) {
+                        foreach ($matchingRule['users'] as $uItem) {
+                            $uid = is_array($uItem) ? ($uItem['id'] ?? null) : ($uItem->id ?? null);
+                            if ($uid && (int)$uid === (int)$user->id) {
+                                return true;
+                            }
+                            $uEmail = is_array($uItem) ? ($uItem['email'] ?? null) : ($uItem->email ?? null);
+                            if ($uEmail && strtolower(trim($uEmail)) === strtolower(trim($user->email ?? ''))) {
+                                return true;
+                            }
+                        }
+                    }
+
+                    return false;
+                }
+            }
+
+            // Fallback legacy: jika tidak ada dynamic rules
             if ($user->isHrd()) {
-                // Jika step ini spesifik untuk HRD Jakarta dan user HRD berada di Jakarta atau HRD Pusat/Admin
                 return true;
             }
 
@@ -266,6 +292,63 @@ class ApprovalWorkflowService
         }
 
         return false;
+    }
+
+    /**
+     * Dapatkan detail approver yang relevan untuk kandidat pada step tertentu
+     * (Menyajikan nama PIC spesifik berdasarkan kombinasi Area & Prinsiple)
+     */
+    public static function getStepApproverDisplayInfo(Candidate $candidate, ApprovalWorkflowStep $step): array
+    {
+        if ($step->approver_type === 'head') {
+            $pimpinan = $candidate->recruiter?->employee?->pimpinan 
+                ?: ($candidate->nama_approver ?: 'Head / Pimpinan Rekruter');
+            return [
+                'type' => 'head',
+                'title' => 'Head / Pimpinan',
+                'label' => $pimpinan,
+                'names' => [$pimpinan],
+                'rule_condition' => 'Atasan Langsung Rekruter',
+            ];
+        }
+
+        // Tipe 'user' dengan dynamic rules (approval_rules)
+        if (!empty($step->approval_rules) && is_array($step->approval_rules)) {
+            $matchedRule = $step->getMatchingRuleForCandidate($candidate);
+            if ($matchedRule) {
+                $names = [];
+                if (!empty($matchedRule['users']) && is_array($matchedRule['users'])) {
+                    foreach ($matchedRule['users'] as $u) {
+                        $names[] = is_array($u) ? ($u['name'] ?? 'User') : ($u->name ?? 'User');
+                    }
+                } elseif (!empty($matchedRule['user_ids']) && is_array($matchedRule['user_ids'])) {
+                    $names = User::whereIn('id', $matchedRule['user_ids'])->pluck('name')->toArray();
+                }
+
+                $ruleArea = $matchedRule['area'] ?? 'ALL';
+                $rulePrin = $matchedRule['prinsiple'] ?? 'ALL';
+                $condText = ($ruleArea === 'ALL' ? 'Semua Area' : $ruleArea) . ' • ' . ($rulePrin === 'ALL' ? 'Semua Entitas' : $rulePrin);
+
+                return [
+                    'type' => 'user',
+                    'title' => $step->step_name,
+                    'label' => !empty($names) ? implode(', ', $names) : 'Akun Approver',
+                    'names' => $names,
+                    'rule_condition' => $condText,
+                    'matched_rule' => $matchedRule,
+                ];
+            }
+        }
+
+        // Fallback jika tidak ada aturan dinamis yang cocok atau legacy
+        $names = $step->stepUsers->pluck('user_name')->filter()->values()->toArray();
+        return [
+            'type' => 'user',
+            'title' => $step->step_name,
+            'label' => !empty($names) ? implode(', ', $names) : 'Approver Inhouse',
+            'names' => $names,
+            'rule_condition' => ($step->area_scope ?: 'Semua Area') . ' • ' . ($step->entity_scope ?: 'Semua Entitas'),
+        ];
     }
 
     /**
