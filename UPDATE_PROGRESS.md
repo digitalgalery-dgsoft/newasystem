@@ -2216,6 +2216,30 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 51. 🔒 Proteksi Autentikasi Modul Input Job Requirement & Kontrol Kepemilikan Akun Rekruter (User AS) (23 September 2026)
+- **Latar Belakang & Investigasi Masalah**:
+  - Ditemukan beberapa lowongan pekerjaan aktif (seperti *SPG EVENT (SABTU MINGGU)* Surabaya, *KOORDINATOR PABRIK* & *SPG 01* Semarang, serta *Team Leader Motoris Forisa Dessert 1* Malang) tercatat dibuat oleh akun `admin@asystem.co.id` padahal seharusnya dimiliki oleh rekruter cabang terkait.
+  - Investigasi log IP mendalam mengungkap bahwa:
+    1. Rute `/inputjob` di [routes/web.php](file:///d:/ASystem/newasystem/routes/web.php) sebelumnya tidak terbungkus middleware `auth`, sehingga pengguna dengan sesi yang sudah habis (*expired*) atau belum login tetap dapat mengakses formulir.
+    2. Pada [JobController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/JobController.php), terdapat fungsi fallback `getCurrentUser()` yang secara otomatis mengembalikan akun `admin@asystem.co.id` ketika `auth()->user()` bernilai `null`. Hal ini menyebabkan request guest/unauthenticated diam-diam menyamar sebagai Administrator ESA dan menyimpan lowongan dengan `created_by = admin@asystem.co.id`.
+    3. Form input lowongan belum menyediakan pilihan akun pembuat bagi Administrator, sehingga Admin tidak dapat menentukan atau mengalihkan akun rekruter pemilik lowongan.
+- **Implementasi Solusi & Perbaikan Sistem**:
+  1. **Proteksi Middleware `auth`**:
+     - Membungkus seluruh rute `/inputjob` (`index`, `store`, `generate_ai`, `generate_image_prompt`, `destroy`, `toggle`) ke dalam `Route::middleware(['auth'])` di [routes/web.php](file:///d:/ASystem/newasystem/routes/web.php).
+     - Pengguna yang belum login kini secara otomatis dialihkan ke halaman login (`/login`) dengan pesan peringatan.
+  2. **Eliminasi Fallback Admin**:
+     - Menghapus fallback diam-diam ke user admin pada [JobController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/JobController.php) (`getCurrentUser()`), menjamin hanya akun terautentikasi resmi yang dapat membuat dan mengelola lowongan.
+  3. **Dropdown Pilihan Pembuat Lowongan untuk Administrator**:
+     - Menambahkan dropdown interaktif **"Pembuat Job / Akun Rekruter (User AS)"** pada form [job/input.blade.php](file:///d:/ASystem/newasystem/resources/views/job/input.blade.php) khusus untuk pengguna dengan hak akses Administrator.
+     - Administrator dapat menentukan akun rekruter penanggung jawab lowongan saat membuat baru maupun mengalihkan kepemilikan lowongan saat mode edit (`updateData['created_by']`).
+  4. **Pembaruan Kepemilikan 4 Lowongan Eksisting di Database Server**:
+     - Lowongan **SPG EVENT (SABTU MINGGU)** (ID 623 - Surabaya) $\rightarrow$ dialihkan ke `reyna.arina@gmail.com` (Reyna Sastri Dewi Asrini).
+     - Lowongan **KOORDINATOR PABRIK** (ID 574 - Semarang) $\rightarrow$ dialihkan ke `setiawanbudiwibisono91@gmail.com` (Setiawan Budi Wibisono).
+     - Lowongan **SPG 01** (ID 572 - Semarang) $\rightarrow$ dialihkan ke `viandhikatytho@gmail.com` (Tytho Viandhika Pratama).
+     - Lowongan **Team Leader Motoris Forisa Dessert 1** (ID 562 - Malang) $\rightarrow$ dialihkan ke `novandsabtian16@gmail.com` (Novand Sabtian).
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

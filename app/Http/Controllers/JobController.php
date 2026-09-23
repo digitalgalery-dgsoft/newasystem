@@ -19,7 +19,7 @@ class JobController extends Controller
 {
     private function getCurrentUser()
     {
-        return auth()->user() ?? User::where('role', 'admin')->first() ?? User::first();
+        return auth()->user();
     }
 
     /**
@@ -27,7 +27,10 @@ class JobController extends Controller
      */
     public function index(Request $request)
     {
-        $user = auth()->user() ?? $this->getCurrentUser();
+        $user = auth()->user();
+        if (!$user) {
+            return redirect()->route('login')->with('warning', 'Silakan login terlebih dahulu untuk mengakses menu Input Job.');
+        }
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
         $today = Carbon::today()->format('Y-m-d');
 
@@ -160,6 +163,7 @@ class JobController extends Controller
 
         // Creator list for admin filter dropdown
         $allCreators = collect();
+        $availableRecruiters = collect();
         if ($isAdmin) {
             $allCreators = JobSpec::select('created_by', DB::raw('COUNT(*) as total'))
                 ->whereNotNull('created_by')
@@ -167,6 +171,14 @@ class JobController extends Controller
                 ->groupBy('created_by')
                 ->orderByDesc('total')
                 ->get();
+
+            // Pilihan akun rekruter/user AS untuk form tambah & edit lowongan (Khusus Administrator)
+            $availableRecruiters = User::where('role', '!=', 'karyawan_ratecard')
+                ->where(function($q) {
+                    $q->whereNull('status')->orWhere('status', '!=', 'Resign');
+                })
+                ->orderBy('name', 'asc')
+                ->get(['id', 'name', 'email', 'role', 'area']);
         }
 
         // Preset templates
@@ -223,7 +235,8 @@ class JobController extends Controller
             'filterCreator',
             'userArea',
             'provinces',
-            'provincesWithCities'
+            'provincesWithCities',
+            'availableRecruiters'
         ));
     }
 
@@ -232,7 +245,10 @@ class JobController extends Controller
      */
     public function store(Request $request)
     {
-        $user = auth()->user() ?? $this->getCurrentUser();
+        $user = auth()->user();
+        if (!$user) {
+            return redirect()->route('login')->with('warning', 'Silakan login terlebih dahulu.');
+        }
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
         $userEmail = strtolower(trim($user?->email ?? ''));
         $userName = strtolower(trim($user?->name ?? ''));
@@ -262,6 +278,7 @@ class JobController extends Controller
             'additional_info' => 'nullable|string',
             'tgl_expired' => 'nullable|date',
             'edit_id' => 'nullable|integer',
+            'created_by' => 'nullable|string|max:200',
         ]);
 
         // Ketentuan: Area mengikuti sesuai area user (jika non-admin atau jika job_area kosong)
@@ -297,12 +314,22 @@ class JobController extends Controller
                     return redirect()->route('job.input')->with('error', 'Akses ditolak! Anda hanya dapat mengubah lowongan yang Anda buat sendiri.');
                 }
             }
-            $oldValues = $job->only(array_keys($validated));
-            $job->update($validated);
-            ActivityLogger::crud('UPDATE', 'Job Requirement', "Memperbarui lowongan kerja: {$job->job_title}", $job, $oldValues, $job->only(array_keys($validated)));
+            $updateData = $validated;
+            if ($isAdmin && $request->filled('created_by')) {
+                $updateData['created_by'] = strtolower(trim($request->input('created_by')));
+            } else {
+                unset($updateData['created_by']);
+            }
+            $oldValues = $job->only(array_keys($updateData));
+            $job->update($updateData);
+            ActivityLogger::crud('UPDATE', 'Job Requirement', "Memperbarui lowongan kerja: {$job->job_title}", $job, $oldValues, $job->only(array_keys($updateData)));
             $msg = "Data job '{$job->job_title}' berhasil diperbarui.";
         } else {
-            $validated['created_by'] = $user?->email ?? $user?->name ?? 'admin.pusat@arina.co.id';
+            if ($isAdmin && $request->filled('created_by')) {
+                $validated['created_by'] = strtolower(trim($request->input('created_by')));
+            } else {
+                $validated['created_by'] = $user?->email ?? $user?->name ?? 'admin.pusat@arina.co.id';
+            }
             $validated['status'] = 'active';
             $job = JobSpec::create($validated);
             ActivityLogger::crud('CREATE', 'Job Requirement', "Menambahkan lowongan kerja baru: {$job->job_title} ({$job->job_area})", $job, [], $job->toArray());

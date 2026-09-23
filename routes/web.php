@@ -209,12 +209,14 @@ Route::get('/printall', function (\Illuminate\Http\Request $request) {
 // ==========================================
 // FITUR INPUT JOB REQUIREMENT (v3/inputjob.php)
 // ==========================================
-Route::get('/inputjob', [JobController::class, 'index'])->name('job.input');
-Route::post('/inputjob', [JobController::class, 'store'])->name('job.store');
-Route::post('/inputjob/generate-ai', [JobController::class, 'generateJobAi'])->name('job.generate_ai');
-Route::post('/inputjob/generate-image-prompt', [JobController::class, 'generateImagePrompt'])->name('job.generate_image_prompt');
-Route::delete('/inputjob/{id}', [JobController::class, 'destroy'])->name('job.destroy');
-Route::get('/inputjob/{id}/toggle', [JobController::class, 'toggleStatus'])->name('job.toggle');
+Route::middleware(['auth'])->group(function () {
+    Route::get('/inputjob', [JobController::class, 'index'])->name('job.input');
+    Route::post('/inputjob', [JobController::class, 'store'])->name('job.store');
+    Route::post('/inputjob/generate-ai', [JobController::class, 'generateJobAi'])->name('job.generate_ai');
+    Route::post('/inputjob/generate-image-prompt', [JobController::class, 'generateImagePrompt'])->name('job.generate_image_prompt');
+    Route::delete('/inputjob/{id}', [JobController::class, 'destroy'])->name('job.destroy');
+    Route::get('/inputjob/{id}/toggle', [JobController::class, 'toggleStatus'])->name('job.toggle');
+});
 
 
 // ==============================================================

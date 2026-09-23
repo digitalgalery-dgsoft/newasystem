@@ -211,6 +211,41 @@
                     @csrf
                     <input type="hidden" name="edit_id" value="{{ $editData ? $editData->id : 0 }}">
 
+                    <!-- Akun Pembuat / Rekruter (Khusus Akses Administrator) -->
+                    @if($isAdmin && isset($availableRecruiters) && $availableRecruiters->isNotEmpty())
+                    <div class="bg-blue-50/50 border border-blue-200/70 rounded-xl p-3">
+                        <label for="created_by" class="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                            <span class="flex items-center gap-1.5">
+                                <i class="fa-solid fa-user-pen text-primary"></i>
+                                Pembuat Job / Akun Rekruter (User AS)
+                            </span>
+                            <span class="text-[10px] font-semibold text-blue-700 bg-blue-100/80 px-2 py-0.5 rounded-full">
+                                Kontrol Admin
+                            </span>
+                        </label>
+                        <select id="created_by" 
+                                name="created_by" 
+                                class="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-semibold text-slate-800 bg-white focus:ring-2 focus:ring-primary-500 focus:border-primary-500 outline-none">
+                            @php
+                                $selectedCreator = old('created_by', $editData ? $editData->created_by : ($user?->email ?? ''));
+                            @endphp
+                            @if($editData && $editData->created_by && !$availableRecruiters->contains('email', $editData->created_by))
+                                <option value="{{ $editData->created_by }}" selected>
+                                    {{ $editData->created_by }} (Kustom / Sebelumnya)
+                                </option>
+                            @endif
+                            @foreach($availableRecruiters as $rec)
+                                <option value="{{ $rec->email }}" {{ strcasecmp($selectedCreator, $rec->email) === 0 ? 'selected' : '' }}>
+                                    {{ $rec->name }} ({{ $rec->email }}) {{ $rec->area ? '— Area ' . $rec->area : '' }}
+                                </option>
+                            @endforeach
+                        </select>
+                        <p class="text-[10px] text-slate-500 mt-1">
+                            Pilih akun rekruter yang bertanggung jawab atas lowongan ini.
+                        </p>
+                    </div>
+                    @endif
+
                     <!-- Posisi / Nama Jabatan -->
                     <div>
                         <label for="job_title" class="block text-xs font-bold text-slate-700 mb-1">
