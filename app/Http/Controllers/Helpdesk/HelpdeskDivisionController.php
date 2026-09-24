@@ -40,7 +40,15 @@ class HelpdeskDivisionController extends Controller
             ->orderBy('name', 'asc')
             ->get(['id', 'name', 'email', 'job_title', 'area']);
 
-        return view('helpdesk.divisions.index', compact('divisions', 'inhouseUsers', 'user'));
+        $inhouseAgentsList = $inhouseUsers->map(function ($u) {
+            return [
+                'id' => $u->id,
+                'name' => $u->name,
+                'sub' => trim(($u->job_title ?? '') . ($u->area ? ' • ' . $u->area : ($u->email ? ' • ' . $u->email : ''))),
+            ];
+        });
+
+        return view('helpdesk.divisions.index', compact('divisions', 'inhouseUsers', 'inhouseAgentsList', 'user'));
     }
 
     /**

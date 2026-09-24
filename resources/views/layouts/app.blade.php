@@ -1243,6 +1243,14 @@
                                     <i class="fa-solid fa-bolt text-[11px] w-4 text-center"></i>
                                     <span>Balasan Cepat</span>
                                 </a>
+
+                                <!-- Master Template Laporan -->
+                                <a href="{{ route('helpdesk.templates.index') }}" 
+                                   title="Master Template Laporan"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.templates.*') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
+                                    <i class="fa-solid fa-file-lines text-[11px] w-4 text-center"></i>
+                                    <span>Template Laporan</span>
+                                </a>
                                 @endif
                             </div>
                         </li>

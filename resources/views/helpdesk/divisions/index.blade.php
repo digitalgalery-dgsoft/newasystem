@@ -107,19 +107,84 @@
                         @endforelse
                     </div>
 
-                    <!-- FORM TAMBAH AGEN -->
-                    <form method="POST" action="{{ route('helpdesk.divisions.agents.add', $div->id) }}" class="mt-3 flex items-center gap-1.5">
-                        @csrf
-                        <select name="user_id" required class="flex-1 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-primary">
-                            <option value="">+ Pilih Karyawan Inhouse...</option>
-                            @foreach($inhouseUsers as $u)
-                            <option value="{{ $u->id }}">{{ $u->name }} ({{ $u->job_title ?? $u->area }})</option>
-                            @endforeach
-                        </select>
-                        <button type="submit" class="px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all">
-                            Tambah
-                        </button>
-                    </form>
+                    <!-- FORM TAMBAH AGEN (SEARCHABLE COMBOBOX) -->
+                    <div x-data="agentPickerComponent({{ json_encode($div->agents->pluck('id')->values()->all()) }})" class="relative mt-3 pt-3 border-t border-slate-100">
+                        <label class="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">
+                            + Tambah Agen Karyawan
+                        </label>
+                        <form method="POST" action="{{ route('helpdesk.divisions.agents.add', $div->id) }}" class="flex items-center gap-1.5">
+                            @csrf
+                            <input type="hidden" name="user_id" :value="selectedUserId" required>
+
+                            <div class="relative flex-1" @click.away="open = false">
+                                <div class="relative">
+                                    <input 
+                                        type="text" 
+                                        x-model="searchQuery" 
+                                        @focus="open = true" 
+                                        @input="open = true; if(selectedUserId && searchQuery !== selectedUserName) selectedUserId = ''"
+                                        @keydown.escape="open = false"
+                                        :placeholder="selectedUserName ? selectedUserName : 'Cari nama / divisi karyawan...'"
+                                        class="w-full pl-7 pr-7 py-1.5 bg-slate-50 border rounded-xl text-xs text-slate-700 focus:outline-none focus:bg-white transition-all font-medium placeholder:text-slate-400"
+                                        :class="selectedUserId ? 'border-primary ring-1 ring-primary/20 bg-blue-50/30' : 'border-slate-200 focus:border-primary'"
+                                    >
+                                    <div class="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                                        <i class="fa-solid fa-magnifying-glass text-[10px]"></i>
+                                    </div>
+                                    <button 
+                                        type="button" 
+                                        x-show="selectedUserId || searchQuery" 
+                                        @click="clearSelection()" 
+                                        class="absolute inset-y-0 right-0 pr-2 flex items-center text-slate-400 hover:text-rose-500"
+                                        title="Hapus pilihan"
+                                    >
+                                        <i class="fa-solid fa-circle-xmark text-xs"></i>
+                                    </button>
+                                </div>
+
+                                <!-- DROPDOWN SUGGESTIONS LIST -->
+                                <div 
+                                    x-show="open" 
+                                    x-cloak 
+                                    x-transition:enter="transition ease-out duration-100"
+                                    x-transition:enter-start="opacity-0 scale-95"
+                                    x-transition:enter-end="opacity-100 scale-100"
+                                    x-transition:leave="transition ease-in duration-75"
+                                    x-transition:leave-start="opacity-100 scale-100"
+                                    x-transition:leave-end="opacity-0 scale-95"
+                                    class="absolute left-0 right-0 top-full mt-1 z-50 max-h-52 overflow-y-auto bg-white rounded-xl shadow-2xl border border-slate-200 p-1 text-xs divide-y divide-slate-50"
+                                >
+                                    <template x-for="item in filteredAgents" :key="item.id">
+                                        <div 
+                                            @click="selectAgent(item)"
+                                            class="p-2 rounded-lg hover:bg-blue-50 hover:text-primary transition-colors cursor-pointer flex items-center justify-between gap-2 group"
+                                        >
+                                            <div class="truncate">
+                                                <span class="font-bold block truncate text-slate-800 group-hover:text-primary" x-text="item.name"></span>
+                                                <span class="text-[10px] text-slate-400 block truncate" x-text="item.sub"></span>
+                                            </div>
+                                            <span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 group-hover:bg-primary group-hover:text-white transition-colors flex-shrink-0">
+                                                Pilih
+                                            </span>
+                                        </div>
+                                    </template>
+                                    <div x-show="filteredAgents.length === 0" class="p-3 text-center text-slate-400 text-[11px] italic">
+                                        Tidak ditemukan karyawan yang cocok.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button 
+                                type="submit" 
+                                :disabled="!selectedUserId"
+                                :class="selectedUserId ? 'bg-primary hover:bg-primary-600 text-white cursor-pointer shadow-xs' : 'bg-slate-100 text-slate-400 cursor-not-allowed'"
+                                class="px-3 py-1.5 rounded-xl font-bold text-xs transition-all flex items-center gap-1 flex-shrink-0"
+                            >
+                                <i class="fa-solid fa-plus text-[10px]"></i>
+                                <span>Tambah</span>
+                            </button>
+                        </form>
+                    </div>
                 </div>
             </div>
 
@@ -280,4 +345,40 @@
         </div>
     </div>
 </div>
+
+<script>
+    const INHOUSE_AGENTS = {!! json_encode($inhouseAgentsList ?? []) !!};
+
+    function agentPickerComponent(existingAgentIds = []) {
+        return {
+            open: false,
+            searchQuery: '',
+            selectedUserId: '',
+            selectedUserName: '',
+            existingAgentIds: existingAgentIds || [],
+            get filteredAgents() {
+                const available = INHOUSE_AGENTS.filter(a => !this.existingAgentIds.includes(a.id));
+                if (!this.searchQuery) {
+                    return available.slice(0, 30);
+                }
+                const q = this.searchQuery.toLowerCase().trim();
+                return available.filter(a => 
+                    a.name.toLowerCase().includes(q) || a.sub.toLowerCase().includes(q)
+                ).slice(0, 30);
+            },
+            selectAgent(item) {
+                this.selectedUserId = item.id;
+                this.selectedUserName = item.name;
+                this.searchQuery = item.name;
+                this.open = false;
+            },
+            clearSelection() {
+                this.selectedUserId = '';
+                this.selectedUserName = '';
+                this.searchQuery = '';
+                this.open = false;
+            }
+        };
+    }
+</script>
 @endsection

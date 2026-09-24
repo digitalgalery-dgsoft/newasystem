@@ -25,8 +25,108 @@
 
     <!-- FORM CARD -->
     <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6 md:p-8">
-        <form method="POST" action="{{ route('helpdesk.tickets.store') }}" enctype="multipart/form-data" class="space-y-6" x-data="{ selectedDivision: '{{ old('division_id') }}' }">
+        <form method="POST" action="{{ route('helpdesk.tickets.store') }}" enctype="multipart/form-data" class="space-y-6" 
+              x-data="{ 
+                  selectedDivision: '{{ old('division_id') }}',
+                  subjectValue: '{{ addslashes(old('subject', '')) }}',
+                  descValue: `{{ addslashes(old('description', '')) }}`,
+                  selectedTemplateId: '',
+                  activeAttachmentUrl: '',
+                  activeAttachmentName: '',
+                  applyTemplate(e) {
+                      const select = e.target;
+                      const opt = select.options[select.selectedIndex];
+                      if (!opt || !opt.value) {
+                          this.selectedTemplateId = '';
+                          this.activeAttachmentUrl = '';
+                          this.activeAttachmentName = '';
+                          return;
+                      }
+                      this.selectedTemplateId = opt.value;
+                      if (opt.dataset.subject) this.subjectValue = opt.dataset.subject;
+                      if (opt.dataset.desc) this.descValue = opt.dataset.desc;
+                      if (opt.dataset.division) this.selectedDivision = opt.dataset.division;
+                      if (opt.dataset.attachmentUrl) {
+                          this.activeAttachmentUrl = opt.dataset.attachmentUrl;
+                          this.activeAttachmentName = opt.dataset.attachmentName;
+                      } else {
+                          this.activeAttachmentUrl = '';
+                          this.activeAttachmentName = '';
+                      }
+                  },
+                  resetTemplate() {
+                      this.selectedTemplateId = '';
+                      this.subjectValue = '';
+                      this.descValue = '';
+                      this.activeAttachmentUrl = '';
+                      this.activeAttachmentName = '';
+                      const sel = document.getElementById('template_selector');
+                      if (sel) sel.value = '';
+                  }
+              }">
             @csrf
+
+            <!-- ⚡ JALAN PINTAS (TEMPLATE MASALAH & FORMAT LAPORAN) -->
+            @if(!empty($templates) && $templates->isNotEmpty())
+            <div class="p-5 rounded-2xl bg-gradient-to-br from-blue-50/90 via-indigo-50/60 to-sky-50/80 border border-blue-200/90 shadow-2xs space-y-3">
+                <div class="flex items-center justify-between">
+                    <label class="block text-xs font-bold text-blue-900 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-bolt text-amber-500 text-sm"></i>
+                        <span>Jalan Pintas (Template Masalah & Format Laporan)</span>
+                    </label>
+                    <template x-if="selectedTemplateId">
+                        <button type="button" @click="resetTemplate()" class="text-[11px] text-rose-600 hover:underline font-bold flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                            <span>Kosongkan Template</span>
+                        </button>
+                    </template>
+                </div>
+
+                <div class="relative">
+                    <select id="template_selector" 
+                            @change="applyTemplate($event)"
+                            class="w-full px-4 py-2.5 bg-white border border-blue-200 rounded-xl text-xs text-slate-800 font-semibold focus:outline-none focus:border-primary shadow-xs">
+                        <option value="">-- Pilih Format / Jenis Kendala (Otomatis Mengisi Form) --</option>
+                        @foreach($templatesGrouped as $groupName => $tplList)
+                        <optgroup label="📂 {{ strtoupper($groupName) }}">
+                            @foreach($tplList as $tpl)
+                            <option value="{{ $tpl->id }}"
+                                    data-subject="{{ $tpl->subject }}"
+                                    data-desc="{{ $tpl->message }}"
+                                    data-division="{{ $tpl->division_id ?? '' }}"
+                                    data-attachment-url="{{ $tpl->attachment_url }}"
+                                    data-attachment-name="{{ $tpl->attachment_filename }}">
+                                {{ $tpl->title }} {{ $tpl->division ? '(' . $tpl->division->name . ')' : '(Umum)' }}
+                            </option>
+                            @endforeach
+                        </optgroup>
+                        @endforeach
+                    </select>
+                </div>
+                <p class="text-[11px] text-blue-700/80">
+                    💡 Pilih masalah Anda di atas untuk mengisi divisi, judul, dan format deskripsi kendala secara otomatis seperti di sistem lama.
+                </p>
+
+                <!-- DOKUMEN FORMAT LAMPIRAN TEMPLATE (JIKA ADA) -->
+                <div x-show="activeAttachmentUrl" x-cloak 
+                     class="p-3.5 bg-white rounded-xl border border-blue-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold flex-shrink-0">
+                            <i class="fa-solid fa-file-excel text-sm"></i>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-800">Template ini menyertakan form dokumen format standar</p>
+                            <p class="text-[11px] text-slate-500">Silakan unduh dokumen format di samping, lengkapi, lalu unggah kembali pada kolom lampiran di bawah.</p>
+                        </div>
+                    </div>
+                    <a :href="activeAttachmentUrl" download 
+                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs transition-all flex-shrink-0">
+                        <i class="fa-solid fa-download"></i>
+                        <span>Unduh Format (<span x-text="activeAttachmentName"></span>)</span>
+                    </a>
+                </div>
+            </div>
+            @endif
 
             <!-- 1. PILIH DIVISI TUJUAN -->
             <div>
@@ -62,7 +162,7 @@
                     <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5">
                         2. Judul Kendala / Permohonan <span class="text-rose-500">*</span>
                     </label>
-                    <input type="text" name="subject" value="{{ old('subject') }}" required
+                    <input type="text" name="subject" x-model="subjectValue" required
                            placeholder="Contoh: Gangguan Login Aplikasi / Permohonan Akses Database"
                            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-primary focus:bg-white transition-all">
                     @error('subject')
@@ -88,9 +188,9 @@
                 <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5">
                     3. Deskripsi Rinci Kendala / Kebutuhan <span class="text-rose-500">*</span>
                 </label>
-                <textarea name="description" rows="5" required
+                <textarea name="description" x-model="descValue" rows="6" required
                           placeholder="Jelaskan secara spesifik langkah-langkah yang dilakukan sebelum error terjadi, data karyawan terkait, kode error, atau rincian permohonan fasilitas..."
-                          class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-primary focus:bg-white transition-all leading-relaxed">{{ old('description') }}</textarea>
+                          class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-primary focus:bg-white transition-all leading-relaxed font-mono"></textarea>
                 @error('description')
                 <p class="text-xs text-rose-500 mt-1 font-semibold">{{ $message }}</p>
                 @enderror

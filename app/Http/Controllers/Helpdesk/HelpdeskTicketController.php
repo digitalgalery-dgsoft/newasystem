@@ -9,6 +9,7 @@ use App\Models\HelpdeskDivisionAgent;
 use App\Models\HelpdeskTicket;
 use App\Models\HelpdeskTicketLog;
 use App\Models\HelpdeskTicketReply;
+use App\Models\HelpdeskTicketTemplate;
 use App\Models\User;
 use App\Services\HelpdeskWorkplanService;
 use Carbon\Carbon;
@@ -146,7 +147,19 @@ class HelpdeskTicketController extends Controller
 
         $divisions = HelpdeskDivision::where('is_active', true)->orderBy('name', 'asc')->get();
 
-        return view('helpdesk.tickets.create', compact('divisions', 'user'));
+        $templates = HelpdeskTicketTemplate::where('is_active', true)
+            ->with('division')
+            ->orderBy('order_num', 'asc')
+            ->orderBy('title', 'asc')
+            ->get();
+
+        $templatesGrouped = [];
+        foreach ($templates as $t) {
+            $group = $t->division ? $t->division->name : 'Umum / Semua Divisi';
+            $templatesGrouped[$group][] = $t;
+        }
+
+        return view('helpdesk.tickets.create', compact('divisions', 'templates', 'templatesGrouped', 'user'));
     }
 
     /**

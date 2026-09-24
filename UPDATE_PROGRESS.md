@@ -2605,6 +2605,54 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 63. ⚡ Searchable Dropdown Agen Divisi, Template Masalah & Format Laporan Tiket, serta Master Template Laporan
+- **Searchable Combobox Agen Divisi Helpdesk (`/helpdesk/divisions`)**:
+  - Menggantikan dropdown `<select>` standar yang harus di-scroll panjang dengan komponen Alpine.js Searchable Combobox interaktif.
+  - Memungkinkan admin mencari langsung nama, jabatan, atau area dari ratusan karyawan inhouse aktif secara instan.
+  - Menampilkan saran nama dan jabatan secara live, visual badge pilihan, tombol pembersihan (*clear* `x`), serta tombol *"Tambah"* yang otomatis aktif saat karyawan dipilih.
+  - Memfilter secara otomatis karyawan yang telah menjadi agen di divisi tersebut sehingga tidak muncul ganda.
+  - Serialisasi data terpusat dan efisien dari controller `$inhouseAgentsList` tanpa membebani render DOM Blade.
+- **Fitur Template Laporan pada Pembuatan Tiket (`/helpdesk/tickets/create`)**:
+  - Mengadopsi fungsionalitas sistem helpdesk legacy (`D:\ASystem\helpdesk`) ke dalam arsitektur modern Laravel 12.
+  - Menambahkan kartu pintasan interaktif *"Jalan Pintas (Template Masalah & Format Laporan)"* yang dikelompokkan rapi per divisi.
+  - Ketika template dipilih, sistem secara otomatis mengisikan:
+    1. **Divisi Tujuan** terkait kendala tersebut.
+    2. **Judul Kendala / Subjek Default** secara otomatis.
+    3. **Format Isian Rinci Kendala** (format formulir tanya-jawab baku yang siap diisi pelapor).
+  - Jika jenis kendala memiliki formulir baku (seperti formulir Excel reimbursement, surat keterangan kerja, dsb.), sistem langsung memunculkan kartu dokumen format dengan tombol *"Unduh Format"*.
+  - Dilengkapi tombol *"Kosongkan Template"* untuk mereset isian form ke mode manual.
+- **Master Template Laporan Kendala untuk Administrator (`/helpdesk/templates`)**:
+  - Membangun antarmuka dan sistem CRUD lengkap bagi Administrator untuk menambah, mengubah, mengaktifkan/menonaktifkan, dan menghapus jenis template laporan.
+  - Migrasi database: `2026_09_24_150000_create_helpdesk_ticket_templates_table.php` dengan field `id`, `division_id`, `title`, `subject`, `message`, `attachment`, `is_active`, `order_num`, `timestamps`.
+  - Model Eloquent `HelpdeskTicketTemplate` lengkap dengan relasi `HelpdeskDivision` dan helper accessor `attachment_url` & `attachment_filename`.
+  - Controller `HelpdeskTemplateController` dengan otorisasi ketat Administrator (`authorizeAdmin()`), validasi berkas upload maksimal 10MB, serta penghapusan berkas fisik saat template/attachment dihapus.
+  - Seeder otomatis `HelpdeskTemplateSeeder` yang menginisialisasi 8 template standar operasional:
+    1. IT Support: Reset Password Akun / Email
+    2. IT Support: Kendala Hardware, PC & Jaringan Kantor
+    3. IT Support: Laporan Bug / Error Aplikasi Portal ASystem
+    4. HRD: Pengajuan Surat Keterangan Kerja (Paklaring / SK)
+    5. HRD: Pertanyaan & Klarifikasi Data Karyawan / Slip Gaji
+    6. Finance: Pengajuan Klaim Operasional & Reimbursement
+    7. GA: Permintaan ATK & Pengadaan Fasilitas Kantor
+    8. OPS: Laporan Kendala Penempatan Lapangan / Mitra Prinsiple
+  - Integrasi navigasi sidebar: Menu *"Template Laporan"* pada grup Helpdesk Support di `resources/views/layouts/app.blade.php`.
+- **Berkas Kode yang Dibuat / Dimodifikasi**:
+  - `database/migrations/2026_09_24_150000_create_helpdesk_ticket_templates_table.php` *(Baru)*
+  - `app/Models/HelpdeskTicketTemplate.php` *(Baru)*
+  - `database/seeders/HelpdeskTemplateSeeder.php` *(Baru)*
+  - `app/Http/Controllers/Helpdesk/HelpdeskTemplateController.php` *(Baru)*
+  - `resources/views/helpdesk/templates/index.blade.php` *(Baru)*
+  - `routes/web.php`
+  - `resources/views/layouts/app.blade.php`
+  - `app/Http/Controllers/Helpdesk/HelpdeskDivisionController.php`
+  - `resources/views/helpdesk/divisions/index.blade.php`
+  - `app/Http/Controllers/Helpdesk/HelpdeskTicketController.php`
+  - `resources/views/helpdesk/tickets/create.blade.php`
+- **Hasil Pengujian Otomasi**:
+  - Verifikasi menyeluruh via `test_templates_and_combobox.php`: rute master template, database Eloquent, seeder 8 template, kompilasi Blade view divisi, searchable combobox, dan template autofill pada form tiket berhasil 100% tanpa error.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

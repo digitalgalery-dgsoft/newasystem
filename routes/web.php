@@ -23,6 +23,7 @@ use App\Http\Controllers\Helpdesk\HelpdeskDashboardController;
 use App\Http\Controllers\Helpdesk\HelpdeskTicketController;
 use App\Http\Controllers\Helpdesk\HelpdeskDivisionController;
 use App\Http\Controllers\Helpdesk\HelpdeskCannedController;
+use App\Http\Controllers\Helpdesk\HelpdeskTemplateController;
 
 // ==========================================
 // HALAMAN AWAL WEB & LANDING PAGE (v3/index.php)
@@ -619,6 +620,13 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/canned', [HelpdeskCannedController::class, 'index'])->name('canned.index');
             Route::post('/canned', [HelpdeskCannedController::class, 'store'])->name('canned.store');
             Route::delete('/canned/{id}', [HelpdeskCannedController::class, 'destroy'])->name('canned.destroy');
+
+            // Master Template Laporan Kendala (Khusus Administrator)
+            Route::get('/templates', [HelpdeskTemplateController::class, 'index'])->name('templates.index');
+            Route::post('/templates', [HelpdeskTemplateController::class, 'store'])->name('templates.store');
+            Route::put('/templates/{id}', [HelpdeskTemplateController::class, 'update'])->name('templates.update');
+            Route::delete('/templates/{id}', [HelpdeskTemplateController::class, 'destroy'])->name('templates.destroy');
+            Route::delete('/templates/{id}/attachment', [HelpdeskTemplateController::class, 'removeAttachment'])->name('templates.attachment.remove');
         });
     });
 });
