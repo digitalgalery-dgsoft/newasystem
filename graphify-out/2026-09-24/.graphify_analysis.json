@@ -1,0 +1,1813 @@
+{
+  "communities": {
+    "0": [
+      "app_console_commands_importinterviewsqldumpcommand",
+      "app_console_commands_importjobspecscommand",
+      "app_console_commands_importjobspecscommand_importjobspecscommand",
+      "app_console_commands_importjobspecscommand_importjobspecscommand_handle",
+      "app_console_commands_importofficialprinciplescommand",
+      "app_console_commands_importofficialprinciplescommand_importofficialprinciplescommand",
+      "app_console_commands_importofficialprinciplescommand_importofficialprinciplescommand_handle",
+      "app_console_commands_importwpdumpcommand",
+      "app_console_commands_importwpdumpcommand_importwpdumpcommand",
+      "app_console_commands_importwpdumpcommand_importwpdumpcommand_handle",
+      "app_console_commands_odoosyncactivecommand",
+      "app_console_commands_odoosyncactivecommand_odoosyncactivecommand",
+      "app_console_commands_odoosyncactivecommand_odoosyncactivecommand_handle",
+      "app_console_commands_odoosynccommand",
+      "app_console_commands_odoosynccommand_odoosynccommand",
+      "app_console_commands_odoosynccommand_odoosynccommand_handle",
+      "app_console_commands_odoosyncupdatesresignscommand",
+      "app_console_commands_odoosyncupdatesresignscommand_odoosyncupdatesresignscommand",
+      "app_console_commands_odoosyncupdatesresignscommand_odoosyncupdatesresignscommand_handle",
+      "app_console_commands_syncodoorecruitmentstagescommand",
+      "app_console_commands_syncodoorecruitmentstagescommand_syncodoorecruitmentstagescommand",
+      "app_console_commands_syncodoorecruitmentstagescommand_syncodoorecruitmentstagescommand_handle",
+      "app_http_controllers_candidateimportcontroller",
+      "app_http_controllers_candidateimportcontroller_candidateimportcontroller_lookupodoobynik",
+      "app_http_controllers_employeecontroller",
+      "app_http_controllers_odoosettingcontroller",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_cleanupduplicates",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_index",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_streamsync",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_streamsyncall",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_streamsyncnik",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_sync",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_syncall",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_syncbynik",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_testconnection",
+      "app_http_controllers_odoosettingcontroller_odoosettingcontroller_update",
+      "app_models_odooentity_odooentity",
+      "app_models_odooentity_odooentity_employees",
+      "app_models_odooentity_odooentity_getactiveemployeescountattribute",
+      "app_models_odooentity_odooentity_getresignedemployeescountattribute",
+      "app_models_odooentity_odooentity_gettotalemployeescountattribute",
+      "app_models_odooentity_odooentity_isconfigured",
+      "app_models_odoosynclog_odoosynclog",
+      "app_services_odoorecruitmentsyncservice_odoorecruitmentsyncservice_applyodooapplicantdata",
+      "app_services_odoorecruitmentsyncservice_odoorecruitmentsyncservice_runautoarchiverule",
+      "app_services_odoorecruitmentsyncservice_odoorecruitmentsyncservice_syncallcandidates",
+      "app_services_odoorecruitmentsyncservice_odoorecruitmentsyncservice_syncsinglecandidate",
+      "app_services_odoosyncservice",
+      "app_services_odoosyncservice_odoosyncservice",
+      "app_services_odoosyncservice_odoosyncservice_authenticate",
+      "app_services_odoosyncservice_odoosyncservice_construct",
+      "app_services_odoosyncservice_odoosyncservice_findandsyncbynik",
+      "app_services_odoosyncservice_odoosyncservice_fromentity",
+      "app_services_odoosyncservice_odoosyncservice_listdatabases",
+      "app_services_odoosyncservice_odoosyncservice_parsexmlrpcresponse",
+      "app_services_odoosyncservice_odoosyncservice_phptoxmlrpc",
+      "app_services_odoosyncservice_odoosyncservice_syncemployees",
+      "app_services_odoosyncservice_odoosyncservice_syncsingleemployee",
+      "app_services_odoosyncservice_odoosyncservice_syncupdatesandresigns",
+      "app_services_odoosyncservice_odoosyncservice_testconnection",
+      "app_services_odoosyncservice_odoosyncservice_xmlrpccall",
+      "app_services_odoosyncservice_odoosyncservice_xmlrpctophp",
+      "config_cache",
+      "config_database",
+      "config_session",
+      "illuminate_console_command",
+      "illuminate_http_jsonresponse",
+      "illuminate_support_facades_hash",
+      "illuminate_support_str",
+      "pdo_mysql",
+      "self",
+      "simplexmlelement",
+      "symfony_component_httpfoundation_streamedresponse"
+    ],
+    "1": [
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_analyzecv",
+      "app_models_candidate_candidate",
+      "app_models_candidate_candidate_approverprinsiple",
+      "app_models_candidate_candidate_booted",
+      "app_models_candidate_candidate_candidatelogs",
+      "app_models_candidate_candidate_checkprofilecompleteness",
+      "app_models_candidate_candidate_currentapprovalstep",
+      "app_models_candidate_candidate_getageattribute",
+      "app_models_candidate_candidate_getaibadgeclassattribute",
+      "app_models_candidate_candidate_getaidataattribute",
+      "app_models_candidate_candidate_getaiscorecolorhexattribute",
+      "app_models_candidate_candidate_getalamatktpattribute",
+      "app_models_candidate_candidate_getalltestscompletedattribute",
+      "app_models_candidate_candidate_getapplicantsnameattribute",
+      "app_models_candidate_candidate_getapprovallegacyurlattribute",
+      "app_models_candidate_candidate_getapprovalproofurlattribute",
+      "app_models_candidate_candidate_getcleanwhatsappattribute",
+      "app_models_candidate_candidate_getcomputerscoreattribute",
+      "app_models_candidate_candidate_getcvurlattribute",
+      "app_models_candidate_candidate_getfilecvattribute",
+      "app_models_candidate_candidate_getformattedbirthdateattribute",
+      "app_models_candidate_candidate_getformattedcreatedatattribute",
+      "app_models_candidate_candidate_getfotoprofilattribute",
+      "app_models_candidate_candidate_getgenderattribute",
+      "app_models_candidate_candidate_getinfolowonganattribute",
+      "app_models_candidate_candidate_getiskomputerdoneattribute",
+      "app_models_candidate_candidate_getismathdoneattribute",
+      "app_models_candidate_candidate_getispsikotesdoneattribute",
+      "app_models_candidate_candidate_getjeniskelaminattribute",
+      "app_models_candidate_candidate_getkotadomisiliattribute",
+      "app_models_candidate_candidate_getmathscoreattribute",
+      "app_models_candidate_candidate_getmissingprofilefields",
+      "app_models_candidate_candidate_getmobileattribute",
+      "app_models_candidate_candidate_getnoktpattribute",
+      "app_models_candidate_candidate_getodoobadgeinfoattribute",
+      "app_models_candidate_candidate_getpendidikanterakhirattribute",
+      "app_models_candidate_candidate_getphotourlattribute",
+      "app_models_candidate_candidate_getprincipleattribute",
+      "app_models_candidate_candidate_getpropinsidomisiliattribute",
+      "app_models_candidate_candidate_getpsikotesscoreattribute",
+      "app_models_candidate_candidate_getregionattribute",
+      "app_models_candidate_candidate_getringkasanpengalamanattribute",
+      "app_models_candidate_candidate_getsignatureurlattribute",
+      "app_models_candidate_candidate_gettanggalattribute",
+      "app_models_candidate_candidate_gettanggallahirattribute",
+      "app_models_candidate_candidate_getuserasnameattribute",
+      "app_models_candidate_candidate_getuserprinsipleoptionsattribute",
+      "app_models_candidate_candidate_getwaktukirimattribute",
+      "app_models_candidate_candidate_hascv",
+      "app_models_candidate_candidate_hasodoorecruitment",
+      "app_models_candidate_candidate_inhouseapprovals",
+      "app_models_candidate_candidate_interviewassessment",
+      "app_models_candidate_candidate_principle",
+      "app_models_candidate_candidate_principleapprovals",
+      "app_models_candidate_candidate_recruiter",
+      "app_models_candidate_candidate_setapplicantsnameattribute",
+      "app_models_candidate_candidate_setgenderattribute",
+      "app_models_candidate_candidate_setnoktpattribute",
+      "app_models_candidate_candidate_testresults",
+      "app_models_candidate_candidate_workexperiences"
+    ],
+    "2": [
+      "app_console_commands_cleanduplicatecandidatescommand",
+      "app_console_commands_cleanduplicatecandidatescommand_cleanduplicatecandidatescommand",
+      "app_console_commands_cleanduplicatecandidatescommand_cleanduplicatecandidatescommand_handle",
+      "app_console_commands_fixdummypersonalityresultscommand",
+      "app_console_commands_fixdummypersonalityresultscommand_fixdummypersonalityresultscommand",
+      "app_console_commands_fixdummypersonalityresultscommand_fixdummypersonalityresultscommand_handle",
+      "app_console_commands_importinterviewsqldumpcommand_importinterviewsqldumpcommand",
+      "app_console_commands_importinterviewsqldumpcommand_importinterviewsqldumpcommand_cleansqlvalues",
+      "app_console_commands_importinterviewsqldumpcommand_importinterviewsqldumpcommand_handle",
+      "app_console_commands_importinterviewsqldumpcommand_importinterviewsqldumpcommand_istuplecomplete",
+      "app_http_controllers_candidateimportcontroller_candidateimportcontroller",
+      "app_http_controllers_candidateimportcontroller_candidateimportcontroller_construct",
+      "app_http_controllers_candidateimportcontroller_candidateimportcontroller_downloadtemplate",
+      "app_http_controllers_candidateimportcontroller_candidateimportcontroller_getcurrentuser",
+      "app_http_controllers_candidateimportcontroller_candidateimportcontroller_importodoobynik",
+      "app_http_controllers_candidateimportcontroller_candidateimportcontroller_stream",
+      "app_http_controllers_candidateimportcontroller_candidateimportcontroller_upload",
+      "app_http_controllers_cbtcontroller",
+      "app_http_controllers_cbtcontroller_cbtcontroller",
+      "app_http_controllers_cbtcontroller_cbtcontroller_dashboard",
+      "app_http_controllers_cbtcontroller_cbtcontroller_destroyexperience",
+      "app_http_controllers_cbtcontroller_cbtcontroller_getcurrentcandidate",
+      "app_http_controllers_cbtcontroller_cbtcontroller_kepribadian",
+      "app_http_controllers_cbtcontroller_cbtcontroller_kepribadianresult",
+      "app_http_controllers_cbtcontroller_cbtcontroller_komputer",
+      "app_http_controllers_cbtcontroller_cbtcontroller_logactivity",
+      "app_http_controllers_cbtcontroller_cbtcontroller_login",
+      "app_http_controllers_cbtcontroller_cbtcontroller_logout",
+      "app_http_controllers_cbtcontroller_cbtcontroller_matematika",
+      "app_http_controllers_cbtcontroller_cbtcontroller_matematikaresult",
+      "app_http_controllers_cbtcontroller_cbtcontroller_profile",
+      "app_http_controllers_cbtcontroller_cbtcontroller_showloginform",
+      "app_http_controllers_cbtcontroller_cbtcontroller_storeexperience",
+      "app_http_controllers_cbtcontroller_cbtcontroller_submitkepribadian",
+      "app_http_controllers_cbtcontroller_cbtcontroller_submitkomputer",
+      "app_http_controllers_cbtcontroller_cbtcontroller_submitmatematika",
+      "app_http_controllers_cbtcontroller_cbtcontroller_syncsignatureacrosscandidates",
+      "app_http_controllers_cbtcontroller_cbtcontroller_synctestacrosscandidates",
+      "app_http_controllers_cbtcontroller_cbtcontroller_updateprofile",
+      "app_models_testresult_testresult",
+      "app_models_workexperience_workexperience",
+      "app_models_workexperience_workexperience_candidate",
+      "app_models_workexperience_workexperience_getprooflegacyurlattribute",
+      "app_models_workexperience_workexperience_getproofurlattribute",
+      "app_services_candidateimportservice_candidateimportservice",
+      "app_services_candidateimportservice_candidateimportservice_import",
+      "app_services_candidateimportservice_candidateimportservice_parseexceldate",
+      "app_services_candidateimportservice_candidateimportservice_parsexlsxfile",
+      "app_services_candidateimportservice_candidateimportservice_sanitizeinput",
+      "app_services_cbtquestionservice",
+      "app_services_cbtquestionservice_cbtquestionservice",
+      "app_services_cbtquestionservice_cbtquestionservice_getdefaultlegacymathquestions",
+      "app_services_cbtquestionservice_cbtquestionservice_getdefaultlegacypersonalityquestions",
+      "app_services_cbtquestionservice_cbtquestionservice_getmathquestions",
+      "app_services_cbtquestionservice_cbtquestionservice_getpersonalityquestions"
+    ],
+    "3": [
+      "app_http_controllers_installcontroller",
+      "app_http_controllers_installcontroller_installcontroller",
+      "app_http_controllers_installcontroller_installcontroller_index",
+      "app_http_controllers_installcontroller_installcontroller_process",
+      "app_http_controllers_installcontroller_installcontroller_updateenv",
+      "app_http_controllers_interviewcontroller_interviewcontroller_getaslistbyarea",
+      "app_http_controllers_interviewcontroller_interviewcontroller_getasrecruiteroptions",
+      "app_models_task_task_getavatarurl",
+      "app_models_user",
+      "app_models_user_user",
+      "app_models_user_user_applyrolescopetocandidates",
+      "app_models_user_user_applyrolescopetoemployees",
+      "app_models_user_user_canaccessarea",
+      "app_models_user_user_canaccessprinciple",
+      "app_models_user_user_canviewallcandidates",
+      "app_models_user_user_casts",
+      "app_models_user_user_coversallareas",
+      "app_models_user_user_custompermissions",
+      "app_models_user_user_getavatarurlattribute",
+      "app_models_user_user_geteffectiveareas",
+      "app_models_user_user_geteffectiveprinciples",
+      "app_models_user_user_getjabatandisplayattribute",
+      "app_models_user_user_getlinkedemployeeattribute",
+      "app_models_user_user_getsignaturebase64",
+      "app_models_user_user_getsignatureurlattribute",
+      "app_models_user_user_getsubordinaterecruiteridentifiers",
+      "app_models_user_user_handlesallprinciples",
+      "app_models_user_user_haspermission",
+      "app_models_user_user_hassavedsignature",
+      "app_models_user_user_isadmin",
+      "app_models_user_user_ishead",
+      "app_models_user_user_isheadhr",
+      "app_models_user_user_ishrd",
+      "app_models_user_user_ishrdorhead",
+      "app_models_user_user_isrecruiter",
+      "app_models_user_user_rolemodel",
+      "app_models_user_user_syncpasswordtoemployees",
+      "config_auth",
+      "database_factories_userfactory",
+      "database_factories_userfactory_userfactory",
+      "database_factories_userfactory_userfactory_definition",
+      "database_factories_userfactory_userfactory_unverified",
+      "illuminate_database_eloquent_factories_factory",
+      "illuminate_foundation_auth_user",
+      "illuminate_foundation_inspiring",
+      "illuminate_notifications_notifiable",
+      "illuminate_support_facades_artisan",
+      "illuminate_support_facades_schedule",
+      "routes_console",
+      "static"
+    ],
+    "4": [
+      "app_http_controllers_workplancontroller_workplancontroller",
+      "app_http_controllers_workplancontroller_workplancontroller_applyaccessscope",
+      "app_http_controllers_workplancontroller_workplancontroller_archive",
+      "app_http_controllers_workplancontroller_workplancontroller_copyreport",
+      "app_http_controllers_workplancontroller_workplancontroller_daily",
+      "app_http_controllers_workplancontroller_workplancontroller_deletesubtask",
+      "app_http_controllers_workplancontroller_workplancontroller_destroy",
+      "app_http_controllers_workplancontroller_workplancontroller_destroydaily",
+      "app_http_controllers_workplancontroller_workplancontroller_exportexcel",
+      "app_http_controllers_workplancontroller_workplancontroller_getactivities",
+      "app_http_controllers_workplancontroller_workplancontroller_getcomments",
+      "app_http_controllers_workplancontroller_workplancontroller_getcurrentuser",
+      "app_http_controllers_workplancontroller_workplancontroller_getdetails",
+      "app_http_controllers_workplancontroller_workplancontroller_getfilteredtasksquery",
+      "app_http_controllers_workplancontroller_workplancontroller_getnotifications",
+      "app_http_controllers_workplancontroller_workplancontroller_getteammembernames",
+      "app_http_controllers_workplancontroller_workplancontroller_getusercandidatenames",
+      "app_http_controllers_workplancontroller_workplancontroller_getuserofficialname",
+      "app_http_controllers_workplancontroller_workplancontroller_index",
+      "app_http_controllers_workplancontroller_workplancontroller_iscreatorordelegatorfortask",
+      "app_http_controllers_workplancontroller_workplancontroller_isdelegatorfortask",
+      "app_http_controllers_workplancontroller_workplancontroller_isuserauthorizedfortask",
+      "app_http_controllers_workplancontroller_workplancontroller_loadmore",
+      "app_http_controllers_workplancontroller_workplancontroller_marknotificationread",
+      "app_http_controllers_workplancontroller_workplancontroller_movestatus",
+      "app_http_controllers_workplancontroller_workplancontroller_store",
+      "app_http_controllers_workplancontroller_workplancontroller_storecomment",
+      "app_http_controllers_workplancontroller_workplancontroller_storedaily",
+      "app_http_controllers_workplancontroller_workplancontroller_storesubtask",
+      "app_http_controllers_workplancontroller_workplancontroller_togglesubtask",
+      "app_http_controllers_workplancontroller_workplancontroller_unarchive",
+      "app_http_controllers_workplancontroller_workplancontroller_update",
+      "app_models_task_task",
+      "app_models_task_task_activities",
+      "app_models_task_task_comments",
+      "app_models_task_task_isduetoday",
+      "app_models_task_task_isoverdue",
+      "app_models_task_task_notifications",
+      "app_models_task_task_progresspercentage",
+      "app_models_task_task_subtasks",
+      "app_models_taskactivity_taskactivity",
+      "app_models_taskactivity_taskactivity_gethumandescriptionattribute",
+      "app_models_taskactivity_taskactivity_task",
+      "app_models_tasknotification_tasknotification",
+      "app_models_tasknotification_tasknotification_task",
+      "app_services_workplanxlsxexportservice_workplanxlsxexportservice",
+      "app_services_workplanxlsxexportservice_workplanxlsxexportservice_buildsheetxml",
+      "app_services_workplanxlsxexportservice_workplanxlsxexportservice_buildstylesxml",
+      "app_services_workplanxlsxexportservice_workplanxlsxexportservice_generatexlsx",
+      "app_services_workplanxlsxexportservice_workplanxlsxexportservice_xmlescape"
+    ],
+    "5": [
+      "composer",
+      "composer_allow_plugins_pestphp_pest_plugin",
+      "composer_allow_plugins_php_http_discovery",
+      "composer_autoload",
+      "composer_autoload_dev",
+      "composer_autoload_dev_psr_4",
+      "composer_autoload_psr_4",
+      "composer_config",
+      "composer_config_allow_plugins",
+      "composer_config_optimize_autoloader",
+      "composer_config_preferred_install",
+      "composer_config_sort_packages",
+      "composer_description",
+      "composer_extra",
+      "composer_extra_laravel",
+      "composer_keywords",
+      "composer_laravel_dont_discover",
+      "composer_license",
+      "composer_minimum_stability",
+      "composer_name",
+      "composer_prefer_stable",
+      "composer_psr_4_app",
+      "composer_psr_4_database_factories",
+      "composer_psr_4_database_seeders",
+      "composer_psr_4_tests",
+      "composer_require",
+      "composer_require_dev",
+      "composer_require_dev_fakerphp_faker",
+      "composer_require_dev_laravel_pail",
+      "composer_require_dev_laravel_pint",
+      "composer_require_dev_laravel_sail",
+      "composer_require_dev_mockery_mockery",
+      "composer_require_dev_nunomaduro_collision",
+      "composer_require_dev_phpunit_phpunit",
+      "composer_require_laravel_framework",
+      "composer_require_laravel_tinker",
+      "composer_require_mpdf_mpdf",
+      "composer_require_php",
+      "composer_schema",
+      "composer_scripts",
+      "composer_scripts_dev",
+      "composer_scripts_post_autoload_dump",
+      "composer_scripts_post_create_project_cmd",
+      "composer_scripts_post_root_package_install",
+      "composer_scripts_post_update_cmd",
+      "composer_scripts_pre_package_uninstall",
+      "composer_scripts_setup",
+      "composer_scripts_test",
+      "composer_type"
+    ],
+    "6": [
+      "app_http_controllers_employeecontroller_employeecontroller",
+      "app_http_controllers_employeecontroller_employeecontroller_bulkupdatepimpinan",
+      "app_http_controllers_employeecontroller_employeecontroller_index",
+      "app_http_controllers_employeecontroller_employeecontroller_resign",
+      "app_http_controllers_employeecontroller_employeecontroller_store",
+      "app_http_controllers_employeecontroller_employeecontroller_switchback",
+      "app_http_controllers_employeecontroller_employeecontroller_switchuser",
+      "app_http_controllers_employeecontroller_employeecontroller_toggleloginaccess",
+      "app_http_controllers_employeecontroller_employeecontroller_update",
+      "app_http_controllers_interviewcontroller_interviewcontroller_attachinhouseemployeenames",
+      "app_http_controllers_interviewcontroller_interviewcontroller_buildrecruiterssummary",
+      "app_http_controllers_interviewcontroller_interviewcontroller_resolvecandidateasdetails",
+      "app_http_controllers_interviewcontroller_interviewcontroller_resolvecandidateasname",
+      "app_http_controllers_interviewcontroller_php_collection",
+      "app_http_controllers_jobcontroller",
+      "app_http_controllers_rbaccontroller_rbaccontroller_searchemployees",
+      "app_http_controllers_userprofilecontroller_userprofilecontroller_update",
+      "app_http_controllers_userprofilecontroller_userprofilecontroller_updatepassword",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_getsenderavatarurl",
+      "app_models_candidate_candidate_getuserdisplaynameattribute",
+      "app_models_employee_employee",
+      "app_models_employee_employee_booted",
+      "app_models_employee_employee_determinetipekaryawan",
+      "app_models_employee_employee_extractbirthdatefromnik",
+      "app_models_employee_employee_getdefaultpasswordattribute",
+      "app_models_employee_employee_geteffectiveentityattribute",
+      "app_models_employee_employee_getentitybadgeattribute",
+      "app_models_employee_employee_getentitycodefromprinciple",
+      "app_models_employee_employee_getfiveyearsdateattribute",
+      "app_models_employee_employee_getformattedbirthdateattribute",
+      "app_models_employee_employee_getformattedjoindateattribute",
+      "app_models_employee_employee_getloginaccessbadgeattribute",
+      "app_models_employee_employee_getstatusbadgeattribute",
+      "app_models_employee_employee_getyearsofserviceattribute",
+      "app_models_employee_employee_hasloginaccess",
+      "app_models_employee_employee_isinhouseprinciple",
+      "app_services_odoosyncservice_odoosyncservice_cleanupdummyodemployees",
+      "app_services_odoosyncservice_odoosyncservice_cleanupduplicateemployees",
+      "illuminate_support_facades_http"
+    ],
+    "7": [
+      "app_http_controllers_aisettingcontroller",
+      "app_http_controllers_aisettingcontroller_aisettingcontroller_index",
+      "app_http_controllers_workplancontroller",
+      "app_models_activitylog",
+      "app_models_aisetting",
+      "app_models_aisettinguser",
+      "app_models_aisettinguser_aisettinguser",
+      "app_models_candidate",
+      "app_models_candidatelog",
+      "app_models_candidatelog_candidatelog",
+      "app_models_candidatelog_candidatelog_candidate",
+      "app_models_employee",
+      "app_models_jobspec",
+      "app_models_task",
+      "app_models_taskactivity",
+      "app_models_taskcategory",
+      "app_models_taskcategory_taskcategory",
+      "app_models_taskcomment",
+      "app_models_taskcomment_taskcomment",
+      "app_models_taskcomment_taskcomment_task",
+      "app_models_tasknotification",
+      "app_models_tasksubtask",
+      "app_models_tasksubtask_tasksubtask",
+      "app_models_tasksubtask_tasksubtask_task",
+      "app_models_testresult",
+      "app_models_userprinsiple",
+      "app_models_waareasetting",
+      "app_models_waareasetting_waareasetting",
+      "app_models_workplandaily",
+      "app_models_workplandaily_workplandaily",
+      "app_models_wpchatmessage",
+      "carbon_carbon",
+      "illuminate_database_eloquent_factories_hasfactory",
+      "illuminate_database_eloquent_model"
+    ],
+    "8": [
+      "app_http_controllers_authchatcontroller",
+      "app_http_controllers_authchatcontroller_authchatcontroller",
+      "app_http_controllers_authchatcontroller_authchatcontroller_adminindex",
+      "app_http_controllers_authchatcontroller_authchatcontroller_adminpoll",
+      "app_http_controllers_authchatcontroller_authchatcontroller_adminreply",
+      "app_http_controllers_authchatcontroller_authchatcontroller_adminresolve",
+      "app_http_controllers_authchatcontroller_authchatcontroller_adminsendaccess",
+      "app_http_controllers_authchatcontroller_authchatcontroller_checknik",
+      "app_http_controllers_authchatcontroller_authchatcontroller_poll",
+      "app_http_controllers_authchatcontroller_authchatcontroller_sendmessage",
+      "app_http_controllers_mathquestioncontroller",
+      "app_http_controllers_mathquestioncontroller_mathquestioncontroller",
+      "app_http_controllers_mathquestioncontroller_mathquestioncontroller_destroy",
+      "app_http_controllers_mathquestioncontroller_mathquestioncontroller_index",
+      "app_http_controllers_mathquestioncontroller_mathquestioncontroller_store",
+      "app_http_controllers_mathquestioncontroller_mathquestioncontroller_togglestatus",
+      "app_http_controllers_mathquestioncontroller_mathquestioncontroller_update",
+      "app_models_candidate_candidate_getlampiranurl",
+      "app_models_mathquestion",
+      "app_models_mathquestion_mathquestion",
+      "app_models_mathquestion_mathquestion_getchoicesattribute",
+      "app_models_mathquestion_mathquestion_getparsedchoicesattribute",
+      "app_models_mathquestion_mathquestion_gettypebadgelabelattribute",
+      "app_models_mathquestion_mathquestion_ismultiplechoice",
+      "app_models_mathquestion_mathquestion_parsechoices",
+      "app_models_mathquestion_mathquestion_scopeactive",
+      "app_models_mathquestion_mathquestion_setchoicesattribute",
+      "app_models_passwordresetchatmessage_passwordresetchatmessage",
+      "app_models_passwordresetchatmessage_passwordresetchatmessage_request",
+      "app_models_passwordresetrequest_passwordresetrequest",
+      "app_models_passwordresetrequest_passwordresetrequest_generateticketnumber",
+      "app_models_passwordresetrequest_passwordresetrequest_getformattedcreatedatattribute",
+      "app_models_passwordresetrequest_passwordresetrequest_getstatusbadgeattribute",
+      "app_models_passwordresetrequest_passwordresetrequest_latestmessage"
+    ],
+    "9": [
+      "app_http_controllers_jobstatistikcontroller",
+      "app_http_controllers_jobstatistikcontroller_jobstatistikcontroller",
+      "app_http_controllers_jobstatistikcontroller_jobstatistikcontroller_calculatestatistics",
+      "app_http_controllers_jobstatistikcontroller_jobstatistikcontroller_export",
+      "app_http_controllers_jobstatistikcontroller_jobstatistikcontroller_getemployeemaps",
+      "app_http_controllers_jobstatistikcontroller_jobstatistikcontroller_getregionmap",
+      "app_http_controllers_jobstatistikcontroller_jobstatistikcontroller_index",
+      "app_http_controllers_jobstatistikcontroller_jobstatistikcontroller_resolveregion",
+      "app_models_tbarea",
+      "app_models_tbarea_tbarea",
+      "app_models_tbarea_tbarea_getcanonicalareaname",
+      "app_models_tbarea_tbarea_getofficialareas",
+      "app_models_tbarea_tbarea_getregionmap",
+      "app_models_tbarea_tbarea_resolveregion",
+      "app_services_candidatexlsxexportservice_candidatexlsxexportservice",
+      "app_services_candidatexlsxexportservice_candidatexlsxexportservice_buildsheetxml",
+      "app_services_candidatexlsxexportservice_candidatexlsxexportservice_buildstylesxml",
+      "app_services_candidatexlsxexportservice_candidatexlsxexportservice_generatexlsx",
+      "app_services_candidatexlsxexportservice_candidatexlsxexportservice_resolvelampiranurl",
+      "app_services_candidatexlsxexportservice_candidatexlsxexportservice_xmlescape",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice_buildsheet1odooxml",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice_buildsheet2areaxml",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice_buildsheet3userareaxml",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice_buildsheet4detailxml",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice_buildstylesxml",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice_buildsubtitle",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice_colletter",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice_escapexml",
+      "app_services_jobstatistikxlsxexportservice_jobstatistikxlsxexportservice_generatexlsx",
+      "symfony_component_httpfoundation_binaryfileresponse"
+    ],
+    "10": [
+      "app_http_controllers_interviewcontroller_interviewcontroller",
+      "app_http_controllers_interviewcontroller_interviewcontroller_alihkanas",
+      "app_http_controllers_interviewcontroller_interviewcontroller_archive",
+      "app_http_controllers_interviewcontroller_interviewcontroller_arsip",
+      "app_http_controllers_interviewcontroller_interviewcontroller_buildwaurl",
+      "app_http_controllers_interviewcontroller_interviewcontroller_bulkunarchive",
+      "app_http_controllers_interviewcontroller_interviewcontroller_cleanprinsipletext",
+      "app_http_controllers_interviewcontroller_interviewcontroller_createwalkinterview",
+      "app_http_controllers_interviewcontroller_interviewcontroller_done",
+      "app_http_controllers_interviewcontroller_interviewcontroller_editprinciple",
+      "app_http_controllers_interviewcontroller_interviewcontroller_exportwalkinterview",
+      "app_http_controllers_interviewcontroller_interviewcontroller_gantiarea",
+      "app_http_controllers_interviewcontroller_interviewcontroller_getcurrentuser",
+      "app_http_controllers_interviewcontroller_interviewcontroller_getsalam",
+      "app_http_controllers_interviewcontroller_interviewcontroller_index",
+      "app_http_controllers_interviewcontroller_interviewcontroller_old_storeassessment",
+      "app_http_controllers_interviewcontroller_interviewcontroller_setremidi",
+      "app_http_controllers_interviewcontroller_interviewcontroller_show",
+      "app_http_controllers_interviewcontroller_interviewcontroller_storeassessment",
+      "app_http_controllers_interviewcontroller_interviewcontroller_storecomputertest",
+      "app_http_controllers_interviewcontroller_interviewcontroller_storeinhouseapproval",
+      "app_http_controllers_interviewcontroller_interviewcontroller_storeprincipleapproval",
+      "app_http_controllers_interviewcontroller_interviewcontroller_storerefcek",
+      "app_http_controllers_interviewcontroller_interviewcontroller_storewalkinterview",
+      "app_http_controllers_interviewcontroller_interviewcontroller_syncsingleodoo",
+      "app_http_controllers_interviewcontroller_interviewcontroller_unarchive",
+      "app_http_controllers_interviewcontroller_interviewcontroller_walkinterview",
+      "illuminate_http_request"
+    ],
+    "11": [
+      "app_http_controllers_publicjobcontroller_publicjobcontroller",
+      "app_http_controllers_publicjobcontroller_publicjobcontroller_applyform",
+      "app_http_controllers_publicjobcontroller_publicjobcontroller_index",
+      "app_http_controllers_publicjobcontroller_publicjobcontroller_show",
+      "app_models_jobspec_jobspec",
+      "app_models_jobspec_jobspec_booted",
+      "app_models_jobspec_jobspec_formatrichtext",
+      "app_models_jobspec_jobspec_getcreatoremployeeattribute",
+      "app_models_jobspec_jobspec_getcreatorwhatsappattribute",
+      "app_models_jobspec_jobspec_getcreatorwhatsappformattedattribute",
+      "app_models_jobspec_jobspec_getformattedadditionalinfoattribute",
+      "app_models_jobspec_jobspec_getformatteddescattribute",
+      "app_models_jobspec_jobspec_getformattedexpattribute",
+      "app_models_jobspec_jobspec_getformattedqualsattribute",
+      "app_models_jobspec_jobspec_getisexpiredattribute",
+      "app_models_jobspec_jobspec_getpicnameattribute",
+      "app_models_jobspec_jobspec_getplainadditionalinfoattribute",
+      "app_models_jobspec_jobspec_getplaindescattribute",
+      "app_models_jobspec_jobspec_getplainexpattribute",
+      "app_models_jobspec_jobspec_getplainqualsattribute",
+      "app_models_jobspec_jobspec_getplainskillsattribute",
+      "app_models_jobspec_jobspec_getregionattribute",
+      "app_models_jobspec_jobspec_getskillsarrayattribute",
+      "app_models_jobspec_jobspec_getslugattribute",
+      "app_models_jobspec_jobspec_getsnippetdescattribute",
+      "app_models_jobspec_jobspec_htmltocleantext"
+    ],
+    "12": [
+      "app_models_approvalworkflowstepuser",
+      "app_models_approvalworkflowstepuser_approvalworkflowstepuser",
+      "app_models_approvalworkflowstepuser_approvalworkflowstepuser_employee",
+      "app_models_approvalworkflowstepuser_approvalworkflowstepuser_step",
+      "app_models_approvalworkflowstepuser_approvalworkflowstepuser_user",
+      "app_models_employee_employee_entitymodel",
+      "app_models_employee_employee_principle",
+      "app_models_interviewassessment",
+      "app_models_interviewassessment_interviewassessment",
+      "app_models_interviewassessment_interviewassessment_candidate",
+      "app_models_interviewassessment_interviewassessment_getaveragescoreattribute",
+      "app_models_interviewassessment_interviewassessment_interviewer",
+      "app_models_odoosynclog",
+      "app_models_odoosynclog_odoosynclog_entity",
+      "app_models_passwordresetchatmessage",
+      "app_models_passwordresetrequest_passwordresetrequest_employee",
+      "app_models_passwordresetrequest_passwordresetrequest_resolver",
+      "app_models_testresult_testresult_candidate",
+      "app_models_userprinsiple_userprinsiple_creator",
+      "app_models_workexperience",
+      "app_models_wpchatgroupmember",
+      "app_models_wpchatgroupmember_wpchatgroupmember_group",
+      "app_models_wpchatmessage_wpchatmessage_group",
+      "illuminate_database_eloquent_relations_belongsto"
+    ],
+    "13": [
+      "app_models_approvalworkflow",
+      "app_models_approvalworkflow_approvalworkflow",
+      "app_models_approvalworkflow_approvalworkflow_scopeactive",
+      "app_models_approvalworkflow_approvalworkflow_steps",
+      "app_models_approvalworkflowstep",
+      "app_models_approvalworkflowstep_approvalworkflowstep",
+      "app_models_approvalworkflowstep_approvalworkflowstep_approvals",
+      "app_models_approvalworkflowstep_approvalworkflowstep_getmatchingapproversforcandidate",
+      "app_models_approvalworkflowstep_approvalworkflowstep_getmatchingruleforcandidate",
+      "app_models_approvalworkflowstep_approvalworkflowstep_matchescandidate",
+      "app_models_approvalworkflowstep_approvalworkflowstep_stepusers",
+      "app_models_approvalworkflowstep_approvalworkflowstep_workflow",
+      "app_services_approvalworkflowservice",
+      "app_services_approvalworkflowservice_approvalworkflowservice",
+      "app_services_approvalworkflowservice_approvalworkflowservice_canuserapprove",
+      "app_services_approvalworkflowservice_approvalworkflowservice_getapplicablestepsforcandidate",
+      "app_services_approvalworkflowservice_approvalworkflowservice_getcurrentstep",
+      "app_services_approvalworkflowservice_approvalworkflowservice_getnextstep",
+      "app_services_approvalworkflowservice_approvalworkflowservice_getstepapproverdisplayinfo",
+      "app_services_approvalworkflowservice_approvalworkflowservice_getworkflow",
+      "app_services_approvalworkflowservice_approvalworkflowservice_initializecandidatestep",
+      "app_services_approvalworkflowservice_approvalworkflowservice_ispimpinandireksi",
+      "illuminate_support_collection"
+    ],
+    "14": [
+      "app_services_activitylogxlsxexportservice",
+      "app_services_candidateimportservice",
+      "app_services_candidatexlsxexportservice",
+      "app_services_jobstatistikxlsxexportservice",
+      "app_services_workplanxlsxexportservice",
+      "database_migrations_2026_09_19_140000_add_is_active_to_tb_math_table",
+      "database_migrations_2026_09_19_140000_add_is_active_to_tb_math_table_down",
+      "database_migrations_2026_09_19_140000_add_is_active_to_tb_math_table_up",
+      "database_migrations_2026_09_19_160000_create_rbac_roles_and_permissions_tables",
+      "database_migrations_2026_09_19_160000_create_rbac_roles_and_permissions_tables_down",
+      "database_migrations_2026_09_19_160000_create_rbac_roles_and_permissions_tables_up",
+      "database_migrations_2026_09_21_110000_fix_tb_math_choices_json",
+      "database_migrations_2026_09_21_110000_fix_tb_math_choices_json_down",
+      "database_migrations_2026_09_21_110000_fix_tb_math_choices_json_up",
+      "database_migrations_2026_09_21_200000_add_info_and_undangan_to_candidates_table",
+      "database_migrations_2026_09_21_200000_add_info_and_undangan_to_candidates_table_down",
+      "database_migrations_2026_09_21_200000_add_info_and_undangan_to_candidates_table_up",
+      "database_migrations_2026_09_23_130000_delete_dummy_od_employees",
+      "database_migrations_2026_09_23_130000_delete_dummy_od_employees_down",
+      "database_migrations_2026_09_23_130000_delete_dummy_od_employees_up",
+      "exception",
+      "illuminate_support_facades_db",
+      "ziparchive"
+    ],
+    "15": [
+      "package",
+      "package_devdependencies",
+      "package_devdependencies_axios",
+      "package_devdependencies_concurrently",
+      "package_devdependencies_laravel_vite_plugin",
+      "package_devdependencies_tailwindcss",
+      "package_devdependencies_tailwindcss_vite",
+      "package_devdependencies_vite",
+      "package_private",
+      "package_schema",
+      "package_scripts",
+      "package_scripts_build",
+      "package_scripts_dev",
+      "package_type",
+      "ref_axios",
+      "ref_concurrently",
+      "ref_laravel_vite_plugin",
+      "ref_tailwindcss",
+      "ref_tailwindcss_vite",
+      "ref_vite",
+      "resources_js_app",
+      "resources_js_bootstrap",
+      "vite_config"
+    ],
+    "16": [
+      "app_http_controllers_activitylogcontroller_activitylogcontroller",
+      "app_http_controllers_activitylogcontroller_activitylogcontroller_index",
+      "app_http_controllers_activitylogcontroller_activitylogcontroller_show",
+      "app_http_controllers_airankingcontroller_airankingcontroller",
+      "app_http_controllers_airankingcontroller_airankingcontroller_index",
+      "app_http_controllers_authcontroller_authcontroller",
+      "app_http_controllers_authcontroller_authcontroller_login",
+      "app_http_controllers_authcontroller_authcontroller_logout",
+      "app_http_controllers_authcontroller_authcontroller_showloginform",
+      "app_http_controllers_controller",
+      "app_http_controllers_controller_controller",
+      "app_http_controllers_featurecontroller",
+      "app_http_controllers_featurecontroller_featurecontroller",
+      "app_http_controllers_featurecontroller_featurecontroller_index",
+      "app_http_controllers_homecontroller_homecontroller",
+      "app_http_controllers_homecontroller_homecontroller_index",
+      "app_http_controllers_userprofilecontroller_userprofilecontroller",
+      "app_http_controllers_userprofilecontroller_userprofilecontroller_destroyavatar",
+      "app_http_controllers_userprofilecontroller_userprofilecontroller_index",
+      "app_services_activitylogger_activitylogger_auth",
+      "illuminate_support_facades_route",
+      "routes_web"
+    ],
+    "17": [
+      "app_console_commands_cronaianalyzercommand",
+      "app_console_commands_cronaianalyzercommand_cronaianalyzercommand",
+      "app_console_commands_cronaianalyzercommand_cronaianalyzercommand_handle",
+      "app_services_aianalyzerservice_aianalyzerservice",
+      "app_services_aianalyzerservice_aianalyzerservice_analyzecandidate",
+      "app_services_aianalyzerservice_aianalyzerservice_buildbiodatatext",
+      "app_services_aianalyzerservice_aianalyzerservice_buildjobspecstext",
+      "app_services_aianalyzerservice_aianalyzerservice_buildprompt",
+      "app_services_aianalyzerservice_aianalyzerservice_callgemini",
+      "app_services_aianalyzerservice_aianalyzerservice_callopenrouter",
+      "app_services_aianalyzerservice_aianalyzerservice_callsumopod",
+      "app_services_aianalyzerservice_aianalyzerservice_callwaflow",
+      "app_services_aianalyzerservice_aianalyzerservice_downloadurlcontent",
+      "app_services_aianalyzerservice_aianalyzerservice_extractcleanjson",
+      "app_services_aianalyzerservice_aianalyzerservice_getliverunningstatus",
+      "app_services_aianalyzerservice_aianalyzerservice_gettodaylogs",
+      "app_services_aianalyzerservice_aianalyzerservice_getuserassetting",
+      "app_services_aianalyzerservice_aianalyzerservice_loadcvfile",
+      "app_services_aianalyzerservice_aianalyzerservice_purgeoldlogsifnewday",
+      "app_services_aianalyzerservice_aianalyzerservice_sendwhatsappnotification",
+      "app_services_aianalyzerservice_aianalyzerservice_writelog"
+    ],
+    "18": [
+      "app_http_controllers_airankingcontroller",
+      "app_http_controllers_candidatecontroller",
+      "app_http_controllers_candidatecontroller_candidatecontroller",
+      "app_http_controllers_candidatecontroller_candidatecontroller_create",
+      "app_http_controllers_candidatecontroller_candidatecontroller_getwhatsappmessage",
+      "app_http_controllers_candidatecontroller_candidatecontroller_index",
+      "app_http_controllers_candidatecontroller_candidatecontroller_show",
+      "app_http_controllers_candidatecontroller_candidatecontroller_store",
+      "app_http_controllers_homecontroller",
+      "app_http_controllers_principlecontroller",
+      "app_http_controllers_principlecontroller_principlecontroller",
+      "app_http_controllers_principlecontroller_principlecontroller_destroy",
+      "app_http_controllers_principlecontroller_principlecontroller_index",
+      "app_http_controllers_principlecontroller_principlecontroller_reimportofficial",
+      "app_http_controllers_principlecontroller_principlecontroller_store",
+      "app_http_controllers_principlecontroller_principlecontroller_togglestatus",
+      "app_http_controllers_principlecontroller_principlecontroller_update",
+      "app_http_controllers_publicjobcontroller_publicjobcontroller_submitapply",
+      "app_http_controllers_rbaccontroller_rbaccontroller_index",
+      "app_models_principle_principle",
+      "app_models_principle_principle_getentitycolorattribute"
+    ],
+    "19": [
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_ailivestatus",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_aiqueuedata",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_aiqueuelog",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_aiqueuetriggerprocess",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_alihkanas",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_arsipkan",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_exportexcel",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_gantiarea",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_getaiqueuelogpayload",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_getcurrentuser",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_index",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_resetpassword",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_resolveuseridentifiers",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_show",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_storecomputertest",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_storerefcek",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_unarchive",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_updateinterview",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_uploadattachments"
+    ],
+    "20": [
+      "app_http_controllers_workplanchatcontroller",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_addmembers",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_checknotifications",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_getcurrentuser",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_getgroups",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_getmessages",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_getuserofficialname",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_index",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_sendmessage",
+      "app_http_controllers_workplanchatcontroller_workplanchatcontroller_storegroup",
+      "app_models_wpchatgroup",
+      "app_models_wpchatgroup_wpchatgroup",
+      "app_models_wpchatgroup_wpchatgroup_getinitialsattribute",
+      "app_models_wpchatgroup_wpchatgroup_latestmessage",
+      "app_models_wpchatgroupmember_wpchatgroupmember",
+      "app_models_wpchatmessage_wpchatmessage",
+      "app_models_wpchatmessage_wpchatmessage_getformatteddateattribute",
+      "app_models_wpchatmessage_wpchatmessage_getformattedtimeattribute",
+      "illuminate_database_eloquent_relations_hasone"
+    ],
+    "21": [
+      "app_http_controllers_aisettingcontroller_aisettingcontroller",
+      "app_http_controllers_aisettingcontroller_aisettingcontroller_removeexpiredkey",
+      "app_http_controllers_aisettingcontroller_aisettingcontroller_removemodel",
+      "app_http_controllers_aisettingcontroller_aisettingcontroller_testgemini",
+      "app_http_controllers_aisettingcontroller_aisettingcontroller_testopenrouter",
+      "app_http_controllers_aisettingcontroller_aisettingcontroller_testsumopod",
+      "app_http_controllers_aisettingcontroller_aisettingcontroller_testwa",
+      "app_http_controllers_aisettingcontroller_aisettingcontroller_update",
+      "app_http_controllers_aisettingcontroller_aisettingcontroller_updatearea",
+      "app_models_aisetting_aisetting",
+      "app_models_aisetting_aisetting_booted",
+      "app_models_aisetting_aisetting_getexpiredkeyslistattribute",
+      "app_models_aisetting_aisetting_getgeminimodelsattribute",
+      "app_models_aisetting_aisetting_getkeyslistattribute",
+      "app_models_aisetting_aisetting_getopenroutermodelsattribute",
+      "app_models_aisetting_aisetting_getsumopodmodelsattribute",
+      "app_models_aisetting_aisetting_markkeyexpired",
+      "app_models_aisetting_aisetting_removeexpiredkey"
+    ],
+    "22": [
+      "illuminate_foundation_testing_refreshdatabase",
+      "illuminate_foundation_testing_testcase",
+      "tests_feature_cbtmoduletest",
+      "tests_feature_cbtmoduletest_cbtmoduletest",
+      "tests_feature_cbtmoduletest_cbtmoduletest_getorcreatecandidate",
+      "tests_feature_cbtmoduletest_cbtmoduletest_test_authenticated_candidate_can_access_dashboard_and_profile",
+      "tests_feature_cbtmoduletest_cbtmoduletest_test_candidate_can_execute_computer_test",
+      "tests_feature_cbtmoduletest_cbtmoduletest_test_candidate_can_execute_math_test",
+      "tests_feature_cbtmoduletest_cbtmoduletest_test_candidate_can_execute_personality_disc_test",
+      "tests_feature_cbtmoduletest_cbtmoduletest_test_candidate_can_login_with_dob_default_password",
+      "tests_feature_cbtmoduletest_cbtmoduletest_test_candidate_can_update_profile_and_add_experience",
+      "tests_feature_cbtmoduletest_cbtmoduletest_test_cbt_login_page_renders_successfully",
+      "tests_feature_cbtmoduletest_cbtmoduletest_test_unauthenticated_candidate_is_redirected",
+      "tests_feature_exampletest",
+      "tests_feature_exampletest_exampletest",
+      "tests_feature_exampletest_exampletest_test_the_application_returns_a_successful_response",
+      "tests_testcase",
+      "tests_testcase_testcase"
+    ],
+    "23": [
+      "app_helpers",
+      "app_helpers_activity_log",
+      "app_models_activitylog_activitylog",
+      "app_models_activitylog_activitylog_getactionbadgeclassattribute",
+      "app_models_activitylog_activitylog_getactioniconattribute",
+      "app_models_activitylog_activitylog_getdeviceattribute",
+      "app_models_activitylog_activitylog_getdifftimeattribute",
+      "app_models_activitylog_activitylog_getformattedcreatedatattribute",
+      "app_models_activitylog_activitylog_scopedaterange",
+      "app_models_activitylog_activitylog_scopefilteraction",
+      "app_models_activitylog_activitylog_scopefiltermodule",
+      "app_models_activitylog_activitylog_scopefilteruser",
+      "app_models_activitylog_activitylog_scopesearch",
+      "app_models_activitylog_activitylog_user",
+      "app_services_activitylogger_activitylogger_crud",
+      "app_services_activitylogger_activitylogger_export",
+      "app_services_activitylogger_activitylogger_sync"
+    ],
+    "24": [
+      "app_http_controllers_activitylogcontroller_activitylogcontroller_export",
+      "app_http_controllers_interviewcontroller",
+      "app_http_controllers_interviewcontroller_interviewcontroller_syncodoo",
+      "app_http_controllers_kandidatportalcontroller",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_syncodoorecruitment",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_syncsingleodoo",
+      "app_http_controllers_rbaccontroller",
+      "app_http_controllers_rbaccontroller_rbaccontroller",
+      "app_http_controllers_rbaccontroller_rbaccontroller_destroyrole",
+      "app_http_controllers_rbaccontroller_rbaccontroller_resetuserpassword",
+      "app_http_controllers_rbaccontroller_rbaccontroller_storerole",
+      "app_http_controllers_rbaccontroller_rbaccontroller_storeuser",
+      "app_http_controllers_rbaccontroller_rbaccontroller_updaterole",
+      "app_http_controllers_rbaccontroller_rbaccontroller_updaterolematrix",
+      "app_http_controllers_rbaccontroller_rbaccontroller_updateuseraccess",
+      "app_services_activitylogger_activitylogger",
+      "app_services_odoorecruitmentsyncservice_odoorecruitmentsyncservice"
+    ],
+    "25": [
+      "app_models_permission",
+      "app_models_permission_permission",
+      "app_models_permission_permission_roles",
+      "app_models_permission_permission_users",
+      "app_models_role",
+      "app_models_role_role",
+      "app_models_role_role_canaccessarea",
+      "app_models_role_role_canaccessprinciple",
+      "app_models_role_role_coversallareas",
+      "app_models_role_role_geteffectiveareas",
+      "app_models_role_role_geteffectiveprinciples",
+      "app_models_role_role_handlesallprinciples",
+      "app_models_role_role_haspermission",
+      "app_models_role_role_permissions",
+      "app_models_role_role_users",
+      "illuminate_database_eloquent_relations_belongstomany"
+    ],
+    "26": [
+      "database_migrations_0001_01_01_000000_create_users_table",
+      "database_migrations_0001_01_01_000000_create_users_table_down",
+      "database_migrations_0001_01_01_000000_create_users_table_up",
+      "database_migrations_2026_09_17_030252_create_job_specs_table",
+      "database_migrations_2026_09_17_030252_create_job_specs_table_down",
+      "database_migrations_2026_09_17_030252_create_job_specs_table_up",
+      "database_migrations_2026_09_17_030254_create_interview_assessments_table",
+      "database_migrations_2026_09_17_030254_create_interview_assessments_table_down",
+      "database_migrations_2026_09_17_030254_create_interview_assessments_table_up",
+      "database_migrations_2026_09_19_170000_add_scopes_to_roles_and_users_tables",
+      "database_migrations_2026_09_19_170000_add_scopes_to_roles_and_users_tables_down",
+      "database_migrations_2026_09_19_170000_add_scopes_to_roles_and_users_tables_up",
+      "database_migrations_2026_09_22_174813_add_nama_approver_to_candidates_table",
+      "database_migrations_2026_09_22_174813_add_nama_approver_to_candidates_table_down",
+      "database_migrations_2026_09_22_174813_add_nama_approver_to_candidates_table_up",
+      "illuminate_support_facades_schema"
+    ],
+    "27": [
+      "database_migrations_0001_01_01_000001_create_cache_table",
+      "database_migrations_0001_01_01_000001_create_cache_table_down",
+      "database_migrations_0001_01_01_000001_create_cache_table_up",
+      "database_migrations_2026_09_17_030252_create_principles_table",
+      "database_migrations_2026_09_17_030252_create_principles_table_down",
+      "database_migrations_2026_09_17_030252_create_principles_table_up",
+      "database_migrations_2026_09_18_050000_add_domicile_info_and_experience_to_candidates_table",
+      "database_migrations_2026_09_18_050000_add_domicile_info_and_experience_to_candidates_table_down",
+      "database_migrations_2026_09_18_050000_add_domicile_info_and_experience_to_candidates_table_up",
+      "database_migrations_2026_09_19_180000_add_avatar_to_users_table",
+      "database_migrations_2026_09_19_180000_add_avatar_to_users_table_down",
+      "database_migrations_2026_09_19_180000_add_avatar_to_users_table_up",
+      "database_migrations_2026_09_20_193000_create_activity_logs_table",
+      "database_migrations_2026_09_20_193000_create_activity_logs_table_down",
+      "database_migrations_2026_09_20_193000_create_activity_logs_table_up",
+      "illuminate_database_schema_blueprint"
+    ],
+    "28": [
+      "database_migrations_2026_09_17_083436_create_odoo_entities_and_sync_logs_tables",
+      "database_migrations_2026_09_17_083436_create_odoo_entities_and_sync_logs_tables_down",
+      "database_migrations_2026_09_17_083436_create_odoo_entities_and_sync_logs_tables_up",
+      "database_migrations_2026_09_17_090500_create_user_prinsiples_table",
+      "database_migrations_2026_09_17_090500_create_user_prinsiples_table_down",
+      "database_migrations_2026_09_17_090500_create_user_prinsiples_table_up",
+      "database_migrations_2026_09_17_120000_create_candidate_logs_and_cbt_tables",
+      "database_migrations_2026_09_17_120000_create_candidate_logs_and_cbt_tables_down",
+      "database_migrations_2026_09_17_120000_create_candidate_logs_and_cbt_tables_up",
+      "database_migrations_2026_09_17_140000_create_legacy_interview_tables",
+      "database_migrations_2026_09_17_140000_create_legacy_interview_tables_down",
+      "database_migrations_2026_09_17_140000_create_legacy_interview_tables_up",
+      "database_migrations_2026_09_19_220000_align_candidate_timestamps_to_wib",
+      "database_migrations_2026_09_19_220000_align_candidate_timestamps_to_wib_down",
+      "database_migrations_2026_09_19_220000_align_candidate_timestamps_to_wib_up",
+      "illuminate_database_migrations_migration"
+    ],
+    "29": [
+      "app_http_controllers_interviewcontroller_interviewcontroller_getuserprinsipleoptions",
+      "app_http_controllers_userprinsiplecontroller",
+      "app_http_controllers_userprinsiplecontroller_userprinsiplecontroller",
+      "app_http_controllers_userprinsiplecontroller_userprinsiplecontroller_canonicalphone",
+      "app_http_controllers_userprinsiplecontroller_userprinsiplecontroller_destroy",
+      "app_http_controllers_userprinsiplecontroller_userprinsiplecontroller_index",
+      "app_http_controllers_userprinsiplecontroller_userprinsiplecontroller_sendaccess",
+      "app_http_controllers_userprinsiplecontroller_userprinsiplecontroller_store",
+      "app_http_controllers_userprinsiplecontroller_userprinsiplecontroller_update",
+      "app_models_userprinsiple_userprinsiple",
+      "app_models_userprinsiple_userprinsiple_getstatusbadgeattribute",
+      "app_models_userprinsiple_userprinsiple_principle",
+      "illuminate_http_redirectresponse",
+      "illuminate_view_view"
+    ],
+    "30": [
+      "app_http_controllers_activitylogcontroller",
+      "app_http_controllers_authcontroller",
+      "app_http_controllers_userprofilecontroller",
+      "app_services_activitylogger",
+      "app_services_activitylogxlsxexportservice_activitylogxlsxexportservice",
+      "app_services_activitylogxlsxexportservice_activitylogxlsxexportservice_buildsheetxml",
+      "app_services_activitylogxlsxexportservice_activitylogxlsxexportservice_buildstylesxml",
+      "app_services_activitylogxlsxexportservice_activitylogxlsxexportservice_generatexlsx",
+      "app_services_activitylogxlsxexportservice_activitylogxlsxexportservice_xmlescape",
+      "illuminate_support_facades_auth",
+      "illuminate_support_facades_file",
+      "illuminate_validation_rule",
+      "throwable"
+    ],
+    "31": [
+      "app_models_odooentity",
+      "app_models_odooentity_odooentity_synclogs",
+      "app_models_passwordresetrequest",
+      "app_models_passwordresetrequest_passwordresetrequest_messages",
+      "app_models_principle",
+      "app_models_principle_principle_approvals",
+      "app_models_principle_principle_candidates",
+      "app_models_principle_principle_employees",
+      "app_models_user_user_candidates",
+      "app_models_user_user_interviewassessments",
+      "app_models_wpchatgroup_wpchatgroup_members",
+      "app_models_wpchatgroup_wpchatgroup_messages",
+      "illuminate_database_eloquent_relations_hasmany"
+    ],
+    "32": [
+      "app_http_middleware_ensurecandidateauthenticated",
+      "app_http_middleware_ensurecandidateauthenticated_ensurecandidateauthenticated",
+      "app_http_middleware_ensurecandidateauthenticated_ensurecandidateauthenticated_handle",
+      "app_http_middleware_ensureuserisadmin",
+      "app_http_middleware_ensureuserisadmin_ensureuserisadmin",
+      "app_http_middleware_ensureuserisadmin_ensureuserisadmin_handle",
+      "app_http_middleware_redirectifinstalled",
+      "app_http_middleware_redirectifinstalled_redirectifinstalled",
+      "app_http_middleware_redirectifinstalled_redirectifinstalled_handle",
+      "closure",
+      "symfony_component_httpfoundation_response"
+    ],
+    "33": [
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller",
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller_buildwaurl",
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller_downloadberkas",
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller_getcurrentuser",
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller_getinhouseprincipleids",
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller_getsalam",
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller_index",
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller_iscandidateinhouse",
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller_show",
+      "app_http_controllers_interviewinhousecontroller_interviewinhousecontroller_storeapproval"
+    ],
+    "34": [
+      "app_http_controllers_jobcontroller_jobcontroller",
+      "app_http_controllers_jobcontroller_jobcontroller_callgeminiapi",
+      "app_http_controllers_jobcontroller_jobcontroller_callsumopodapi",
+      "app_http_controllers_jobcontroller_jobcontroller_destroy",
+      "app_http_controllers_jobcontroller_jobcontroller_generateimageprompt",
+      "app_http_controllers_jobcontroller_jobcontroller_generatejobai",
+      "app_http_controllers_jobcontroller_jobcontroller_getcurrentuser",
+      "app_http_controllers_jobcontroller_jobcontroller_store",
+      "app_http_controllers_jobcontroller_jobcontroller_togglestatus",
+      "app_services_activitylogger_activitylogger_log"
+    ],
+    "35": [
+      "app_providers_appserviceprovider",
+      "app_providers_appserviceprovider_appserviceprovider",
+      "app_providers_appserviceprovider_appserviceprovider_boot",
+      "app_providers_appserviceprovider_appserviceprovider_register",
+      "bootstrap_providers",
+      "illuminate_auth_events_failed",
+      "illuminate_auth_events_login",
+      "illuminate_auth_events_logout",
+      "illuminate_support_facades_event",
+      "illuminate_support_serviceprovider"
+    ],
+    "36": [
+      "database_seeders_cbtcandidateseeder",
+      "database_seeders_cbtcandidateseeder_cbtcandidateseeder",
+      "database_seeders_cbtcandidateseeder_cbtcandidateseeder_run",
+      "database_seeders_databaseseeder",
+      "database_seeders_databaseseeder_databaseseeder",
+      "database_seeders_databaseseeder_databaseseeder_run",
+      "database_seeders_odooentityseeder",
+      "database_seeders_odooentityseeder_odooentityseeder",
+      "database_seeders_odooentityseeder_odooentityseeder_run",
+      "illuminate_database_seeder"
+    ],
+    "37": [
+      "app_http_controllers_approvalworkflowcontroller",
+      "app_http_controllers_approvalworkflowcontroller_approvalworkflowcontroller",
+      "app_http_controllers_approvalworkflowcontroller_approvalworkflowcontroller_compilerulesfromrequest",
+      "app_http_controllers_approvalworkflowcontroller_approvalworkflowcontroller_destroystep",
+      "app_http_controllers_approvalworkflowcontroller_approvalworkflowcontroller_index",
+      "app_http_controllers_approvalworkflowcontroller_approvalworkflowcontroller_reordersteps",
+      "app_http_controllers_approvalworkflowcontroller_approvalworkflowcontroller_searchapprovers",
+      "app_http_controllers_approvalworkflowcontroller_approvalworkflowcontroller_storestep",
+      "app_http_controllers_approvalworkflowcontroller_approvalworkflowcontroller_updatestep"
+    ],
+    "38": [
+      "app_http_controllers_interviewinhousecontroller",
+      "app_http_controllers_publicjobcontroller",
+      "app_models_inhouseapproval",
+      "app_models_inhouseapproval_inhouseapproval",
+      "app_models_inhouseapproval_inhouseapproval_candidate",
+      "app_models_inhouseapproval_inhouseapproval_step",
+      "app_models_inhouseapproval_inhouseapproval_user",
+      "app_services_approvalworkflowservice_approvalworkflowservice_processapproval",
+      "illuminate_support_facades_storage"
+    ],
+    "39": [
+      "app_http_controllers_principleapprovalcontroller",
+      "app_http_controllers_principleapprovalcontroller_principleapprovalcontroller",
+      "app_http_controllers_principleapprovalcontroller_principleapprovalcontroller_process",
+      "app_http_controllers_principleapprovalcontroller_principleapprovalcontroller_show",
+      "app_models_principleapproval",
+      "app_models_principleapproval_principleapproval",
+      "app_models_principleapproval_principleapproval_booted",
+      "app_models_principleapproval_principleapproval_candidate",
+      "app_models_principleapproval_principleapproval_principle"
+    ],
+    "40": [
+      "app_http_controllers_interviewcontroller_interviewcontroller_downloadpdf",
+      "app_services_interviewpdfservice",
+      "app_services_interviewpdfservice_interviewpdfservice",
+      "app_services_interviewpdfservice_interviewpdfservice_generate",
+      "app_services_interviewpdfservice_interviewpdfservice_generatepiechart",
+      "app_services_interviewpdfservice_interviewpdfservice_resolveimageforpdf",
+      "app_services_interviewpdfservice_interviewpdfservice_writempdfhtml",
+      "mpdf"
+    ],
+    "41": [
+      "app_http_controllers_personalityquestioncontroller",
+      "app_http_controllers_personalityquestioncontroller_personalityquestioncontroller",
+      "app_http_controllers_personalityquestioncontroller_personalityquestioncontroller_index",
+      "app_http_controllers_personalityquestioncontroller_personalityquestioncontroller_update",
+      "app_models_personalityquestion",
+      "app_models_personalityquestion_personalityquestion",
+      "app_models_personalityquestion_personalityquestion_getcategoryattribute",
+      "app_models_personalityquestion_personalityquestion_getcategorybadgeclassattribute"
+    ],
+    "42": [
+      "app_console_commands_fixdummymathresultscommand",
+      "app_console_commands_fixdummymathresultscommand_fixdummymathresultscommand",
+      "app_console_commands_fixdummymathresultscommand_fixdummymathresultscommand_handle",
+      "app_services_candidateevaluationdataservice",
+      "app_services_candidateevaluationdataservice_candidateevaluationdataservice",
+      "app_services_candidateevaluationdataservice_candidateevaluationdataservice_getevaluationdata"
+    ],
+    "43": [
+      "app_http_controllers_interviewcontroller_interviewcontroller_cetakaipdf",
+      "app_http_controllers_kandidatportalcontroller_kandidatportalcontroller_cetakaipdf",
+      "app_services_aipdfservice",
+      "app_services_aipdfservice_aipdfservice",
+      "app_services_aipdfservice_aipdfservice_generate",
+      "app_services_aipdfservice_aipdfservice_renderpdfdirect"
+    ],
+    "44": [
+      "app_services_legacyattachmentservice",
+      "app_services_legacyattachmentservice_legacyattachmentservice",
+      "app_services_legacyattachmentservice_legacyattachmentservice_fetchremotefile",
+      "app_services_legacyattachmentservice_legacyattachmentservice_getimagebase64",
+      "app_services_legacyattachmentservice_legacyattachmentservice_resolveapproval",
+      "app_services_legacyattachmentservice_legacyattachmentservice_resolverefcek"
+    ],
+    "45": [
+      "app_http_controllers_jobcontroller_jobcontroller_index",
+      "app_services_indonesiaregionservice",
+      "app_services_indonesiaregionservice_indonesiaregionservice",
+      "app_services_indonesiaregionservice_indonesiaregionservice_getprovinces",
+      "app_services_indonesiaregionservice_indonesiaregionservice_getprovinceswithcities"
+    ],
+    "46": [
+      "bootstrap_app",
+      "illuminate_foundation_application",
+      "illuminate_foundation_configuration_exceptions",
+      "illuminate_foundation_configuration_middleware",
+      "public_index"
+    ],
+    "47": [
+      "config_logging",
+      "monolog_handler_nullhandler",
+      "monolog_handler_streamhandler",
+      "monolog_handler_syslogudphandler",
+      "monolog_processor_psrlogmessageprocessor"
+    ],
+    "48": [
+      "app_services_aianalyzerservice",
+      "app_services_odoorecruitmentsyncservice",
+      "illuminate_support_facades_cache",
+      "illuminate_support_facades_log"
+    ],
+    "49": [
+      "phpunit_framework_testcase",
+      "tests_unit_exampletest",
+      "tests_unit_exampletest_exampletest",
+      "tests_unit_exampletest_exampletest_test_that_true_is_true"
+    ],
+    "50": [
+      "app_console_commands_importlegacyinterviewcommand",
+      "app_console_commands_importlegacyinterviewcommand_importlegacyinterviewcommand",
+      "app_console_commands_importlegacyinterviewcommand_importlegacyinterviewcommand_handle"
+    ],
+    "51": [
+      "application",
+      "argvinput",
+      "artisan"
+    ],
+    "52": [
+      "database_migrations_0001_01_01_000002_create_jobs_table",
+      "database_migrations_0001_01_01_000002_create_jobs_table_down",
+      "database_migrations_0001_01_01_000002_create_jobs_table_up"
+    ],
+    "53": [
+      "database_migrations_2026_09_17_030252_add_roles_to_users_table",
+      "database_migrations_2026_09_17_030252_add_roles_to_users_table_down",
+      "database_migrations_2026_09_17_030252_add_roles_to_users_table_up"
+    ],
+    "54": [
+      "database_migrations_2026_09_17_030253_create_candidates_table",
+      "database_migrations_2026_09_17_030253_create_candidates_table_down",
+      "database_migrations_2026_09_17_030253_create_candidates_table_up"
+    ],
+    "55": [
+      "database_migrations_2026_09_17_030253_create_work_experiences_table",
+      "database_migrations_2026_09_17_030253_create_work_experiences_table_down",
+      "database_migrations_2026_09_17_030253_create_work_experiences_table_up"
+    ],
+    "56": [
+      "database_migrations_2026_09_17_030254_create_principle_approvals_table",
+      "database_migrations_2026_09_17_030254_create_principle_approvals_table_down",
+      "database_migrations_2026_09_17_030254_create_principle_approvals_table_up"
+    ],
+    "57": [
+      "database_migrations_2026_09_17_030255_create_test_results_table",
+      "database_migrations_2026_09_17_030255_create_test_results_table_down",
+      "database_migrations_2026_09_17_030255_create_test_results_table_up"
+    ],
+    "58": [
+      "database_migrations_2026_09_17_033744_add_legacy_profile_fields_to_candidates_table",
+      "database_migrations_2026_09_17_033744_add_legacy_profile_fields_to_candidates_table_down",
+      "database_migrations_2026_09_17_033744_add_legacy_profile_fields_to_candidates_table_up"
+    ],
+    "59": [
+      "database_migrations_2026_09_17_040000_create_employees_and_update_principles_table",
+      "database_migrations_2026_09_17_040000_create_employees_and_update_principles_table_down",
+      "database_migrations_2026_09_17_040000_create_employees_and_update_principles_table_up"
+    ],
+    "60": [
+      "database_migrations_2026_09_17_092800_add_login_access_and_birthdate_to_employees_table",
+      "database_migrations_2026_09_17_092800_add_login_access_and_birthdate_to_employees_table_down",
+      "database_migrations_2026_09_17_092800_add_login_access_and_birthdate_to_employees_table_up"
+    ],
+    "61": [
+      "database_migrations_2026_09_17_150000_add_ttd_prinsiple_and_sync_candidate_categories",
+      "database_migrations_2026_09_17_150000_add_ttd_prinsiple_and_sync_candidate_categories_down",
+      "database_migrations_2026_09_17_150000_add_ttd_prinsiple_and_sync_candidate_categories_up"
+    ],
+    "62": [
+      "database_migrations_2026_09_17_160000_add_performance_indexes_to_candidates_table",
+      "database_migrations_2026_09_17_160000_add_performance_indexes_to_candidates_table_down",
+      "database_migrations_2026_09_17_160000_add_performance_indexes_to_candidates_table_up"
+    ],
+    "63": [
+      "database_migrations_2026_09_17_170000_add_idprinsiple_to_candidates_table",
+      "database_migrations_2026_09_17_170000_add_idprinsiple_to_candidates_table_down",
+      "database_migrations_2026_09_17_170000_add_idprinsiple_to_candidates_table_up"
+    ],
+    "64": [
+      "database_migrations_2026_09_18_052000_add_principle_to_candidates_table",
+      "database_migrations_2026_09_18_052000_add_principle_to_candidates_table_down",
+      "database_migrations_2026_09_18_052000_add_principle_to_candidates_table_up"
+    ],
+    "65": [
+      "database_migrations_2026_09_18_070000_import_official_master_principles",
+      "database_migrations_2026_09_18_070000_import_official_master_principles_down",
+      "database_migrations_2026_09_18_070000_import_official_master_principles_up"
+    ],
+    "66": [
+      "database_migrations_2026_09_18_170000_add_signature_path_to_users_table",
+      "database_migrations_2026_09_18_170000_add_signature_path_to_users_table_down",
+      "database_migrations_2026_09_18_170000_add_signature_path_to_users_table_up"
+    ],
+    "67": [
+      "database_migrations_2026_09_18_220000_add_created_by_to_user_prinsiples_table",
+      "database_migrations_2026_09_18_220000_add_created_by_to_user_prinsiples_table_down",
+      "database_migrations_2026_09_18_220000_add_created_by_to_user_prinsiples_table_up"
+    ],
+    "68": [
+      "database_migrations_2026_09_19_120000_add_tes_ke_to_candidates_table",
+      "database_migrations_2026_09_19_120000_add_tes_ke_to_candidates_table_down",
+      "database_migrations_2026_09_19_120000_add_tes_ke_to_candidates_table_up"
+    ],
+    "69": [
+      "database_migrations_2026_09_19_190000_add_gemini_expired_keys_to_ai_settings_table",
+      "database_migrations_2026_09_19_190000_add_gemini_expired_keys_to_ai_settings_table_down",
+      "database_migrations_2026_09_19_190000_add_gemini_expired_keys_to_ai_settings_table_up"
+    ],
+    "70": [
+      "database_migrations_2026_09_19_200000_add_odoo_recruitment_fields_to_candidates_table",
+      "database_migrations_2026_09_19_200000_add_odoo_recruitment_fields_to_candidates_table_down",
+      "database_migrations_2026_09_19_200000_add_odoo_recruitment_fields_to_candidates_table_up"
+    ],
+    "71": [
+      "database_migrations_2026_09_20_090000_create_workplan_and_tasks_tables",
+      "database_migrations_2026_09_20_090000_create_workplan_and_tasks_tables_down",
+      "database_migrations_2026_09_20_090000_create_workplan_and_tasks_tables_up"
+    ],
+    "72": [
+      "database_migrations_2026_09_20_100000_create_wp_chat_tables",
+      "database_migrations_2026_09_20_100000_create_wp_chat_tables_down",
+      "database_migrations_2026_09_20_100000_create_wp_chat_tables_up"
+    ],
+    "73": [
+      "database_migrations_2026_09_21_130000_sync_official_master_principles",
+      "database_migrations_2026_09_21_130000_sync_official_master_principles_down",
+      "database_migrations_2026_09_21_130000_sync_official_master_principles_up"
+    ],
+    "74": [
+      "database_migrations_2026_09_21_210000_create_tb_area_and_tb_kota_tables",
+      "database_migrations_2026_09_21_210000_create_tb_area_and_tb_kota_tables_down",
+      "database_migrations_2026_09_21_210000_create_tb_area_and_tb_kota_tables_up"
+    ],
+    "75": [
+      "database_migrations_2026_09_22_123000_sync_tb_area_and_normalize_regions",
+      "database_migrations_2026_09_22_123000_sync_tb_area_and_normalize_regions_down",
+      "database_migrations_2026_09_22_123000_sync_tb_area_and_normalize_regions_up"
+    ],
+    "76": [
+      "database_migrations_2026_09_22_143000_revert_demo_candidate_users_from_jamil",
+      "database_migrations_2026_09_22_143000_revert_demo_candidate_users_from_jamil_down",
+      "database_migrations_2026_09_22_143000_revert_demo_candidate_users_from_jamil_up"
+    ],
+    "77": [
+      "database_migrations_2026_09_23_093000_create_password_reset_chat_tables",
+      "database_migrations_2026_09_23_093000_create_password_reset_chat_tables_down",
+      "database_migrations_2026_09_23_093000_create_password_reset_chat_tables_up"
+    ],
+    "78": [
+      "database_migrations_2026_09_23_140000_add_openrouter_and_custom_models_to_ai_settings",
+      "database_migrations_2026_09_23_140000_add_openrouter_and_custom_models_to_ai_settings_down",
+      "database_migrations_2026_09_23_140000_add_openrouter_and_custom_models_to_ai_settings_up"
+    ],
+    "79": [
+      "database_migrations_2026_09_23_200000_create_dynamic_approval_workflows_tables",
+      "database_migrations_2026_09_23_200000_create_dynamic_approval_workflows_tables_down",
+      "database_migrations_2026_09_23_200000_create_dynamic_approval_workflows_tables_up"
+    ],
+    "80": [
+      "database_migrations_2026_09_23_210000_add_dynamic_rules_to_approval_workflow_steps_tables",
+      "database_migrations_2026_09_23_210000_add_dynamic_rules_to_approval_workflow_steps_tables_down",
+      "database_migrations_2026_09_23_210000_add_dynamic_rules_to_approval_workflow_steps_tables_up"
+    ],
+    "81": [
+      "resources_views_workplan_index_blade",
+      "workplan_card",
+      "workplan_modals"
+    ],
+    "82": [
+      "deploy",
+      "deploy_sh__entry"
+    ],
+    "83": [
+      "install",
+      "install_sh__entry"
+    ],
+    "84": [
+      "public_deploy",
+      "public_deploy_runshellcmd"
+    ],
+    "85": [
+      "resources_views_interview_show_blade",
+      "resources_views_interview_show_blade_php_partials_candidate_media_modal"
+    ],
+    "86": [
+      "resources_views_kandidatportal_show_blade",
+      "resources_views_kandidatportal_show_blade_php_partials_candidate_media_modal"
+    ],
+    "87": [
+      "resources_views_layouts_app_blade",
+      "resources_views_layouts_app_blade_php_partials_page_loader"
+    ],
+    "88": [
+      "resources_views_layouts_cbt_blade",
+      "resources_views_layouts_cbt_blade_php_partials_page_loader"
+    ],
+    "89": [
+      "resources_views_layouts_public_blade",
+      "resources_views_layouts_public_blade_php_partials_page_loader"
+    ],
+    "90": [
+      "scripts_cron_ai_analyzer",
+      "scripts_cron_ai_analyzer_sh__entry"
+    ],
+    "91": [
+      "scripts_cron_odoo_active_hourly",
+      "scripts_cron_odoo_active_hourly_sh__entry"
+    ],
+    "92": [
+      "scripts_cron_odoo_sync",
+      "scripts_cron_odoo_sync_sh__entry"
+    ],
+    "93": [
+      "scripts_cron_odoo_updates_resigns_midnight",
+      "scripts_cron_odoo_updates_resigns_midnight_sh__entry"
+    ],
+    "94": [
+      "app_services_cli_ai_pdf"
+    ],
+    "95": [
+      "config_app"
+    ],
+    "96": [
+      "config_filesystems"
+    ],
+    "97": [
+      "config_mail"
+    ],
+    "98": [
+      "config_octane"
+    ],
+    "99": [
+      "config_queue"
+    ],
+    "100": [
+      "config_sanctum"
+    ],
+    "101": [
+      "config_services"
+    ],
+    "102": [
+      "public_cron_ai_analyzer"
+    ],
+    "103": [
+      "public_diag"
+    ],
+    "104": [
+      "public_fix_cache"
+    ],
+    "105": [
+      "public_v3_cron_ai_analyzer"
+    ],
+    "106": [
+      "resources_views_activity_logs_index_blade"
+    ],
+    "107": [
+      "resources_views_admin_auth_chat_index_blade"
+    ],
+    "108": [
+      "resources_views_airanking_index_blade"
+    ],
+    "109": [
+      "resources_views_aisetting_index_blade"
+    ],
+    "110": [
+      "resources_views_auth_login_blade"
+    ],
+    "111": [
+      "resources_views_candidates_create_blade"
+    ],
+    "112": [
+      "resources_views_candidates_index_blade"
+    ],
+    "113": [
+      "resources_views_cbt_dashboard_blade"
+    ],
+    "114": [
+      "resources_views_cbt_login_blade"
+    ],
+    "115": [
+      "resources_views_cbt_profile_blade"
+    ],
+    "116": [
+      "resources_views_cbt_tests_kepribadian_blade"
+    ],
+    "117": [
+      "resources_views_cbt_tests_kepribadian_result_blade"
+    ],
+    "118": [
+      "resources_views_cbt_tests_komputer_blade"
+    ],
+    "119": [
+      "resources_views_cbt_tests_matematika_blade"
+    ],
+    "120": [
+      "resources_views_cbt_tests_matematika_result_blade"
+    ],
+    "121": [
+      "resources_views_fitur_index_blade"
+    ],
+    "122": [
+      "resources_views_home_index_blade"
+    ],
+    "123": [
+      "resources_views_install_blade"
+    ],
+    "124": [
+      "resources_views_interview_arsip_blade"
+    ],
+    "125": [
+      "resources_views_interview_done_blade"
+    ],
+    "126": [
+      "resources_views_interview_index_blade"
+    ],
+    "127": [
+      "resources_views_interview_placeholder_blade"
+    ],
+    "128": [
+      "resources_views_interview_walk_blade"
+    ],
+    "129": [
+      "resources_views_interview_walk_create_blade"
+    ],
+    "130": [
+      "resources_views_interviewinhouse_index_blade"
+    ],
+    "131": [
+      "resources_views_interviewinhouse_show_blade"
+    ],
+    "132": [
+      "resources_views_job_apply_blade"
+    ],
+    "133": [
+      "resources_views_job_index_blade"
+    ],
+    "134": [
+      "resources_views_job_input_blade"
+    ],
+    "135": [
+      "resources_views_job_show_blade"
+    ],
+    "136": [
+      "resources_views_job_statistik_blade"
+    ],
+    "137": [
+      "resources_views_kandidatportal_ai_queue_blade"
+    ],
+    "138": [
+      "resources_views_kandidatportal_index_blade"
+    ],
+    "139": [
+      "resources_views_master_approval_workflow_index_blade"
+    ],
+    "140": [
+      "resources_views_master_karyawan_growth_chart_blade"
+    ],
+    "141": [
+      "resources_views_master_karyawan_index_blade"
+    ],
+    "142": [
+      "resources_views_master_math_index_blade"
+    ],
+    "143": [
+      "resources_views_master_personality_index_blade"
+    ],
+    "144": [
+      "resources_views_master_prinsiple_index_blade"
+    ],
+    "145": [
+      "resources_views_odoo_setting_blade"
+    ],
+    "146": [
+      "resources_views_partials_candidate_media_modal_blade"
+    ],
+    "147": [
+      "resources_views_partials_page_loader_blade"
+    ],
+    "148": [
+      "resources_views_principles_approval_blade"
+    ],
+    "149": [
+      "resources_views_profile_index_blade"
+    ],
+    "150": [
+      "resources_views_setting_rbac_index_blade"
+    ],
+    "151": [
+      "resources_views_userprinsiple_index_blade"
+    ],
+    "152": [
+      "resources_views_welcome_blade"
+    ],
+    "153": [
+      "resources_views_workplan_card_blade"
+    ],
+    "154": [
+      "resources_views_workplan_chat_blade"
+    ],
+    "155": [
+      "resources_views_workplan_daily_blade"
+    ],
+    "156": [
+      "resources_views_workplan_modals_blade"
+    ],
+    "157": [
+      "scripts_deploy_production"
+    ]
+  },
+  "cohesion": {
+    "0": 0.05701592002961866,
+    "1": 0.03615819209039548,
+    "2": 0.07003367003367003,
+    "3": 0.06693877551020408,
+    "4": 0.11591836734693878,
+    "5": 0.04081632653061224,
+    "6": 0.06747638326585695,
+    "7": 0.1319073083778966,
+    "8": 0.09269162210338681,
+    "9": 0.08172043010752689,
+    "10": 0.15343915343915343,
+    "11": 0.08307692307692308,
+    "12": 0.10144927536231885,
+    "13": 0.1383399209486166,
+    "14": 0.1067193675889328,
+    "15": 0.09486166007905138,
+    "16": 0.13852813852813853,
+    "17": 0.1619047619047619,
+    "18": 0.13333333333333333,
+    "19": 0.14736842105263157,
+    "20": 0.2736842105263158,
+    "21": 0.1503267973856209,
+    "22": 0.1895424836601307,
+    "23": 0.125,
+    "24": 0.19852941176470587,
+    "25": 0.2,
+    "26": 0.125,
+    "27": 0.125,
+    "28": 0.125,
+    "29": 0.25274725274725274,
+    "30": 0.15384615384615385,
+    "31": 0.15384615384615385,
+    "32": 0.32727272727272727,
+    "33": 0.3111111111111111,
+    "34": 0.37777777777777777,
+    "35": 0.2222222222222222,
+    "36": 0.26666666666666666,
+    "37": 0.2777777777777778,
+    "38": 0.2222222222222222,
+    "39": 0.2777777777777778,
+    "40": 0.35714285714285715,
+    "41": 0.32142857142857145,
+    "42": 0.4,
+    "43": 0.4,
+    "44": 0.3333333333333333,
+    "45": 0.4,
+    "46": 0.4,
+    "47": 0.4,
+    "48": 0.5,
+    "49": 0.6666666666666666,
+    "50": 0.6666666666666666,
+    "51": 0.6666666666666666,
+    "52": 0.6666666666666666,
+    "53": 0.6666666666666666,
+    "54": 0.6666666666666666,
+    "55": 0.6666666666666666,
+    "56": 0.6666666666666666,
+    "57": 0.6666666666666666,
+    "58": 0.6666666666666666,
+    "59": 0.6666666666666666,
+    "60": 0.6666666666666666,
+    "61": 0.6666666666666666,
+    "62": 0.6666666666666666,
+    "63": 0.6666666666666666,
+    "64": 0.6666666666666666,
+    "65": 0.6666666666666666,
+    "66": 0.6666666666666666,
+    "67": 0.6666666666666666,
+    "68": 0.6666666666666666,
+    "69": 0.6666666666666666,
+    "70": 0.6666666666666666,
+    "71": 0.6666666666666666,
+    "72": 0.6666666666666666,
+    "73": 0.6666666666666666,
+    "74": 0.6666666666666666,
+    "75": 0.6666666666666666,
+    "76": 0.6666666666666666,
+    "77": 0.6666666666666666,
+    "78": 0.6666666666666666,
+    "79": 0.6666666666666666,
+    "80": 0.6666666666666666,
+    "81": 0.6666666666666666,
+    "82": 1.0,
+    "83": 1.0,
+    "84": 1.0,
+    "85": 1.0,
+    "86": 1.0,
+    "87": 1.0,
+    "88": 1.0,
+    "89": 1.0,
+    "90": 1.0,
+    "91": 1.0,
+    "92": 1.0,
+    "93": 1.0,
+    "94": 1.0,
+    "95": 1.0,
+    "96": 1.0,
+    "97": 1.0,
+    "98": 1.0,
+    "99": 1.0,
+    "100": 1.0,
+    "101": 1.0,
+    "102": 1.0,
+    "103": 1.0,
+    "104": 1.0,
+    "105": 1.0,
+    "106": 1.0,
+    "107": 1.0,
+    "108": 1.0,
+    "109": 1.0,
+    "110": 1.0,
+    "111": 1.0,
+    "112": 1.0,
+    "113": 1.0,
+    "114": 1.0,
+    "115": 1.0,
+    "116": 1.0,
+    "117": 1.0,
+    "118": 1.0,
+    "119": 1.0,
+    "120": 1.0,
+    "121": 1.0,
+    "122": 1.0,
+    "123": 1.0,
+    "124": 1.0,
+    "125": 1.0,
+    "126": 1.0,
+    "127": 1.0,
+    "128": 1.0,
+    "129": 1.0,
+    "130": 1.0,
+    "131": 1.0,
+    "132": 1.0,
+    "133": 1.0,
+    "134": 1.0,
+    "135": 1.0,
+    "136": 1.0,
+    "137": 1.0,
+    "138": 1.0,
+    "139": 1.0,
+    "140": 1.0,
+    "141": 1.0,
+    "142": 1.0,
+    "143": 1.0,
+    "144": 1.0,
+    "145": 1.0,
+    "146": 1.0,
+    "147": 1.0,
+    "148": 1.0,
+    "149": 1.0,
+    "150": 1.0,
+    "151": 1.0,
+    "152": 1.0,
+    "153": 1.0,
+    "154": 1.0,
+    "155": 1.0,
+    "156": 1.0,
+    "157": 1.0
+  },
+  "gods": [
+    {
+      "id": "app_models_candidate_candidate",
+      "label": "Candidate",
+      "degree": 162
+    },
+    {
+      "id": "app_models_user_user",
+      "label": "User",
+      "degree": 99
+    },
+    {
+      "id": "app_models_employee_employee",
+      "label": "Employee",
+      "degree": 90
+    },
+    {
+      "id": "app_services_activitylogger_activitylogger",
+      "label": "ActivityLogger",
+      "degree": 86
+    },
+    {
+      "id": "app_models_principle_principle",
+      "label": "Principle",
+      "degree": 61
+    },
+    {
+      "id": "app_http_controllers_interviewcontroller_interviewcontroller",
+      "label": "InterviewController",
+      "degree": 41
+    },
+    {
+      "id": "app_models_jobspec_jobspec",
+      "label": "JobSpec",
+      "degree": 40
+    },
+    {
+      "id": "app_models_odooentity_odooentity",
+      "label": "OdooEntity",
+      "degree": 38
+    },
+    {
+      "id": "app_services_odoosyncservice_odoosyncservice",
+      "label": "OdooSyncService",
+      "degree": 38
+    },
+    {
+      "id": "app_http_controllers_workplancontroller_workplancontroller",
+      "label": "WorkPlanController",
+      "degree": 34
+    }
+  ],
+  "surprises": [
+    {
+      "source": "up()",
+      "target": "MathQuestion",
+      "source_files": [
+        "database/migrations/2026_09_21_110000_fix_tb_math_choices_json.php",
+        "app/Models/MathQuestion.php"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `up()` unexpectedly reaches hub `MathQuestion`"
+    },
+    {
+      "source": "up()",
+      "target": "TbArea",
+      "source_files": [
+        "database/migrations/2026_09_22_123000_sync_tb_area_and_normalize_regions.php",
+        "app/Models/TbArea.php"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "calls",
+      "why": "connects across different repos/directories; bridges separate communities; peripheral node `up()` unexpectedly reaches hub `TbArea`"
+    },
+    {
+      "source": "AiSettingController",
+      "target": "Controller",
+      "source_files": [
+        "app/Http/Controllers/AiSettingController.php",
+        "app/Http/Controllers/Controller.php"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "inherits",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "ApprovalWorkflowController",
+      "target": "Controller",
+      "source_files": [
+        "app/Http/Controllers/ApprovalWorkflowController.php",
+        "app/Http/Controllers/Controller.php"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "inherits",
+      "why": "bridges separate communities"
+    },
+    {
+      "source": "AuthChatController",
+      "target": "Controller",
+      "source_files": [
+        "app/Http/Controllers/AuthChatController.php",
+        "app/Http/Controllers/Controller.php"
+      ],
+      "confidence": "EXTRACTED",
+      "relation": "inherits",
+      "why": "bridges separate communities"
+    }
+  ],
+  "tokens": {
+    "input": 0,
+    "output": 0
+  }
+}
