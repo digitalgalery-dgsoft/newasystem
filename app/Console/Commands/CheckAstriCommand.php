@@ -63,6 +63,11 @@ class CheckAstriCommand extends Command
         $wpDailyNew = DB::table('tb_workplan')->whereRaw('LOWER(TRIM("user")) LIKE ?', ['%astri wahyuni%st%'])->count();
         $this->info("Daily logs (tb_workplan) with 'Astri Wahyuni': {$wpDailyOld} | with 'ASTRI WAHYUNI,ST': {$wpDailyNew}");
 
+        $commentsOld = DB::table('task_comments')->whereRaw('LOWER(TRIM("user")) = ?', ['astri wahyuni'])->count();
+        $notifsOld = DB::table('task_notifications')->whereRaw('LOWER(TRIM("user_recipient")) = ?', ['astri wahyuni'])->count();
+        $activitiesOld = DB::table('task_activities')->whereRaw('LOWER(TRIM("user")) = ?', ['astri wahyuni'])->count();
+        $this->info("Comments: {$commentsOld} | Notifications: {$notifsOld} | Activities: {$activitiesOld}");
+
         return 0;
     }
 }
