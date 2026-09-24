@@ -1045,7 +1045,9 @@ function kanbanBoard() {
         },
 
         openCopyReportModal() {
-            fetch("{{ route('workplan.copy_report') }}")
+            const currentParams = window.location.search;
+            const url = "{{ route('workplan.copy_report') }}" + (currentParams ? currentParams : '');
+            fetch(url)
                 .then(r => r.json())
                 .then(data => {
                     if (data.success) {

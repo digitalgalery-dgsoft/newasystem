@@ -2450,6 +2450,37 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 58. 📋 Penyelarasan Akun Astri Wahyuni (ASTRI WAHYUNI,ST & HOD AR - Surabaya) & Sinkronisasi Presisi Salin Laporan WhatsApp Work Plan (24 September 2026)
+- **Investigasi Masalah & Akar Penyebab (*Root Cause Analysis*)**:
+  - **Perbedaan Nama Sistem Lama vs Sistem Baru**:
+    - Pada data historis sistem lama, akun dan tugas dicatat dengan nama `Astri Wahyuni` (135 tugas, terdiri dari 127 arsip dan 8 tugas pertengahan September 2026).
+    - Pada sistem baru / Odoo, nama resmi akun dan karyawan tercatat sebagai `ASTRI WAHYUNI,ST` dengan email `astriramelan@gmail.com` dan jabatan `HOD AR - Surabaya`.
+    - Helper pencarian `getUserCandidateNames($user)` sebelumnya hanya mengambil string nama akun secara harfiah tanpa melakukan normalisasi gelar akademik (seperti `,ST` / `, ST`). Akibatnya, 127 tugas arsip riwayat kerja dan 8 tugas lama tidak terbaca pada akun `ASTRI WAHYUNI,ST`, menyebabkan metrik ARSIP menunjukkan `0`.
+  - **Diskrepansi Jumlah Tugas di Salin Laporan WhatsApp vs Papan Kanban**:
+    - Pada method `WorkPlanController::copyReport()`, query tugas To Do dibatasi secara artifisial dengan `->limit(5)->get()`, padahal di papan Kanban pengguna memiliki 9 tugas aktif pada kolom TO DO. Akibatnya, 4 tugas To Do terpotong dan tidak masuk laporan.
+    - Logika fallback tugas selesai (`doneTasks`) secara otomatis mengambil 5 tugas arsip/selesai dari masa lalu jika tidak ada tugas selesai hari ini. Akibatnya, kolom DONE di Kanban bernilai `0`, tetapi di teks laporan WhatsApp muncul 5 tugas lama, menimbulkan perbedaan data yang membingungkan.
+    - Pemanggilan modal `openCopyReportModal()` di frontend tidak meneruskan parameter filter aktif URL (`search`, `smart`, `user_filter`), dan `copyReport()` tidak menggunakan `getFilteredTasksQuery()`.
+  - **Status Pimpinan (*Head of Department*)**:
+    - Method `User::isHead()` belum menyertakan singkatan `'hod'` (Head of Department) pada daftar kata kunci pimpinan, serta belum memeriksa `jabatan` dari relasi `linked_employee`.
+- **Solusi & Penyelarasan Menyeluruh yang Diterapkan**:
+  - **Normalisasi Gelar Akademik & Multi-Kandidat (`app/Http/Controllers/WorkPlanController.php`)**:
+    - Memperbarui `getUserCandidateNames($user)` untuk mendeteksi variasi gelar di belakang nama (koma atau spasi, seperti `,ST`, `, ST`, `, S.T.`, `, SE`, dsb.) dan secara otomatis menghasilkan variasi nama murni tanpa gelar (*clean name*), Title Case, maupun variasi kombinasi tanda baca.
+    - Menambahkan penjaminan mapping eksplisit akun `astriramelan@gmail.com` / `ASTRI WAHYUNI,ST` agar selalu mencakup `Astri Wahyuni`.
+  - **Sinkronisasi Presisi Salin Laporan WhatsApp (`WorkPlanController::copyReport` & `index.blade.php`)**:
+    - Menghapus pembatasan `->limit(5)` pada To Do; kini mengambil seluruh data To Do aktif sesuai papan Kanban.
+    - Mengintegrasikan query laporan dengan `getFilteredTasksQuery($request, ...)` sehingga apa yang terlihat di Kanban board (berdasarkan filter pencarian, filter karyawan, atau smart filter) 100% identik dengan hasil teks Salin Laporan (WA).
+    - Memperbaiki logika `doneTasks` agar hanya mencantumkan tugas yang benar-benar selesai pada hari ini (`date_completed = today`), dan jika kosong menampilkan `-(Belum ada tugas yang diselesaikan hari ini)` tanpa mengambil tugas usang dari masa lalu.
+    - Menambahkan baris ringkasan metrik statistik elegan pada header pesan teks: `📊 Total Aktif: X Tugas (Y To Do, Z In Progress, ...)`.
+    - Memperbarui fungsi JavaScript `openCopyReportModal()` di `index.blade.php` untuk meneruskan seluruh `window.location.search` saat mengambil format laporan.
+  - **Penyelarasan Role Head of Department (`app/Models/User.php`)**:
+    - Menambahkan kata kunci `'hod'` pada `$headKeywords` di `User::isHead()`.
+    - Memeriksa gabungan antara `user.job_title` dan `employee.jabatan` dari data karyawan inhouse terkait.
+  - **Perintah Sinkronisasi Data Basis Data (`app/Console/Commands/SyncAstriWpCommand.php`)**:
+    - Dibuat perintah CLI `php artisan wp:sync-astri-names` yang memutakhirkan 135 tugas, penerima notifikasi, dan catatan harian dari `Astri Wahyuni` menjadi `ASTRI WAHYUNI,ST`.
+    - Mengarsipkan 8 tugas aktif tertanggal 18 September 2026 dan sebelumnya yang telah digantikan oleh tugas-tugas baru tertanggal 24 September 2026, sehingga data aktif papan Kanban tetap presisi 11 tugas (9 To Do, 2 In Progress) dan 135 tugas riwayat tersimpan rapi di bagian Arsip.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

@@ -47,27 +47,79 @@ class WorkPlanController extends Controller
     protected function getUserCandidateNames($user): array
     {
         if (!$user) return [];
-        $names = [];
+        $rawNames = [];
 
         if (!empty($user->name)) {
-            $names[] = trim($user->name);
+            $rawNames[] = trim($user->name);
         }
 
         // Cek linked employee jika ada
         if ($user->linked_employee && !empty($user->linked_employee->nama_karyawan)) {
-            $names[] = trim($user->linked_employee->nama_karyawan);
+            $rawNames[] = trim($user->linked_employee->nama_karyawan);
         }
 
         // Cek employee berdasarkan email jika linked_employee belum ter-cache
         if (!empty($user->email)) {
-            $names[] = trim($user->email);
+            $rawNames[] = trim($user->email);
             $emp = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($user->email))])->first();
             if ($emp && !empty($emp->nama_karyawan)) {
-                $names[] = trim($emp->nama_karyawan);
+                $rawNames[] = trim($emp->nama_karyawan);
             }
         }
 
-        return array_values(array_unique(array_filter($names)));
+        $candidates = [];
+        foreach ($rawNames as $name) {
+            $name = trim($name);
+            if (empty($name)) continue;
+            $candidates[] = $name;
+
+            // Variasi jika ada gelar akademik setelah koma (contoh: "ASTRI WAHYUNI,ST" atau "Astri Wahyuni, S.T.")
+            if (str_contains($name, ',')) {
+                $parts = explode(',', $name);
+                $baseName = trim($parts[0]);
+                if (!empty($baseName)) {
+                    $candidates[] = $baseName;
+                    $candidates[] = ucwords(strtolower($baseName));
+                    $degreePart = trim($parts[1] ?? '');
+                    if (!empty($degreePart)) {
+                        $candidates[] = "{$baseName}, {$degreePart}";
+                        $candidates[] = "{$baseName},{$degreePart}";
+                        $candidates[] = ucwords(strtolower($baseName)) . ", " . strtoupper($degreePart);
+                        $candidates[] = ucwords(strtolower($baseName)) . "," . strtoupper($degreePart);
+                    }
+                }
+            }
+
+            // Bersihkan gelar tanpa koma di akhir (misal "Astri Wahyuni ST" atau "Astri Wahyuni SE")
+            $cleaned = preg_replace('/\b(ST|S\.T|SE|S\.E|SH|S\.H|SKOM|S\.Kom|MM|M\.M|MBA|M\.B\.A|S\.Pd|SPd|S\.Psi|SPsi)\b/i', '', $name);
+            $cleaned = trim(preg_replace('/\s+/', ' ', $cleaned), " ,\t\n\r\0\x0B");
+            if (!empty($cleaned) && $cleaned !== $name) {
+                $candidates[] = $cleaned;
+                $candidates[] = ucwords(strtolower($cleaned));
+            }
+
+            // Tambahkan versi Title Case
+            $candidates[] = ucwords(strtolower($name));
+        }
+
+        // Penyesuaian khusus sinkronisasi akun Astri Wahyuni / astriramelan@gmail.com
+        $isAstri = false;
+        foreach ($rawNames as $rn) {
+            if (stripos($rn, 'astri') !== false && stripos($rn, 'wahyuni') !== false) {
+                $isAstri = true;
+                break;
+            }
+        }
+        if ($isAstri || (isset($user->email) && strtolower(trim($user->email)) === 'astriramelan@gmail.com')) {
+            $candidates[] = 'Astri Wahyuni';
+            $candidates[] = 'ASTRI WAHYUNI';
+            $candidates[] = 'ASTRI WAHYUNI,ST';
+            $candidates[] = 'ASTRI WAHYUNI, ST';
+            $candidates[] = 'Astri Wahyuni, ST';
+            $candidates[] = 'Astri Wahyuni,ST';
+        }
+
+        return array_values(array_unique(array_filter($candidates)));
     }
 
     /**
@@ -1145,40 +1197,49 @@ class WorkPlanController extends Controller
     public function copyReport(Request $request)
     {
         $user = $this->getCurrentUser();
-        $userName = $this->getUserOfficialName($user);
         $today = Carbon::today()->translatedFormat('l, d F Y');
 
-        $query = Task::query();
-        $this->applyAccessScope($query, $user);
+        $isHead = false;
+        $teamMembers = [];
+        $officialName = '';
+        $baseQuery = $this->getFilteredTasksQuery($request, $user, $isHead, $teamMembers, $officialName);
 
-        // Hanya tugas user yang bersangkutan jika bukan admin (case-insensitive)
-        $lowerNames = array_values(array_unique(array_filter(array_map('strtolower', array_map('trim', $this->getUserCandidateNames($user))))));
-        if (!$user->isAdmin() && $user->role !== 'admin') {
-            $query->where(function ($q) use ($lowerNames) {
-                foreach ($lowerNames as $ln) {
-                    $q->orWhereRaw('LOWER(TRIM("user")) = ?', [$ln])
-                      ->orWhereRaw('LOWER(TRIM("assignee")) = ?', [$ln]);
-                }
-            });
+        // Tentukan nama karyawan yang ditampilkan di header laporan
+        $userFilter = trim($request->query('user_filter', 'all'));
+        if (!empty($userFilter) && $userFilter !== 'all') {
+            $displayName = $userFilter;
+        } else {
+            $displayName = $officialName ?: $this->getUserOfficialName($user);
         }
 
-        $doneTasks = (clone $query)->where('status', 'done')->whereDate('date_completed', Carbon::today())->get();
-        if ($doneTasks->isEmpty()) {
-            $doneTasks = (clone $query)->where('status', 'done')->limit(5)->get();
-        }
+        // Ambil data To Do, In Progress, Review persis sesuai query papan Kanban aktif (tanpa pembatasan limit tiruan)
+        $todoTasks = (clone $baseQuery)->where('status', 'todo')->orderBy('id', 'desc')->get();
+        $inProgressTasks = (clone $baseQuery)->where('status', 'inprogress')->orderBy('id', 'desc')->get();
+        $reviewTasks = (clone $baseQuery)->where('status', 'review')->orderBy('id', 'desc')->get();
 
-        $inProgressTasks = (clone $query)->where('status', 'inprogress')->get();
-        $reviewTasks = (clone $query)->where('status', 'review')->get();
-        $todoTasks = (clone $query)->where('status', 'todo')->limit(5)->get();
+        // Tugas Selesai: Ambil tugas yang diselesaikan hari ini
+        $doneTasks = (clone $baseQuery)->where('status', 'done')
+            ->where(function ($q) {
+                $q->whereDate('date_completed', Carbon::today())
+                  ->orWhere(function ($sub) {
+                      $sub->whereNull('date_completed')
+                          ->whereDate('updated_at', Carbon::today());
+                  });
+            })
+            ->orderBy('id', 'desc')
+            ->get();
+
+        $totalActive = $todoTasks->count() + $inProgressTasks->count() + $reviewTasks->count();
 
         $text = "🚀 *LAPORAN HARIAN WORK PLAN & TODOLIST*\n";
         $text .= "📅 Tanggal: {$today}\n";
-        $text .= "👤 Karyawan: {$userName}\n";
+        $text .= "👤 Karyawan: {$displayName}\n";
+        $text .= "📊 Total Aktif: {$totalActive} Tugas ({$todoTasks->count()} To Do, {$inProgressTasks->count()} In Progress" . ($reviewTasks->isNotEmpty() ? ", {$reviewTasks->count()} Review" : "") . ")\n";
         $text .= "-----------------------------------------\n\n";
 
-        $text .= "✅ *TUGAS SELESAI (DONE):*\n";
+        $text .= "✅ *TUGAS SELESAI HARI INI (DONE: {$doneTasks->count()}):*\n";
         if ($doneTasks->isEmpty()) {
-            $text .= "- (Tidak ada tugas yang diselesaikan hari ini)\n";
+            $text .= "- (Belum ada tugas yang diselesaikan hari ini)\n";
         } else {
             foreach ($doneTasks as $idx => $t) {
                 $num = $idx + 1;
@@ -1187,7 +1248,7 @@ class WorkPlanController extends Controller
         }
         $text .= "\n";
 
-        $text .= "⏳ *SEDANG BERJALAN (IN PROGRESS):*\n";
+        $text .= "⏳ *SEDANG BERJALAN (IN PROGRESS: {$inProgressTasks->count()}):*\n";
         if ($inProgressTasks->isEmpty()) {
             $text .= "- (Tidak ada)\n";
         } else {
@@ -1200,26 +1261,38 @@ class WorkPlanController extends Controller
         $text .= "\n";
 
         if ($reviewTasks->isNotEmpty()) {
-            $text .= "📋 *MENUNGGU REVIEW (REVIEW):*\n";
+            $text .= "📋 *MENUNGGU REVIEW (REVIEW: {$reviewTasks->count()}):*\n";
             foreach ($reviewTasks as $idx => $t) {
                 $num = $idx + 1;
-                $text .= "{$num}. {$t->title} (Delegator: {$t->delegator})\n";
+                $delegatorInfo = $t->delegator ? " (Delegator: {$t->delegator})" : "";
+                $text .= "{$num}. {$t->title}{$delegatorInfo}\n";
             }
             $text .= "\n";
         }
 
-        $text .= "📌 *RENCANA BERIKUTNYA (TO DO):*\n";
+        $text .= "📌 *RENCANA BERIKUTNYA (TO DO: {$todoTasks->count()}):*\n";
         if ($todoTasks->isEmpty()) {
             $text .= "- (Tidak ada)\n";
         } else {
             foreach ($todoTasks as $idx => $t) {
                 $num = $idx + 1;
-                $text .= "{$num}. {$t->title}\n";
+                $dl = $t->due_date ? " [Target: {$t->due_date->format('d/m/Y')}]" : "";
+                $text .= "{$num}. {$t->title}{$dl}\n";
             }
         }
         $text .= "\n_Generated via ASystem Work Plan Support System_";
 
-        return response()->json(['success' => true, 'report' => $text]);
+        return response()->json([
+            'success' => true,
+            'report' => $text,
+            'counts' => [
+                'total_active' => $totalActive,
+                'todo' => $todoTasks->count(),
+                'inprogress' => $inProgressTasks->count(),
+                'review' => $reviewTasks->count(),
+                'done' => $doneTasks->count(),
+            ]
+        ]);
     }
 
     /**

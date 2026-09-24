@@ -124,11 +124,14 @@ class User extends Authenticatable
             return true;
         }
         $job = strtolower($this->job_title ?? '');
+        if ($this->linked_employee && !empty($this->linked_employee->jabatan)) {
+            $job .= ' ' . strtolower($this->linked_employee->jabatan);
+        }
         // Staff atau rekruter biasa tanpa titel pimpinan bukan Head
-        if (str_contains($job, 'staff') || str_contains($job, 'promotor') || ((str_contains($job, 'recruiter') || str_contains($job, 'rekrutmen')) && !str_contains($job, 'head') && !str_contains($job, 'lead') && !str_contains($job, 'manager'))) {
+        if (str_contains($job, 'staff') || str_contains($job, 'promotor') || ((str_contains($job, 'recruiter') || str_contains($job, 'rekrutmen')) && !str_contains($job, 'head') && !str_contains($job, 'hod') && !str_contains($job, 'lead') && !str_contains($job, 'manager'))) {
             return false;
         }
-        $headKeywords = ['head', 'spv', 'supervisor', 'manager', 'lead', 'koordinator', 'pimpinan', 'om ops', 'om '];
+        $headKeywords = ['head', 'hod', 'spv', 'supervisor', 'manager', 'lead', 'koordinator', 'pimpinan', 'om ops', 'om '];
         foreach ($headKeywords as $kw) {
             if (str_contains($job, $kw)) {
                 return true;
