@@ -602,6 +602,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/tickets/create', [HelpdeskTicketController::class, 'create'])->name('tickets.create');
         Route::post('/tickets', [HelpdeskTicketController::class, 'store'])->name('tickets.store');
         Route::get('/tickets/{id}', [HelpdeskTicketController::class, 'show'])->name('tickets.show');
+        Route::get('/tickets/{id}/attachment', [HelpdeskTicketController::class, 'downloadAttachment'])->name('tickets.attachment');
+        Route::get('/tickets/{ticketId}/replies/{replyId}/attachment', [HelpdeskTicketController::class, 'downloadReplyAttachment'])->name('tickets.reply.attachment');
         Route::post('/tickets/{id}/reply', [HelpdeskTicketController::class, 'reply'])->name('tickets.reply');
         Route::post('/tickets/{id}/claim', [HelpdeskTicketController::class, 'claim'])->name('tickets.claim');
         Route::post('/tickets/{id}/status', [HelpdeskTicketController::class, 'updateStatus'])->name('tickets.status');

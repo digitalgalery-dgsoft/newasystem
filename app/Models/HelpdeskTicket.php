@@ -169,4 +169,35 @@ class HelpdeskTicket extends Model
         if ($this->isClosed() || empty($this->due_date)) return false;
         return Carbon::now()->gt($this->due_date);
     }
+
+    /**
+     * URL Berkas Lampiran (via Route Streaming Aman)
+     */
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (!$this->attachment) return null;
+        if (str_starts_with($this->attachment, 'http://') || str_starts_with($this->attachment, 'https://')) {
+            return $this->attachment;
+        }
+        return route('helpdesk.tickets.attachment', $this->id);
+    }
+
+    /**
+     * Cek apakah berkas lampiran adalah gambar
+     */
+    public function getIsImageAttachmentAttribute(): bool
+    {
+        if (!$this->attachment) return false;
+        $ext = strtolower(pathinfo($this->attachment, PATHINFO_EXTENSION));
+        return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']);
+    }
+
+    /**
+     * Nama Berkas Lampiran
+     */
+    public function getAttachmentFilenameAttribute(): ?string
+    {
+        if (!$this->attachment) return null;
+        return basename($this->attachment);
+    }
 }

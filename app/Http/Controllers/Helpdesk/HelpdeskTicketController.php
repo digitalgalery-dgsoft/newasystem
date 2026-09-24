@@ -546,4 +546,98 @@ class HelpdeskTicketController extends Controller
             'user'
         ));
     }
+
+    /**
+     * Tampilkan / Unduh Berkas Lampiran Tiket
+     */
+    public function downloadAttachment($id)
+    {
+        $user = Auth::user();
+        if (!$user) return redirect()->route('login');
+
+        $ticket = HelpdeskTicket::findOrFail($id);
+
+        // Otorisasi akses tiket
+        if (!$user->isAdmin()) {
+            $myDivisionIds = $user->helpdeskDivisions()->pluck('helpdesk_divisions.id')->toArray();
+            $isAgentOfDivision = in_array($ticket->division_id, $myDivisionIds);
+            $isCreator = ($ticket->user_id === $user->id);
+            if (!$isAgentOfDivision && !$isCreator) {
+                abort(403, 'Anda tidak memiliki akses ke berkas lampiran tiket ini.');
+            }
+        }
+
+        if (!$ticket->attachment) {
+            abort(404, 'Tiket ini tidak memiliki berkas lampiran.');
+        }
+
+        $path = storage_path('app/public/' . $ticket->attachment);
+        if (!file_exists($path)) {
+            $altPath = public_path('storage/' . $ticket->attachment);
+            if (file_exists($altPath)) {
+                $path = $altPath;
+            } else {
+                $altPath2 = public_path($ticket->attachment);
+                if (file_exists($altPath2)) {
+                    $path = $altPath2;
+                } else {
+                    abort(404, 'Berkas lampiran fisik tidak ditemukan di server.');
+                }
+            }
+        }
+
+        if (request()->query('download')) {
+            return response()->download($path, basename($ticket->attachment));
+        }
+
+        return response()->file($path);
+    }
+
+    /**
+     * Tampilkan / Unduh Berkas Lampiran Balasan Tiket
+     */
+    public function downloadReplyAttachment($ticketId, $replyId)
+    {
+        $user = Auth::user();
+        if (!$user) return redirect()->route('login');
+
+        $ticket = HelpdeskTicket::findOrFail($ticketId);
+
+        // Otorisasi akses tiket
+        if (!$user->isAdmin()) {
+            $myDivisionIds = $user->helpdeskDivisions()->pluck('helpdesk_divisions.id')->toArray();
+            $isAgentOfDivision = in_array($ticket->division_id, $myDivisionIds);
+            $isCreator = ($ticket->user_id === $user->id);
+            if (!$isAgentOfDivision && !$isCreator) {
+                abort(403, 'Anda tidak memiliki akses ke berkas lampiran balasan ini.');
+            }
+        }
+
+        $reply = HelpdeskTicketReply::where('ticket_id', $ticket->id)->findOrFail($replyId);
+
+        if (!$reply->attachment) {
+            abort(404, 'Balasan ini tidak memiliki berkas lampiran.');
+        }
+
+        $path = storage_path('app/public/' . $reply->attachment);
+        if (!file_exists($path)) {
+            $altPath = public_path('storage/' . $reply->attachment);
+            if (file_exists($altPath)) {
+                $path = $altPath;
+            } else {
+                $altPath2 = public_path($reply->attachment);
+                if (file_exists($altPath2)) {
+                    $path = $altPath2;
+                } else {
+                    abort(404, 'Berkas lampiran fisik tidak ditemukan di server.');
+                }
+            }
+        }
+
+        if (request()->query('download')) {
+            return response()->download($path, basename($reply->attachment));
+        }
+
+        return response()->file($path);
+    }
 }

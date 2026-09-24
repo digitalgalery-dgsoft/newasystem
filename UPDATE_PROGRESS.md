@@ -2653,6 +2653,30 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 64. 🖼️ Perbaikan Tampilan Lampiran Gambar Tiket & Balasan Helpdesk
+- **Penyebab Masalah (Root Cause)**:
+  - Berkas lampiran tiket dan balasan tersimpan secara aman di direktori `storage/app/public/helpdesk_attachments/`.
+  - Tautan simbolik (*storage symlink*) dari `public/storage` ke `storage/app/public` sebelumnya belum dibuat pada server produksi maupun lingkungan lokal, sehingga pemanggilan berkas statis via `asset('storage/...')` menghasilkan HTTP 404 (Not Found) dan gambar tampak rusak / tidak tampil.
+- **Solusi & Arsitektur Perbaikan**:
+  1. **Pembuatan Symlink Penyimpanan Publik**:
+     - Menjalankan `php artisan storage:link` pada server produksi (Server 3 `new.asystem.co.id`) dan lingkungan lokal (`d:\ASystem\newasystem\public\storage` -> `storage\app\public`).
+     - Mengintegrasikan `php artisan storage:link` ke dalam perintah otomatis skrip deployment [`scripts/deploy_production.php`](file:///d:/ASystem/newasystem/scripts/deploy_production.php) sehingga symlink selalu dipelihara secara otomatis di setiap deployment baru.
+  2. **Endpoint Controller Streaming Aman & Resisten**:
+     - Menambahkan rute khusus `/helpdesk/tickets/{id}/attachment` (`helpdesk.tickets.attachment`) dan `/helpdesk/tickets/{ticketId}/replies/{replyId}/attachment` (`helpdesk.tickets.reply.attachment`).
+     - Controller `HelpdeskTicketController::downloadAttachment()` dan `downloadReplyAttachment()` langsung melayani (*stream*) berkas fisik dengan header MIME type yang tepat (`response()->file()`) serta mendukung unduhan langsung (`?download=1`).
+     - Pendekatan ini menjamin gambar dan berkas selalu tampil 100% meskipun berada di server dengan konfigurasi web server ketat (*restricted symlinks*).
+     - Dilengkapi proteksi otorisasi: hanya pembuat tiket, agen divisi penerima, atau admin yang berhak mengakses berkas lampiran.
+  3. **Aksesor Model Eloquent**:
+     - Menambahkan helper accessor `attachment_url`, `is_image_attachment`, dan `attachment_filename` pada model `HelpdeskTicket` dan `HelpdeskTicketReply`.
+  4. **Antarmuka Premium Detail Tiket (`resources/views/helpdesk/tickets/show.blade.php`)**:
+     - Preview gambar responsif dengan bingkai modern, efek hover zoom, penanganan aspect ratio, tombol *"Buka Ukuran Penuh"* di tab baru, dan tombol *"Unduh Gambar"*.
+     - Berkas non-gambar (dokumen format, PDF, arsip ZIP) tampil rapi dengan tombol unduh langsung.
+- **Hasil Pengujian**:
+  - Pengujian URL HTTP 200 OK langsung ke gambar tiket #1 (`TKT-20260924-0001`) pada server live `https://new.asystem.co.id`.
+  - Verifikasi otomatis via `test_attachment_fix.php`: seluruh rute, aksesor model, dan render view Blade berhasil 100%.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

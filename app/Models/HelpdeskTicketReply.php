@@ -33,4 +33,38 @@ class HelpdeskTicketReply extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
+
+    /**
+     * URL Berkas Lampiran (via Route Streaming Aman)
+     */
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (!$this->attachment) return null;
+        if (str_starts_with($this->attachment, 'http://') || str_starts_with($this->attachment, 'https://')) {
+            return $this->attachment;
+        }
+        return route('helpdesk.tickets.reply.attachment', [
+            'ticketId' => $this->ticket_id,
+            'replyId' => $this->id
+        ]);
+    }
+
+    /**
+     * Cek apakah berkas lampiran adalah gambar
+     */
+    public function getIsImageAttachmentAttribute(): bool
+    {
+        if (!$this->attachment) return false;
+        $ext = strtolower(pathinfo($this->attachment, PATHINFO_EXTENSION));
+        return in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp', 'bmp', 'svg']);
+    }
+
+    /**
+     * Nama Berkas Lampiran
+     */
+    public function getAttachmentFilenameAttribute(): ?string
+    {
+        if (!$this->attachment) return null;
+        return basename($this->attachment);
+    }
 }

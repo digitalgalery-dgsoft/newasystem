@@ -138,17 +138,38 @@
                             </span>
                             @php
                                 $ext = strtolower(pathinfo($ticket->attachment, PATHINFO_EXTENSION));
-                                $isImg = in_array($ext, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                $isImg = $ticket->is_image_attachment;
+                                $attachmentUrl = $ticket->attachment_url;
+                                $downloadUrl = route('helpdesk.tickets.attachment', ['id' => $ticket->id, 'download' => 1]);
+                                $filename = $ticket->attachment_filename;
                             @endphp
                             @if($isImg)
-                            <a href="{{ asset('storage/' . $ticket->attachment) }}" target="_blank" class="block max-w-sm rounded-xl overflow-hidden border border-slate-200 hover:opacity-90 transition-opacity">
-                                <img src="{{ asset('storage/' . $ticket->attachment) }}" alt="Lampiran" class="w-full object-cover max-h-64">
-                            </a>
+                            <div class="space-y-2">
+                                <div class="relative group max-w-md rounded-2xl overflow-hidden border border-slate-200/90 shadow-xs bg-slate-900/5">
+                                    <a href="{{ $attachmentUrl }}" target="_blank" class="block cursor-zoom-in">
+                                        <img src="{{ $attachmentUrl }}" 
+                                             alt="Lampiran {{ $filename }}" 
+                                             loading="lazy"
+                                             class="w-full object-contain max-h-96 rounded-2xl transition-transform duration-200 group-hover:scale-[1.01]">
+                                    </a>
+                                </div>
+                                <div class="flex items-center gap-3 text-xs">
+                                    <a href="{{ $attachmentUrl }}" target="_blank" class="font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
+                                        <span>Buka Ukuran Penuh</span>
+                                    </a>
+                                    <span class="text-slate-300">•</span>
+                                    <a href="{{ $downloadUrl }}" class="font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
+                                        <i class="fa-solid fa-download text-[10px]"></i>
+                                        <span>Unduh Gambar ({{ strtoupper($ext) }})</span>
+                                    </a>
+                                </div>
+                            </div>
                             @else
-                            <a href="{{ asset('storage/' . $ticket->attachment) }}" target="_blank" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors">
-                                <i class="fa-regular fa-file-lines text-slate-500"></i>
-                                <span>Unduh Lampiran (.{{ $ext }})</span>
-                                <i class="fa-solid fa-arrow-down text-[10px]"></i>
+                            <a href="{{ $downloadUrl }}" class="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all shadow-xs border border-slate-200/60">
+                                <i class="fa-regular fa-file-lines text-primary text-sm"></i>
+                                <span>Unduh Berkas Lampiran ({{ strtoupper($ext) }})</span>
+                                <i class="fa-solid fa-download text-[11px] text-slate-400 ml-1"></i>
                             </a>
                             @endif
                         </div>
@@ -206,16 +227,38 @@
                         <div class="mt-3 pt-3 border-t border-slate-100">
                             @php
                                 $rExt = strtolower(pathinfo($reply->attachment, PATHINFO_EXTENSION));
-                                $rIsImg = in_array($rExt, ['jpg', 'jpeg', 'png', 'gif', 'webp']);
+                                $rIsImg = $reply->is_image_attachment;
+                                $rAttachmentUrl = $reply->attachment_url;
+                                $rDownloadUrl = route('helpdesk.tickets.reply.attachment', ['ticketId' => $ticket->id, 'replyId' => $reply->id, 'download' => 1]);
+                                $rFilename = $reply->attachment_filename;
                             @endphp
                             @if($rIsImg)
-                            <a href="{{ asset('storage/' . $reply->attachment) }}" target="_blank" class="block max-w-xs rounded-xl overflow-hidden border border-slate-200 hover:opacity-90 transition-opacity">
-                                <img src="{{ asset('storage/' . $reply->attachment) }}" alt="Lampiran" class="w-full object-cover max-h-48">
-                            </a>
+                            <div class="space-y-1.5">
+                                <div class="relative group max-w-sm rounded-xl overflow-hidden border border-slate-200/90 shadow-xs bg-slate-900/5">
+                                    <a href="{{ $rAttachmentUrl }}" target="_blank" class="block cursor-zoom-in">
+                                        <img src="{{ $rAttachmentUrl }}" 
+                                             alt="Lampiran {{ $rFilename }}" 
+                                             loading="lazy"
+                                             class="w-full object-contain max-h-72 rounded-xl transition-transform duration-200 group-hover:scale-[1.01]">
+                                    </a>
+                                </div>
+                                <div class="flex items-center gap-2.5 text-[11px]">
+                                    <a href="{{ $rAttachmentUrl }}" target="_blank" class="font-bold text-blue-600 hover:underline flex items-center gap-1">
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
+                                        <span>Buka</span>
+                                    </a>
+                                    <span class="text-slate-300">•</span>
+                                    <a href="{{ $rDownloadUrl }}" class="font-bold text-slate-600 hover:underline flex items-center gap-1">
+                                        <i class="fa-solid fa-download text-[9px]"></i>
+                                        <span>Unduh ({{ strtoupper($rExt) }})</span>
+                                    </a>
+                                </div>
+                            </div>
                             @else
-                            <a href="{{ asset('storage/' . $reply->attachment) }}" target="_blank" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
-                                <i class="fa-regular fa-file"></i>
-                                <span>Lampiran ({{ $rExt }})</span>
+                            <a href="{{ $rDownloadUrl }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
+                                <i class="fa-regular fa-file text-slate-500"></i>
+                                <span>Unduh Lampiran (.{{ $rExt }})</span>
+                                <i class="fa-solid fa-download text-[10px] text-slate-400 ml-1"></i>
                             </a>
                             @endif
                         </div>
