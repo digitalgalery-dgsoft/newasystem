@@ -533,7 +533,7 @@ class WorkPlanChatController extends Controller
     }
 
     /**
-     * Polling Global Notifikasi Chat & Bantuan Login (untuk Lonceng Navbar & Toast Popup)
+     * Polling Global Notifikasi Chat, Helpdesk Tiket, Balasan, Work Plan & Bantuan Login
      */
     public function checkNotifications(Request $request)
     {
@@ -547,11 +547,22 @@ class WorkPlanChatController extends Controller
                 'unread_groups' => [],
                 'pending_resets' => [],
                 'pending_resets_count' => 0,
+                'max_ticket_id' => 0,
+                'new_tickets' => [],
+                'unread_tickets' => [],
+                'unread_tickets_count' => 0,
+                'max_reply_id' => 0,
+                'new_replies' => [],
+                'max_task_id' => 0,
+                'new_tasks' => [],
+                'unread_tasks' => [],
+                'unread_tasks_count' => 0,
             ]);
         }
 
         $userName = $this->getUserOfficialName($user);
         $isAdmin = ($user->isAdmin() || $user->role === 'admin');
+        $isHelpdeskAdmin = ($isAdmin || $user->isHelpdeskAdmin());
 
         // 1. Cek Notifikasi Permintaan Reset Password / Bantuan Login (Khusus Admin)
         $pendingResets = [];
@@ -581,7 +592,6 @@ class WorkPlanChatController extends Controller
         }
 
         // 2. Ambil ID group tempat user terdaftar sebagai ANGGOTA RESMI
-        // PENTING: Jangan sertakan grup yang bukan anggotanya meskipun user adalah Admin!
         $memberGroupQuery = WpChatGroupMember::where(function ($q) use ($userName) {
             $q->where('user_name', $userName)
               ->orWhere(DB::raw('LOWER(TRIM(user_name))'), strtolower($userName));
@@ -589,7 +599,7 @@ class WorkPlanChatController extends Controller
         $userMemberships = $memberGroupQuery->get()->keyBy('group_id');
         $userGroupIds = $userMemberships->keys()->toArray();
 
-        $unreadTotal = $pendingResetsCount;
+        $unreadChatCount = 0;
         $unreadGroups = [];
         $newMessages = [];
         $currentMaxId = 0;
@@ -613,7 +623,7 @@ class WorkPlanChatController extends Controller
 
                 $count = $msgQuery->count();
                 if ($count > 0) {
-                    $unreadTotal += $count;
+                    $unreadChatCount += $count;
                     $lastMsg = $msgQuery->latest('id')->first();
                     $unreadGroups[] = [
                         'group_id' => $grp->id,
@@ -630,7 +640,7 @@ class WorkPlanChatController extends Controller
                 }
             }
 
-            // Ambil pesan baru yang masuk untuk memicu Toast Chat
+            // Ambil pesan baru yang masuk untuk memicu Toast Chat & Windows Notification
             $lastChatId = (int) $request->query('last_chat_id', 0);
             if ($lastChatId > 0) {
                 $rawNew = WpChatMessage::whereIn('group_id', $userGroupIds)
@@ -658,6 +668,165 @@ class WorkPlanChatController extends Controller
             $currentMaxId = WpChatMessage::whereIn('group_id', $userGroupIds)->max('id') ?: 0;
         }
 
+        // 3. Notifikasi Helpdesk Tiket Baru
+        $newTickets = [];
+        $unreadTickets = [];
+        $unreadTicketsCount = 0;
+        $maxTicketId = \App\Models\HelpdeskTicket::max('id') ?: 0;
+
+        $myDivisionIds = \App\Models\HelpdeskDivisionAgent::where('user_id', $user->id)
+            ->where('is_active', true)
+            ->pluck('division_id')
+            ->toArray();
+
+        // User berhak menerima notifikasi tiket baru jika:
+        // - Admin: Untuk seluruh divisi
+        // - Agen Divisi: Untuk tiket yang ditujukan ke divisi tempat ia bertugas
+        if ($isHelpdeskAdmin || !empty($myDivisionIds)) {
+            $ticketQuery = \App\Models\HelpdeskTicket::query()
+                ->where('user_id', '!=', $user->id); // Jangan notif pembuat tiket sendiri
+
+            if (!$isHelpdeskAdmin) {
+                $ticketQuery->whereIn('division_id', $myDivisionIds);
+            }
+
+            $unreadTicketsCount = (clone $ticketQuery)->whereIn('status', ['open', 'in_progress'])->count();
+
+            $unreadTickets = (clone $ticketQuery)
+                ->whereIn('status', ['open', 'in_progress'])
+                ->with(['creator', 'division'])
+                ->latest('id')
+                ->take(5)
+                ->get()
+                ->map(function ($t) {
+                    return [
+                        'id' => $t->id,
+                        'ticket_number' => $t->ticket_number,
+                        'subject' => \Illuminate\Support\Str::limit($t->subject, 60),
+                        'creator_name' => $t->creator ? $t->creator->name : 'User',
+                        'division_name' => $t->division ? $t->division->name : 'Divisi',
+                        'priority' => $t->priority,
+                        'status' => $t->status,
+                        'status_label' => $t->status_label,
+                        'time' => $t->created_at ? $t->created_at->format('H:i') : '',
+                        'url' => route('helpdesk.tickets.show', $t->id),
+                    ];
+                });
+
+            // Ambil tiket baru yang masuk sejak last_ticket_id (untuk Toast & Windows Notification)
+            $lastTicketId = (int) $request->query('last_ticket_id', 0);
+            if ($lastTicketId > 0) {
+                $newTickets = (clone $ticketQuery)
+                    ->where('id', '>', $lastTicketId)
+                    ->with(['creator', 'division'])
+                    ->orderBy('id', 'asc')
+                    ->take(10)
+                    ->get()
+                    ->map(function ($t) {
+                        return [
+                            'id' => $t->id,
+                            'ticket_number' => $t->ticket_number,
+                            'subject' => $t->subject,
+                            'creator_name' => $t->creator ? $t->creator->name : 'User',
+                            'division_name' => $t->division ? $t->division->name : 'Divisi',
+                            'priority' => $t->priority,
+                            'time' => $t->created_at ? $t->created_at->format('H:i') : '',
+                            'url' => route('helpdesk.tickets.show', $t->id),
+                        ];
+                    });
+            }
+        }
+
+        // 4. Notifikasi Balasan Tiket (Ticket Replies)
+        $newReplies = [];
+        $maxReplyId = \App\Models\HelpdeskTicketReply::max('id') ?: 0;
+        $lastReplyId = (int) $request->query('last_reply_id', 0);
+
+        if ($lastReplyId > 0) {
+            $replyQuery = \App\Models\HelpdeskTicketReply::where('id', '>', $lastReplyId)
+                ->where('user_id', '!=', $user->id) // Jangan notif diri sendiri
+                ->whereHas('ticket', function ($q) use ($user, $myDivisionIds, $isHelpdeskAdmin) {
+                    if (!$isHelpdeskAdmin) {
+                        $q->where(function ($sub) use ($user, $myDivisionIds) {
+                            $sub->where('user_id', $user->id) // Pembuat tiket
+                                ->orWhere('assigned_to', $user->id) // Agen yang di-assign
+                                ->orWhereIn('division_id', $myDivisionIds); // Agen divisi tiket
+                        });
+                    }
+                })
+                ->with(['ticket.division', 'user'])
+                ->orderBy('id', 'asc')
+                ->take(10);
+
+            $newReplies = $replyQuery->get()->map(function ($r) {
+                return [
+                    'id' => $r->id,
+                    'ticket_id' => $r->ticket_id,
+                    'ticket_number' => $r->ticket ? $r->ticket->ticket_number : ('#' . $r->ticket_id),
+                    'ticket_subject' => $r->ticket ? $r->ticket->subject : 'Tiket',
+                    'sender_name' => $r->user ? $r->user->name : 'Petugas Helpdesk',
+                    'sender_avatar' => $r->user ? $r->user->avatar_url : null,
+                    'message_snippet' => \Illuminate\Support\Str::limit($r->message, 120),
+                    'time' => $r->created_at ? $r->created_at->format('H:i') : '',
+                    'url' => route('helpdesk.tickets.show', $r->ticket_id),
+                ];
+            });
+        }
+
+        // 5. Notifikasi Tugas Work Plan
+        $newTasks = [];
+        $unreadTasks = [];
+        $unreadTasksCount = 0;
+        $maxTaskId = \App\Models\Task::max('id') ?: 0;
+        $lastTaskId = (int) $request->query('last_task_id', 0);
+
+        $taskQuery = \App\Models\Task::where(function ($q) use ($userName) {
+            $q->where('assignee', $userName)
+              ->orWhere('user', $userName)
+              ->orWhereRaw('LOWER(TRIM(assignee)) = ?', [strtolower(trim($userName))])
+              ->orWhereRaw('LOWER(TRIM(user)) = ?', [strtolower(trim($userName))]);
+        });
+
+        // Tugas aktif yang belum selesai
+        $unreadTasksCount = (clone $taskQuery)->whereNotIn('status', ['done', 'completed', 'cancelled'])->count();
+        $unreadTasks = (clone $taskQuery)
+            ->whereNotIn('status', ['done', 'completed', 'cancelled'])
+            ->latest('id')
+            ->take(5)
+            ->get()
+            ->map(function ($tsk) {
+                return [
+                    'id' => $tsk->id,
+                    'title' => \Illuminate\Support\Str::limit($tsk->title, 55),
+                    'priority' => $tsk->priority,
+                    'status' => $tsk->status,
+                    'delegator' => $tsk->delegator ?: 'Sistem',
+                    'due_date' => $tsk->due_date ? date('d M Y', strtotime($tsk->due_date)) : '',
+                    'url' => route('workplan.index'),
+                ];
+            });
+
+        if ($lastTaskId > 0) {
+            $newTasks = (clone $taskQuery)
+                ->where('id', '>', $lastTaskId)
+                ->orderBy('id', 'asc')
+                ->take(10)
+                ->get()
+                ->map(function ($tsk) {
+                    return [
+                        'id' => $tsk->id,
+                        'title' => $tsk->title,
+                        'priority' => $tsk->priority,
+                        'status' => $tsk->status,
+                        'delegator' => $tsk->delegator ?: 'Sistem',
+                        'time' => $tsk->created_at ? $tsk->created_at->format('H:i') : '',
+                        'url' => route('workplan.index'),
+                    ];
+                });
+        }
+
+        $unreadTotal = $pendingResetsCount + $unreadChatCount + $unreadTicketsCount + $unreadTasksCount;
+
         return response()->json([
             'success' => true,
             'unread_total' => $unreadTotal,
@@ -666,6 +835,16 @@ class WorkPlanChatController extends Controller
             'unread_groups' => $unreadGroups,
             'pending_resets' => $pendingResets,
             'pending_resets_count' => $pendingResetsCount,
+            'max_ticket_id' => $maxTicketId,
+            'new_tickets' => $newTickets,
+            'unread_tickets' => $unreadTickets,
+            'unread_tickets_count' => $unreadTicketsCount,
+            'max_reply_id' => $maxReplyId,
+            'new_replies' => $newReplies,
+            'max_task_id' => $maxTaskId,
+            'new_tasks' => $newTasks,
+            'unread_tasks' => $unreadTasks,
+            'unread_tasks_count' => $unreadTasksCount,
         ]);
     }
 }

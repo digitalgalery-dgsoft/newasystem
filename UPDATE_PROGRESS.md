@@ -2720,6 +2720,42 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 66. 🎨 Penghapusan Badge Side Menu, SweetAlert2 Interception Global, dan Notifikasi Desktop Windows Terintegrasi
+- **Latar Belakang & Kebutuhan Pengguna**:
+  1. Membersihkan tampilan bilah samping (*sidebar navigation*) dari badge dekoratif warna-warni agar navigasi lebih minimalis, elegan, dan profesional.
+  2. Mengganti semua dialog peringatan bawaan peramban (*standard browser alert* dan *confirm*) secara menyeluruh menggunakan SweetAlert2 yang modern dan berestetika tinggi.
+  3. Mengaktifkan notifikasi sistem menyeluruh yang tidak hanya muncul dalam bentuk toast di aplikasi, namun juga langsung muncul di **Desktop Windows (Windows Notification Center)** via HTML5 Notification API untuk:
+     - Group Chat Work Plan
+     - Tiket Baru Helpdesk (ditujukan ke seluruh agen divisi tujuan dan admin)
+     - Balasan Tiket Helpdesk (ke pembuat tiket atau agen bertugas)
+     - Tugas Baru Work Plan
+     - Permintaan Bantuan Reset Password (khusus admin)
+- **Implementasi Teknis & Solusi Terpadu**:
+  1. **Pembersihan Badge Sidebar (`resources/views/layouts/app.blade.php`)**:
+     - Menghapus seluruh pill/badge dekoratif statis pada sidebar (`HOME`, `ADMIN`, `Inhouse`, `CBT`, `DISC`, `Dinamis`, `CONFIG`, `5 Entitas`, `Role & Akses`, `AI`, `Live`, `AUDIT`, `MODUL`, `KANBAN`, `LIVE`, `TICKET`, `PUB`, `STAT`, `PRIN`, `WALK`).
+     - Tampilan menu samping kini lebih lapang, bersih, dan konsisten.
+  2. **Penggantian Dialog Standar Peramban dengan SweetAlert2 Global**:
+     - **Override `window.alert`**: Menampilkan modal SweetAlert2 elegan dengan ikon semantik otomatis (`info`, `warning`, `error`, `success`) berdasarkan kata kunci pesan.
+     - **Intersepsi Global Event Capture Phase untuk `confirm()`**:
+       - `document.addEventListener('submit', ..., true)`: Mencegat formulir dengan atribut `onsubmit="return confirm(...)"`, mencegah submit bawaan, mengekstrak pesan konfirmasi, dan menampilkan modal konfirmasi kustom SweetAlert2 dengan tombol *Ya, Lanjutkan* dan *Batal*. Jika disetujui, form dikirimkan secara mulus.
+       - `document.addEventListener('click', ..., true)`: Mencegat tautan atau tombol dengan `onclick="return confirm(...)"`, menampilkan dialog SweetAlert2 kustom, dan melanjutkan navigasi atau klik hanya ketika pengguna mengonfirmasi.
+  3. **Backend Multi-Channel Polling (`app/Http/Controllers/WorkPlanChatController.php`)**:
+     - Memperluas endpoint `checkNotifications()` untuk memantau status secara realtime:
+       - `new_messages`: Pesan baru group chat tempat pengguna tergabung.
+       - `new_tickets`: Tiket baru yang ditujukan ke divisi tempat pengguna bertugas sebagai agen atau seluruh tiket jika pengguna adalah admin (mengecualikan pembuat tiket).
+       - `new_replies`: Balasan tiket yang ditujukan ke pembuat tiket atau agen divisi terkait (mengecualikan pengirim balasan).
+       - `new_tasks`: Tugas work plan baru yang ditugaskan ke pengguna yang sedang login.
+       - `pending_resets`: Permintaan bantuan login/reset password pending untuk administrator.
+       - `max_id`, `max_ticket_id`, `max_reply_id`, `max_task_id`: Tracking penanda waktu ID mutakhir untuk polling diferensial hemat bandwidth.
+  4. **Frontend Windows Desktop Notification & Dynamic Bell Dropdown (`app.blade.php`)**:
+     - Fungsi `triggerWindowsNotification(title, body, url, icon)` memanfaatkan HTML5 Web Notification API untuk memicu banner Windows Toast secara native di pojok kanan bawah desktop.
+     - Penanganan klik notifikasi Windows: memfokuskan jendela peramban dan mengarahkan otomatis ke URL detail tiket, ruang chat grup, atau lembar tugas work plan.
+     - Banner status izin notifikasi Windows di dalam dropdown lonceng notifikasi (indikator *Aktif*, tombol *Aktifkan*, atau status *Dinonaktifkan*).
+     - Pemutaran audio chime audio synthesizer (`Web Audio API`) yang lembut saat notifikasi baru terdeteksi.
+     - Tampilan in-system SweetAlert Toast yang kaya informasi dan interaktif lengkap dengan avatar pengirim dan snippet pesan.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
@@ -2740,4 +2776,5 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 *Dikembangkan dengan standar modern arsitektur Laravel 12, UI responsif TailwindCSS, dan integrasi ESA Groups.*
+
 

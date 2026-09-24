@@ -992,7 +992,6 @@
                 <div>
                     <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between" x-show="!sidebarCollapsed">
                         <span>Dashboard</span>
-                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                     </div>
                     <div x-show="sidebarCollapsed" class="w-8 h-px bg-slate-200 mx-auto my-2" x-cloak></div>
                     <ul class="space-y-1">
@@ -1000,10 +999,9 @@
                             <a href="{{ route('fitur.index') }}" 
                                title="Beranda"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('fitur.index') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-house text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('fitur.index') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Beranda</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded-md">HOME</span>
                             </a>
                         </li>
                     </ul>
@@ -1014,7 +1012,6 @@
                 <div>
                     <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between" x-show="!sidebarCollapsed">
                         <span>Master Data</span>
-                        <span class="text-[9px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.2 rounded border border-indigo-200">ADMIN</span>
                     </div>
                     <div x-show="sidebarCollapsed" class="w-8 h-px bg-slate-200 mx-auto my-2" x-cloak></div>
                     <ul class="space-y-1">
@@ -1022,17 +1019,16 @@
                             <a href="{{ route('master.karyawan.index') }}" 
                                title="Master Karyawan"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.karyawan.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-users-gear text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('master.karyawan.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Master Karyawan</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-slate-100 text-slate-600 font-semibold px-1.5 py-0.5 rounded-md">Inhouse</span>
                             </a>
                         </li>
                         <li>
                             <a href="{{ route('master.prinsiple.index') }}" 
                                title="Master Prinsiple"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.prinsiple.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-building-shield text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('master.prinsiple.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Master Prinsiple</span>
                             </a>
@@ -1041,30 +1037,27 @@
                             <a href="{{ route('master.math.index') }}" 
                                title="Master Soal Matematika"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.math.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-calculator text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('master.math.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Soal Matematika</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded-md border border-emerald-200">CBT</span>
                             </a>
                         </li>
                         <li>
                             <a href="{{ route('master.personality.index') }}" 
                                title="Master Soal Kepribadian"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.personality.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-brain text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('master.personality.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Soal Kepribadian</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-purple-50 text-purple-700 font-bold px-1.5 py-0.5 rounded-md border border-purple-200">DISC</span>
                             </a>
                         </li>
                         <li>
                             <a href="{{ route('master.approval-workflow.index') }}" 
                                title="Alur Approver Dinamis"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('master.approval-workflow.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-diagram-project text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('master.approval-workflow.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Alur Approver</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded-md border border-indigo-200">Dinamis</span>
                             </a>
                         </li>
                     </ul>
@@ -1076,7 +1069,6 @@
                 <div>
                     <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between" x-show="!sidebarCollapsed">
                         <span>System Setting</span>
-                        <span class="text-[9px] bg-slate-100 text-slate-700 font-bold px-1.5 py-0.2 rounded border border-slate-200">CONFIG</span>
                     </div>
                     <div x-show="sidebarCollapsed" class="w-8 h-px bg-slate-200 mx-auto my-2" x-cloak></div>
                     <ul class="space-y-1">
@@ -1084,37 +1076,34 @@
                             <a href="{{ route('odoo.setting.index') }}" 
                                title="Setting Sync Odoo"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('odoo.setting.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-arrows-rotate text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('odoo.setting.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Setting Sync Odoo</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-blue-50 text-blue-700 font-bold px-1.5 py-0.5 rounded-md border border-blue-200">5 Entitas</span>
                             </a>
                         </li>
                         <li>
                             <a href="{{ route('setting.rbac.index') }}" 
                                title="Hak Akses (RBAC)"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('setting.rbac.*') || request()->routeIs('rbac.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-user-shield text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('setting.rbac.*') || request()->routeIs('rbac.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Hak Akses (RBAC)</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-1.5 py-0.5 rounded-md border border-indigo-200">Role & Akses</span>
                             </a>
                         </li>
                         <li>
                             <a href="{{ route('aisetting.index') }}" 
                                title="Setting AI & WA"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('aisetting.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-sliders text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('aisetting.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Setting AI & WA</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-amber-50 text-amber-700 font-bold px-1.5 py-0.5 rounded-md border border-amber-200">AI</span>
                             </a>
                         </li>
                         <li>
                             <a href="{{ route('admin.auth-chat.index') }}" 
                                title="Bantuan Login & Reset Kata Sandi"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('admin.auth-chat.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-headset text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('admin.auth-chat.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Bantuan Login</span>
                                 @php
@@ -1122,8 +1111,6 @@
                                 @endphp
                                 @if($sidebarPendingReset > 0)
                                 <span x-show="!sidebarCollapsed" class="text-[10px] bg-rose-500 text-white font-bold px-1.5 py-0.2 rounded-full animate-bounce">{{ $sidebarPendingReset }}</span>
-                                @else
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-1.5 py-0.5 rounded-md border border-emerald-200">Live</span>
                                 @endif
                             </a>
                         </li>
@@ -1131,10 +1118,9 @@
                             <a href="{{ route('activity-logs.index') }}" 
                                title="Log Aktivitas & Audit"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('activity-logs.*') ? 'sidebar-item-active' : 'text-slate-600 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-clock-rotate-left text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('activity-logs.*') ? 'text-white' : 'text-slate-400' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Log Aktivitas</span>
-                                <span x-show="!sidebarCollapsed" class="text-[10px] bg-purple-50 text-purple-700 font-bold px-1.5 py-0.5 rounded-md border border-purple-200">AUDIT</span>
                             </a>
                         </li>
                     </ul>
@@ -1148,7 +1134,6 @@
                 <div x-data="{ interviewOpen: {{ $isInterviewActive ? 'true' : 'false' }} }">
                     <div class="px-3 text-[11px] font-bold text-slate-400 tracking-wider uppercase mb-1.5 flex items-center justify-between" x-show="!sidebarCollapsed">
                         <span>Fitur & Layanan</span>
-                        <span class="text-[10px] text-primary font-bold">MODUL</span>
                     </div>
                     <div x-show="sidebarCollapsed" class="w-8 h-px bg-slate-200 mx-auto my-2" x-cloak></div>
                     <ul class="space-y-1">
@@ -1157,10 +1142,9 @@
                             <a href="{{ route('workplan.index') }}" 
                                title="Work Plan & ToDo"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('workplan.index', 'workplan.daily') ? 'sidebar-item-active' : 'text-slate-700 hover:text-primary hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-list-check text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('workplan.index', 'workplan.daily') ? 'text-white' : 'text-indigo-500' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Work Plan & ToDo</span>
-                                <span x-show="!sidebarCollapsed" class="text-[9px] {{ request()->routeIs('workplan.index', 'workplan.daily') ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700' }} font-bold px-1.5 py-0.5 rounded-md">KANBAN</span>
                             </a>
                         </li>
 
@@ -1169,10 +1153,9 @@
                             <a href="{{ route('workplan.chat') }}" 
                                title="Groups Chat"
                                class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('workplan.chat*') ? 'sidebar-item-active' : 'text-slate-700 hover:text-emerald-600 hover:bg-slate-50' }}"
-                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-comments text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('workplan.chat*') ? 'text-white' : 'text-emerald-500' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 truncate">Groups Chat</span>
-                                <span x-show="!sidebarCollapsed" class="text-[9px] {{ request()->routeIs('workplan.chat*') ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-800' }} font-bold px-1.5 py-0.5 rounded-md">LIVE</span>
                             </a>
                         </li>
 
@@ -1188,7 +1171,6 @@
                                     :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
                                 <i class="fa-solid fa-headset text-base w-5 text-center flex-shrink-0 {{ $isHelpdeskActive ? 'text-amber-600' : 'text-amber-500' }}"></i>
                                 <span x-show="!sidebarCollapsed" class="flex-1 text-left truncate">Helpdesk Support</span>
-                                <span x-show="!sidebarCollapsed" class="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md mr-1">TICKET</span>
                                 <i x-show="!sidebarCollapsed" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': helpdeskOpen }"></i>
                             </button>
 
@@ -1286,9 +1268,6 @@
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('job.public') || request()->routeIs('job.detail') || request()->routeIs('job.apply') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-arrow-up-right-from-square text-[11px] w-4 text-center"></i>
                                     <span>Portal Lowongan Job</span>
-                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase bg-slate-100 text-slate-500">
-                                        PUB
-                                    </span>
                                 </a>
 
                                 <!-- Statistik Job & Kandidat -->
@@ -1297,9 +1276,6 @@
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('job.statistik*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-chart-pie text-[11px] w-4 text-center"></i>
                                     <span>Statistik Job & Kandidat</span>
-                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('job.statistik*') ? 'bg-white/20 text-white' : 'bg-emerald-100 text-emerald-700' }}">
-                                        STAT
-                                    </span>
                                     @if(request()->routeIs('job.statistik*'))
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
@@ -1322,9 +1298,6 @@
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('kandidatportal.ai_queue*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-list-check text-[11px] w-4 text-center {{ request()->routeIs('kandidatportal.ai_queue*') ? 'text-white' : 'text-indigo-500' }}"></i>
                                     <span>Log Antrean AI</span>
-                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('kandidatportal.ai_queue*') ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-700' }}">
-                                        Live
-                                    </span>
                                     @if(request()->routeIs('kandidatportal.ai_queue*'))
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
@@ -1336,9 +1309,6 @@
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('airanking.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-ranking-star text-[11px] w-4 text-center {{ request()->routeIs('airanking.*') ? 'text-white' : 'text-amber-500' }}"></i>
                                     <span>AI Ranking</span>
-                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('airanking.*') ? 'bg-white/20 text-white' : 'bg-amber-100 text-amber-700' }}">
-                                        AI
-                                    </span>
                                     @if(request()->routeIs('airanking.*'))
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
@@ -1363,9 +1333,6 @@
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('userprinsiple.*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-users-viewfinder text-[11px] w-4 text-center"></i>
                                     <span>Master User Prinsiple</span>
-                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('userprinsiple.*') ? 'bg-white/20 text-white' : 'bg-blue-100 text-blue-700' }}">
-                                        PRIN
-                                    </span>
                                     @if(request()->routeIs('userprinsiple.*'))
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
@@ -1388,9 +1355,6 @@
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('interview.walk*') ? 'bg-primary text-white shadow-sm' : 'text-slate-600 hover:text-primary hover:bg-slate-100/70' }}">
                                     <i class="fa-solid fa-person-walking text-[11px] w-4 text-center"></i>
                                     <span>Kandidat Walkin</span>
-                                    <span class="text-[9px] px-1.5 py-0.2 rounded font-bold uppercase {{ request()->routeIs('interview.walk*') ? 'bg-white/20 text-white' : 'bg-rose-100 text-rose-700' }}">
-                                        WALK
-                                    </span>
                                     @if(request()->routeIs('interview.walk*'))
                                         <span class="w-1.5 h-1.5 rounded-full bg-white ml-auto"></span>
                                     @endif
@@ -1614,25 +1578,68 @@
                                       x-text="unreadTotal > 0 ? (unreadTotal + ' pemberitahuan') : 'Semua terbaca'"></span>
                             </div>
 
-                            <!-- Tab Filter (Khusus jika ada reset password & chat) -->
-                            <div x-show="pendingResets.length > 0 && unreadGroups.length > 0" class="flex items-center border-b border-slate-100 bg-slate-50/60 px-3 pt-1 text-[11px] font-bold gap-2">
+                            <!-- Desktop Windows Notification Permission Banner -->
+                            <div class="px-4 py-2 border-b border-slate-100 flex items-center justify-between gap-2 text-[11px] bg-slate-50/80">
+                                <div class="flex items-center gap-1.5 min-w-0">
+                                    <i class="fa-brands fa-windows text-blue-600 text-xs"></i>
+                                    <span class="font-medium text-slate-600 truncate">Notifikasi Windows Desktop:</span>
+                                </div>
+                                <template x-if="desktopPermission === 'granted'">
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                                        <i class="fa-solid fa-circle-check text-[9px]"></i> Aktif
+                                    </span>
+                                </template>
+                                <template x-if="desktopPermission === 'default'">
+                                    <button type="button" @click="requestDesktopPermission()" class="text-[10px] font-bold text-blue-700 bg-blue-100 hover:bg-blue-200 px-2.5 py-0.5 rounded-full transition-all flex items-center gap-1 shadow-2xs">
+                                        <i class="fa-solid fa-bell text-[9px]"></i> Aktifkan
+                                    </button>
+                                </template>
+                                <template x-if="desktopPermission === 'denied'">
+                                    <span class="inline-flex items-center gap-1 text-[10px] font-medium text-slate-400" title="Diblokir di pengaturan peramban">
+                                        <i class="fa-solid fa-ban text-[9px]"></i> Dinonaktifkan
+                                    </span>
+                                </template>
+                            </div>
+
+                            <!-- Tab Filter -->
+                            <div class="flex items-center border-b border-slate-100 bg-slate-50/60 px-3 pt-1 text-[11px] font-bold gap-1.5 overflow-x-auto">
                                 <button type="button" @click="activeNotifTab = 'all'" 
-                                        class="pb-1.5 border-b-2 transition-all" 
+                                        class="pb-1.5 px-1.5 border-b-2 transition-all whitespace-nowrap" 
                                         :class="activeNotifTab === 'all' ? 'border-primary text-primary' : 'border-transparent text-slate-400 hover:text-slate-600'">
                                     Semua (<span x-text="unreadTotal"></span>)
                                 </button>
-                                <button type="button" @click="activeNotifTab = 'resets'" 
-                                        class="pb-1.5 border-b-2 transition-all flex items-center gap-1" 
-                                        :class="activeNotifTab === 'resets' ? 'border-amber-600 text-amber-700' : 'border-transparent text-slate-400 hover:text-slate-600'">
-                                    <span>Reset Password</span>
-                                    <span class="px-1 py-0.2 rounded-full bg-rose-100 text-rose-700 text-[9px]" x-text="pendingResets.length"></span>
-                                </button>
-                                <button type="button" @click="activeNotifTab = 'chats'" 
-                                        class="pb-1.5 border-b-2 transition-all flex items-center gap-1" 
-                                        :class="activeNotifTab === 'chats' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-400 hover:text-slate-600'">
-                                    <span>Chat Groups</span>
-                                    <span class="px-1 py-0.2 rounded-full bg-emerald-100 text-emerald-700 text-[9px]" x-text="unreadGroups.length"></span>
-                                </button>
+                                <template x-if="unreadTicketsCount > 0 || unreadTickets.length > 0">
+                                    <button type="button" @click="activeNotifTab = 'tickets'" 
+                                            class="pb-1.5 px-1.5 border-b-2 transition-all flex items-center gap-1 whitespace-nowrap" 
+                                            :class="activeNotifTab === 'tickets' ? 'border-amber-600 text-amber-700' : 'border-transparent text-slate-400 hover:text-slate-600'">
+                                        <span>Tiket</span>
+                                        <span class="px-1 py-0.2 rounded-full bg-amber-100 text-amber-800 text-[9px]" x-text="unreadTicketsCount"></span>
+                                    </button>
+                                </template>
+                                <template x-if="unreadTasksCount > 0 || unreadTasks.length > 0">
+                                    <button type="button" @click="activeNotifTab = 'tasks'" 
+                                            class="pb-1.5 px-1.5 border-b-2 transition-all flex items-center gap-1 whitespace-nowrap" 
+                                            :class="activeNotifTab === 'tasks' ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-400 hover:text-slate-600'">
+                                        <span>Work Plan</span>
+                                        <span class="px-1 py-0.2 rounded-full bg-indigo-100 text-indigo-800 text-[9px]" x-text="unreadTasksCount"></span>
+                                    </button>
+                                </template>
+                                <template x-if="unreadGroups.length > 0">
+                                    <button type="button" @click="activeNotifTab = 'chats'" 
+                                            class="pb-1.5 px-1.5 border-b-2 transition-all flex items-center gap-1 whitespace-nowrap" 
+                                            :class="activeNotifTab === 'chats' ? 'border-emerald-600 text-emerald-700' : 'border-transparent text-slate-400 hover:text-slate-600'">
+                                        <span>Chat</span>
+                                        <span class="px-1 py-0.2 rounded-full bg-emerald-100 text-emerald-700 text-[9px]" x-text="unreadGroups.length"></span>
+                                    </button>
+                                </template>
+                                <template x-if="pendingResets.length > 0">
+                                    <button type="button" @click="activeNotifTab = 'resets'" 
+                                            class="pb-1.5 px-1.5 border-b-2 transition-all flex items-center gap-1 whitespace-nowrap" 
+                                            :class="activeNotifTab === 'resets' ? 'border-rose-600 text-rose-700' : 'border-transparent text-slate-400 hover:text-slate-600'">
+                                        <span>Reset</span>
+                                        <span class="px-1 py-0.2 rounded-full bg-rose-100 text-rose-700 text-[9px]" x-text="pendingResets.length"></span>
+                                    </button>
+                                </template>
                             </div>
 
                             <!-- Notification Items List Stream -->
@@ -1678,7 +1685,81 @@
                                     </div>
                                 </template>
 
-                                <!-- SECTION 2: CHAT NOTIFICATION ITEMS LIST (GROUPS CHAT) -->
+                                <!-- SECTION 2: TIKET HELPDESK -->
+                                <template x-if="(activeNotifTab === 'all' || activeNotifTab === 'tickets') && unreadTickets.length > 0">
+                                    <div class="divide-y divide-amber-100/60">
+                                        <div class="px-3 py-1.5 bg-amber-50/60 border-b border-amber-100/80 text-[10px] font-extrabold text-amber-800 uppercase tracking-wider flex items-center justify-between">
+                                            <span class="flex items-center gap-1.5">
+                                                <i class="fa-solid fa-headset text-[9px] text-amber-600"></i>
+                                                Tiket Helpdesk Terbuka
+                                            </span>
+                                            <span class="px-1.5 py-0.2 rounded-full bg-amber-100 text-amber-800 font-bold text-[9px]" x-text="unreadTicketsCount + ' tiket'"></span>
+                                        </div>
+
+                                        <template x-for="tkt in unreadTickets" :key="'tkt_' + tkt.id">
+                                            <a :href="tkt.url"
+                                               class="flex items-start gap-3 p-3 hover:bg-amber-50/50 transition-colors group">
+                                                <div class="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-xs mt-0.5">
+                                                    <i class="fa-solid fa-ticket"></i>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                        <span class="text-xs font-bold text-slate-800 group-hover:text-amber-700 truncate" x-text="'#' + tkt.ticket_number"></span>
+                                                        <span class="text-[10px] text-slate-400 flex-shrink-0" x-text="tkt.time"></span>
+                                                    </div>
+                                                    <p class="text-[11px] text-slate-700 font-semibold truncate leading-tight" x-text="tkt.subject"></p>
+                                                    <div class="text-[10px] text-slate-400 flex items-center gap-1 mt-0.5">
+                                                        <span x-text="tkt.creator_name"></span>
+                                                        <span>&bull;</span>
+                                                        <span class="font-medium text-amber-700" x-text="tkt.division_name"></span>
+                                                    </div>
+                                                </div>
+                                                <span class="px-1.5 py-0.5 rounded-full text-[9px] font-bold uppercase"
+                                                      :class="tkt.priority === 'Urgent' || tkt.priority === 'High' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'"
+                                                      x-text="tkt.priority"></span>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <!-- SECTION 3: TUGAS WORK PLAN -->
+                                <template x-if="(activeNotifTab === 'all' || activeNotifTab === 'tasks') && unreadTasks.length > 0">
+                                    <div class="divide-y divide-indigo-100/60">
+                                        <div class="px-3 py-1.5 bg-indigo-50/60 border-b border-indigo-100/80 text-[10px] font-extrabold text-indigo-800 uppercase tracking-wider flex items-center justify-between">
+                                            <span class="flex items-center gap-1.5">
+                                                <i class="fa-solid fa-list-check text-[9px] text-indigo-600"></i>
+                                                Tugas Work Plan Saya
+                                            </span>
+                                            <span class="px-1.5 py-0.2 rounded-full bg-indigo-100 text-indigo-800 font-bold text-[9px]" x-text="unreadTasksCount + ' aktif'"></span>
+                                        </div>
+
+                                        <template x-for="tsk in unreadTasks" :key="'tsk_' + tsk.id">
+                                            <a :href="tsk.url"
+                                               class="flex items-start gap-3 p-3 hover:bg-indigo-50/50 transition-colors group">
+                                                <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-sm flex-shrink-0 shadow-xs mt-0.5">
+                                                    <i class="fa-solid fa-thumbtack"></i>
+                                                </div>
+                                                <div class="min-w-0 flex-1">
+                                                    <div class="flex items-center justify-between gap-1 mb-0.5">
+                                                        <span class="text-xs font-bold text-slate-800 group-hover:text-indigo-700 truncate" x-text="tsk.title"></span>
+                                                        <span class="text-[10px] font-mono text-slate-400 uppercase" x-text="tsk.status"></span>
+                                                    </div>
+                                                    <div class="text-[10px] text-slate-500 flex items-center gap-1">
+                                                        <span>Dari: <strong class="text-slate-700" x-text="tsk.delegator"></strong></span>
+                                                        <template x-if="tsk.due_date">
+                                                            <span>&bull; Deadline: <span x-text="tsk.due_date"></span></span>
+                                                        </template>
+                                                    </div>
+                                                </div>
+                                                <span class="px-1.5 py-0.5 rounded-full text-[9px] font-bold"
+                                                      :class="tsk.priority === 'Urgent' || tsk.priority === 'High' ? 'bg-rose-100 text-rose-700' : 'bg-slate-100 text-slate-600'"
+                                                      x-text="tsk.priority"></span>
+                                            </a>
+                                        </template>
+                                    </div>
+                                </template>
+
+                                <!-- SECTION 4: CHAT NOTIFICATION ITEMS LIST (GROUPS CHAT) -->
                                 <template x-if="(activeNotifTab === 'all' || activeNotifTab === 'chats') && unreadGroups.length > 0">
                                     <div class="divide-y divide-slate-100">
                                         <div class="px-3 py-1.5 bg-emerald-50/60 border-b border-emerald-100/80 text-[10px] font-extrabold text-emerald-800 uppercase tracking-wider flex items-center justify-between">
@@ -1713,28 +1794,30 @@
                                 </template>
 
                                 <!-- State Kosong jika tidak ada notifikasi apapun -->
-                                <div x-show="pendingResets.length === 0 && unreadGroups.length === 0" class="p-6 text-center text-slate-400">
+                                <div x-show="unreadTotal === 0" class="p-6 text-center text-slate-400">
                                     <div class="w-10 h-10 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-2">
                                         <i class="fa-regular fa-bell-slash text-base"></i>
                                     </div>
                                     <div class="text-xs font-bold text-slate-700">Tidak ada notifikasi baru</div>
-                                    <div class="text-[11px] text-slate-400 mt-0.5">Semua pesan group dan permintaan bantuan sudah dibaca.</div>
+                                    <div class="text-[11px] text-slate-400 mt-0.5">Semua pesan group, tiket helpdesk, dan tugas workplan sudah diperbarui.</div>
                                 </div>
                             </div>
 
                             <!-- Footer -->
-                            <div class="p-2.5 bg-slate-50 flex items-center justify-between border-t border-slate-100">
-                                <div class="flex items-center gap-2">
-                                    <a href="{{ route('workplan.chat') }}" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors">
-                                        <i class="fa-solid fa-comments text-xs"></i>
-                                        <span>Groups Chat</span>
-                                    </a>
-                                    @if(Auth::check() && Auth::user()->isAdmin())
-                                    <a href="{{ route('admin.auth-chat.index') }}" class="text-[11px] font-bold text-primary hover:text-primary-800 flex items-center gap-1.5 px-2 py-1 rounded-lg hover:bg-blue-50 transition-colors">
+                            <div class="p-2.5 bg-slate-50 flex items-center justify-between border-t border-slate-100 flex-wrap gap-2">
+                                <div class="flex items-center gap-1.5 flex-wrap">
+                                    <a href="{{ route('helpdesk.index') }}" class="text-[11px] font-bold text-amber-700 hover:text-amber-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-amber-50 transition-colors">
                                         <i class="fa-solid fa-headset text-xs"></i>
-                                        <span>Bantuan Login</span>
+                                        <span>Helpdesk</span>
                                     </a>
-                                    @endif
+                                    <a href="{{ route('workplan.index') }}" class="text-[11px] font-bold text-indigo-700 hover:text-indigo-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-indigo-50 transition-colors">
+                                        <i class="fa-solid fa-list-check text-xs"></i>
+                                        <span>Work Plan</span>
+                                    </a>
+                                    <a href="{{ route('workplan.chat') }}" class="text-[11px] font-bold text-emerald-700 hover:text-emerald-800 flex items-center gap-1 px-2 py-1 rounded-lg hover:bg-emerald-50 transition-colors">
+                                        <i class="fa-solid fa-comments text-xs"></i>
+                                        <span>Chat</span>
+                                    </a>
                                 </div>
                                 <button type="button" @click="isOpen = false" class="text-[11px] font-semibold text-slate-400 hover:text-slate-600 px-2 py-1">
                                     Tutup
@@ -1882,11 +1965,11 @@
             }
             let icon = 'info';
             let title = 'Pemberitahuan';
-            const str = String(message || '');
+            const str = String(message ?? '');
             const lower = str.toLowerCase();
-            if (lower.includes('ditolak') || lower.includes('hanya delegator') || lower.includes('tidak berhak')) {
+            if (lower.includes('ditolak') || lower.includes('hanya delegator') || lower.includes('tidak berhak') || lower.includes('belum memiliki tanda tangan')) {
                 icon = 'warning';
-                title = 'Akses Ditolak!';
+                title = 'Perhatian';
             } else if (lower.includes('gagal') || lower.includes('error') || lower.includes('kesalahan')) {
                 icon = 'error';
                 title = 'Terjadi Kesalahan';
@@ -1903,16 +1986,123 @@
                 title: title,
                 html: str.replace(/\n/g, '<br>'),
                 confirmButtonColor: '#0F52BA',
-                confirmButtonText: 'Mengerti',
+                confirmButtonText: 'OK, Mengerti',
                 customClass: {
-                    popup: 'rounded-2xl shadow-2xl',
-                    confirmButton: 'rounded-xl font-bold px-5 py-2.5 text-xs'
+                    popup: 'rounded-2xl shadow-2xl border border-slate-200/80',
+                    confirmButton: 'rounded-xl font-bold px-6 py-2.5 text-xs shadow-md'
                 }
             });
         };
+
+        // Global Confirmation Interceptor for Forms with onsubmit="return confirm(...)"
+        document.addEventListener('submit', function(e) {
+            const form = e.target;
+            if (!form || form.tagName !== 'FORM') return;
+            if (form.dataset.swalConfirmed === 'true') {
+                delete form.dataset.swalConfirmed;
+                return;
+            }
+            const onsubmitAttr = form.getAttribute('onsubmit') || '';
+            const confirmMatch = onsubmitAttr.match(/confirm\s*\(\s*(['"`])([\s\S]*?)\1\s*\)/i);
+            if (confirmMatch) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                const msg = confirmMatch[2].replace(/\\'/g, "'").replace(/\\"/g, '"');
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    html: msg.replace(/\n/g, '<br>'),
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0F52BA',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: '<i class="fa-solid fa-check mr-1.5"></i> Ya, Lanjutkan',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                    customClass: {
+                        popup: 'rounded-2xl shadow-2xl border border-slate-200/80',
+                        confirmButton: 'rounded-xl font-bold px-5 py-2.5 text-xs shadow-md',
+                        cancelButton: 'rounded-xl font-semibold px-4 py-2.5 text-xs'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        form.dataset.swalConfirmed = 'true';
+                        form.submit();
+                    }
+                });
+            }
+        }, true);
+
+        // Global Confirmation Interceptor for Links / Buttons with onclick="return confirm(...)"
+        document.addEventListener('click', function(e) {
+            const el = e.target.closest('a[onclick*="confirm"], button[onclick*="confirm"]');
+            if (!el) return;
+            if (el.dataset.swalConfirmed === 'true') {
+                delete el.dataset.swalConfirmed;
+                return;
+            }
+            const onclickAttr = el.getAttribute('onclick') || '';
+            const confirmMatch = onclickAttr.match(/confirm\s*\(\s*(['"`])([\s\S]*?)\1\s*\)/i);
+            if (confirmMatch) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+                const msg = confirmMatch[2].replace(/\\'/g, "'").replace(/\\"/g, '"');
+                Swal.fire({
+                    title: 'Konfirmasi',
+                    html: msg.replace(/\n/g, '<br>'),
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonColor: '#0F52BA',
+                    cancelButtonColor: '#64748b',
+                    confirmButtonText: '<i class="fa-solid fa-check mr-1.5"></i> Ya, Lanjutkan',
+                    cancelButtonText: 'Batal',
+                    reverseButtons: true,
+                    customClass: {
+                        popup: 'rounded-2xl shadow-2xl border border-slate-200/80',
+                        confirmButton: 'rounded-xl font-bold px-5 py-2.5 text-xs shadow-md',
+                        cancelButton: 'rounded-xl font-semibold px-4 py-2.5 text-xs'
+                    }
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        el.dataset.swalConfirmed = 'true';
+                        if (el.tagName === 'A' && el.href && !el.href.startsWith('javascript:')) {
+                            window.location.href = el.href;
+                        } else {
+                            el.click();
+                        }
+                    }
+                });
+            }
+        }, true);
+
+        // Native Windows Desktop Notification Helper Function
+        function triggerWindowsNotification(title, body, url = null, icon = null) {
+            if (!('Notification' in window)) return;
+            if (Notification.permission !== 'granted') return;
+
+            try {
+                const defaultIcon = '{{ asset("favicon.ico") }}';
+                const notif = new Notification(title, {
+                    body: body,
+                    icon: icon || defaultIcon,
+                    badge: defaultIcon,
+                    tag: 'asystem-' + Date.now(),
+                    renotify: true
+                });
+
+                notif.onclick = function() {
+                    window.focus();
+                    if (url) {
+                        window.location.href = url;
+                    }
+                    this.close();
+                };
+            } catch (e) {
+                console.warn('Windows notification error:', e);
+            }
+        }
     </script>
     
-    <!-- Global Chat Real-time Notification System -->
+    <!-- Global Chat & System Notification System -->
     <script>
     function asystemNotifications() {
         return {
@@ -1920,14 +2110,25 @@
             activeNotifTab: 'all',
             unreadTotal: 0,
             unreadGroups: [],
+            unreadTickets: [],
+            unreadTicketsCount: 0,
+            unreadTasks: [],
+            unreadTasksCount: 0,
             pendingResets: [],
             pendingResetsCount: 0,
             notifiedResetIds: new Set(),
             lastChatId: 0,
+            lastTicketId: 0,
+            lastReplyId: 0,
+            lastTaskId: 0,
+            desktopPermission: ('Notification' in window) ? Notification.permission : 'denied',
             pollTimer: null,
             isRinging: false,
 
             initNotifications() {
+                // Update permission status
+                this.desktopPermission = ('Notification' in window) ? Notification.permission : 'denied';
+
                 // Cek notifikasi pertama kali
                 this.fetchNotifications(true);
 
@@ -1938,10 +2139,43 @@
                     }, 8500);
                 }
 
-                // Listener jika ada chat event dari halaman chat
+                // Listener jika ada event dari halaman chat atau helpdesk
                 window.addEventListener('asystem-chat-notif', (e) => {
                     this.fetchNotifications(false);
                 });
+                window.addEventListener('asystem-ticket-notif', (e) => {
+                    this.fetchNotifications(false);
+                });
+            },
+
+            async requestDesktopPermission() {
+                if (!('Notification' in window)) {
+                    Swal.fire({
+                        icon: 'info',
+                        title: 'Tidak Didukung',
+                        text: 'Browser Anda tidak mendukung Web Notification API.'
+                    });
+                    return;
+                }
+
+                try {
+                    const perm = await Notification.requestPermission();
+                    this.desktopPermission = perm;
+                    if (perm === 'granted') {
+                        triggerWindowsNotification('Notifikasi Windows Aktif', 'Notifikasi desktop untuk ASystem berhasil diaktifkan. Anda akan menerima peringatan langsung di Windows saat ada tiket, balasan, tugas atau pesan baru.');
+                        Swal.fire({
+                            toast: true,
+                            position: 'top-end',
+                            icon: 'success',
+                            title: 'Notifikasi Desktop Aktif',
+                            text: 'Notifikasi Windows berhasil diaktifkan.',
+                            showConfirmButton: false,
+                            timer: 3500
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error requesting desktop permission:', e);
+                }
             },
 
             toggleDropdown() {
@@ -2033,7 +2267,13 @@
             async fetchNotifications(isFirstRun = false) {
                 @auth
                 try {
-                    const url = `{{ route('workplan.chat.notifications.check') }}?last_chat_id=${this.lastChatId}`;
+                    const params = new URLSearchParams({
+                        last_chat_id: this.lastChatId,
+                        last_ticket_id: this.lastTicketId,
+                        last_reply_id: this.lastReplyId,
+                        last_task_id: this.lastTaskId
+                    });
+                    const url = `{{ route('workplan.chat.notifications.check') }}?${params.toString()}`;
                     const res = await fetch(url, {
                         headers: {
                             'Accept': 'application/json',
@@ -2049,76 +2289,258 @@
                         this.unreadGroups = data.unread_groups || [];
                         this.pendingResets = data.pending_resets || [];
                         this.pendingResetsCount = data.pending_resets_count || 0;
+                        this.unreadTickets = data.unread_tickets || [];
+                        this.unreadTicketsCount = data.unread_tickets_count || 0;
+                        this.unreadTasks = data.unread_tasks || [];
+                        this.unreadTasksCount = data.unread_tasks_count || 0;
 
-                        // 1. Deteksi Permintaan Reset Password Pending Baru (Khusus Admin)
+                        let shouldRing = false;
+
+                        // 1. Deteksi Permintaan Reset Password Pending (Khusus Admin)
                         if (this.pendingResets && this.pendingResets.length > 0) {
                             const newResets = this.pendingResets.filter(r => !this.notifiedResetIds.has(r.id));
                             if (newResets.length > 0) {
-                                this.isRinging = true;
-                                this.playChime();
-                                setTimeout(() => { this.isRinging = false; }, 3000);
-
+                                shouldRing = true;
                                 newResets.forEach(req => {
                                     this.notifiedResetIds.add(req.id);
                                     this.showPersistentResetToast(req);
+                                    triggerWindowsNotification(
+                                        'Permintaan Reset Password',
+                                        `${req.nama_karyawan} (${req.nik}): ${req.request_message || 'Mohon bantuan akses password login'}`,
+                                        `{{ route('admin.auth-chat.index') }}?id=${req.id}`
+                                    );
                                 });
                             }
                         }
 
-                        // 2. Jika ada pesan chat group baru masuk (bukan saat first page load)
-                        if (!isFirstRun && data.new_messages && data.new_messages.length > 0) {
+                        // JIKA BUKAN FIRST RUN: PROSES TOAST & WINDOWS NOTIFICATION
+                        if (!isFirstRun) {
+                            // 2. Chat Group Baru
+                            if (data.new_messages && data.new_messages.length > 0) {
+                                shouldRing = true;
+                                const isChatPage = window.location.pathname.includes('/workplan-chat');
+                                data.new_messages.forEach(msg => {
+                                    const chatUrl = `{{ url('/workplan-chat') }}?group_id=${msg.group_id}`;
+                                    // Windows Desktop Notification
+                                    triggerWindowsNotification(
+                                        `Chat [${msg.group_name}]`,
+                                        `${msg.user_sender}: ${msg.message_text}`,
+                                        chatUrl,
+                                        msg.sender_avatar
+                                    );
+
+                                    // In-system SweetAlert Toast (jika bukan di halaman chat aktif)
+                                    if (!isChatPage && typeof Swal !== 'undefined') {
+                                        Swal.fire({
+                                            toast: true,
+                                            position: 'top-end',
+                                            showConfirmButton: false,
+                                            showCloseButton: true,
+                                            timer: 6000,
+                                            timerProgressBar: true,
+                                            iconHtml: `<div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xs bg-emerald-600">
+                                                         <i class="fa-solid fa-comments text-xs"></i>
+                                                       </div>`,
+                                            customClass: {
+                                                popup: 'rounded-2xl shadow-2xl border border-emerald-300 bg-white/95 backdrop-blur-md cursor-pointer hover:shadow-2xl text-left',
+                                                title: 'text-xs font-extrabold text-slate-800 m-0 text-left',
+                                                htmlContainer: 'text-xs text-slate-600 m-0 mt-1 text-left'
+                                            },
+                                            title: `<div class="flex items-center gap-1.5 text-emerald-800 font-extrabold text-xs">
+                                                      <i class="fa-solid fa-users text-[10px] text-emerald-600"></i>
+                                                      <span>${this.escape(msg.group_name)}</span>
+                                                    </div>`,
+                                            html: `
+                                                <div class="flex items-start gap-2.5 pt-1">
+                                                    <img src="${msg.sender_avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.user_sender) + '&background=059669&color=fff'}" 
+                                                         class="w-7 h-7 rounded-full object-cover border border-slate-200 flex-shrink-0 mt-0.5 shadow-2xs">
+                                                    <div class="min-w-0 flex-1">
+                                                        <div class="text-[11px] font-bold text-slate-800 truncate">${this.escape(msg.user_sender)}</div>
+                                                        <div class="text-xs text-slate-600 line-clamp-2 leading-relaxed">${this.escape(msg.message_text)}</div>
+                                                    </div>
+                                                </div>
+                                            `,
+                                            didOpen: (toast) => {
+                                                toast.addEventListener('click', (ev) => {
+                                                    if (!ev.target.closest('.swal2-close')) {
+                                                        window.location.href = chatUrl;
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+
+                            // 3. Tiket Helpdesk Baru (Ke semua agent divisi tujuan & admin)
+                            if (data.new_tickets && data.new_tickets.length > 0) {
+                                shouldRing = true;
+                                data.new_tickets.forEach(tkt => {
+                                    // Windows Desktop Notification
+                                    triggerWindowsNotification(
+                                        `Tiket Baru #${tkt.ticket_number} [Divisi ${tkt.division_name}]`,
+                                        `${tkt.creator_name}: ${tkt.subject}`,
+                                        tkt.url
+                                    );
+
+                                    // In-system SweetAlert Toast
+                                    if (typeof Swal !== 'undefined') {
+                                        Swal.fire({
+                                            toast: true,
+                                            position: 'top-end',
+                                            showConfirmButton: false,
+                                            showCloseButton: true,
+                                            timer: 8000,
+                                            timerProgressBar: true,
+                                            iconHtml: `<div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow bg-amber-500">
+                                                         <i class="fa-solid fa-ticket text-xs"></i>
+                                                       </div>`,
+                                            customClass: {
+                                                popup: 'rounded-2xl shadow-2xl border border-amber-300 bg-white/95 backdrop-blur-md cursor-pointer hover:shadow-2xl text-left',
+                                                title: 'text-xs font-extrabold text-slate-800 m-0 text-left',
+                                                htmlContainer: 'text-xs text-slate-600 m-0 mt-1 text-left'
+                                            },
+                                            title: `<div class="flex items-center gap-1.5 text-amber-800 font-extrabold text-xs">
+                                                      <i class="fa-solid fa-ticket text-[10px] text-amber-600"></i>
+                                                      <span>Tiket Baru #${this.escape(tkt.ticket_number)}</span>
+                                                      <span class="text-[9px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 uppercase">${this.escape(tkt.priority)}</span>
+                                                    </div>`,
+                                            html: `
+                                                <div class="pt-1">
+                                                    <div class="text-[11px] font-bold text-slate-800 truncate">${this.escape(tkt.subject)}</div>
+                                                    <div class="text-[10px] text-slate-500 mt-0.5 flex items-center gap-1">
+                                                        <span>${this.escape(tkt.creator_name)}</span>
+                                                        <span>&bull;</span>
+                                                        <span>Divisi ${this.escape(tkt.division_name)}</span>
+                                                    </div>
+                                                </div>
+                                            `,
+                                            didOpen: (toast) => {
+                                                toast.addEventListener('click', (ev) => {
+                                                    if (!ev.target.closest('.swal2-close')) {
+                                                        window.location.href = tkt.url;
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+
+                            // 4. Balasan Tiket (Ticket Reply)
+                            if (data.new_replies && data.new_replies.length > 0) {
+                                shouldRing = true;
+                                data.new_replies.forEach(rep => {
+                                    // Windows Desktop Notification
+                                    triggerWindowsNotification(
+                                        `Balasan Tiket #${rep.ticket_number}`,
+                                        `${rep.sender_name}: ${rep.message_snippet}`,
+                                        rep.url,
+                                        rep.sender_avatar
+                                    );
+
+                                    // In-system SweetAlert Toast
+                                    if (typeof Swal !== 'undefined') {
+                                        Swal.fire({
+                                            toast: true,
+                                            position: 'top-end',
+                                            showConfirmButton: false,
+                                            showCloseButton: true,
+                                            timer: 7000,
+                                            timerProgressBar: true,
+                                            iconHtml: `<div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow bg-blue-500">
+                                                         <i class="fa-solid fa-reply text-xs"></i>
+                                                       </div>`,
+                                            customClass: {
+                                                popup: 'rounded-2xl shadow-2xl border border-blue-300 bg-white/95 backdrop-blur-md cursor-pointer hover:shadow-2xl text-left',
+                                                title: 'text-xs font-extrabold text-slate-800 m-0 text-left',
+                                                htmlContainer: 'text-xs text-slate-600 m-0 mt-1 text-left'
+                                            },
+                                            title: `<div class="flex items-center gap-1.5 text-blue-800 font-extrabold text-xs">
+                                                      <i class="fa-solid fa-reply text-[10px] text-blue-600"></i>
+                                                      <span>Balasan Tiket #${this.escape(rep.ticket_number)}</span>
+                                                    </div>`,
+                                            html: `
+                                                <div class="pt-1">
+                                                    <div class="text-[11px] font-bold text-slate-800">${this.escape(rep.sender_name)}:</div>
+                                                    <div class="text-xs text-slate-600 line-clamp-2 mt-0.5">${this.escape(rep.message_snippet)}</div>
+                                                </div>
+                                            `,
+                                            didOpen: (toast) => {
+                                                toast.addEventListener('click', (ev) => {
+                                                    if (!ev.target.closest('.swal2-close')) {
+                                                        window.location.href = rep.url;
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+
+                            // 5. Tugas Work Plan Baru (Workplan Tasks)
+                            if (data.new_tasks && data.new_tasks.length > 0) {
+                                shouldRing = true;
+                                data.new_tasks.forEach(tsk => {
+                                    // Windows Desktop Notification
+                                    triggerWindowsNotification(
+                                        `Tugas Work Plan Baru`,
+                                        `${tsk.title} (Dari: ${tsk.delegator})`,
+                                        tsk.url
+                                    );
+
+                                    // In-system SweetAlert Toast
+                                    if (typeof Swal !== 'undefined') {
+                                        Swal.fire({
+                                            toast: true,
+                                            position: 'top-end',
+                                            showConfirmButton: false,
+                                            showCloseButton: true,
+                                            timer: 7000,
+                                            timerProgressBar: true,
+                                            iconHtml: `<div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow bg-indigo-600">
+                                                         <i class="fa-solid fa-list-check text-xs"></i>
+                                                       </div>`,
+                                            customClass: {
+                                                popup: 'rounded-2xl shadow-2xl border border-indigo-300 bg-white/95 backdrop-blur-md cursor-pointer hover:shadow-2xl text-left',
+                                                title: 'text-xs font-extrabold text-slate-800 m-0 text-left',
+                                                htmlContainer: 'text-xs text-slate-600 m-0 mt-1 text-left'
+                                            },
+                                            title: `<div class="flex items-center gap-1.5 text-indigo-800 font-extrabold text-xs">
+                                                      <i class="fa-solid fa-list-check text-[10px] text-indigo-600"></i>
+                                                      <span>Tugas Work Plan Baru</span>
+                                                    </div>`,
+                                            html: `
+                                                <div class="pt-1">
+                                                    <div class="text-[11px] font-bold text-slate-800">${this.escape(tsk.title)}</div>
+                                                    <div class="text-[10px] text-slate-500 mt-0.5">Dari: ${this.escape(tsk.delegator)}</div>
+                                                </div>
+                                            `,
+                                            didOpen: (toast) => {
+                                                toast.addEventListener('click', (ev) => {
+                                                    if (!ev.target.closest('.swal2-close')) {
+                                                        window.location.href = tsk.url;
+                                                    }
+                                                });
+                                            }
+                                        });
+                                    }
+                                });
+                            }
+                        }
+
+                        // Bunyikan chime jika ada notifikasi baru
+                        if (shouldRing) {
                             this.isRinging = true;
                             this.playChime();
                             setTimeout(() => { this.isRinging = false; }, 3000);
-
-                            // Jika user sedang berada di luar halaman chat, tampilkan Toast
-                            const isChatPage = window.location.pathname.includes('/workplan-chat');
-                            if (!isChatPage && typeof Swal !== 'undefined') {
-                                data.new_messages.forEach(msg => {
-                                    Swal.fire({
-                                        toast: true,
-                                        position: 'top-end',
-                                        showConfirmButton: false,
-                                        showCloseButton: true,
-                                        timer: 6000,
-                                        timerProgressBar: true,
-                                        iconHtml: `<div class="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold shadow-xs bg-emerald-600">
-                                                     <i class="fa-solid fa-comments text-xs"></i>
-                                                   </div>`,
-                                        customClass: {
-                                            popup: 'rounded-2xl shadow-2xl border border-emerald-300 bg-white/95 backdrop-blur-md cursor-pointer hover:shadow-2xl text-left',
-                                            title: 'text-xs font-extrabold text-slate-800 m-0 text-left',
-                                            htmlContainer: 'text-xs text-slate-600 m-0 mt-1 text-left'
-                                        },
-                                        title: `<div class="flex items-center gap-1.5 text-emerald-800 font-extrabold text-xs">
-                                                  <i class="fa-solid fa-users text-[10px] text-emerald-600"></i>
-                                                  <span>${this.escape(msg.group_name)}</span>
-                                                </div>`,
-                                        html: `
-                                            <div class="flex items-start gap-2.5 pt-1">
-                                                <img src="${msg.sender_avatar || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(msg.user_sender) + '&background=059669&color=fff'}" 
-                                                     class="w-7 h-7 rounded-full object-cover border border-slate-200 flex-shrink-0 mt-0.5 shadow-2xs">
-                                                <div class="min-w-0 flex-1">
-                                                    <div class="text-[11px] font-bold text-slate-800 truncate">${this.escape(msg.user_sender)}</div>
-                                                    <div class="text-xs text-slate-600 line-clamp-2 leading-relaxed">${this.escape(msg.message_text)}</div>
-                                                </div>
-                                            </div>
-                                        `,
-                                        didOpen: (toast) => {
-                                            toast.addEventListener('click', (ev) => {
-                                                if (!ev.target.closest('.swal2-close')) {
-                                                    window.location.href = `{{ url('/workplan-chat') }}?group_id=${msg.group_id}`;
-                                                }
-                                            });
-                                        }
-                                    });
-                                });
-                            }
                         }
 
-                        if (data.max_id > 0) {
-                            this.lastChatId = data.max_id;
-                        }
+                        // Simpan latest max IDs
+                        if (data.max_id > 0) this.lastChatId = data.max_id;
+                        if (data.max_ticket_id > 0) this.lastTicketId = data.max_ticket_id;
+                        if (data.max_reply_id > 0) this.lastReplyId = data.max_reply_id;
+                        if (data.max_task_id > 0) this.lastTaskId = data.max_task_id;
                     }
                 } catch (err) {
                     // Fail gracefully
