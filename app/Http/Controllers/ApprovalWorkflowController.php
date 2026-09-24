@@ -52,6 +52,8 @@ class ApprovalWorkflowController extends Controller
         ];
 
         // Daftar Master Prinsiple untuk opsi pemilihan prinsiple spesifik
+        $principles = Principle::orderBy('name', 'asc')->pluck('name')->unique()->values();
+
         // Pastikan seluruh Karyawan Inhouse Aktif dari Master Karyawan telah disinkronkan ke tabel users
         $this->ensureInhouseUsersExist();
 
