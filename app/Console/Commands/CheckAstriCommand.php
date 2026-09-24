@@ -40,13 +40,31 @@ class CheckAstriCommand extends Command
         $this->line("Tasks with 'Astri Wahyuni': {$oldNameCount}");
 
         $this->info("\n=== INHOUSE EMPLOYEES VS USERS ===");
-        $inhouseCount = Employee::where('status', 'Aktiv')
+        $inhouse = Employee::where('status', 'Aktiv')
             ->where(function($q) {
                 $q->where('tipe_karyawan', 'Inhouse')
                   ->orWhereRaw('LOWER(TRIM(tipe_karyawan)) = ?', ['inhouse']);
-            })->count();
-        $usersCount = User::count();
-        $this->info("Active Inhouse Employees: {$inhouseCount} | Total Users: {$usersCount}");
+            })->get();
+
+        $existingEmails = User::whereNotNull('email')->pluck('email')->map(fn($e) => strtolower(trim($e)))->toArray();
+        $missingUser = 0;
+        $emptyEmail = 0;
+        foreach ($inhouse as $emp) {
+            $eMail = strtolower(trim($emp->email ?? ''));
+            if (empty($eMail)) {
+                $emptyEmail++;
+            } elseif (!in_array($eMail, $existingEmails, true)) {
+                $missingUser++;
+            }
+        }
+        $this->info("Total Inhouse: " . $inhouse->count() . " | Missing User: {$missingUser} | Empty Email: {$emptyEmail}");
+
+        $yohana = Employee::where('nama_karyawan', 'LIKE', '%Yohana Teraseptia%')->first();
+        if ($yohana) {
+            $this->info("Yohana Emp ID: {$yohana->id}, NIK: {$yohana->nik}, Email: '{$yohana->email}', Jabatan: '{$yohana->jabatan}'");
+            $yUser = User::whereRaw('LOWER(email) = ?', [strtolower(trim($yohana->email))])->first();
+            $this->info("Yohana User: " . ($yUser ? "Found ID {$yUser->id}" : "NOT FOUND"));
+        }
 
         $usersYohana = User::where('name', 'LIKE', '%Yohana%')
             ->orWhere('email', 'LIKE', '%yohana%')
