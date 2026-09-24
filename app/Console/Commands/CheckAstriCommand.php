@@ -15,22 +15,20 @@ class CheckAstriCommand extends Command
 
     public function handle()
     {
-        $this->info("=== USERS LIKE ASTRI / RAMELAN ===");
-        $users = User::where('email', 'LIKE', '%astriramelan%')
-            ->orWhere('email', 'LIKE', '%astri%')
-            ->orWhere('name', 'LIKE', '%Astri%')
-            ->get();
-        foreach ($users as $u) {
-            $this->line("User ID: {$u->id} | Name: '{$u->name}' | Email: '{$u->email}' | Role: '{$u->role}' | Job: '{$u->job_title}'");
+        $this->info("=== EXACT USER FOR astriramelan@gmail.com ===");
+        $exactUser = User::where('email', 'astriramelan@gmail.com')->first();
+        if ($exactUser) {
+            $this->line("User ID: {$exactUser->id} | Name: '{$exactUser->name}' | Email: '{$exactUser->email}' | Role: '{$exactUser->role}' | Job: '{$exactUser->job_title}'");
+        } else {
+            $this->warn("User astriramelan@gmail.com NOT found!");
         }
 
-        $this->info("\n=== EMPLOYEES LIKE ASTRI / RAMELAN ===");
-        $emps = Employee::where('email', 'LIKE', '%astriramelan%')
-            ->orWhere('email', 'LIKE', '%astri%')
-            ->orWhere('nama_karyawan', 'LIKE', '%Astri%')
+        $this->info("\n=== EXACT EMPLOYEE FOR astriramelan@gmail.com or ASTRI WAHYUNI ===");
+        $exactEmp = Employee::where('email', 'astriramelan@gmail.com')
+            ->orWhereRaw('LOWER(TRIM(nama_karyawan)) LIKE ?', ['%astri wahyuni%'])
             ->get();
-        foreach ($emps as $e) {
-            $this->line("Emp ID: {$e->id} | NIK: '{$e->nik}' | Name: '{$e->nama_karyawan}' | Email: '{$e->email}' | Jabatan: '{$e->jabatan}' | Pimpinan: '{$e->pimpinan}'");
+        foreach ($exactEmp as $e) {
+            $this->line("Emp ID: {$e->id} | NIK: '{$e->nik}' | Name: '{$e->nama_karyawan}' | Email: '{$e->email}' | Jabatan: '{$e->jabatan}' | Pimpinan: '{$e->pimpinan}' | Tipe: '{$e->tipe_karyawan}'");
         }
 
         $this->info("\n=== TASKS COUNTS FOR ASTRI ===");
