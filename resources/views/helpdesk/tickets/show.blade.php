@@ -84,6 +84,33 @@
                 </form>
                 @endif
 
+                <!-- TOMBOL TUTUP TIKET OLEH PENGAJU -->
+                @if($ticket->user_id === $user->id && $ticket->status !== 'closed')
+                <form method="POST" action="{{ route('helpdesk.tickets.close', $ticket->id) }}" onsubmit="return confirm('Apakah kendala Anda sudah terselesaikan dan Anda ingin menutup tiket ini?')">
+                    @csrf
+                    <button type="submit" class="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition-all" title="Konfirmasi bahwa kendala sudah terselesaikan dan tutup tiket ini">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>Tutup Tiket</span>
+                    </button>
+                </form>
+                @endif
+
+                @if($ticket->user_id === $user->id && $ticket->status === 'closed')
+                <div class="inline-flex items-center gap-2">
+                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200">
+                        <i class="fa-solid fa-lock text-slate-400"></i>
+                        <span>Tiket Telah Ditutup</span>
+                    </span>
+                    <form method="POST" action="{{ route('helpdesk.tickets.reopen', $ticket->id) }}" onsubmit="return confirm('Kendala masih belum selesai dan ingin membuka kembali tiket ini?')">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 border border-amber-300 text-xs font-bold transition-all shadow-2xs" title="Buka kembali tiket ini jika masih mengalami kendala">
+                            <i class="fa-solid fa-rotate-left text-amber-600"></i>
+                            <span>Buka Kembali Tiket</span>
+                        </button>
+                    </form>
+                </div>
+                @endif
+
                 <!-- DROPDOWN UBAH STATUS (JIKA BERHAK MENGELOLA) -->
                 @if($ticket->canBeManagedBy($user))
                 <div x-data="{ openStatus: false }" class="relative">
@@ -433,11 +460,28 @@
                                        @change="handleReplyFiles($event)">
                             </label>
 
-                            <button type="submit" class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-600 text-white font-bold text-xs shadow-md shadow-primary/20 transition-all flex items-center gap-2 ml-auto">
-                                <i class="fa-solid fa-paper-plane"></i>
-                                <span>Kirim Balasan</span>
-                            </button>
+                            <div class="flex items-center gap-2 ml-auto">
+                                @if($ticket->user_id === $user->id && $ticket->status !== 'closed')
+                                <button type="button" 
+                                        onclick="if(confirm('Apakah kendala Anda sudah terselesaikan dan Anda ingin menutup tiket ini?')) { document.getElementById('closeTicketFormInReply').submit(); }"
+                                        class="px-4 py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs transition-all flex items-center gap-1.5" 
+                                        title="Kendala sudah selesai? Klik untuk menyelesaikan & menutup tiket">
+                                    <i class="fa-solid fa-circle-check text-emerald-600"></i>
+                                    <span>Selesai & Tutup Tiket</span>
+                                </button>
+                                @endif
+                                <button type="submit" class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-600 text-white font-bold text-xs shadow-md shadow-primary/20 transition-all flex items-center gap-2">
+                                    <i class="fa-solid fa-paper-plane"></i>
+                                    <span>Kirim Balasan</span>
+                                </button>
+                            </div>
                         </div>
+
+                        @if($ticket->user_id === $user->id && $ticket->status !== 'closed')
+                        <form id="closeTicketFormInReply" method="POST" action="{{ route('helpdesk.tickets.close', $ticket->id) }}" class="hidden">
+                            @csrf
+                        </form>
+                        @endif
 
                         <!-- DAFTAR BERKAS TERPILIH UNTUK BALASAN -->
                         <div x-show="replyFiles.length > 0" x-cloak class="flex flex-wrap gap-1.5 pt-1">
@@ -510,6 +554,47 @@
                         </span>
                     </div>
                 </div>
+
+                <!-- KARTU TINDAKAN PENGAJU UNTUK MENUTUP TIKET -->
+                @if($ticket->user_id === $user->id)
+                <div class="mt-4 pt-3 border-t border-slate-100">
+                    <div class="p-3.5 rounded-2xl border {{ $ticket->status === 'closed' ? 'bg-slate-50 border-slate-200' : 'bg-emerald-50/80 border-emerald-200' }} space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="font-bold text-xs {{ $ticket->status === 'closed' ? 'text-slate-700' : 'text-emerald-800' }} flex items-center gap-1.5">
+                                <i class="fa-solid {{ $ticket->status === 'closed' ? 'fa-lock' : 'fa-circle-check' }}"></i>
+                                <span>{{ $ticket->status === 'closed' ? 'Tiket Telah Selesai' : 'Kendala Selesai?' }}</span>
+                            </span>
+                            <span class="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded {{ $ticket->status === 'closed' ? 'bg-slate-200 text-slate-700' : 'bg-emerald-100 text-emerald-800' }}">
+                                Pengaju
+                            </span>
+                        </div>
+                        <p class="text-[11px] {{ $ticket->status === 'closed' ? 'text-slate-500' : 'text-emerald-700' }} leading-relaxed">
+                            @if($ticket->status === 'closed')
+                                Tiket ini telah ditutup pada {{ $ticket->closed_at ? $ticket->closed_at->format('d M Y H:i') : '-' }} WIB.
+                            @else
+                                Jika solusi petugas sudah menyelesaikan kendala, Anda dapat menutup tiket ini.
+                            @endif
+                        </p>
+                        @if($ticket->status !== 'closed')
+                        <form method="POST" action="{{ route('helpdesk.tickets.close', $ticket->id) }}" onsubmit="return confirm('Apakah kendala Anda sudah terselesaikan dan Anda ingin menutup tiket ini?')">
+                            @csrf
+                            <button type="submit" class="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-check"></i>
+                                <span>Tutup Tiket Sekarang</span>
+                            </button>
+                        </form>
+                        @else
+                        <form method="POST" action="{{ route('helpdesk.tickets.reopen', $ticket->id) }}" onsubmit="return confirm('Apakah Anda ingin membuka kembali tiket ini?')">
+                            @csrf
+                            <button type="submit" class="w-full py-1.5 px-3 rounded-xl bg-white hover:bg-amber-50 text-amber-800 border border-amber-300 font-bold text-xs transition-all flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-rotate-left"></i>
+                                <span>Buka Kembali Tiket</span>
+                            </button>
+                        </form>
+                        @endif
+                    </div>
+                </div>
+                @endif
             </div>
 
             <!-- KARTU INTEGRASI WORK PLAN -->

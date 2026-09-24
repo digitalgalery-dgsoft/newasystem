@@ -2756,6 +2756,26 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 67. 🔒 Fitur Penutupan & Buka Kembali Tiket oleh Pengaju (Requester Self-Close)
+- **Latar Belakang & Kebutuhan Pengguna**:
+  - Sebelumnya, tombol dan kontrol status tiket hanya tersedia untuk Administrator atau Petugas Agen Divisi (`canBeManagedBy`).
+  - Pengguna/karyawan yang mengajukan tiket (*ticket creator*) tidak memiliki fitur untuk menutup tiketnya secara mandiri saat kendalanya telah selesai atau terjawab dengan baik.
+- **Implementasi Teknis & Solusi Terpadu**:
+  1. **Routing & Controller Endpoint (`routes/web.php` & `HelpdeskTicketController.php`)**:
+     - Ditambahkan route `POST /helpdesk/tickets/{id}/close` (`helpdesk.tickets.close`) untuk aksi tutup tiket oleh pengaju.
+     - Ditambahkan route `POST /helpdesk/tickets/{id}/reopen` (`helpdesk.tickets.reopen`) untuk membuka kembali tiket jika kendala masih berlanjut.
+     - Penyesuaian otorisasi di `updateStatus()`: Mengizinkan pembuat tiket (`$ticket->user_id === $user->id`) mengubah status menjadi `closed` atau `resolved`.
+     - `closeByUser()`: Mengubah status tiket menjadi `closed`, mencatat waktu `closed_at`, mencatat audit trail di `helpdesk_ticket_logs`, dan secara otomatis menyinkronkan tugas Work Plan petugas menjadi `done`.
+     - `reopenByUser()`: Mengubah status tiket kembali menjadi `open` (jika belum di-assign) atau `in_progress` (jika sudah di-assign ke agen).
+  2. **Antarmuka Pengguna Multi-Lokasi (`show.blade.php`)**:
+     - **Header Bar**: Tombol hijau *"Tutup Tiket"* (`bg-emerald-600`) dengan konfirmasi SweetAlert2 saat tiket aktif, dan status *"Tiket Telah Ditutup"* dengan tombol *"Buka Kembali Tiket"* jika tiket telah berstatus closed.
+     - **Formulir Balasan**: Ditambahkan tombol pintas *"Selesai & Tutup Tiket"* tepat di samping tombol kirim balasan, memudahkan pengaju langsung menyelesaikan tiket tanpa harus mengetik balasan tambahan.
+     - **Sidebar Informasi Layanan**: Kartu interaktif khusus pengaju (*"Kendala Sudah Selesai?"*) lengkap dengan penjelasan status dan tombol aksi konfirmasi.
+  3. **Tabel Antrean Tiket (`index.blade.php`)**:
+     - Menambahkan tombol aksi cepat *"Tutup"* pada kolom Aksi untuk tiket milik pengaju yang masih berstatus aktif, lengkap dengan konfirmasi SweetAlert2.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
@@ -2776,5 +2796,6 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 *Dikembangkan dengan standar modern arsitektur Laravel 12, UI responsif TailwindCSS, dan integrasi ESA Groups.*
+
 
 

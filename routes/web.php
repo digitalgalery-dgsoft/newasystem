@@ -607,6 +607,8 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/tickets/{id}/reply', [HelpdeskTicketController::class, 'reply'])->name('tickets.reply');
         Route::post('/tickets/{id}/claim', [HelpdeskTicketController::class, 'claim'])->name('tickets.claim');
         Route::post('/tickets/{id}/status', [HelpdeskTicketController::class, 'updateStatus'])->name('tickets.status');
+        Route::post('/tickets/{id}/close', [HelpdeskTicketController::class, 'closeByUser'])->name('tickets.close');
+        Route::post('/tickets/{id}/reopen', [HelpdeskTicketController::class, 'reopenByUser'])->name('tickets.reopen');
 
         // Master Divisi & Agen Inhouse (Khusus Administrator)
         Route::middleware(['admin'])->group(function () {

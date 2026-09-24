@@ -478,7 +478,9 @@ class HelpdeskTicketController extends Controller
 
         $ticket = HelpdeskTicket::findOrFail($id);
 
-        if (!$ticket->canBeManagedBy($user)) {
+        $isCreatorClosing = ($ticket->user_id === $user->id && in_array($request->input('status'), ['closed', 'resolved']));
+
+        if (!$ticket->canBeManagedBy($user) && !$isCreatorClosing) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
             }
@@ -531,6 +533,113 @@ class HelpdeskTicketController extends Controller
         }
 
         return redirect()->back()->with('success', "Status tiket berhasil diubah menjadi {$ticket->status_label}.");
+    }
+
+    /**
+     * Fitur Tutup Tiket oleh Pengaju (User Creator) atau Petugas
+     */
+    public function closeByUser(Request $request, $id)
+    {
+        $user = Auth::user();
+        if (!$user) return redirect()->route('login');
+
+        $ticket = HelpdeskTicket::findOrFail($id);
+
+        // Hanya pengaju tiket atau petugas yang berwenang yang boleh menutup tiket
+        if ($ticket->user_id !== $user->id && !$ticket->canBeManagedBy($user)) {
+            abort(403, 'Anda tidak memiliki hak untuk menutup tiket ini.');
+        }
+
+        if ($ticket->status === 'closed') {
+            return redirect()->back()->with('info', 'Tiket ini sudah berstatus ditutup.');
+        }
+
+        $now = Carbon::now();
+        $ticket->update([
+            'status' => 'closed',
+            'closed_at' => $now,
+            'resolved_at' => $ticket->resolved_at ?: $now,
+        ]);
+
+        $actorRole = ($ticket->user_id === $user->id) ? 'pengaju' : 'petugas';
+
+        // Catat Audit Log
+        HelpdeskTicketLog::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $user->id,
+            'action' => 'Closed_By_User',
+            'details' => "Tiket ditutup oleh {$actorRole} ({$user->name}). Masalah / kendala telah selesai.",
+            'created_at' => $now,
+        ]);
+
+        // Sinkronisasi ke Work Plan: Selesaikan tugas jika ada
+        HelpdeskWorkplanService::syncTicketClosedToWorkplan($ticket);
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tiket berhasil ditutup. Terima kasih telah mengonfirmasi bahwa kendala Anda telah selesai.',
+                'status' => 'closed',
+                'status_label' => $ticket->status_label,
+            ]);
+        }
+
+        return redirect()->route('helpdesk.tickets.show', $ticket->id)
+            ->with('success', 'Tiket berhasil ditutup. Terima kasih telah mengonfirmasi bahwa kendala Anda telah selesai.');
+    }
+
+    /**
+     * Fitur Buka Kembali Tiket oleh Pengaju jika Masalah Belum Tuntas
+     */
+    public function reopenByUser(Request $request, $id)
+    {
+        $user = Auth::user();
+        if (!$user) return redirect()->route('login');
+
+        $ticket = HelpdeskTicket::findOrFail($id);
+
+        if ($ticket->user_id !== $user->id && !$ticket->canBeManagedBy($user)) {
+            abort(403, 'Anda tidak memiliki hak untuk membuka kembali tiket ini.');
+        }
+
+        if (!in_array($ticket->status, ['closed', 'resolved'])) {
+            return redirect()->back()->with('info', 'Tiket ini sedang dalam status aktif.');
+        }
+
+        $now = Carbon::now();
+        $newStatus = $ticket->assigned_to ? 'in_progress' : 'open';
+
+        $ticket->update([
+            'status' => $newStatus,
+            'closed_at' => null,
+        ]);
+
+        HelpdeskTicketLog::create([
+            'ticket_id' => $ticket->id,
+            'user_id' => $user->id,
+            'action' => 'Reopened_By_User',
+            'details' => "Tiket dibuka kembali oleh {$user->name} karena kendala masih membutuhkan penanganan.",
+            'created_at' => $now,
+        ]);
+
+        if ($ticket->assigned_to) {
+            $assignedUser = User::find($ticket->assigned_to);
+            if ($assignedUser) {
+                HelpdeskWorkplanService::syncTicketToWorkplan($ticket, $assignedUser);
+            }
+        }
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Tiket berhasil dibuka kembali. Petugas divisi akan melanjutkan penanganan.',
+                'status' => $newStatus,
+                'status_label' => $ticket->status_label,
+            ]);
+        }
+
+        return redirect()->route('helpdesk.tickets.show', $ticket->id)
+            ->with('success', 'Tiket berhasil dibuka kembali. Petugas divisi akan melanjutkan penanganan.');
     }
 
     /**

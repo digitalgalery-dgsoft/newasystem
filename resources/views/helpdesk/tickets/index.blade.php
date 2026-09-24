@@ -252,11 +252,22 @@
                         </td>
 
                         <!-- AKSI -->
-                        <td class="py-3.5 px-4 align-top text-center">
-                            <a href="{{ route('helpdesk.tickets.show', $t->id) }}" class="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-100 hover:bg-primary hover:text-white text-slate-700 font-bold transition-all text-[11px]">
-                                <i class="fa-regular fa-eye"></i>
-                                <span>Detail</span>
-                            </a>
+                        <td class="py-3.5 px-4 align-top text-center whitespace-nowrap">
+                            <div class="inline-flex items-center gap-1.5 justify-center">
+                                <a href="{{ route('helpdesk.tickets.show', $t->id) }}" class="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-slate-100 hover:bg-primary hover:text-white text-slate-700 font-bold transition-all text-[11px]">
+                                    <i class="fa-regular fa-eye"></i>
+                                    <span>Detail</span>
+                                </a>
+                                @if($t->user_id === $user->id && $t->status !== 'closed')
+                                <form method="POST" action="{{ route('helpdesk.tickets.close', $t->id) }}" onsubmit="return confirm('Apakah kendala pada tiket #{{ $t->ticket_number }} sudah terselesaikan dan Anda ingin menutupnya?')" class="inline">
+                                    @csrf
+                                    <button type="submit" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 border border-emerald-200 hover:border-emerald-600 font-bold transition-all text-[11px]" title="Tutup Tiket">
+                                        <i class="fa-solid fa-circle-check"></i>
+                                        <span class="hidden sm:inline">Tutup</span>
+                                    </button>
+                                </form>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                     @empty
