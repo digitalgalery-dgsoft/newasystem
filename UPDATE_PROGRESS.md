@@ -2499,6 +2499,18 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 60. 🛠️ Perbaikan Variabel Undefined `$principles` pada Controller Alur Approval (24 September 2026)
+- **Masalah**:
+  - Halaman `https://new.asystem.co.id/master/approval-workflow` mengalami `ErrorException: compact(): Undefined variable $principles` pada baris 63 di [ApprovalWorkflowController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/ApprovalWorkflowController.php).
+- **Akar Masalah**:
+  - Variabel `$principles` yang di-pass ke dalam fungsi `compact(...)` di method `index()` sempat tidak terdefinisi karena terhapus secara tidak sengaja pada saat pembaruan sebelumnya.
+- **Solusi**:
+  - Mengembalikan definisi kueri `$principles = Principle::orderBy('name', 'asc')->pluck('name')->unique()->values();` pada baris 55 [ApprovalWorkflowController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/ApprovalWorkflowController.php).
+  - Menguji pemanggilan view [index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/approval_workflow/index.blade.php) dan memastikan halaman merender 200 OK dengan sukses.
+  - Memutakhirkan ke server produksi (Server 3) dan melakukan verifikasi live.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
