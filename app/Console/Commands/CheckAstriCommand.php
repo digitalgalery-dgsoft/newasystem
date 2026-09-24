@@ -39,16 +39,14 @@ class CheckAstriCommand extends Command
         })->count();
         $this->line("Tasks with 'Astri Wahyuni': {$oldNameCount}");
 
-        $this->info("\n=== CHECKING YOHANA IN EMPLOYEES & USERS ===");
-        $empsYohana = Employee::where('nama_karyawan', 'LIKE', '%Yohana%')
-            ->orWhere('email', 'LIKE', '%yohana%')
-            ->orWhere('nama_karyawan', 'LIKE', '%Teraseptia%')
-            ->orWhere('nama_karyawan', 'LIKE', '%seagma%')
-            ->get();
-        $this->info("Employees found: " . $empsYohana->count());
-        foreach ($empsYohana as $e) {
-            $this->line("Emp ID: {$e->id} | NIK: {$e->nik} | Nama: '{$e->nama_karyawan}' | Email: '{$e->email}' | Jabatan: '{$e->jabatan}' | Status: '{$e->status}' | AksesLogin: '{$e->akses_login}' | Tipe: '{$e->tipe_karyawan}' | Area: '{$e->area}'");
-        }
+        $this->info("\n=== INHOUSE EMPLOYEES VS USERS ===");
+        $inhouseCount = Employee::where('status', 'Aktiv')
+            ->where(function($q) {
+                $q->where('tipe_karyawan', 'Inhouse')
+                  ->orWhereRaw('LOWER(TRIM(tipe_karyawan)) = ?', ['inhouse']);
+            })->count();
+        $usersCount = User::count();
+        $this->info("Active Inhouse Employees: {$inhouseCount} | Total Users: {$usersCount}");
 
         $usersYohana = User::where('name', 'LIKE', '%Yohana%')
             ->orWhere('email', 'LIKE', '%yohana%')
