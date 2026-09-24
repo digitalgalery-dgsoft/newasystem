@@ -3,7 +3,27 @@
 @section('title', 'Tiket ' . $ticket->ticket_number . ' - ' . $ticket->subject)
 
 @section('content')
-<div class="space-y-6">
+<div class="space-y-6" x-data="{
+    previewModalOpen: false,
+    previewItem: {
+        url: '',
+        downloadUrl: '',
+        filename: '',
+        ext: '',
+        isImage: false,
+        isPdf: false,
+        isDoc: false,
+        icon: '',
+        badgeColor: ''
+    },
+    openPreview(item) {
+        this.previewItem = item;
+        this.previewModalOpen = true;
+    },
+    closePreview() {
+        this.previewModalOpen = false;
+    }
+}" @keydown.escape.window="closePreview()">
     <!-- HEADER BAR -->
     <div class="bg-white rounded-3xl border border-slate-200/90 shadow-sm p-6">
         <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
@@ -130,48 +150,74 @@
                             {{ $ticket->description }}
                         </div>
 
-                        <!-- LAMPIRAN AWAL JIKA ADA -->
-                        @if($ticket->attachment)
+                        <!-- LAMPIRAN AWAL (THUMBNAIL KECIL DENGAN MODAL PREVIEW) -->
+                        @if($ticket->has_attachments)
                         <div class="mt-4 pt-4 border-t border-slate-100">
-                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2">
-                                <i class="fa-solid fa-paperclip mr-1"></i>Lampiran Kendala:
+                            <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-2.5">
+                                <i class="fa-solid fa-paperclip mr-1"></i>Lampiran Kendala ({{ count($ticket->attachments_details) }} Berkas):
                             </span>
-                            @php
-                                $ext = strtolower(pathinfo($ticket->attachment, PATHINFO_EXTENSION));
-                                $isImg = $ticket->is_image_attachment;
-                                $attachmentUrl = $ticket->attachment_url;
-                                $downloadUrl = route('helpdesk.tickets.attachment', ['id' => $ticket->id, 'download' => 1]);
-                                $filename = $ticket->attachment_filename;
-                            @endphp
-                            @if($isImg)
-                            <div class="space-y-2">
-                                <div class="relative group max-w-md rounded-2xl overflow-hidden border border-slate-200/90 shadow-xs bg-slate-900/5">
-                                    <a href="{{ $attachmentUrl }}" target="_blank" class="block cursor-zoom-in">
-                                        <img src="{{ $attachmentUrl }}" 
-                                             alt="Lampiran {{ $filename }}" 
-                                             loading="lazy"
-                                             class="w-full object-contain max-h-96 rounded-2xl transition-transform duration-200 group-hover:scale-[1.01]">
-                                    </a>
+                            <div class="flex flex-wrap items-center gap-3">
+                                @foreach($ticket->attachments_details as $att)
+                                <div class="group relative flex flex-col p-2.5 rounded-2xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-primary/50 hover:shadow-md transition-all w-32 sm:w-36 text-center">
+                                    <!-- THUMBNAIL BOX -->
+                                    <div class="relative w-full h-20 rounded-xl overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200/60 mb-2 cursor-pointer"
+                                         @click="openPreview({
+                                             url: '{{ $att['url'] }}',
+                                             downloadUrl: '{{ $att['download_url'] }}',
+                                             filename: '{{ addslashes($att['filename']) }}',
+                                             ext: '{{ $att['ext'] }}',
+                                             isImage: {{ $att['is_image'] ? 'true' : 'false' }},
+                                             isPdf: {{ $att['is_pdf'] ? 'true' : 'false' }},
+                                             isDoc: {{ $att['is_doc'] ? 'true' : 'false' }},
+                                             icon: '{{ $att['icon'] }}',
+                                             badgeColor: '{{ $att['badge_color'] }}'
+                                         })">
+                                        @if($att['is_image'])
+                                        <img src="{{ $att['url'] }}" alt="{{ $att['filename'] }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200">
+                                        <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+                                            <i class="fa-solid fa-magnifying-glass-plus text-sm"></i>
+                                        </div>
+                                        @else
+                                        <div class="flex flex-col items-center justify-center gap-1">
+                                            <i class="{{ $att['icon'] }} text-2xl"></i>
+                                            <span class="text-[9px] font-mono font-bold uppercase text-slate-500">.{{ $att['ext'] }}</span>
+                                        </div>
+                                        <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+                                            <i class="fa-solid fa-eye text-sm"></i>
+                                        </div>
+                                        @endif
+                                    </div>
+
+                                    <!-- NAMA FILE -->
+                                    <p class="text-[11px] font-bold text-slate-800 truncate w-full" title="{{ $att['filename'] }}">
+                                        {{ $att['filename'] }}
+                                    </p>
+
+                                    <!-- TOMBOL PREVIEW & UNDUH -->
+                                    <div class="flex items-center justify-center gap-1.5 mt-1.5 pt-1.5 border-t border-slate-100 text-[10px]">
+                                        <button type="button" 
+                                                @click="openPreview({
+                                                    url: '{{ $att['url'] }}',
+                                                    downloadUrl: '{{ $att['download_url'] }}',
+                                                    filename: '{{ addslashes($att['filename']) }}',
+                                                    ext: '{{ $att['ext'] }}',
+                                                    isImage: {{ $att['is_image'] ? 'true' : 'false' }},
+                                                    isPdf: {{ $att['is_pdf'] ? 'true' : 'false' }},
+                                                    isDoc: {{ $att['is_doc'] ? 'true' : 'false' }},
+                                                    icon: '{{ $att['icon'] }}',
+                                                    badgeColor: '{{ $att['badge_color'] }}'
+                                                })"
+                                                class="px-2 py-0.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white font-bold transition-all flex items-center gap-1">
+                                            <i class="fa-solid fa-eye text-[9px]"></i>
+                                            <span>Preview</span>
+                                        </button>
+                                        <a href="{{ $att['download_url'] }}" class="p-1 rounded-lg text-slate-400 hover:text-slate-700 transition-colors" title="Unduh Berkas">
+                                            <i class="fa-solid fa-download text-[10px]"></i>
+                                        </a>
+                                    </div>
                                 </div>
-                                <div class="flex items-center gap-3 text-xs">
-                                    <a href="{{ $attachmentUrl }}" target="_blank" class="font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1.5">
-                                        <i class="fa-solid fa-arrow-up-right-from-square text-[10px]"></i>
-                                        <span>Buka Ukuran Penuh</span>
-                                    </a>
-                                    <span class="text-slate-300">•</span>
-                                    <a href="{{ $downloadUrl }}" class="font-bold text-slate-600 hover:text-slate-900 flex items-center gap-1.5">
-                                        <i class="fa-solid fa-download text-[10px]"></i>
-                                        <span>Unduh Gambar ({{ strtoupper($ext) }})</span>
-                                    </a>
-                                </div>
+                                @endforeach
                             </div>
-                            @else
-                            <a href="{{ $downloadUrl }}" class="inline-flex items-center gap-2.5 px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-bold transition-all shadow-xs border border-slate-200/60">
-                                <i class="fa-regular fa-file-lines text-primary text-sm"></i>
-                                <span>Unduh Berkas Lampiran ({{ strtoupper($ext) }})</span>
-                                <i class="fa-solid fa-download text-[11px] text-slate-400 ml-1"></i>
-                            </a>
-                            @endif
                         </div>
                         @endif
                     </div>
@@ -222,45 +268,71 @@
                             {{ $reply->message }}
                         </div>
 
-                        <!-- LAMPIRAN BALASAN -->
-                        @if($reply->attachment)
+                        <!-- LAMPIRAN BALASAN (THUMBNAIL KECIL DENGAN MODAL PREVIEW) -->
+                        @if($reply->has_attachments)
                         <div class="mt-3 pt-3 border-t border-slate-100">
-                            @php
-                                $rExt = strtolower(pathinfo($reply->attachment, PATHINFO_EXTENSION));
-                                $rIsImg = $reply->is_image_attachment;
-                                $rAttachmentUrl = $reply->attachment_url;
-                                $rDownloadUrl = route('helpdesk.tickets.reply.attachment', ['ticketId' => $ticket->id, 'replyId' => $reply->id, 'download' => 1]);
-                                $rFilename = $reply->attachment_filename;
-                            @endphp
-                            @if($rIsImg)
-                            <div class="space-y-1.5">
-                                <div class="relative group max-w-sm rounded-xl overflow-hidden border border-slate-200/90 shadow-xs bg-slate-900/5">
-                                    <a href="{{ $rAttachmentUrl }}" target="_blank" class="block cursor-zoom-in">
-                                        <img src="{{ $rAttachmentUrl }}" 
-                                             alt="Lampiran {{ $rFilename }}" 
-                                             loading="lazy"
-                                             class="w-full object-contain max-h-72 rounded-xl transition-transform duration-200 group-hover:scale-[1.01]">
-                                    </a>
+                            <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                                <i class="fa-solid fa-paperclip mr-1"></i>Lampiran ({{ count($reply->attachments_details) }}):
+                            </span>
+                            <div class="flex flex-wrap items-center gap-2.5">
+                                @foreach($reply->attachments_details as $rAtt)
+                                <div class="group relative flex flex-col p-2 rounded-xl border border-slate-200 bg-slate-50/70 hover:bg-white hover:border-primary/50 hover:shadow-sm transition-all w-28 text-center">
+                                    <div class="relative w-full h-16 rounded-lg overflow-hidden bg-slate-100 flex items-center justify-center border border-slate-200/60 mb-1.5 cursor-pointer"
+                                         @click="openPreview({
+                                             url: '{{ $rAtt['url'] }}',
+                                             downloadUrl: '{{ $rAtt['download_url'] }}',
+                                             filename: '{{ addslashes($rAtt['filename']) }}',
+                                             ext: '{{ $rAtt['ext'] }}',
+                                             isImage: {{ $rAtt['is_image'] ? 'true' : 'false' }},
+                                             isPdf: {{ $rAtt['is_pdf'] ? 'true' : 'false' }},
+                                             isDoc: {{ $rAtt['is_doc'] ? 'true' : 'false' }},
+                                             icon: '{{ $rAtt['icon'] }}',
+                                             badgeColor: '{{ $rAtt['badge_color'] }}'
+                                         })">
+                                        @if($rAtt['is_image'])
+                                        <img src="{{ $rAtt['url'] }}" alt="{{ $rAtt['filename'] }}" loading="lazy" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-200">
+                                        <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+                                            <i class="fa-solid fa-magnifying-glass-plus text-xs"></i>
+                                        </div>
+                                        @else
+                                        <div class="flex flex-col items-center justify-center gap-0.5">
+                                            <i class="{{ $rAtt['icon'] }} text-lg"></i>
+                                            <span class="text-[8px] font-mono font-bold uppercase text-slate-500">.{{ $rAtt['ext'] }}</span>
+                                        </div>
+                                        <div class="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white text-xs">
+                                            <i class="fa-solid fa-eye text-xs"></i>
+                                        </div>
+                                        @endif
+                                    </div>
+
+                                    <p class="text-[10px] font-bold text-slate-800 truncate w-full" title="{{ $rAtt['filename'] }}">
+                                        {{ $rAtt['filename'] }}
+                                    </p>
+
+                                    <div class="flex items-center justify-center gap-1 mt-1 pt-1 border-t border-slate-100 text-[9px]">
+                                        <button type="button" 
+                                                @click="openPreview({
+                                                    url: '{{ $rAtt['url'] }}',
+                                                    downloadUrl: '{{ $rAtt['download_url'] }}',
+                                                    filename: '{{ addslashes($rAtt['filename']) }}',
+                                                    ext: '{{ $rAtt['ext'] }}',
+                                                    isImage: {{ $rAtt['is_image'] ? 'true' : 'false' }},
+                                                    isPdf: {{ $rAtt['is_pdf'] ? 'true' : 'false' }},
+                                                    isDoc: {{ $rAtt['is_doc'] ? 'true' : 'false' }},
+                                                    icon: '{{ $rAtt['icon'] }}',
+                                                    badgeColor: '{{ $rAtt['badge_color'] }}'
+                                                })"
+                                                class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white font-bold transition-all flex items-center gap-1">
+                                            <i class="fa-solid fa-eye text-[8px]"></i>
+                                            <span>Preview</span>
+                                        </button>
+                                        <a href="{{ $rAtt['download_url'] }}" class="p-0.5 rounded text-slate-400 hover:text-slate-700 transition-colors" title="Unduh Berkas">
+                                            <i class="fa-solid fa-download text-[9px]"></i>
+                                        </a>
+                                    </div>
                                 </div>
-                                <div class="flex items-center gap-2.5 text-[11px]">
-                                    <a href="{{ $rAttachmentUrl }}" target="_blank" class="font-bold text-blue-600 hover:underline flex items-center gap-1">
-                                        <i class="fa-solid fa-arrow-up-right-from-square text-[9px]"></i>
-                                        <span>Buka</span>
-                                    </a>
-                                    <span class="text-slate-300">•</span>
-                                    <a href="{{ $rDownloadUrl }}" class="font-bold text-slate-600 hover:underline flex items-center gap-1">
-                                        <i class="fa-solid fa-download text-[9px]"></i>
-                                        <span>Unduh ({{ strtoupper($rExt) }})</span>
-                                    </a>
-                                </div>
+                                @endforeach
                             </div>
-                            @else
-                            <a href="{{ $rDownloadUrl }}" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold">
-                                <i class="fa-regular fa-file text-slate-500"></i>
-                                <span>Unduh Lampiran (.{{ $rExt }})</span>
-                                <i class="fa-solid fa-download text-[10px] text-slate-400 ml-1"></i>
-                            </a>
-                            @endif
                         </div>
                         @endif
                     </div>
@@ -331,20 +403,54 @@
                     </div>
 
                     <!-- BOTTOM BAR: ATTACHMENT & SUBMIT -->
-                    <div class="flex items-center justify-between gap-3 flex-wrap pt-2">
-                        <label class="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors">
-                            <i class="fa-solid fa-paperclip text-slate-500"></i>
-                            <span>Lampirkan Berkas</span>
-                            <input type="file" name="attachment" class="hidden"
-                                   accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip"
-                                   onchange="document.getElementById('reply_file_name').innerText = this.files[0] ? this.files[0].name : ''">
-                        </label>
-                        <span id="reply_file_name" class="text-xs text-slate-500 font-semibold truncate max-w-xs"></span>
+                    <div class="space-y-2 pt-2" x-data="{
+                        replyFiles: [],
+                        handleReplyFiles(e) {
+                            const selected = Array.from(e.target.files);
+                            selected.forEach(file => {
+                                if (!this.replyFiles.some(f => f.name === file.name && f.size === file.size)) {
+                                    this.replyFiles.push(file);
+                                }
+                            });
+                            this.syncReplyInput();
+                        },
+                        removeReplyFile(idx) {
+                            this.replyFiles.splice(idx, 1);
+                            this.syncReplyInput();
+                        },
+                        syncReplyInput() {
+                            const dt = new DataTransfer();
+                            this.replyFiles.forEach(f => dt.items.add(f));
+                            document.getElementById('reply_attachments_input').files = dt.files;
+                        }
+                    }">
+                        <div class="flex items-center justify-between gap-3 flex-wrap">
+                            <label class="cursor-pointer inline-flex items-center gap-2 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition-colors">
+                                <i class="fa-solid fa-paperclip text-slate-500"></i>
+                                <span>Lampirkan Berkas (Multiple)</span>
+                                <input type="file" name="attachments[]" id="reply_attachments_input" class="hidden" multiple
+                                       accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+                                       @change="handleReplyFiles($event)">
+                            </label>
 
-                        <button type="submit" class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-600 text-white font-bold text-xs shadow-md shadow-primary/20 transition-all flex items-center gap-2 ml-auto">
-                            <i class="fa-solid fa-paper-plane"></i>
-                            <span>Kirim Balasan</span>
-                        </button>
+                            <button type="submit" class="px-5 py-2.5 rounded-xl bg-primary hover:bg-primary-600 text-white font-bold text-xs shadow-md shadow-primary/20 transition-all flex items-center gap-2 ml-auto">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span>Kirim Balasan</span>
+                            </button>
+                        </div>
+
+                        <!-- DAFTAR BERKAS TERPILIH UNTUK BALASAN -->
+                        <div x-show="replyFiles.length > 0" x-cloak class="flex flex-wrap gap-1.5 pt-1">
+                            <template x-for="(rf, rIdx) in replyFiles" :key="rIdx">
+                                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-50 border border-blue-200 text-blue-800 text-[11px] font-medium">
+                                    <i class="fa-solid fa-paperclip text-[10px] text-blue-500"></i>
+                                    <span class="truncate max-w-[160px]" x-text="rf.name"></span>
+                                    <button type="button" @click="removeReplyFile(rIdx)" class="text-blue-400 hover:text-rose-600" title="Hapus">
+                                        <i class="fa-solid fa-xmark text-xs"></i>
+                                    </button>
+                                </span>
+                            </template>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -457,6 +563,133 @@
                     @empty
                     <p class="text-xs text-slate-400">Belum ada riwayat.</p>
                     @endforelse
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- PREVIEW MODAL ATTACHMENT (IN-PAGE DIALOG) -->
+    <!-- ========================================== -->
+    <div x-cloak
+         x-show="previewModalOpen"
+         class="fixed inset-0 z-50 overflow-y-auto"
+         aria-labelledby="modal-title" 
+         role="dialog" 
+         aria-modal="true"
+         @keydown.escape.window="closePreview()">
+        
+        <!-- BACKDROP -->
+        <div x-show="previewModalOpen"
+             x-transition:enter="ease-out duration-300"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100"
+             x-transition:leave="ease-in duration-200"
+             x-transition:leave-start="opacity-100"
+             x-transition:leave-end="opacity-0"
+             class="fixed inset-0 bg-slate-900/70 backdrop-blur-sm transition-opacity"
+             @click="closePreview()"></div>
+
+        <!-- MODAL DIALOG CONTAINER -->
+        <div class="min-h-full flex items-center justify-center p-3 sm:p-6 text-center">
+            <div x-show="previewModalOpen"
+                 x-transition:enter="ease-out duration-300"
+                 x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave="ease-in duration-200"
+                 x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100"
+                 x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                 @click.stop
+                 class="relative bg-white rounded-3xl text-left overflow-hidden shadow-2xl border border-slate-200/80 transform transition-all w-full max-w-4xl flex flex-col max-h-[92vh]">
+                
+                <!-- MODAL HEADER -->
+                <div class="px-5 py-3.5 bg-slate-50/90 border-b border-slate-100 flex items-center justify-between gap-3 flex-shrink-0">
+                    <div class="flex items-center gap-2.5 min-w-0">
+                        <div class="w-8 h-8 rounded-xl flex items-center justify-center text-sm shadow-sm flex-shrink-0" :class="previewItem.badgeColor || 'bg-slate-200 text-slate-700'">
+                            <i :class="previewItem.icon || 'fa-solid fa-file'"></i>
+                        </div>
+                        <div class="min-w-0">
+                            <h3 class="text-xs sm:text-sm font-bold text-slate-800 truncate" id="modal-title" x-text="previewItem.filename || 'Lampiran Berkas'"></h3>
+                            <div class="flex items-center gap-2 text-[10px] text-slate-400">
+                                <span>Format: <strong class="uppercase text-slate-600 font-semibold" x-text="previewItem.ext"></strong></span>
+                                <span>&bull;</span>
+                                <span>Preview Lampiran</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center gap-2 flex-shrink-0">
+                        <!-- TOMBOL UNDUH -->
+                        <a :href="previewItem.downloadUrl" 
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-200/80 hover:bg-slate-300 text-slate-700 text-xs font-semibold transition" 
+                           title="Unduh Berkas Ini">
+                            <i class="fa-solid fa-download text-xs"></i>
+                            <span class="hidden sm:inline">Unduh</span>
+                        </a>
+
+                        <!-- BUKA DI TAB BARU (OPSIONAL) -->
+                        <a :href="previewItem.url" 
+                           target="_blank" 
+                           class="inline-flex items-center justify-center w-8 h-8 rounded-xl bg-slate-200/80 hover:bg-slate-300 text-slate-700 text-xs font-semibold transition" 
+                           title="Buka File di Tab Baru">
+                            <i class="fa-solid fa-arrow-up-right-from-square text-xs"></i>
+                        </a>
+
+                        <!-- TOMBOL TUTUP -->
+                        <button type="button" 
+                                @click="closePreview()" 
+                                class="w-8 h-8 rounded-xl bg-slate-200/80 hover:bg-rose-100 hover:text-rose-600 text-slate-600 flex items-center justify-center transition" 
+                                title="Tutup Preview (Esc)">
+                            <i class="fa-solid fa-xmark text-sm"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- MODAL BODY -->
+                <div class="flex-1 overflow-auto bg-slate-900/5 relative flex items-center justify-center p-3 sm:p-5">
+                    
+                    <!-- 1. TAMPILAN GAMBAR -->
+                    <template x-if="previewItem.isImage">
+                        <div class="flex flex-col items-center justify-center w-full h-full min-h-[300px] max-h-[76vh]">
+                            <img :src="previewItem.url" 
+                                 :alt="previewItem.filename" 
+                                 class="max-h-[72vh] max-w-full rounded-2xl object-contain shadow-lg border border-slate-200/60 bg-white" />
+                        </div>
+                    </template>
+
+                    <!-- 2. TAMPILAN PDF -->
+                    <template x-if="previewItem.isPdf">
+                        <div class="w-full h-[74vh] rounded-2xl overflow-hidden shadow-inner border border-slate-200 bg-white">
+                            <iframe :src="previewItem.url" class="w-full h-full border-0"></iframe>
+                        </div>
+                    </template>
+
+                    <!-- 3. TAMPILAN DOKUMEN OFFICE / ZIP / LAINNYA -->
+                    <template x-if="!previewItem.isImage && !previewItem.isPdf">
+                        <div class="w-full max-w-lg py-12 px-6 flex flex-col items-center justify-center text-center bg-white rounded-3xl shadow-sm border border-slate-200/80 my-4">
+                            <div class="w-20 h-20 rounded-3xl flex items-center justify-center text-4xl mb-4 shadow-sm" :class="previewItem.badgeColor || 'bg-slate-100 text-slate-600'">
+                                <i :class="previewItem.icon || 'fa-solid fa-file-lines'"></i>
+                            </div>
+                            <h4 class="text-sm sm:text-base font-bold text-slate-900 mb-1.5 break-all max-w-full" x-text="previewItem.filename"></h4>
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-100 text-[10px] font-mono font-bold text-slate-600 uppercase mb-4">
+                                Ekstensi .<span x-text="previewItem.ext"></span>
+                            </div>
+                            <p class="text-xs text-slate-500 max-w-sm mb-6 leading-relaxed">
+                                Dokumen <strong class="text-slate-700" x-text="previewItem.filename"></strong> tidak dapat dirender secara interaktif langsung di browser. Silakan unduh dokumen untuk membuka di aplikasi terkait (Word / Excel / PPT / Reader).
+                            </p>
+                            <a :href="previewItem.downloadUrl" 
+                               class="inline-flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-lg shadow-indigo-200 transition-all hover:scale-[1.02] active:scale-[0.98]">
+                                <i class="fa-solid fa-cloud-arrow-down text-sm"></i>
+                                <span>Unduh Dokumen Sekarang</span>
+                            </a>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- MODAL FOOTER -->
+                <div class="px-5 py-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-400 flex-shrink-0">
+                    <span>Tekan tombol <strong>Esc</strong> atau klik di luar kotak untuk menutup preview.</span>
+                    <button type="button" @click="closePreview()" class="text-slate-600 hover:text-slate-900 font-semibold">Tutup</button>
                 </div>
             </div>
         </div>

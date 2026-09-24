@@ -2677,6 +2677,49 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 65. 📎 Dukungan Multiple Lampiran (Gambar, PDF, Office Docs) & Modal Preview Interaktif
+- **Latar Belakang & Kebutuhan Pengguna**:
+  - Lampiran pada halaman detail tiket sebelumnya tampil berukuran besar dan membuka dokumen di tab baru.
+  - Pengguna membutuhkan tampilan lampiran dalam bentuk thumbnail kecil yang rapi dan jika diklik/dipreview membuka **Modal Dialog di dalam halaman (bukan tab baru)**.
+  - Form pembuatan tiket dan balasan harus mendukung **multiple file attachments** dengan format berkas gambar, dokumen office (`.doc, .docx, .xls, .xlsx, .ppt, .pptx`), dan PDF.
+- **Implementasi Teknis & Solusi Terpadu**:
+  1. **Migrasi Database (`update_helpdesk_attachments_to_text`)**:
+     - Kolom `attachment` pada tabel `helpdesk_tickets` dan `helpdesk_ticket_replies` diubah dari `VARCHAR(255)` menjadi `TEXT`.
+     - Mendukung penyimpanan array JSON dari daftar path berkas (`["helpdesk_attachments/file1.png", "helpdesk_attachments/file2.pdf", ...]`).
+     - Menjaga kompatibilitas penuh (*backwards compatible*) dengan data lampiran string tunggal yang sudah ada sebelumnya.
+  2. **Model Eloquent (`HelpdeskTicket` & `HelpdeskTicketReply`)**:
+     - Ditambahkan aksesor:
+       - `attachments_list`: Mengembalikan array seluruh berkas yang dilampirkan (baik dari format JSON array baru maupun string tunggal lama).
+       - `has_attachments`: Boolean pemeriksa apakah terdapat setidaknya satu lampiran berkas.
+       - `attachments_details`: Menghasilkan metadata lengkap per berkas (nama berkas, ekstensi, `is_image`, `is_pdf`, `is_word`, `is_excel`, `is_ppt`, `is_doc`, ikon FontAwesome, warna badge, URL streaming/preview, serta URL unduhan).
+       - Fallback aman untuk `attachment_url`, `is_image_attachment`, dan `attachment_filename`.
+  3. **Controller & Endpoint Streaming Fleksibel (`HelpdeskTicketController`)**:
+     - `store()` & `reply()`:
+       - Validasi berkas multi-upload: `attachments.*` dan `attachment` mendukung ekstensi `jpg, jpeg, png, gif, webp, pdf, doc, docx, xls, xlsx, ppt, pptx, zip, txt` dengan ukuran maksimal 10MB per berkas.
+       - Menyimpan seluruh berkas ke storage publik dan merekamnya dalam format JSON array terindeks.
+     - `downloadAttachment()` & `downloadReplyAttachment()`:
+       - Menangani parameter selektif `?file=nama_file.ext` dan `?index=N` untuk melayani streaming atau pengunduhan berkas tertentu di dalam daftar multiple lampiran.
+  4. **Antarmuka Form Unggah Multi-Berkas (`create.blade.php` & `show.blade.php`)**:
+     - Komponen input file modern berbasis Alpine.js dengan kemampuan drag/drop dan pemilihan beberapa file sekaligus.
+     - Pratinjau chip daftar berkas yang dipilih secara langsung (*realtime*) lengkap dengan nama berkas, ukuran (KB/MB), icon format, dan tombol hapus berkas individual dengan sinkronisasi `DataTransfer`.
+  5. **Tampilan Thumbnail Kompak & In-Page Modal Preview (`show.blade.php`)**:
+     - **Thumbnail Kecil**: Lampiran tiket utama (`w-32 sm:w-36`) dan balasan (`w-28`) tertata rapi dalam grid responsif.
+     - **Efek Hover**: Indikator overlay icon kaca pembesar dan tombol *"Preview"* serta *"Unduh"*.
+     - **Modal Dialog Interaktif (In-Page)**:
+       - Terbuka langsung di layar tanpa membuka tab peramban baru.
+       - Dilengkapi transisi halus, backdrop blur, penutupan via tombol Esc atau klik luar backdrop.
+       - **Mode Gambar**: Pratinjau gambar besar responsif dengan rasio proporsional.
+       - **Mode PDF**: Penampil dokumen PDF interaktif terintegrasi (`iframe` responsif `h-[74vh]`).
+       - **Mode Dokumen Office**: Kartu representasi dokumen (Word, Excel, PPT) yang elegan dengan tombol 1-klik unduh dokumen langsung.
+- **Hasil Pengujian Otomasi & Verifikasi**:
+  - Simulasi pengujian menyeluruh melalui `test_multi_upload_e2e.php`:
+    - Pembuatan tiket dengan 5 berkas sekaligus (.jpg, .pdf, .xlsx, .docx, .pptx) sukses (HTTP 302 -> 200).
+    - Balasan tiket dengan multi-berkas (.png, .pdf) sukses (HTTP 302 -> 200).
+    - Akses streaming via controller endpoint untuk berkas spesifik menghasilkan HTTP 200 OK.
+  - Kompilasi template Blade `create.blade.php` dan `show.blade.php` valid 100% tanpa error sintaks.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

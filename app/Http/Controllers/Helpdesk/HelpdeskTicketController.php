@@ -175,20 +175,34 @@ class HelpdeskTicketController extends Controller
             'subject' => 'required|string|max:255',
             'description' => 'required|string',
             'priority' => 'required|in:Low,Medium,High,Urgent',
-            'attachment' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,zip,txt',
+            'attachment' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,zip,txt',
         ], [
             'division_id.required' => 'Divisi tujuan wajib dipilih.',
             'subject.required' => 'Judul kendala wajib diisi.',
             'description.required' => 'Deskripsi kendala wajib diisi.',
+            'attachments.*.max' => 'Ukuran setiap berkas lampiran maksimal 10MB.',
             'attachment.max' => 'Ukuran berkas lampiran maksimal 10MB.',
         ]);
 
         $division = HelpdeskDivision::findOrFail($request->input('division_id'));
 
-        // Unggah Lampiran jika ada
-        $attachmentPath = null;
-        if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('helpdesk_attachments', 'public');
+        // Unggah Lampiran jika ada (Mendukung Multiple Files)
+        $attachmentPaths = [];
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                if ($file && $file->isValid()) {
+                    $attachmentPaths[] = $file->store('helpdesk_attachments', 'public');
+                }
+            }
+        } elseif ($request->hasFile('attachment')) {
+            $attachmentPaths[] = $request->file('attachment')->store('helpdesk_attachments', 'public');
+        }
+
+        $savedAttachment = null;
+        if (!empty($attachmentPaths)) {
+            $savedAttachment = (count($attachmentPaths) === 1) ? $attachmentPaths[0] : json_encode(array_values($attachmentPaths));
         }
 
         // Tentukan batas waktu SLA (due_date)
@@ -203,7 +217,7 @@ class HelpdeskTicketController extends Controller
             'priority' => $request->input('priority', 'Medium'),
             'status' => 'open',
             'category' => $request->input('category'),
-            'attachment' => $attachmentPath,
+            'attachment' => $savedAttachment,
             'due_date' => $dueDate,
             'sentiment' => ($request->input('priority') === 'Urgent') ? 'Urgent' : 'Neutral',
         ]);
@@ -294,16 +308,30 @@ class HelpdeskTicketController extends Controller
 
         $request->validate([
             'message' => 'required|string',
-            'attachment' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,gif,pdf,doc,docx,xls,xlsx,zip',
+            'attachments' => 'nullable|array',
+            'attachments.*' => 'file|max:10240|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,zip,txt',
+            'attachment' => 'nullable|file|max:10240|mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,ppt,pptx,zip,txt',
             'is_internal' => 'nullable|boolean',
         ], [
             'message.required' => 'Pesan balasan wajib diisi.',
+            'attachments.*.max' => 'Ukuran setiap berkas lampiran maksimal 10MB.',
             'attachment.max' => 'Ukuran berkas lampiran maksimal 10MB.',
         ]);
 
-        $attachmentPath = null;
-        if ($request->hasFile('attachment')) {
-            $attachmentPath = $request->file('attachment')->store('helpdesk_attachments', 'public');
+        $attachmentPaths = [];
+        if ($request->hasFile('attachments')) {
+            foreach ($request->file('attachments') as $file) {
+                if ($file && $file->isValid()) {
+                    $attachmentPaths[] = $file->store('helpdesk_attachments', 'public');
+                }
+            }
+        } elseif ($request->hasFile('attachment')) {
+            $attachmentPaths[] = $request->file('attachment')->store('helpdesk_attachments', 'public');
+        }
+
+        $savedAttachment = null;
+        if (!empty($attachmentPaths)) {
+            $savedAttachment = (count($attachmentPaths) === 1) ? $attachmentPaths[0] : json_encode(array_values($attachmentPaths));
         }
 
         $isInternal = (bool)$request->input('is_internal', false);
@@ -317,7 +345,7 @@ class HelpdeskTicketController extends Controller
             'ticket_id' => $ticket->id,
             'user_id' => $user->id,
             'message' => trim($request->input('message')),
-            'attachment' => $attachmentPath,
+            'attachment' => $savedAttachment,
             'is_internal' => $isInternal,
         ]);
 
@@ -550,7 +578,7 @@ class HelpdeskTicketController extends Controller
     /**
      * Tampilkan / Unduh Berkas Lampiran Tiket
      */
-    public function downloadAttachment($id)
+    public function downloadAttachment(Request $request, $id)
     {
         $user = Auth::user();
         if (!$user) return redirect()->route('login');
@@ -567,17 +595,39 @@ class HelpdeskTicketController extends Controller
             }
         }
 
-        if (!$ticket->attachment) {
+        $attachments = $ticket->attachments_list;
+        if (empty($attachments)) {
             abort(404, 'Tiket ini tidak memiliki berkas lampiran.');
         }
 
-        $path = storage_path('app/public/' . $ticket->attachment);
+        $requestedFile = $request->query('file');
+        $requestedIndex = $request->query('index');
+        $targetAttachment = null;
+
+        if ($requestedFile) {
+            foreach ($attachments as $att) {
+                if (basename($att) === basename($requestedFile) || $att === $requestedFile) {
+                    $targetAttachment = $att;
+                    break;
+                }
+            }
+        } elseif ($requestedIndex !== null && isset($attachments[$requestedIndex])) {
+            $targetAttachment = $attachments[$requestedIndex];
+        } else {
+            $targetAttachment = $attachments[0];
+        }
+
+        if (!$targetAttachment) {
+            abort(404, 'Berkas lampiran yang diminta tidak ditemukan.');
+        }
+
+        $path = storage_path('app/public/' . $targetAttachment);
         if (!file_exists($path)) {
-            $altPath = public_path('storage/' . $ticket->attachment);
+            $altPath = public_path('storage/' . $targetAttachment);
             if (file_exists($altPath)) {
                 $path = $altPath;
             } else {
-                $altPath2 = public_path($ticket->attachment);
+                $altPath2 = public_path($targetAttachment);
                 if (file_exists($altPath2)) {
                     $path = $altPath2;
                 } else {
@@ -586,8 +636,8 @@ class HelpdeskTicketController extends Controller
             }
         }
 
-        if (request()->query('download')) {
-            return response()->download($path, basename($ticket->attachment));
+        if ($request->query('download')) {
+            return response()->download($path, basename($targetAttachment));
         }
 
         return response()->file($path);
@@ -596,7 +646,7 @@ class HelpdeskTicketController extends Controller
     /**
      * Tampilkan / Unduh Berkas Lampiran Balasan Tiket
      */
-    public function downloadReplyAttachment($ticketId, $replyId)
+    public function downloadReplyAttachment(Request $request, $ticketId, $replyId)
     {
         $user = Auth::user();
         if (!$user) return redirect()->route('login');
@@ -615,17 +665,39 @@ class HelpdeskTicketController extends Controller
 
         $reply = HelpdeskTicketReply::where('ticket_id', $ticket->id)->findOrFail($replyId);
 
-        if (!$reply->attachment) {
+        $attachments = $reply->attachments_list;
+        if (empty($attachments)) {
             abort(404, 'Balasan ini tidak memiliki berkas lampiran.');
         }
 
-        $path = storage_path('app/public/' . $reply->attachment);
+        $requestedFile = $request->query('file');
+        $requestedIndex = $request->query('index');
+        $targetAttachment = null;
+
+        if ($requestedFile) {
+            foreach ($attachments as $att) {
+                if (basename($att) === basename($requestedFile) || $att === $requestedFile) {
+                    $targetAttachment = $att;
+                    break;
+                }
+            }
+        } elseif ($requestedIndex !== null && isset($attachments[$requestedIndex])) {
+            $targetAttachment = $attachments[$requestedIndex];
+        } else {
+            $targetAttachment = $attachments[0];
+        }
+
+        if (!$targetAttachment) {
+            abort(404, 'Berkas lampiran yang diminta tidak ditemukan.');
+        }
+
+        $path = storage_path('app/public/' . $targetAttachment);
         if (!file_exists($path)) {
-            $altPath = public_path('storage/' . $reply->attachment);
+            $altPath = public_path('storage/' . $targetAttachment);
             if (file_exists($altPath)) {
                 $path = $altPath;
             } else {
-                $altPath2 = public_path($reply->attachment);
+                $altPath2 = public_path($targetAttachment);
                 if (file_exists($altPath2)) {
                     $path = $altPath2;
                 } else {
@@ -635,7 +707,7 @@ class HelpdeskTicketController extends Controller
         }
 
         if (request()->query('download')) {
-            return response()->download($path, basename($reply->attachment));
+            return response()->download($path, basename($targetAttachment));
         }
 
         return response()->file($path);

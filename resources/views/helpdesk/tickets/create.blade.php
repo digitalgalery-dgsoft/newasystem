@@ -197,21 +197,90 @@
             </div>
 
             <!-- 4. BERKAS LAMPIRAN / TANGKAPAN LAYAR -->
-            <div>
-                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5">
-                    4. Berkas Pendukung / Tangkapan Layar (Opsional)
+            <!-- 4. BERKAS PENDUKUNG / LAMPIRAN MULTIPLE -->
+            <div x-data="{
+                files: [],
+                handleFileSelect(e) {
+                    const selected = Array.from(e.target.files);
+                    selected.forEach(file => {
+                        if (!this.files.some(f => f.name === file.name && f.size === file.size)) {
+                            this.files.push(file);
+                        }
+                    });
+                    this.syncInput();
+                },
+                removeFile(index) {
+                    this.files.splice(index, 1);
+                    this.syncInput();
+                },
+                clearAll() {
+                    this.files = [];
+                    this.syncInput();
+                },
+                syncInput() {
+                    const dt = new DataTransfer();
+                    this.files.forEach(f => dt.items.add(f));
+                    document.getElementById('attachment_input').files = dt.files;
+                },
+                formatSize(bytes) {
+                    if (bytes === 0) return '0 B';
+                    const k = 1024;
+                    const sizes = ['B', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+                },
+                getFileIcon(name) {
+                    const ext = name.split('.').pop().toLowerCase();
+                    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) return 'fa-regular fa-image text-blue-500';
+                    if (ext === 'pdf') return 'fa-solid fa-file-pdf text-rose-500';
+                    if (['doc', 'docx'].includes(ext)) return 'fa-solid fa-file-word text-blue-600';
+                    if (['xls', 'xlsx', 'csv'].includes(ext)) return 'fa-solid fa-file-excel text-emerald-600';
+                    if (['ppt', 'pptx'].includes(ext)) return 'fa-solid fa-file-powerpoint text-orange-500';
+                    return 'fa-regular fa-file-lines text-slate-500';
+                }
+            }">
+                <label class="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1.5 flex items-center justify-between">
+                    <span>4. Berkas Pendukung (Multiple Files)</span>
+                    <span class="text-[11px] text-slate-400 font-normal">Gambar, PDF, Word, Excel, PPT (Maks. 10MB/berkas)</span>
                 </label>
+
                 <div class="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center bg-slate-50/40 hover:bg-slate-50 transition-colors cursor-pointer relative"
-                     onclick="document.getElementById('attachment_input').click()">
-                    <input type="file" name="attachment" id="attachment_input" class="hidden"
-                           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.zip"
-                           onchange="document.getElementById('file_preview_name').innerText = this.files[0] ? this.files[0].name : ''">
+                     @click="$refs.fileInput.click()">
+                    <input type="file" name="attachments[]" id="attachment_input" x-ref="fileInput" class="hidden" multiple
+                           accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.zip"
+                           @change="handleFileSelect($event)">
                     <div class="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mx-auto mb-2 text-lg">
                         <i class="fa-solid fa-cloud-arrow-up"></i>
                     </div>
-                    <p class="text-xs font-bold text-slate-700">Klik untuk memilih file atau screenshot kendala</p>
-                    <p class="text-[11px] text-slate-400 mt-0.5">Format didukung: JPG, PNG, PDF, Excel, Word (Maks. 10MB)</p>
-                    <p id="file_preview_name" class="text-xs font-bold text-primary mt-2"></p>
+                    <p class="text-xs font-bold text-slate-700">Klik untuk memilih satu atau beberapa berkas sekaligus</p>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Dapat melampirkan screenshot gambar, dokumen Word, Excel, PowerPoint, dan PDF</p>
+                </div>
+
+                <!-- DAFTAR BERKAS TERPILIH -->
+                <div x-show="files.length > 0" x-cloak class="mt-3 space-y-2">
+                    <div class="flex items-center justify-between text-xs">
+                        <span class="font-bold text-slate-700" x-text="files.length + ' Berkas Siap Diunggah:'"></span>
+                        <button type="button" @click="clearAll()" class="text-rose-500 hover:underline font-semibold text-[11px]">
+                            Hapus Semua
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                        <template x-for="(file, idx) in files" :key="idx">
+                            <div class="flex items-center justify-between p-2.5 rounded-xl bg-white border border-slate-200 shadow-2xs text-xs gap-2">
+                                <div class="flex items-center gap-2 truncate min-w-0">
+                                    <i :class="getFileIcon(file.name)" class="text-base flex-shrink-0"></i>
+                                    <div class="truncate">
+                                        <p class="font-bold text-slate-800 truncate" x-text="file.name"></p>
+                                        <span class="text-[10px] text-slate-400" x-text="formatSize(file.size)"></span>
+                                    </div>
+                                </div>
+                                <button type="button" @click="removeFile(idx)" class="text-slate-400 hover:text-rose-500 p-1 flex-shrink-0" title="Hapus">
+                                    <i class="fa-solid fa-xmark text-xs"></i>
+                                </button>
+                            </div>
+                        </template>
+                    </div>
                 </div>
             </div>
 
