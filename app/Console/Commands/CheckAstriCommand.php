@@ -59,14 +59,16 @@ class CheckAstriCommand extends Command
             $q->whereRaw('LOWER(TRIM("user")) LIKE ?', ['%astri wahyuni%st%'])
               ->orWhereRaw('LOWER(TRIM("assignee")) LIKE ?', ['%astri wahyuni%st%']);
         })->whereNotIn('status', ['archived'])->select('id', 'title', 'status', 'user', 'assignee')->get();
-        $wpDailyOld = DB::table('tb_workplan')->whereRaw('LOWER(TRIM("user")) = ?', ['astri wahyuni'])->count();
-        $wpDailyNew = DB::table('tb_workplan')->whereRaw('LOWER(TRIM("user")) LIKE ?', ['%astri wahyuni%st%'])->count();
-        $this->info("Daily logs (tb_workplan) with 'Astri Wahyuni': {$wpDailyOld} | with 'ASTRI WAHYUNI,ST': {$wpDailyNew}");
-
-        $commentsOld = DB::table('task_comments')->whereRaw('LOWER(TRIM("user")) = ?', ['astri wahyuni'])->count();
-        $notifsOld = DB::table('task_notifications')->whereRaw('LOWER(TRIM("user_recipient")) = ?', ['astri wahyuni'])->count();
-        $activitiesOld = DB::table('task_activities')->whereRaw('LOWER(TRIM("user")) = ?', ['astri wahyuni'])->count();
-        $this->info("Comments: {$commentsOld} | Notifications: {$notifsOld} | Activities: {$activitiesOld}");
+        $this->info("\n=== PREVIEW SALIN LAPORAN (WA) FOR ASTRI ===");
+        if ($exactUser) {
+            \Illuminate\Support\Facades\Auth::login($exactUser);
+            $req = \Illuminate\Http\Request::create('/workplan/copy-report', 'GET');
+            $ctrl = new \App\Http\Controllers\WorkPlanController();
+            $res = $ctrl->copyReport($req);
+            $data = $res->getData(true);
+            $this->line($data['report']);
+            $this->info("Counts returned: " . json_encode($data['counts']));
+        }
 
         return 0;
     }
