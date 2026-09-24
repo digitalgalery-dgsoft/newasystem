@@ -39,25 +39,28 @@ class CheckAstriCommand extends Command
         })->count();
         $this->line("Tasks with 'Astri Wahyuni': {$oldNameCount}");
 
-        $this->info("\n=== INHOUSE EMPLOYEES VS USERS ===");
+        $this->info("\n=== INHOUSE EMPLOYEES EMAIL DUPLICATES ===");
         $inhouse = Employee::where('status', 'Aktiv')
             ->where(function($q) {
                 $q->where('tipe_karyawan', 'Inhouse')
                   ->orWhereRaw('LOWER(TRIM(tipe_karyawan)) = ?', ['inhouse']);
             })->get();
 
-        $existingEmails = User::whereNotNull('email')->pluck('email')->map(fn($e) => strtolower(trim($e)))->toArray();
-        $missingUser = 0;
-        $emptyEmail = 0;
-        foreach ($inhouse as $emp) {
-            $eMail = strtolower(trim($emp->email ?? ''));
-            if (empty($eMail)) {
-                $emptyEmail++;
-            } elseif (!in_array($eMail, $existingEmails, true)) {
-                $missingUser++;
+        $seen = [];
+        $dupes = [];
+        foreach ($inhouse as $e) {
+            $em = strtolower(trim($e->email ?? ''));
+            if (empty($em)) continue;
+            if (isset($seen[$em])) {
+                $dupes[] = $em;
+            } else {
+                $seen[$em] = $e->id;
             }
         }
-        $this->info("Total Inhouse: " . $inhouse->count() . " | Missing User: {$missingUser} | Empty Email: {$emptyEmail}");
+        $this->info("Duplicate emails found: " . count($dupes));
+        if (!empty($dupes)) {
+            $this->warn("Duplicates: " . implode(', ', array_unique($dupes)));
+        }
 
         $yohana = Employee::where('nama_karyawan', 'LIKE', '%Yohana Teraseptia%')->first();
         if ($yohana) {
