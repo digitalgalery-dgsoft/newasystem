@@ -59,10 +59,9 @@ class CheckAstriCommand extends Command
             $q->whereRaw('LOWER(TRIM("user")) LIKE ?', ['%astri wahyuni%st%'])
               ->orWhereRaw('LOWER(TRIM("assignee")) LIKE ?', ['%astri wahyuni%st%']);
         })->whereNotIn('status', ['archived'])->select('id', 'title', 'status', 'user', 'assignee')->get();
-        $this->info("Active tasks with 'ASTRI WAHYUNI,ST': " . $activeNew->count());
-        foreach ($activeNew as $t) {
-            $this->line("  [#{$t->id}] ({$t->status}) {$t->title} (User: '{$t->user}', Assignee: '{$t->assignee}')");
-        }
+        $wpDailyOld = DB::table('tb_workplan')->whereRaw('LOWER(TRIM("user")) = ?', ['astri wahyuni'])->count();
+        $wpDailyNew = DB::table('tb_workplan')->whereRaw('LOWER(TRIM("user")) LIKE ?', ['%astri wahyuni%st%'])->count();
+        $this->info("Daily logs (tb_workplan) with 'Astri Wahyuni': {$wpDailyOld} | with 'ASTRI WAHYUNI,ST': {$wpDailyNew}");
 
         return 0;
     }
