@@ -646,9 +646,10 @@ function workflowManager() {
         filterUsersList(query) {
             if (!query || !query.trim()) return this.usersList.slice(0, 100);
             const q = query.toLowerCase().trim();
+            const terms = q.split(/\s+/).filter(t => t.length > 0);
             return this.usersList.filter(u => {
                 const text = (u.name + ' ' + u.email + ' ' + (u.job_title || '') + ' ' + (u.area || '')).toLowerCase();
-                return text.includes(q);
+                return terms.every(t => text.includes(t));
             }).slice(0, 100);
         },
 

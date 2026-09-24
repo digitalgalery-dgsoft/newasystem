@@ -52,7 +52,8 @@ class ApprovalWorkflowController extends Controller
         ];
 
         // Daftar Master Prinsiple untuk opsi pemilihan prinsiple spesifik
-        $principles = Principle::orderBy('name', 'asc')->pluck('name')->unique()->values();
+        // Pastikan seluruh Karyawan Inhouse Aktif dari Master Karyawan telah disinkronkan ke tabel users
+        $this->ensureInhouseUsersExist();
 
         // Daftar Akun Pengguna Aktif untuk Pilihan Approver
         $availableUsers = User::where('is_active', true)
@@ -332,19 +333,74 @@ class ApprovalWorkflowController extends Controller
      */
     public function searchApprovers(Request $request)
     {
+        $this->ensureInhouseUsersExist();
+
         $query = trim($request->input('q', ''));
+        $words = array_filter(explode(' ', $query));
+
         $users = User::where('is_active', true)
-            ->when(!empty($query), function ($q) use ($query) {
-                $q->where(function ($sub) use ($query) {
-                    $sub->where('name', 'like', "%{$query}%")
-                        ->orWhere('email', 'like', "%{$query}%")
-                        ->orWhere('job_title', 'like', "%{$query}%");
-                });
+            ->when(!empty($words), function ($q) use ($words) {
+                foreach ($words as $w) {
+                    $q->where(function ($sub) use ($w) {
+                        $sub->where('name', 'like', "%{$w}%")
+                            ->orWhere('email', 'like', "%{$w}%")
+                            ->orWhere('job_title', 'like', "%{$w}%")
+                            ->orWhere('area', 'like', "%{$w}%");
+                    });
+                }
             })
             ->orderBy('name', 'asc')
-            ->limit(20)
+            ->limit(50)
             ->get(['id', 'name', 'email', 'job_title', 'role', 'area']);
 
         return response()->json($users);
+    }
+
+    /**
+     * Memastikan seluruh Karyawan Inhouse Aktif dari Master Karyawan telah disinkronkan ke tabel users
+     */
+    protected function ensureInhouseUsersExist(): void
+    {
+        $missingInhouse = Employee::where('status', 'Aktiv')
+            ->where(function ($q) {
+                $q->where('tipe_karyawan', 'Inhouse')
+                  ->orWhereRaw('LOWER(TRIM(tipe_karyawan)) = ?', ['inhouse']);
+            })
+            ->whereNotNull('email')
+            ->where('email', '!=', '')
+            ->whereNotIn('email', User::pluck('email'))
+            ->get();
+
+        if ($missingInhouse->isEmpty()) {
+            return;
+        }
+
+        foreach ($missingInhouse as $emp) {
+            $email = strtolower(trim($emp->email));
+            if (empty($email)) continue;
+
+            $role = 'karyawan_inhouse';
+            $jobLower = strtolower($emp->jabatan ?? '');
+            if (str_contains($jobLower, 'recruiter') || str_contains($jobLower, 'rekrutmen')) {
+                $role = 'recruiter';
+            } elseif (str_contains($jobLower, 'head hr') || str_contains($jobLower, 'hrd manager') || str_contains($jobLower, 'manager hr')) {
+                $role = 'head_hr';
+            } elseif (str_contains($jobLower, 'head') || str_contains($jobLower, 'lead') || str_contains($jobLower, 'manager') || str_contains($jobLower, 'spv') || str_contains($jobLower, 'supervisor')) {
+                $role = 'head';
+            }
+
+            User::firstOrCreate(
+                ['email' => $email],
+                [
+                    'name' => trim($emp->nama_karyawan),
+                    'password' => $emp->password ?: \Illuminate\Support\Facades\Hash::make($emp->default_password ?: 'password'),
+                    'role' => $role,
+                    'area' => $emp->area,
+                    'job_title' => $emp->jabatan,
+                    'phone' => $emp->telepon,
+                    'is_active' => true,
+                ]
+            );
+        }
     }
 }

@@ -2481,6 +2481,24 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 59. 👥 Resolusi Approver Step Approval: Auto-Sync Karyawan Inhouse Aktif ke Akun Pengguna & Pencarian Multi-Kata (Yohana Teraseptia Seagma) (24 September 2026)
+- **Investigasi Masalah & Akar Penyebab (*Root Cause Analysis*)**:
+  - Saat mengonfigurasi step approval kandidat inhouse pada modal *"Edit Step Approval"*, pencarian approver untuk nama **YOHANA TERASEPTIA SEAGMA** menghasilkan status *"Karyawan / user tidak ditemukan"*.
+  - Di tabel `employees` (Master Karyawan), data **YOHANA TERASEPTIA SEAGMA** tercatat aktif sebagai karyawan inhouse (NIK: `3321115509870002`, Email: `seagmayohana@gmail.com`, Jabatan: `ADMIN OPS - Jakarta`, Tipe: `Inhouse`, Status: `Aktiv`, `akses_login = 1`).
+  - Namun, pada tabel `users`, akun belum terbuat karena user belum pernah login mandiri sebelumnya. Dari total 829 karyawan inhouse aktif di master data, terdapat 528 karyawan yang belum memiliki baris data di tabel `users`.
+  - Pada [ApprovalWorkflowController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/ApprovalWorkflowController.php), dropdown approver `$availableUsers` dan API `searchApprovers()` hanya melakukan kueri ke tabel `users` (`User::where('is_active', true)`). Akibatnya seluruh 528 karyawan inhouse yang belum memiliki user account tidak muncul dalam daftar pilihan approver.
+- **Solusi Komprehensif yang Diterapkan**:
+  - **Sinkronisasi Otomatis Inhouse ke Akun Pengguna (`app/Http/Controllers/ApprovalWorkflowController.php`)**:
+    - Menambahkan method otomatis `ensureInhouseUsersExist()` yang memeriksa dan menjamin seluruh karyawan inhouse aktif dari `employees` memiliki akun di tabel `users`.
+    - Dipanggil langsung saat halaman konfigurasi alur approval (`index()`) dibuka maupun saat endpoint `searchApprovers()` dipanggil, sehingga approver dari kalangan karyawan inhouse selalu tersedia secara *real-time*.
+  - **CLI Command Massal (`app/Console/Commands/SyncInhouseUsersCommand.php`)**:
+    - Dibuat perintah CLI `php artisan users:sync-inhouse` untuk menyinkronkan seluruh 528 karyawan inhouse aktif ke tabel `users` lengkap dengan nama, email, jabatan, area penempatan, dan role yang sesuai.
+  - **Peningkatan Pencarian Multi-Kata (*Multi-Term Search*)**:
+    - Pada [index.blade.php](file:///d:/ASystem/newasystem/resources/views/master/approval_workflow/index.blade.php), fungsi `filterUsersList(query)` ditingkatkan menggunakan teknik pemecahan kata (`terms.every(t => text.includes(t))`). Pencarian kini sangat fleksibel dan dapat menemukan karyawan terlepas dari urutan kata (misal: `"Yohana Seagma"`, `"Yohana Jakarta"`, atau `"YOHANA TERASEPTIA SEAGMA"`).
+    - Endpoint `searchApprovers()` di backend juga diperbarui dengan pencarian multi-kata berbasis `LIKE` untuk setiap suku kata pada nama, email, jabatan, dan area.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
