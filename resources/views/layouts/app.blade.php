@@ -1194,7 +1194,7 @@
 
                             <!-- SUB-MENU ITEMS LIST -->
                             <div x-show="helpdeskOpen && !sidebarCollapsed" x-collapse class="pl-4 pr-1 py-1.5 space-y-1 border-l-2 border-amber-200 ml-4 mt-1">
-                                <!-- Dashboard Tiket -->
+                                <!-- Dashboard Tiket (Tampil untuk Semua: Admin, Divisi, User Biasa) -->
                                 <a href="{{ route('helpdesk.index') }}" 
                                    title="Dashboard Tiket"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.index') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
@@ -1202,20 +1202,22 @@
                                     <span>Dashboard Tiket</span>
                                 </a>
 
+                                <!-- Buat Tiket Baru (Tampil untuk Semua) -->
+                                <a href="{{ route('helpdesk.tickets.create') }}" 
+                                   title="Buat Tiket Baru"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.tickets.create') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
+                                    <i class="fa-solid fa-circle-plus text-[11px] w-4 text-center"></i>
+                                    <span>Buat Tiket Baru</span>
+                                </a>
+
+                                <!-- MENU LENGKAP HANYA TAMPIL UNTUK ADMINISTRATOR -->
+                                @if(auth()->check() && auth()->user()->isHelpdeskAdmin())
                                 <!-- Antrean Tiket -->
                                 <a href="{{ route('helpdesk.tickets.index') }}" 
                                    title="Antrean Tiket"
                                    class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.tickets.index', 'helpdesk.tickets.show') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
                                     <i class="fa-solid fa-inbox text-[11px] w-4 text-center"></i>
                                     <span>Antrean Tiket</span>
-                                </a>
-
-                                <!-- Buat Tiket Baru -->
-                                <a href="{{ route('helpdesk.tickets.create') }}" 
-                                   title="Buat Tiket Baru"
-                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.tickets.create') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
-                                    <i class="fa-solid fa-circle-plus text-[11px] w-4 text-center"></i>
-                                    <span>Buat Tiket Baru</span>
                                 </a>
 
                                 <!-- Kanban Helpdesk -->
@@ -1241,6 +1243,7 @@
                                     <i class="fa-solid fa-bolt text-[11px] w-4 text-center"></i>
                                     <span>Balasan Cepat</span>
                                 </a>
+                                @endif
                             </div>
                         </li>
 

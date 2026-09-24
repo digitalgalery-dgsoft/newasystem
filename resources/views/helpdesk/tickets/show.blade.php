@@ -11,7 +11,15 @@
                 <div class="flex items-center gap-2 flex-wrap text-xs text-slate-500 mb-2">
                     <a href="{{ route('helpdesk.index') }}" class="hover:text-primary transition-colors">Helpdesk</a>
                     <span>/</span>
-                    <a href="{{ route('helpdesk.tickets.index') }}" class="hover:text-primary transition-colors">Tiket</a>
+                    <a href="{{ route('helpdesk.tickets.index') }}" class="hover:text-primary transition-colors">
+                        @if(auth()->check() && auth()->user()->isHelpdeskRegularUser())
+                            Tiket Saya
+                        @elseif(auth()->check() && auth()->user()->isHelpdeskDivisionUser())
+                            Tiket Divisi
+                        @else
+                            Tiket
+                        @endif
+                    </a>
                     <span>/</span>
                     <span class="font-mono font-bold text-slate-700">{{ $ticket->ticket_number }}</span>
                     <span>•</span>
@@ -243,7 +251,7 @@
                         </div>
 
                         <!-- TEMPLATE BALASAN CEPAT (CANNED RESPONSES) -->
-                        @if($cannedResponses->isNotEmpty())
+                        @if($ticket->canBeManagedBy($user) && $cannedResponses->isNotEmpty())
                         <div x-data="{ openCanned: false }" class="relative">
                             <button @click="openCanned = !openCanned" type="button" class="text-xs text-primary font-bold hover:underline flex items-center gap-1">
                                 <i class="fa-solid fa-bolt text-amber-500"></i>

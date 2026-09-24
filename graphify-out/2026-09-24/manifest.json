@@ -252,9 +252,9 @@
     "semantic_hash": "35db7aca69f458ab3690a15153c41879"
   },
   "app/Http/Controllers/WorkPlanController.php": {
-    "mtime": 1790217737.3941958,
-    "seen": 1790218472.1836448,
-    "ast_hash": "9f2d749f2645b52ba20af765d84866f9",
+    "mtime": 1790231671.2826736,
+    "seen": 1790232098.456789,
+    "ast_hash": "efe39932049e2dc4fa189a5cc3ca50ce",
     "semantic_hash": ""
   },
   "app/Http/Middleware/EnsureCandidateAuthenticated.php": {
@@ -408,10 +408,10 @@
     "semantic_hash": "96dd2ae465ccf227411f34976b96ce73"
   },
   "app/Models/Task.php": {
-    "mtime": 1790049533.8534107,
-    "seen": 1790172624.4093866,
-    "ast_hash": "6ac6ca11fed5f4df12eb696ec5831441",
-    "semantic_hash": "6ac6ca11fed5f4df12eb696ec5831441"
+    "mtime": 1790231513.1202428,
+    "seen": 1790232098.4577818,
+    "ast_hash": "bbdcceb6193c4f9c658e22d463a64b1f",
+    "semantic_hash": ""
   },
   "app/Models/TaskActivity.php": {
     "mtime": 1789868970.7398877,
@@ -456,9 +456,9 @@
     "semantic_hash": "4494e784acc001b87b2ae47b1039801c"
   },
   "app/Models/User.php": {
-    "mtime": 1790217710.437892,
-    "seen": 1790218472.1836448,
-    "ast_hash": "e3e95081cd76e0599604593d840f4fdd",
+    "mtime": 1790231597.5002058,
+    "seen": 1790232098.4577818,
+    "ast_hash": "d0f52d5d0bbc1680eacc291def18de6c",
     "semantic_hash": ""
   },
   "app/Models/UserPrinsiple.php": {
@@ -1308,10 +1308,10 @@
     "semantic_hash": "b895699e6b3a17ce7cfa958fcb065476"
   },
   "resources/views/layouts/app.blade.php": {
-    "mtime": 1790168846.6553977,
-    "seen": 1790172624.4093866,
-    "ast_hash": "c476a61246316733630c6ffefc2dd3aa",
-    "semantic_hash": "c476a61246316733630c6ffefc2dd3aa"
+    "mtime": 1790231941.2467504,
+    "seen": 1790232098.4577818,
+    "ast_hash": "7d4c2ce07afb25bc5c0a3e1664329fc9",
+    "semantic_hash": ""
   },
   "resources/views/layouts/cbt.blade.php": {
     "mtime": 1789685336.0272484,
@@ -1446,10 +1446,10 @@
     "semantic_hash": "f82eeb7599b3c53ff1b23faee4652322"
   },
   "routes/web.php": {
-    "mtime": 1790168830.5583222,
-    "seen": 1790172624.4093866,
-    "ast_hash": "0c430bc58e7621576c7e808b3086d398",
-    "semantic_hash": "0c430bc58e7621576c7e808b3086d398"
+    "mtime": 1790231706.903409,
+    "seen": 1790232098.4577818,
+    "ast_hash": "6e11be5c6122556867da6eda2ba4fabd",
+    "semantic_hash": ""
   },
   "scripts/cron_ai_analyzer.sh": {
     "mtime": 1789818925.232646,
@@ -1566,9 +1566,9 @@
     "semantic_hash": ""
   },
   "UPDATE_PROGRESS.md": {
-    "mtime": 1790219419.1918578,
-    "seen": 1790219490.8560402,
-    "ast_hash": "a32f3befc629c60457c3e7248ba106cb",
+    "mtime": 1790232058.2923744,
+    "seen": 1790232098.4577818,
+    "ast_hash": "5a63661ab86531766495c7baa08bbcd2",
     "semantic_hash": ""
   },
   "WHATSAPPCOEX.md": {
@@ -1593,6 +1593,132 @@
     "mtime": 1790218751.147836,
     "seen": 1790219300.1350698,
     "ast_hash": "00e257c310c0ac953dec842ace32d631",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/Helpdesk/HelpdeskCannedController.php": {
+    "mtime": 1790231659.1556132,
+    "seen": 1790232098.456789,
+    "ast_hash": "080a9557b7d7c67f509126f31eba4eb0",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/Helpdesk/HelpdeskDashboardController.php": {
+    "mtime": 1790231612.014742,
+    "seen": 1790232098.456789,
+    "ast_hash": "eb17004307acf9c223bf9caaedebb655",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/Helpdesk/HelpdeskDivisionController.php": {
+    "mtime": 1790231648.9196134,
+    "seen": 1790232098.456789,
+    "ast_hash": "0fd9b9262d921401825af88616ca5778",
+    "semantic_hash": ""
+  },
+  "app/Http/Controllers/Helpdesk/HelpdeskTicketController.php": {
+    "mtime": 1790231631.9920235,
+    "seen": 1790232098.456789,
+    "ast_hash": "3266fbcd88f18e0b077ad37683c43f16",
+    "semantic_hash": ""
+  },
+  "app/Models/HelpdeskCannedResponse.php": {
+    "mtime": 1790231498.3397996,
+    "seen": 1790232098.4577818,
+    "ast_hash": "fedf8bba3fa6bb02eb44d70aab912755",
+    "semantic_hash": ""
+  },
+  "app/Models/HelpdeskDivision.php": {
+    "mtime": 1790231453.9964464,
+    "seen": 1790232098.4577818,
+    "ast_hash": "906e65258e182e9a7c12c31fbf6a3e85",
+    "semantic_hash": ""
+  },
+  "app/Models/HelpdeskDivisionAgent.php": {
+    "mtime": 1790231461.6971111,
+    "seen": 1790232098.4577818,
+    "ast_hash": "8ea341d672dbf0b7e28f686d98ed16e0",
+    "semantic_hash": ""
+  },
+  "app/Models/HelpdeskTicket.php": {
+    "mtime": 1790231471.0709398,
+    "seen": 1790232098.4577818,
+    "ast_hash": "794c32eced1806d35d493162d17e3dbd",
+    "semantic_hash": ""
+  },
+  "app/Models/HelpdeskTicketLog.php": {
+    "mtime": 1790231491.2171056,
+    "seen": 1790232098.4577818,
+    "ast_hash": "6ede4d3cce362337b74048ff48f996de",
+    "semantic_hash": ""
+  },
+  "app/Models/HelpdeskTicketReply.php": {
+    "mtime": 1790231483.1775627,
+    "seen": 1790232098.4577818,
+    "ast_hash": "1871648486446ddfd2c4bcb0a896e909",
+    "semantic_hash": ""
+  },
+  "app/Services/HelpdeskWorkplanService.php": {
+    "mtime": 1790231530.5032437,
+    "seen": 1790232098.4577818,
+    "ast_hash": "b4d96d201501ac8e55e9f19f500a2fab",
+    "semantic_hash": ""
+  },
+  "database/migrations/2026_09_24_140000_create_helpdesk_tables.php": {
+    "mtime": 1790231410.627137,
+    "seen": 1790232098.4577818,
+    "ast_hash": "5245ea893f77a356170e0d04d85176c3",
+    "semantic_hash": ""
+  },
+  "database/migrations/2026_09_24_140100_add_helpdesk_ticket_id_to_tasks_table.php": {
+    "mtime": 1790231420.0878308,
+    "seen": 1790232098.4577818,
+    "ast_hash": "75a8cbd39ba3b8b6d1f7e8b44ef17b8d",
+    "semantic_hash": ""
+  },
+  "resources/views/helpdesk/_kanban_card.blade.php": {
+    "mtime": 1790231834.7457116,
+    "seen": 1790232098.4577818,
+    "ast_hash": "75fc953a7212d25a149c6cda24b2d30f",
+    "semantic_hash": ""
+  },
+  "resources/views/helpdesk/canned/index.blade.php": {
+    "mtime": 1790231883.20559,
+    "seen": 1790232098.4577818,
+    "ast_hash": "2bddaf1290d6a105683af2fe713510fc",
+    "semantic_hash": ""
+  },
+  "resources/views/helpdesk/divisions/index.blade.php": {
+    "mtime": 1790231861.6052377,
+    "seen": 1790232098.4577818,
+    "ast_hash": "127f89f14717bcaf01455e0fa364f778",
+    "semantic_hash": ""
+  },
+  "resources/views/helpdesk/index.blade.php": {
+    "mtime": 1790231744.5524404,
+    "seen": 1790232098.4577818,
+    "ast_hash": "2e32065b99766ccf5d313f081891958b",
+    "semantic_hash": ""
+  },
+  "resources/views/helpdesk/kanban.blade.php": {
+    "mtime": 1790231818.4877713,
+    "seen": 1790232098.4577818,
+    "ast_hash": "a5ef0e7efcdd79fb399304df8165255b",
+    "semantic_hash": ""
+  },
+  "resources/views/helpdesk/tickets/create.blade.php": {
+    "mtime": 1790231778.7732213,
+    "seen": 1790232098.4577818,
+    "ast_hash": "853afdd00c6ca6be7a4d9aea753570bb",
+    "semantic_hash": ""
+  },
+  "resources/views/helpdesk/tickets/index.blade.php": {
+    "mtime": 1790231759.4672616,
+    "seen": 1790232098.4577818,
+    "ast_hash": "d3f1254cde43b485a477a3450e592a7a",
+    "semantic_hash": ""
+  },
+  "resources/views/helpdesk/tickets/show.blade.php": {
+    "mtime": 1790231801.967326,
+    "seen": 1790232098.4577818,
+    "ast_hash": "1cefb86aa7aeb346c368f5c4dd6119bc",
     "semantic_hash": ""
   }
 }

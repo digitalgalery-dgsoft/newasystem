@@ -593,8 +593,8 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('helpdesk')->name('helpdesk.')->group(function () {
         Route::get('/', [HelpdeskDashboardController::class, 'index'])->name('index');
 
-        // Kanban Board
-        Route::get('/kanban', [HelpdeskTicketController::class, 'kanban'])->name('kanban');
+        // Kanban Board (Khusus Administrator)
+        Route::get('/kanban', [HelpdeskTicketController::class, 'kanban'])->name('kanban')->middleware('admin');
 
         // Tiket Antrean & Interaksi
         Route::get('/tickets', [HelpdeskTicketController::class, 'index'])->name('tickets.index');
@@ -605,19 +605,21 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/tickets/{id}/claim', [HelpdeskTicketController::class, 'claim'])->name('tickets.claim');
         Route::post('/tickets/{id}/status', [HelpdeskTicketController::class, 'updateStatus'])->name('tickets.status');
 
-        // Master Divisi & Agen Inhouse
-        Route::get('/divisions', [HelpdeskDivisionController::class, 'index'])->name('divisions.index');
-        Route::post('/divisions', [HelpdeskDivisionController::class, 'store'])->name('divisions.store');
-        Route::put('/divisions/{id}', [HelpdeskDivisionController::class, 'update'])->name('divisions.update');
-        Route::delete('/divisions/{id}', [HelpdeskDivisionController::class, 'destroy'])->name('divisions.destroy');
-        Route::post('/divisions/sync-inhouse', [HelpdeskDivisionController::class, 'syncFromInhouse'])->name('divisions.sync_inhouse');
-        Route::post('/divisions/{id}/agents', [HelpdeskDivisionController::class, 'addAgent'])->name('divisions.agents.add');
-        Route::delete('/divisions/{id}/agents/{userId}', [HelpdeskDivisionController::class, 'removeAgent'])->name('divisions.agents.remove');
+        // Master Divisi & Agen Inhouse (Khusus Administrator)
+        Route::middleware(['admin'])->group(function () {
+            Route::get('/divisions', [HelpdeskDivisionController::class, 'index'])->name('divisions.index');
+            Route::post('/divisions', [HelpdeskDivisionController::class, 'store'])->name('divisions.store');
+            Route::put('/divisions/{id}', [HelpdeskDivisionController::class, 'update'])->name('divisions.update');
+            Route::delete('/divisions/{id}', [HelpdeskDivisionController::class, 'destroy'])->name('divisions.destroy');
+            Route::post('/divisions/sync-inhouse', [HelpdeskDivisionController::class, 'syncFromInhouse'])->name('divisions.sync_inhouse');
+            Route::post('/divisions/{id}/agents', [HelpdeskDivisionController::class, 'addAgent'])->name('divisions.agents.add');
+            Route::delete('/divisions/{id}/agents/{userId}', [HelpdeskDivisionController::class, 'removeAgent'])->name('divisions.agents.remove');
 
-        // Template Balasan Cepat
-        Route::get('/canned', [HelpdeskCannedController::class, 'index'])->name('canned.index');
-        Route::post('/canned', [HelpdeskCannedController::class, 'store'])->name('canned.store');
-        Route::delete('/canned/{id}', [HelpdeskCannedController::class, 'destroy'])->name('canned.destroy');
+            // Template Balasan Cepat (Khusus Administrator)
+            Route::get('/canned', [HelpdeskCannedController::class, 'index'])->name('canned.index');
+            Route::post('/canned', [HelpdeskCannedController::class, 'store'])->name('canned.store');
+            Route::delete('/canned/{id}', [HelpdeskCannedController::class, 'destroy'])->name('canned.destroy');
+        });
     });
 });
 

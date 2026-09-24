@@ -10,16 +10,42 @@
             <div class="flex items-center gap-2 text-xs font-semibold text-slate-500 mb-1">
                 <a href="{{ route('helpdesk.index') }}" class="hover:text-primary transition-colors">Helpdesk</a>
                 <span>/</span>
-                <span class="text-slate-800">Antrean Tiket</span>
+                <span class="text-slate-800">
+                    @if($isRegularUser)
+                        Tiket Saya
+                    @elseif($isDivisionUser)
+                        Tiket Divisi
+                    @else
+                        Antrean Tiket
+                    @endif
+                </span>
             </div>
-            <h1 class="text-2xl font-black text-slate-800 tracking-tight">Antrean & Riwayat Tiket</h1>
-            <p class="text-xs text-slate-500 mt-0.5">Kelola, respon, dan pantau status permohonan kendala antar divisi.</p>
+            <h1 class="text-2xl font-black text-slate-800 tracking-tight">
+                @if($isRegularUser)
+                    Tiket Yang Saya Ajukan
+                @elseif($isDivisionUser)
+                    Antrean & Tiket Divisi
+                @else
+                    Antrean & Riwayat Seluruh Tiket
+                @endif
+            </h1>
+            <p class="text-xs text-slate-500 mt-0.5">
+                @if($isRegularUser)
+                    Pantau status, penanganan, dan respon atas kendala yang Anda ajukan.
+                @elseif($isDivisionUser)
+                    Kelola dan respon tiket kendala yang ditujukan ke divisi Anda. Respon otomatis masuk ke Work Plan.
+                @else
+                    Kelola, respon, dan pantau status permohonan kendala antar divisi secara global.
+                @endif
+            </p>
         </div>
         <div class="flex items-center gap-2.5">
+            @if($isAdmin)
             <a href="{{ route('helpdesk.kanban') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold shadow-xs transition-all">
                 <i class="fa-solid fa-table-columns text-slate-500"></i>
                 <span>Tampilan Kanban</span>
             </a>
+            @endif
             <a href="{{ route('helpdesk.tickets.create') }}" class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-600 text-white text-xs font-bold shadow-md shadow-primary/20 transition-all">
                 <i class="fa-solid fa-plus"></i>
                 <span>Buat Tiket Baru</span>
@@ -29,32 +55,37 @@
 
     <!-- TABS NAVIGASI -->
     <div class="flex items-center gap-2 border-b border-slate-200 overflow-x-auto pb-1 text-xs font-bold">
+        @if($isAdmin)
         <a href="{{ route('helpdesk.tickets.index', array_merge(request()->except('tab'), ['tab' => 'all'])) }}"
            class="px-4 py-2.5 rounded-t-xl transition-all flex items-center gap-2 whitespace-nowrap {{ $tab === 'all' ? 'border-b-2 border-primary text-primary bg-primary-50/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
             <i class="fa-solid fa-inbox"></i>
             <span>Semua Tiket</span>
             <span class="px-1.5 py-0.2 rounded-md bg-slate-200 text-slate-700 text-[10px]">{{ $counts['all'] }}</span>
         </a>
-        <a href="{{ route('helpdesk.tickets.index', array_merge(request()->except('tab'), ['tab' => 'my_tickets'])) }}"
-           class="px-4 py-2.5 rounded-t-xl transition-all flex items-center gap-2 whitespace-nowrap {{ $tab === 'my_tickets' ? 'border-b-2 border-primary text-primary bg-primary-50/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
-            <i class="fa-regular fa-user"></i>
-            <span>Tiket Saya</span>
-            <span class="px-1.5 py-0.2 rounded-md bg-slate-200 text-slate-700 text-[10px]">{{ $counts['my_tickets'] }}</span>
+        @endif
+
+        @if($isAdmin || $isDivisionUser)
+        <a href="{{ route('helpdesk.tickets.index', array_merge(request()->except('tab'), ['tab' => 'my_division'])) }}"
+           class="px-4 py-2.5 rounded-t-xl transition-all flex items-center gap-2 whitespace-nowrap {{ $tab === 'my_division' ? 'border-b-2 border-emerald-600 text-emerald-700 bg-emerald-50/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+            <i class="fa-solid fa-building-user"></i>
+            <span>Tiket Divisi {{ $isDivisionUser ? 'Saya' : '' }}</span>
+            <span class="px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-700 text-[10px]">{{ $counts['my_division'] }}</span>
         </a>
+
         <a href="{{ route('helpdesk.tickets.index', array_merge(request()->except('tab'), ['tab' => 'assigned_to_me'])) }}"
            class="px-4 py-2.5 rounded-t-xl transition-all flex items-center gap-2 whitespace-nowrap {{ $tab === 'assigned_to_me' ? 'border-b-2 border-indigo-600 text-indigo-700 bg-indigo-50/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
             <i class="fa-solid fa-list-check"></i>
             <span>Ditugaskan ke Saya</span>
             <span class="px-1.5 py-0.2 rounded-md bg-indigo-100 text-indigo-700 text-[10px]">{{ $counts['assigned_to_me'] }}</span>
         </a>
-        @if($counts['my_division'] > 0 || $user->isAdmin())
-        <a href="{{ route('helpdesk.tickets.index', array_merge(request()->except('tab'), ['tab' => 'my_division'])) }}"
-           class="px-4 py-2.5 rounded-t-xl transition-all flex items-center gap-2 whitespace-nowrap {{ $tab === 'my_division' ? 'border-b-2 border-emerald-600 text-emerald-700 bg-emerald-50/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
-            <i class="fa-solid fa-building-user"></i>
-            <span>Tiket Divisi Saya</span>
-            <span class="px-1.5 py-0.2 rounded-md bg-emerald-100 text-emerald-700 text-[10px]">{{ $counts['my_division'] }}</span>
-        </a>
         @endif
+
+        <a href="{{ route('helpdesk.tickets.index', array_merge(request()->except('tab'), ['tab' => 'my_tickets'])) }}"
+           class="px-4 py-2.5 rounded-t-xl transition-all flex items-center gap-2 whitespace-nowrap {{ $tab === 'my_tickets' ? 'border-b-2 border-primary text-primary bg-primary-50/50' : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50' }}">
+            <i class="fa-regular fa-user"></i>
+            <span>Tiket Diajukan Saya</span>
+            <span class="px-1.5 py-0.2 rounded-md bg-slate-200 text-slate-700 text-[10px]">{{ $counts['my_tickets'] }}</span>
+        </a>
     </div>
 
     <!-- FILTER BAR -->
@@ -75,14 +106,16 @@
             </div>
 
             <!-- FILTER DIVISI -->
+            @if($isAdmin || ($isDivisionUser && $divisions->count() > 1))
             <div>
                 <select name="division_id" onchange="this.form.submit()" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-primary focus:bg-white">
-                    <option value="">Semua Divisi</option>
+                    <option value="">Semua Divisi {{ $isDivisionUser ? 'Saya' : '' }}</option>
                     @foreach($divisions as $d)
                     <option value="{{ $d->id }}" {{ request('division_id') == $d->id ? 'selected' : '' }}>{{ $d->name }}</option>
                     @endforeach
                 </select>
             </div>
+            @endif
 
             <!-- FILTER STATUS -->
             <div>

@@ -13,11 +13,20 @@ use Illuminate\Support\Str;
 
 class HelpdeskDivisionController extends Controller
 {
+    protected function authorizeAdmin()
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isHelpdeskAdmin()) {
+            abort(403, 'Akses menu Master Divisi & Agen terbatas untuk Administrator.');
+        }
+    }
+
     /**
      * Tampilkan Pengaturan Divisi & Daftar Agen Inhouse
      */
     public function index()
     {
+        $this->authorizeAdmin();
         $user = Auth::user();
         if (!$user) return redirect()->route('login');
 
@@ -39,6 +48,7 @@ class HelpdeskDivisionController extends Controller
      */
     public function store(Request $request)
     {
+        $this->authorizeAdmin();
         $request->validate([
             'name' => 'required|string|max:100',
             'code' => 'required|string|max:20|unique:helpdesk_divisions,code',
@@ -71,6 +81,7 @@ class HelpdeskDivisionController extends Controller
      */
     public function update(Request $request, $id)
     {
+        $this->authorizeAdmin();
         $division = HelpdeskDivision::findOrFail($id);
 
         $request->validate([
@@ -106,6 +117,7 @@ class HelpdeskDivisionController extends Controller
      */
     public function destroy($id)
     {
+        $this->authorizeAdmin();
         $division = HelpdeskDivision::findOrFail($id);
 
         if ($division->tickets()->count() > 0) {
@@ -126,6 +138,7 @@ class HelpdeskDivisionController extends Controller
      */
     public function addAgent(Request $request, $divisionId)
     {
+        $this->authorizeAdmin();
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'is_lead' => 'nullable|boolean',
@@ -150,6 +163,7 @@ class HelpdeskDivisionController extends Controller
      */
     public function removeAgent($divisionId, $userId)
     {
+        $this->authorizeAdmin();
         HelpdeskDivisionAgent::where('division_id', $divisionId)
             ->where('user_id', $userId)
             ->delete();
@@ -163,6 +177,7 @@ class HelpdeskDivisionController extends Controller
      */
     public function syncFromInhouse()
     {
+        $this->authorizeAdmin();
         // 1. Template Divisi Standar ESA Groups
         $standardDivisions = [
             [

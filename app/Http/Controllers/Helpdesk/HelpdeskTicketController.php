@@ -27,22 +27,47 @@ class HelpdeskTicketController extends Controller
         $user = Auth::user();
         if (!$user) return redirect()->route('login');
 
-        $query = HelpdeskTicket::with(['creator', 'division', 'assignedAgent', 'workplanTask']);
+        $isAdmin = $user->isHelpdeskAdmin();
+        $isDivisionUser = $user->isHelpdeskDivisionUser();
+        $isRegularUser = $user->isHelpdeskRegularUser();
 
-        // Tab Filter: all, my_tickets, assigned_to_me, my_division
-        $tab = $request->query('tab', 'all');
         $myDivisionIds = HelpdeskDivisionAgent::where('user_id', $user->id)->pluck('division_id')->toArray();
 
-        if ($tab === 'my_tickets') {
+        $query = HelpdeskTicket::with(['creator', 'division', 'assignedAgent', 'workplanTask']);
+
+        // Tab Filter Sesuai Hak Akses
+        $tab = $request->query('tab');
+
+        if ($isRegularUser) {
+            // User biasa HANYA bisa melihat tiket yang diajukan sendiri
+            $tab = 'my_tickets';
             $query->where('user_id', $user->id);
-        } elseif ($tab === 'assigned_to_me') {
-            $query->where('assigned_to', $user->id);
-        } elseif ($tab === 'my_division') {
-            $query->whereIn('division_id', $myDivisionIds);
-        } else {
-            // Tab 'all': jika bukan admin dan bukan agen divisi, default hanya tiket miliknya
-            if (!$user->isAdmin() && empty($myDivisionIds)) {
+        } elseif ($isDivisionUser) {
+            // User divisi HANYA bisa melihat tiket yang ditujukan ke divisinya
+            if (!$tab || !in_array($tab, ['my_division', 'assigned_to_me', 'my_tickets'])) {
+                $tab = 'my_division';
+            }
+
+            if ($tab === 'assigned_to_me') {
+                $query->where('assigned_to', $user->id);
+            } elseif ($tab === 'my_tickets') {
                 $query->where('user_id', $user->id);
+            } else {
+                // Default divisi saya
+                $query->whereIn('division_id', $myDivisionIds);
+            }
+        } else {
+            // Administrator: Memiliki akses penuh ke seluruh tiket
+            if (!$tab) {
+                $tab = 'all';
+            }
+
+            if ($tab === 'my_tickets') {
+                $query->where('user_id', $user->id);
+            } elseif ($tab === 'assigned_to_me') {
+                $query->where('assigned_to', $user->id);
+            } elseif ($tab === 'my_division') {
+                $query->whereIn('division_id', $myDivisionIds);
             }
         }
 
@@ -62,7 +87,13 @@ class HelpdeskTicketController extends Controller
 
         // Filter Divisi
         if ($divisionId = $request->query('division_id')) {
-            $query->where('division_id', $divisionId);
+            if ($isDivisionUser) {
+                if (in_array($divisionId, $myDivisionIds)) {
+                    $query->where('division_id', $divisionId);
+                }
+            } elseif ($isAdmin) {
+                $query->where('division_id', $divisionId);
+            }
         }
 
         // Filter Status
@@ -85,17 +116,24 @@ class HelpdeskTicketController extends Controller
             ->paginate(15)
             ->withQueryString();
 
-        $divisions = HelpdeskDivision::where('is_active', true)->orderBy('name', 'asc')->get();
+        // Daftar Divisi untuk filter dropdown
+        if ($isAdmin) {
+            $divisions = HelpdeskDivision::where('is_active', true)->orderBy('name', 'asc')->get();
+        } elseif ($isDivisionUser) {
+            $divisions = HelpdeskDivision::whereIn('id', $myDivisionIds)->where('is_active', true)->orderBy('name', 'asc')->get();
+        } else {
+            $divisions = collect();
+        }
 
-        // Hitungan per tab
+        // Hitungan per tab sesuai hak akses
         $counts = [
-            'all' => HelpdeskTicket::count(),
+            'all' => $isAdmin ? HelpdeskTicket::count() : 0,
             'my_tickets' => HelpdeskTicket::where('user_id', $user->id)->count(),
-            'assigned_to_me' => HelpdeskTicket::where('assigned_to', $user->id)->count(),
+            'assigned_to_me' => ($isAdmin || $isDivisionUser) ? HelpdeskTicket::where('assigned_to', $user->id)->count() : 0,
             'my_division' => !empty($myDivisionIds) ? HelpdeskTicket::whereIn('division_id', $myDivisionIds)->count() : 0,
         ];
 
-        return view('helpdesk.tickets.index', compact('tickets', 'divisions', 'tab', 'counts', 'user'));
+        return view('helpdesk.tickets.index', compact('tickets', 'divisions', 'tab', 'counts', 'user', 'isAdmin', 'isDivisionUser', 'isRegularUser'));
     }
 
     /**
@@ -191,11 +229,22 @@ class HelpdeskTicketController extends Controller
         $isAgentOfDivision = in_array($ticket->division_id, $myDivisionIds);
         $isAssignedAgent = ($ticket->assigned_to === $user->id);
         $isCreator = ($ticket->user_id === $user->id);
-        $isAdmin = $user->isAdmin() || $user->role === 'admin';
+        $isAdmin = $user->isHelpdeskAdmin();
 
-        // Validasi Hak Akses Melihat Tiket
-        if (!$isAdmin && !$isCreator && !$isAgentOfDivision && !$isAssignedAgent) {
-            abort(403, 'Anda tidak memiliki hak akses untuk melihat tiket ini.');
+        // Validasi Hak Akses Melihat Tiket Sesuai Peran:
+        // - Admin: Boleh melihat seluruh tiket
+        // - User Divisi: Boleh melihat tiket yang ditujukan ke divisinya ATAU tiket yang diajukan sendiri
+        // - User Biasa: HANYA boleh melihat tiket yang diajukan sendiri
+        if (!$isAdmin) {
+            if ($user->isHelpdeskDivisionUser()) {
+                if (!$isAgentOfDivision && !$isCreator) {
+                    abort(403, 'Anda hanya dapat melihat tiket yang ditujukan ke divisi Anda atau tiket yang Anda ajukan sendiri.');
+                }
+            } else {
+                if (!$isCreator) {
+                    abort(403, 'Anda hanya dapat melihat tiket yang Anda ajukan sendiri.');
+                }
+            }
         }
 
         // Canned responses untuk divisi ini
@@ -342,6 +391,12 @@ class HelpdeskTicketController extends Controller
 
         $ticket = HelpdeskTicket::with(['division'])->findOrFail($id);
 
+        // Hanya Admin atau Agen dari divisi tiket yang boleh mengklaim tiket
+        $myDivisionIds = HelpdeskDivisionAgent::where('user_id', $user->id)->pluck('division_id')->toArray();
+        if (!$user->isHelpdeskAdmin() && !in_array($ticket->division_id, $myDivisionIds)) {
+            abort(403, 'Anda bukan merupakan agen dari divisi yang dituju oleh tiket ini.');
+        }
+
         if ($ticket->isClosed()) {
             return redirect()->back()->with('error', 'Tiket ini sudah ditutup.');
         }
@@ -381,6 +436,13 @@ class HelpdeskTicketController extends Controller
         if (!$user) return response()->json(['success' => false, 'error' => 'Unauthorized'], 401);
 
         $ticket = HelpdeskTicket::findOrFail($id);
+
+        if (!$ticket->canBeManagedBy($user)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'error' => 'Forbidden'], 403);
+            }
+            abort(403, 'Anda tidak memiliki wewenang untuk mengubah status tiket ini.');
+        }
 
         $request->validate([
             'status' => 'required|in:open,in_progress,answered,resolved,closed',
@@ -437,6 +499,11 @@ class HelpdeskTicketController extends Controller
     {
         $user = Auth::user();
         if (!$user) return redirect()->route('login');
+
+        // Kanban Helpdesk hanya untuk Administrator
+        if (!$user->isHelpdeskAdmin()) {
+            abort(403, 'Menu Kanban Helpdesk hanya dapat diakses oleh Administrator.');
+        }
 
         $query = HelpdeskTicket::with(['creator', 'division', 'assignedAgent', 'workplanTask']);
 

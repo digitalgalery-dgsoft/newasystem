@@ -2556,6 +2556,55 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 62. 🛡️ Diferensiasi Hak Akses Dashboard & Modul Ticketing (User Biasa, User Divisi, Administrator) (24 September 2026)
+- **Latar Belakang & Kebijakan Hak Akses (Role-Based Access Control / RBAC)**:
+  - Memisahkan secara tegas hak akses, menu, serta visibilitas data Helpdesk & Ticketing antara **User Biasa (Karyawan Pengaju)**, **User Divisi (Agen/Petugas Responder Divisi)**, dan **Administrator (Super Admin)**.
+  - Memastikan privasi dan kerahasiaan data tiket: pengguna non-admin tidak dapat mengintip (*prevent data leakage*) tiket pengguna lain atau divisi lain.
+  - Menyederhanakan navigasi pengguna biasa dan agen divisi agar fokus pada tugas serta kendalanya masing-masing tanpa menu yang tidak relevan.
+- **Rincian Implementasi per Kategori Pengguna**:
+  1. **User Biasa (Regular User / Pengaju Kendala)**:
+     - **Visibilitas Data**: Hanya dapat melihat data tiket yang diajukan oleh dirinya sendiri (`user_id == Auth::id()`).
+     - **Navigasi Menu Sidebar**: Menu *Antrean Tiket*, *Kanban Helpdesk*, *Master Divisi & Agen*, dan *Balasan Cepat* **tidak ditampilkan**. Hanya menampilkan *Dashboard Tiket* dan *Buat Tiket Baru*.
+     - **Tampilan Dashboard (`/helpdesk`)**:
+       - Kartu Metrik personal: *Tiket Saya*, *Menunggu Respon*, *Sedang Diproses*, *Selesai / Ditutup*.
+       - Kolom Utama: *Daftar Tiket Kendala Saya* menampilkan riwayat tiket yang diajukan, status penanganan, SLA, nama petugas penanggung jawab, serta tombol langsung menuju ruang chat tiket.
+       - Kartu Panduan: 3 langkah alur penanganan tiket dan tips resolusi kendala cepat.
+       - Kartu Aktivitas: Audit log riwayat aktivitas pada tiket miliknya sendiri.
+       - Menyembunyikan tabel *Distribusi Divisi Layanan* dan antrean tiket karyawan lain.
+     - **Proteksi Backend & Keamanan Route**:
+       - Akses langsung URL ke `/helpdesk/kanban`, `/helpdesk/divisions`, dan `/helpdesk/canned` diblokir dengan `403 Forbidden`.
+       - Akses ke `/helpdesk/tickets` dipaksa terkunci secara otomatis pada filter `where('user_id', Auth::id())`.
+       - Akses ke detail tiket (`/helpdesk/tickets/{id}`) dibatasi ketat: jika user mencoba membuka tiket orang lain, sistem langsung melempar `403 Forbidden`.
+  2. **User Divisi (Division Agent / Responder)**:
+     - **Visibilitas Data**: Hanya dapat melihat data tiket yang dialamatkan ke divisinya (`division_id IN ($myDivisionIds)`) atau tiket yang diajukan sendiri.
+     - **Navigasi Menu Sidebar**: Menu *Antrean Tiket*, *Kanban Helpdesk*, *Master Divisi & Agen*, dan *Balasan Cepat* **tidak ditampilkan** (menu ini eksklusif Administrator).
+     - **Tampilan Dashboard (`/helpdesk`)**:
+       - Kartu Metrik Divisi: *Tiket Divisi*, *Menunggu Respon Divisi*, *Sedang Diproses (Work Plan)*, *Selesai*.
+       - Kolom Utama: *Antrean Tiket Masuk Divisi Anda* dilengkapi tombol cepat *"Ambil Tiket"* (Claim) yang meng-assign tiket dan langsung membuat tugas di papan Kanban Work Plan pada step *Progress*, serta tombol *"Detail Tiket"*.
+       - Kartu Statistik: Monitoring SLA dan beban kerja divisi yang diampunya (*Open, Progress, Done*).
+       - Kolom Kanan: Tiket ditugaskan ke saya (*Assigned to Me*), tiket diajukan sendiri, dan log aktivitas terkini divisi.
+     - **Proteksi Backend**:
+       - Diblokir `403 Forbidden` dari menu Kanban, Master Divisi, dan Balasan Cepat.
+       - Query daftar tiket dikunci pada divisi miliknya (`whereIn('division_id', $myDivisionIds)`).
+  3. **Administrator (Super Admin)**:
+     - **Menu Lengkap Sidebar**: Menampilkan seluruh menu (*Dashboard Tiket, Antrean Tiket, Buat Tiket Baru, Kanban Helpdesk, Master Divisi & Agen, Balasan Cepat*).
+     - **Tampilan Dashboard**: Ringkasan global seluruh perusahaan (*system-wide*), antrean tiket urgent dari semua divisi, pemantauan seluruh divisi layanan dan kepatuhan SLA.
+     - **Hak Akses Penuh**: Mengelola divisi, memetakan karyawan inhouse sebagai agen, mengatur template balasan cepat, menggeser kartu di Kanban Helpdesk, dan mengelola seluruh tiket.
+- **Berkas Kode yang Dimodifikasi**:
+  - `app/Models/User.php`: Penambahan helper `isHelpdeskAdmin()`, `isHelpdeskDivisionUser()`, `isHelpdeskRegularUser()`, dan relasi helpdesk.
+  - `resources/views/layouts/app.blade.php`: Gating menu sidebar accordion Helpdesk Support dengan `@if(auth()->user()->isHelpdeskAdmin())`.
+  - `routes/web.php`: Penambahan middleware `'admin'` pada route kanban, divisions, dan canned responses.
+  - `app/Http/Controllers/Helpdesk/HelpdeskDashboardController.php`: Scoping metrik, antrean, distribusi, dan log aktivitas berbasis 3 peran.
+  - `app/Http/Controllers/Helpdesk/HelpdeskTicketController.php`: Scoping `index()`, otorisasi `show()`, penguncian `claim()`, `updateStatus()`, dan `kanban()`.
+  - `app/Http/Controllers/Helpdesk/HelpdeskDivisionController.php` & `HelpdeskCannedController.php`: Penegakan `authorizeAdmin()`.
+  - `resources/views/helpdesk/index.blade.php`: Arsitektur antarmuka baru dengan 3 varian tampilan (Regular User, Division User, Administrator).
+  - `resources/views/helpdesk/tickets/index.blade.php`: Header, tabs navigasi, dan filter divisi adaptif.
+  - `resources/views/helpdesk/tickets/show.blade.php`: Breadcrumbs adaptif dan pembatasan template balasan cepat.
+- **Hasil Pengujian Otomasi**:
+  - Berhasil diuji melalui skrip [test_helpdesk_roles.php](file:///C:/Users/user/.gemini/antigravity-ide/brain/41eba75b-a996-488f-9598-1f584053c808/scratch/test_helpdesk_roles.php) dengan hasil verifikasi seluruh peran (Admin, Division Agent, Regular User) berjalan presisi 100%.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

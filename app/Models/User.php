@@ -97,6 +97,22 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    public function isHelpdeskAdmin(): bool
+    {
+        return $this->role === 'admin' || $this->isAdmin();
+    }
+
+    public function isHelpdeskDivisionUser(): bool
+    {
+        if ($this->isHelpdeskAdmin()) return false;
+        return HelpdeskDivisionAgent::where('user_id', $this->id)->exists();
+    }
+
+    public function isHelpdeskRegularUser(): bool
+    {
+        return !$this->isHelpdeskAdmin() && !$this->isHelpdeskDivisionUser();
+    }
+
     public function isRecruiter(): bool
     {
         return in_array($this->role, ['recruiter', 'admin']);

@@ -10,8 +10,17 @@ use Illuminate\Support\Facades\Auth;
 
 class HelpdeskCannedController extends Controller
 {
+    protected function authorizeAdmin()
+    {
+        $user = Auth::user();
+        if (!$user || !$user->isHelpdeskAdmin()) {
+            abort(403, 'Akses menu Balasan Cepat terbatas untuk Administrator.');
+        }
+    }
+
     public function index()
     {
+        $this->authorizeAdmin();
         $user = Auth::user();
         if (!$user) return redirect()->route('login');
 
@@ -26,6 +35,7 @@ class HelpdeskCannedController extends Controller
 
     public function store(Request $request)
     {
+        $this->authorizeAdmin();
         $user = Auth::user();
 
         $request->validate([
@@ -46,6 +56,7 @@ class HelpdeskCannedController extends Controller
 
     public function destroy($id)
     {
+        $this->authorizeAdmin();
         $canned = HelpdeskCannedResponse::findOrFail($id);
         $canned->delete();
 

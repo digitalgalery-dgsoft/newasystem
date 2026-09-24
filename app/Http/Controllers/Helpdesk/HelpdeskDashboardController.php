@@ -22,84 +22,110 @@ class HelpdeskDashboardController extends Controller
 
         $now = Carbon::now();
 
-        // 1. Metrik Global
-        $totalTickets = HelpdeskTicket::count();
-        $openTickets = HelpdeskTicket::where('status', 'open')->count();
-        $inProgressTickets = HelpdeskTicket::whereIn('status', ['in_progress', 'answered'])->count();
-        $closedTickets = HelpdeskTicket::whereIn('status', ['resolved', 'closed'])->count();
+        $isAdmin = $user->isHelpdeskAdmin();
+        $isDivisionUser = $user->isHelpdeskDivisionUser();
+        $isRegularUser = $user->isHelpdeskRegularUser();
 
-        // Tiket Terlambat (Overdue)
-        $overdueTickets = HelpdeskTicket::whereNotIn('status', ['resolved', 'closed'])
-            ->whereNotNull('due_date')
-            ->where('due_date', '<', $now)
-            ->count();
-
-        // 2. Divisi yang dikelola oleh user saat ini
         $myDivisionIds = HelpdeskDivisionAgent::where('user_id', $user->id)
             ->pluck('division_id')
             ->toArray();
 
-        $isAgent = !empty($myDivisionIds) || $user->isAdmin();
-
-        // 3. Statistik per Divisi
-        $divisions = HelpdeskDivision::where('is_active', true)
-            ->withCount([
-                'tickets as total_count',
-                'tickets as open_count' => function ($q) {
-                    $q->where('status', 'open');
-                },
-                'tickets as progress_count' => function ($q) {
-                    $q->whereIn('status', ['in_progress', 'answered']);
-                },
-                'tickets as closed_count' => function ($q) {
-                    $q->whereIn('status', ['resolved', 'closed']);
-                },
-            ])
-            ->get();
-
-        // 4. Antrean Tiket Butuh Respon Segera (Open / Urgent)
-        $urgentQuery = HelpdeskTicket::with(['creator', 'division', 'assignedAgent'])
-            ->whereNotIn('status', ['resolved', 'closed']);
-
-        if (!$user->isAdmin()) {
-            // Jika agen divisi, utamakan divisi miliknya atau tiket miliknya
-            if (!empty($myDivisionIds)) {
-                $urgentQuery->where(function ($q) use ($user, $myDivisionIds) {
-                    $q->whereIn('division_id', $myDivisionIds)
-                        ->orWhere('user_id', $user->id)
-                        ->orWhere('assigned_to', $user->id);
-                });
-            } else {
-                $urgentQuery->where('user_id', $user->id);
-            }
+        // 1. Tentukan Base Query untuk Metrik Sesuai Hak Akses
+        // User Biasa: hanya tiket yang diajukan sendiri
+        // User Divisi: hanya tiket yang ditujukan ke divisinya
+        // Administrator: melihat seluruh tiket di sistem
+        if ($isAdmin) {
+            $baseQuery = HelpdeskTicket::query();
+        } elseif ($isDivisionUser) {
+            $baseQuery = HelpdeskTicket::whereIn('division_id', $myDivisionIds);
+        } else {
+            $baseQuery = HelpdeskTicket::where('user_id', $user->id);
         }
 
-        $urgentTickets = (clone $urgentQuery)
-            ->orderByRaw("CASE WHEN priority = 'Urgent' THEN 1 WHEN priority = 'High' THEN 2 WHEN status = 'open' THEN 3 ELSE 4 END")
-            ->orderBy('created_at', 'desc')
-            ->limit(7)
-            ->get();
+        // Metrik KPI tersaring sesuai peran
+        $totalTickets = (clone $baseQuery)->count();
+        $openTickets = (clone $baseQuery)->where('status', 'open')->count();
+        $inProgressTickets = (clone $baseQuery)->whereIn('status', ['in_progress', 'answered'])->count();
+        $closedTickets = (clone $baseQuery)->whereIn('status', ['resolved', 'closed'])->count();
 
-        // 5. Tiket Saya (Yang diajukan oleh user)
+        $overdueTickets = (clone $baseQuery)->whereNotIn('status', ['resolved', 'closed'])
+            ->whereNotNull('due_date')
+            ->where('due_date', '<', $now)
+            ->count();
+
+        // 2. Statistik Distribusi Divisi
+        if ($isAdmin) {
+            $divisions = HelpdeskDivision::where('is_active', true)
+                ->withCount([
+                    'tickets as total_count',
+                    'tickets as open_count' => fn($q) => $q->where('status', 'open'),
+                    'tickets as progress_count' => fn($q) => $q->whereIn('status', ['in_progress', 'answered']),
+                    'tickets as closed_count' => fn($q) => $q->whereIn('status', ['resolved', 'closed']),
+                ])
+                ->get();
+        } elseif ($isDivisionUser) {
+            $divisions = HelpdeskDivision::whereIn('id', $myDivisionIds)
+                ->where('is_active', true)
+                ->withCount([
+                    'tickets as total_count',
+                    'tickets as open_count' => fn($q) => $q->where('status', 'open'),
+                    'tickets as progress_count' => fn($q) => $q->whereIn('status', ['in_progress', 'answered']),
+                    'tickets as closed_count' => fn($q) => $q->whereIn('status', ['resolved', 'closed']),
+                ])
+                ->get();
+        } else {
+            $divisions = collect();
+        }
+
+        // 3. Antrean Tiket Butuh Respon
+        if ($isAdmin) {
+            $urgentTickets = HelpdeskTicket::with(['creator', 'division', 'assignedAgent'])
+                ->whereNotIn('status', ['resolved', 'closed'])
+                ->orderByRaw("CASE WHEN priority = 'Urgent' THEN 1 WHEN priority = 'High' THEN 2 WHEN status = 'open' THEN 3 ELSE 4 END")
+                ->orderBy('created_at', 'desc')
+                ->limit(7)
+                ->get();
+        } elseif ($isDivisionUser) {
+            $urgentTickets = HelpdeskTicket::with(['creator', 'division', 'assignedAgent'])
+                ->whereIn('division_id', $myDivisionIds)
+                ->whereNotIn('status', ['resolved', 'closed'])
+                ->orderByRaw("CASE WHEN priority = 'Urgent' THEN 1 WHEN priority = 'High' THEN 2 WHEN status = 'open' THEN 3 ELSE 4 END")
+                ->orderBy('created_at', 'desc')
+                ->limit(7)
+                ->get();
+        } else {
+            // User Biasa: hanya tiket aktif yang diajukan sendiri
+            $urgentTickets = HelpdeskTicket::with(['creator', 'division', 'assignedAgent'])
+                ->where('user_id', $user->id)
+                ->whereNotIn('status', ['resolved', 'closed'])
+                ->orderBy('created_at', 'desc')
+                ->limit(7)
+                ->get();
+        }
+
+        // 4. Tiket Saya (Diajukan oleh User yang login)
         $myTickets = HelpdeskTicket::with(['division', 'assignedAgent'])
             ->where('user_id', $user->id)
             ->orderBy('created_at', 'desc')
-            ->limit(5)
+            ->limit(10)
             ->get();
 
-        // 6. Tiket Ditugaskan kepada Saya (Assigned to Me)
-        $assignedToMeTickets = HelpdeskTicket::with(['creator', 'division'])
+        // 5. Tiket Ditugaskan kepada Saya (Assigned to Me) - Khusus Admin & Agen Divisi
+        $assignedToMeTickets = ($isAdmin || $isDivisionUser) ? HelpdeskTicket::with(['creator', 'division'])
             ->where('assigned_to', $user->id)
             ->whereNotIn('status', ['resolved', 'closed'])
             ->orderBy('due_date', 'asc')
             ->limit(5)
-            ->get();
+            ->get() : collect();
 
-        // 7. Riwayat Aktivitas Terbaru (Audit Logs)
-        $recentLogs = HelpdeskTicketLog::with(['ticket', 'user'])
-            ->orderBy('created_at', 'desc')
-            ->limit(10)
-            ->get();
+        // 6. Riwayat Aktivitas Terbaru
+        $logsQuery = HelpdeskTicketLog::with(['ticket', 'user']);
+        if ($isRegularUser) {
+            $logsQuery->whereHas('ticket', fn($q) => $q->where('user_id', $user->id));
+        } elseif ($isDivisionUser) {
+            $logsQuery->whereHas('ticket', fn($q) => $q->whereIn('division_id', $myDivisionIds));
+        }
+        $recentLogs = $logsQuery->orderBy('created_at', 'desc')->limit(10)->get();
 
         return view('helpdesk.index', compact(
             'totalTickets',
@@ -112,7 +138,9 @@ class HelpdeskDashboardController extends Controller
             'myTickets',
             'assignedToMeTickets',
             'recentLogs',
-            'isAgent',
+            'isAdmin',
+            'isDivisionUser',
+            'isRegularUser',
             'user'
         ));
     }
