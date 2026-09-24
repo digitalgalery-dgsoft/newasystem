@@ -765,6 +765,10 @@ class WorkPlanController extends Controller
         $task->status = $newStatus;
         if ($newStatus === 'done') {
             $task->date_completed = now();
+            // Sinkronisasi otomatis ke tiket Helpdesk jika terhubung
+            if (!empty($task->helpdesk_ticket_id)) {
+                \App\Services\HelpdeskWorkplanService::syncWorkplanTaskDoneToTicket($task);
+            }
         } elseif ($oldStatus === 'done' && $newStatus !== 'done') {
             $task->date_completed = null;
         }

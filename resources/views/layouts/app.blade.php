@@ -1176,6 +1176,74 @@
                             </a>
                         </li>
 
+                        <!-- HELPDESK & TICKETING (COLLAPSIBLE ACCORDION) -->
+                        @php
+                            $isHelpdeskActive = request()->is('helpdesk*');
+                        @endphp
+                        <li x-data="{ helpdeskOpen: {{ $isHelpdeskActive ? 'true' : 'false' }} }">
+                            <button @click="if(sidebarCollapsed) { toggleSidebar(); helpdeskOpen = true; } else { helpdeskOpen = !helpdeskOpen }" 
+                                    type="button"
+                                    title="Helpdesk Support"
+                                    class="w-full flex items-center rounded-xl text-sm font-semibold transition-all {{ $isHelpdeskActive ? 'bg-amber-50 text-amber-700' : 'text-slate-700 hover:bg-slate-50 hover:text-amber-600' }}"
+                                    :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-headset text-base w-5 text-center flex-shrink-0 {{ $isHelpdeskActive ? 'text-amber-600' : 'text-amber-500' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="flex-1 text-left truncate">Helpdesk Support</span>
+                                <span x-show="!sidebarCollapsed" class="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded-md mr-1">TICKET</span>
+                                <i x-show="!sidebarCollapsed" class="fa-solid fa-chevron-down text-xs text-slate-400 transition-transform duration-200" :class="{ 'rotate-180': helpdeskOpen }"></i>
+                            </button>
+
+                            <!-- SUB-MENU ITEMS LIST -->
+                            <div x-show="helpdeskOpen && !sidebarCollapsed" x-collapse class="pl-4 pr-1 py-1.5 space-y-1 border-l-2 border-amber-200 ml-4 mt-1">
+                                <!-- Dashboard Tiket -->
+                                <a href="{{ route('helpdesk.index') }}" 
+                                   title="Dashboard Tiket"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.index') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
+                                    <i class="fa-solid fa-chart-pie text-[11px] w-4 text-center"></i>
+                                    <span>Dashboard Tiket</span>
+                                </a>
+
+                                <!-- Antrean Tiket -->
+                                <a href="{{ route('helpdesk.tickets.index') }}" 
+                                   title="Antrean Tiket"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.tickets.index', 'helpdesk.tickets.show') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
+                                    <i class="fa-solid fa-inbox text-[11px] w-4 text-center"></i>
+                                    <span>Antrean Tiket</span>
+                                </a>
+
+                                <!-- Buat Tiket Baru -->
+                                <a href="{{ route('helpdesk.tickets.create') }}" 
+                                   title="Buat Tiket Baru"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.tickets.create') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
+                                    <i class="fa-solid fa-circle-plus text-[11px] w-4 text-center"></i>
+                                    <span>Buat Tiket Baru</span>
+                                </a>
+
+                                <!-- Kanban Helpdesk -->
+                                <a href="{{ route('helpdesk.kanban') }}" 
+                                   title="Kanban Helpdesk"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.kanban') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
+                                    <i class="fa-solid fa-table-columns text-[11px] w-4 text-center"></i>
+                                    <span>Kanban Helpdesk</span>
+                                </a>
+
+                                <!-- Master Divisi & Agen -->
+                                <a href="{{ route('helpdesk.divisions.index') }}" 
+                                   title="Master Divisi & Agen"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.divisions.*') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
+                                    <i class="fa-solid fa-sitemap text-[11px] w-4 text-center"></i>
+                                    <span>Master Divisi & Agen</span>
+                                </a>
+
+                                <!-- Template Balasan Cepat -->
+                                <a href="{{ route('helpdesk.canned.index') }}" 
+                                   title="Balasan Cepat"
+                                   class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold transition-all {{ request()->routeIs('helpdesk.canned.*') ? 'bg-amber-500 text-white shadow-sm' : 'text-slate-600 hover:text-amber-700 hover:bg-amber-50/60' }}">
+                                    <i class="fa-solid fa-bolt text-[11px] w-4 text-center"></i>
+                                    <span>Balasan Cepat</span>
+                                </a>
+                            </div>
+                        </li>
+
                         <!-- SUB-MENU INTERVIEW (COLLAPSIBLE ACCORDION) -->
                         <li>
                             <button @click="if(sidebarCollapsed) { toggleSidebar(); interviewOpen = true; } else { interviewOpen = !interviewOpen }" 

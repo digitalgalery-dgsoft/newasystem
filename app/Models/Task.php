@@ -26,13 +26,23 @@ class Task extends Model
         'delegator',
         'date_input',
         'date_completed',
+        'helpdesk_ticket_id',
     ];
 
     protected $casts = [
         'due_date' => 'date',
         'date_input' => 'datetime',
         'date_completed' => 'datetime',
+        'helpdesk_ticket_id' => 'integer',
     ];
+
+    /**
+     * Tiket Helpdesk terkait (jika dibuat otomatis dari respon tiket)
+     */
+    public function helpdeskTicket()
+    {
+        return $this->belongsTo(HelpdeskTicket::class, 'helpdesk_ticket_id');
+    }
 
     /**
      * Subtasks (checklist)

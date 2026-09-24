@@ -19,6 +19,10 @@ use App\Http\Controllers\CandidateImportController;
 use App\Http\Controllers\JobStatistikController;
 use App\Http\Controllers\WorkPlanController;
 use App\Http\Controllers\WorkPlanChatController;
+use App\Http\Controllers\Helpdesk\HelpdeskDashboardController;
+use App\Http\Controllers\Helpdesk\HelpdeskTicketController;
+use App\Http\Controllers\Helpdesk\HelpdeskDivisionController;
+use App\Http\Controllers\Helpdesk\HelpdeskCannedController;
 
 // ==========================================
 // HALAMAN AWAL WEB & LANDING PAGE (v3/index.php)
@@ -582,7 +586,44 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/workplan-chat/groups/{id}/messages', [WorkPlanChatController::class, 'sendMessage'])->name('workplan.chat.messages.send');
     Route::get('/workplan-chat/groups-poll', [WorkPlanChatController::class, 'getGroups'])->name('workplan.chat.groups.poll');
     Route::get('/workplan-chat/notifications/check', [WorkPlanChatController::class, 'checkNotifications'])->name('workplan.chat.notifications.check');
+
+    // ==========================================
+    // HELPDESK & TICKETING TERINTEGRASI WORK PLAN
+    // ==========================================
+    Route::prefix('helpdesk')->name('helpdesk.')->group(function () {
+        Route::get('/', [HelpdeskDashboardController::class, 'index'])->name('index');
+
+        // Kanban Board
+        Route::get('/kanban', [HelpdeskTicketController::class, 'kanban'])->name('kanban');
+
+        // Tiket Antrean & Interaksi
+        Route::get('/tickets', [HelpdeskTicketController::class, 'index'])->name('tickets.index');
+        Route::get('/tickets/create', [HelpdeskTicketController::class, 'create'])->name('tickets.create');
+        Route::post('/tickets', [HelpdeskTicketController::class, 'store'])->name('tickets.store');
+        Route::get('/tickets/{id}', [HelpdeskTicketController::class, 'show'])->name('tickets.show');
+        Route::post('/tickets/{id}/reply', [HelpdeskTicketController::class, 'reply'])->name('tickets.reply');
+        Route::post('/tickets/{id}/claim', [HelpdeskTicketController::class, 'claim'])->name('tickets.claim');
+        Route::post('/tickets/{id}/status', [HelpdeskTicketController::class, 'updateStatus'])->name('tickets.status');
+
+        // Master Divisi & Agen Inhouse
+        Route::get('/divisions', [HelpdeskDivisionController::class, 'index'])->name('divisions.index');
+        Route::post('/divisions', [HelpdeskDivisionController::class, 'store'])->name('divisions.store');
+        Route::put('/divisions/{id}', [HelpdeskDivisionController::class, 'update'])->name('divisions.update');
+        Route::delete('/divisions/{id}', [HelpdeskDivisionController::class, 'destroy'])->name('divisions.destroy');
+        Route::post('/divisions/sync-inhouse', [HelpdeskDivisionController::class, 'syncFromInhouse'])->name('divisions.sync_inhouse');
+        Route::post('/divisions/{id}/agents', [HelpdeskDivisionController::class, 'addAgent'])->name('divisions.agents.add');
+        Route::delete('/divisions/{id}/agents/{userId}', [HelpdeskDivisionController::class, 'removeAgent'])->name('divisions.agents.remove');
+
+        // Template Balasan Cepat
+        Route::get('/canned', [HelpdeskCannedController::class, 'index'])->name('canned.index');
+        Route::post('/canned', [HelpdeskCannedController::class, 'store'])->name('canned.store');
+        Route::delete('/canned/{id}', [HelpdeskCannedController::class, 'destroy'])->name('canned.destroy');
+    });
 });
+
+// Redirect sistem lama (helpdesk.php, ticket.php, wp.php, dll)
+Route::get('/helpdesk.php', fn() => redirect()->route('helpdesk.index'));
+Route::get('/ticket.php', fn() => redirect()->route('helpdesk.tickets.index'));
 
 // Redirect sistem lama (wp.php, wptodo.php, todo.php, exportwp.php)
 Route::get('/wp.php', fn() => redirect()->route('workplan.index'));

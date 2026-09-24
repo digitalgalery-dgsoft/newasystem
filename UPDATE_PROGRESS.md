@@ -2511,6 +2511,51 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 61. 🎫 Implementasi Modul Baru: Helpdesk Ticketing Terintegrasi Otomatis Work Plan (Step Progress) & Master Karyawan Inhouse (24 September 2026)
+- **Latar Belakang & Analisis Kebutuhan**:
+  - Merevitalisasi dan memodernisasi modul ticketing helpdesk dari sistem lama (`D:\ASystem\helpdesk`) ke dalam arsitektur native Laravel 12 ASystem.
+  - Memetakan divisi helpdesk secara langsung berbasis data **Master Karyawan Inhouse** (`employees` / `users`).
+  - Mengimplementasikan otomasi dua arah (*two-way synchronization*) ke modul **Work Plan & ToDo**: setiap kali petugas/karyawan merespon atau mengambil tiket yang masuk, data tiket tersebut secara otomatis terbuat sebagai tugas di papan Kanban Work Plan karyawan bersangkutan tepat pada kolom/step **Progress** (`inprogress`).
+  - Menjaga integritas seluruh fitur yang sudah berjalan tanpa gangguan (*zero-breakage guarantee*).
+- **Komponen Teknis & Arsitektur yang Dibangun**:
+  - **Migrasi Skema Basis Data**:
+    - `2026_09_24_140000_create_helpdesk_tables.php`:
+      - `helpdesk_divisions`: Pengaturan divisi layanan, kode unik, ikon, warna tema Tailwind, SLA (jam), dan tautan grup WhatsApp.
+      - `helpdesk_division_agents`: Pemetaan karyawan inhouse sebagai responder divisi dengan flag `is_lead` dan `is_auto_assign`.
+      - `helpdesk_tickets`: Data tiket dengan nomor unik otomatis (`TKT-YYYYMMDD-XXXX`), pengaju (`user_id`), divisi tujuan, petugas penanggung jawab (`assigned_to`), urgensi (`Low`, `Medium`, `High`, `Urgent`), status (`open`, `in_progress`, `answered`, `resolved`, `closed`), SLA deadline, berkas lampiran, dan relasi langsung ke Work Plan (`workplan_task_id`).
+      - `helpdesk_ticket_replies`: Percakapan real-time dengan dukungan **Catatan Internal Tim (Private Notes)** yang hanya terlihat oleh sesama agen dan Administrator.
+      - `helpdesk_ticket_logs`: Jejak audit (*audit trail*) otomatis mencatat setiap pembuatan, perubahan status, pengalihan agen, dan penyelesaian tiket.
+      - `helpdesk_canned_responses`: Template balasan cepat per divisi.
+    - `2026_09_24_140100_add_helpdesk_ticket_id_to_tasks_table.php`:
+      - Menambahkan kolom `helpdesk_ticket_id` (nullable, indexed) pada tabel `tasks` (Work Plan) untuk mengikat tugas ke tiket secara instan.
+  - **Lapisan Model Eloquent (`app/Models/`)**:
+    - [HelpdeskDivision.php](file:///d:/ASystem/newasystem/app/Models/HelpdeskDivision.php), [HelpdeskDivisionAgent.php](file:///d:/ASystem/newasystem/app/Models/HelpdeskDivisionAgent.php), [HelpdeskTicket.php](file:///d:/ASystem/newasystem/app/Models/HelpdeskTicket.php), [HelpdeskTicketReply.php](file:///d:/ASystem/newasystem/app/Models/HelpdeskTicketReply.php), [HelpdeskTicketLog.php](file:///d:/ASystem/newasystem/app/Models/HelpdeskTicketLog.php), [HelpdeskCannedResponse.php](file:///d:/ASystem/newasystem/app/Models/HelpdeskCannedResponse.php).
+    - Memperbarui [Task.php](file:///d:/ASystem/newasystem/app/Models/Task.php) (`helpdesk_ticket_id`, relasi `helpdeskTicket()`) dan [User.php](file:///d:/ASystem/newasystem/app/Models/User.php) (relasi `helpdeskTickets()`, `helpdeskAssignedTickets()`, `helpdeskDivisions()`).
+  - **Service Otomasi Work Plan (`app/Services/HelpdeskWorkplanService.php`)**:
+    - `syncTicketToWorkplan()`: Saat agen membalas tiket atau mengklik tombol *"Ambil Tiket"*, jika task belum ada maka otomatis di-generate ke tabel `tasks` dengan status `'inprogress'` (kolom Progress), prioritas dipetakan presisi, deskripsi lengkap, tenggat SLA, penanggung jawab (`assignee`), pencatatan aktivitas di `task_activities`, dan notifikasi ke `task_notifications`.
+    - `syncReplyToWorkplanComment()`: Setiap balasan chat di tiket otomatis disinkronkan ke tabel `task_comments` pada tugas Work Plan terkait.
+    - `syncTicketClosedToWorkplan()`: Saat status tiket diselesaikan/ditutup (`resolved`/`closed`), kartu tugas di Work Plan otomatis dipindahkan ke status `'done'` lengkap dengan `date_completed`.
+    - `syncWorkplanTaskDoneToTicket()`: Otomasi balik saat pengguna menyeret kartu tugas di papan Kanban Work Plan ke kolom `'done'`, tiket Helpdesk terkait otomatis berpindah status ke `'resolved'`.
+  - **Controller & Alur Bisnis (`app/Http/Controllers/Helpdesk/`)**:
+    - [HelpdeskDashboardController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/Helpdesk/HelpdeskDashboardController.php): Metrik KPI, antrean tiket butuh respon segera, statistik distribusi per divisi, dan feed aktivitas.
+    - [HelpdeskTicketController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/Helpdesk/HelpdeskTicketController.php): Filter multi-tab (Semua Tiket, Tiket Saya, Ditugaskan ke Saya, Tiket Divisi Saya), form pembuatan tiket, aksi claim instan, update status/prioritas, dan papan Kanban helpdesk.
+    - [HelpdeskDivisionController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/Helpdesk/HelpdeskDivisionController.php): Pengaturan divisi dan fitur `syncFromInhouse()` yang memindai Master Karyawan Inhouse untuk otomatis membuat divisi standar (IT Support, Operasional/OPS, GA, HRD, Finance/Tax, Legal) serta memetakan karyawan inhouse ke divisinya.
+    - [HelpdeskCannedController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/Helpdesk/HelpdeskCannedController.php): Manajemen template balasan cepat.
+  - **Antarmuka Pengguna (UI/UX) Standar Sapphire Blue ESA (`resources/views/helpdesk/`)**:
+    - [index.blade.php](file:///d:/ASystem/newasystem/resources/views/helpdesk/index.blade.php): Dashboard modern dengan kartu metrik glowing, antrean tiket prioritas tinggi, grafik sebaran divisi, dan log aktivitas real-time.
+    - [tickets/index.blade.php](file:///d:/ASystem/newasystem/resources/views/helpdesk/tickets/index.blade.php): Daftar tiket multi-filter, badge SLA countdown, avatar agen/pengaju, dan badge indikator integrasi Work Plan.
+    - [tickets/create.blade.php](file:///d:/ASystem/newasystem/resources/views/helpdesk/tickets/create.blade.php): Form interaktif pemilihan kartu divisi, tingkat urgensi, upload lampiran drag & drop, dan informasi integrasi Work Plan.
+    - [tickets/show.blade.php](file:///d:/ASystem/newasystem/resources/views/helpdesk/tickets/show.blade.php): Ruang chat messenger modern, pembeda visual catatan internal rahasia (kuning/amber dengan ikon gembok) vs balasan publik, dropdown balasan cepat, tombol ambil tiket, dan tautan langsung ke kartu Work Plan.
+    - [kanban.blade.php](file:///d:/ASystem/newasystem/resources/views/helpdesk/kanban.blade.php): Papan visual Kanban 4 kolom (Menunggu Respon ➡️ Sedang Diproses ➡️ Telah Dijawab ➡️ Selesai).
+    - [divisions/index.blade.php](file:///d:/ASystem/newasystem/resources/views/helpdesk/divisions/index.blade.php): Pengelolaan divisi dan daftar penugasan agen inhouse.
+    - [canned/index.blade.php](file:///d:/ASystem/newasystem/resources/views/helpdesk/canned/index.blade.php): Pengelolaan template respon cepat.
+  - **Navigasi Sidebar (`resources/views/layouts/app.blade.php`)**:
+    - Menambahkan menu accordion **Helpdesk Support** dengan badge `TICKET` dan icon headset elegan bernuansa amber di bawah Groups Chat.
+  - **Pengujian & Verifikasi Alur Menyeluruh**:
+    - Telah diuji melalui skrip otomasi [test_helpdesk_flow.php](file:///C:/Users/user/.gemini/antigravity-ide/brain/41eba75b-a996-488f-9598-1f584053c808/scratch/test_helpdesk_flow.php): verifikasi pembuatan tiket ➡️ respon agen ➡️ auto-assign ➡️ pembentukan otomatis tugas Work Plan di step `'inprogress'` ➡️ notifikasi penugasan ➡️ penyelesaian tiket ➡️ perubahan status tugas Work Plan menjadi `'done'`. Seluruh pengujian lulus 100%.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

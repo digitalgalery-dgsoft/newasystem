@@ -75,6 +75,23 @@ class User extends Authenticatable
         return $this->hasMany(InterviewAssessment::class, 'interviewer_id');
     }
 
+    public function helpdeskTickets(): HasMany
+    {
+        return $this->hasMany(HelpdeskTicket::class, 'user_id');
+    }
+
+    public function helpdeskAssignedTickets(): HasMany
+    {
+        return $this->hasMany(HelpdeskTicket::class, 'assigned_to');
+    }
+
+    public function helpdeskDivisions()
+    {
+        return $this->belongsToMany(HelpdeskDivision::class, 'helpdesk_division_agents', 'user_id', 'division_id')
+            ->withPivot('is_lead', 'is_auto_assign')
+            ->withTimestamps();
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
