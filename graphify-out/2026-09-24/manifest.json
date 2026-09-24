@@ -1512,9 +1512,9 @@
     "semantic_hash": "60c40741a9c5b915a5e5542cfb23bc25"
   },
   "app/Console/Commands/CheckAstriCommand.php": {
-    "mtime": 1790218650.2770793,
-    "seen": 1790218667.5432613,
-    "ast_hash": "5b911d0807b8f7c3950d5b8ffb598f43",
+    "mtime": 1790218704.9649427,
+    "seen": 1790218716.3419166,
+    "ast_hash": "6d44164af60ffff24b61a88f0c6ff8ed",
     "semantic_hash": ""
   },
   "app/Console/Commands/SyncAstriWpCommand.php": {

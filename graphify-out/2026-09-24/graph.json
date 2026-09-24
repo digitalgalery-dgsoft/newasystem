@@ -46334,7 +46334,7 @@
       "confidence_score": 0.85,
       "context": "call",
       "source_file": "app/Console/Commands/CheckAstriCommand.php",
-      "source_location": "L87",
+      "source_location": "L90",
       "weight": 1.0
     },
     {
@@ -47083,5 +47083,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "08e39033f043510f67e7043d7bb988d0dacf03e6"
+  "built_at_commit": "1c07ef3f0172a8d105b032f8e4a149b3d10282b8"
 }
