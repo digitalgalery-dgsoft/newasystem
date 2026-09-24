@@ -39,20 +39,25 @@ class CheckAstriCommand extends Command
         })->count();
         $this->line("Tasks with 'Astri Wahyuni': {$oldNameCount}");
 
-        $newNameCount = Task::where(function($q) {
-            $q->whereRaw('LOWER(TRIM("user")) LIKE ?', ['%astri wahyuni%st%'])
-              ->orWhereRaw('LOWER(TRIM("assignee")) LIKE ?', ['%astri wahyuni%st%'])
-              ->orWhereRaw('LOWER(TRIM("delegator")) LIKE ?', ['%astri wahyuni%st%']);
-        })->count();
-        $this->line("Tasks with 'ASTRI WAHYUNI,ST': {$newNameCount}");
+        $this->info("\n=== CHECKING YOHANA IN EMPLOYEES & USERS ===");
+        $empsYohana = Employee::where('nama_karyawan', 'LIKE', '%Yohana%')
+            ->orWhere('email', 'LIKE', '%yohana%')
+            ->orWhere('nama_karyawan', 'LIKE', '%Teraseptia%')
+            ->orWhere('nama_karyawan', 'LIKE', '%seagma%')
+            ->get();
+        $this->info("Employees found: " . $empsYohana->count());
+        foreach ($empsYohana as $e) {
+            $this->line("Emp ID: {$e->id} | NIK: {$e->nik} | Nama: '{$e->nama_karyawan}' | Email: '{$e->email}' | Jabatan: '{$e->jabatan}' | Status: '{$e->status}' | AksesLogin: '{$e->akses_login}' | Tipe: '{$e->tipe_karyawan}' | Area: '{$e->area}'");
+        }
 
-        $activeOld = Task::where(function($q) {
-            $q->whereRaw('LOWER(TRIM("user")) = ?', ['astri wahyuni'])
-              ->orWhereRaw('LOWER(TRIM("assignee")) = ?', ['astri wahyuni']);
-        })->whereNotIn('status', ['archived'])->select('id', 'title', 'status', 'user', 'assignee')->get();
-        $this->info("Active tasks with 'Astri Wahyuni': " . $activeOld->count());
-        foreach ($activeOld as $t) {
-            $this->line("  [#{$t->id}] ({$t->status}) {$t->title} (User: '{$t->user}', Assignee: '{$t->assignee}')");
+        $usersYohana = User::where('name', 'LIKE', '%Yohana%')
+            ->orWhere('email', 'LIKE', '%yohana%')
+            ->orWhere('name', 'LIKE', '%Teraseptia%')
+            ->orWhere('name', 'LIKE', '%seagma%')
+            ->get();
+        $this->info("Users found: " . $usersYohana->count());
+        foreach ($usersYohana as $u) {
+            $this->line("User ID: {$u->id} | Name: '{$u->name}' | Email: '{$u->email}' | Role: '{$u->role}' | IsActive: '{$u->is_active}'");
         }
 
         $activeNew = Task::where(function($q) {
