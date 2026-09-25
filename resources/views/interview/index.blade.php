@@ -1676,18 +1676,55 @@
                         </span>
                     </div>
 
-                    <!-- Warning jika ada kandidat lama dengan NIK sama -->
+                    <!-- Alert jika kandidat AKTIF dan tidak dapat di-replace -->
+                    <div id="previewBlockedAlert" class="hidden p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs space-y-2 shadow-xs">
+                        <div class="flex items-center gap-2 font-black text-rose-800 text-xs uppercase tracking-wider">
+                            <i class="fa-solid fa-triangle-exclamation text-rose-600 text-sm shrink-0"></i>
+                            <span>KANDIDAT SUDAH TERDAFTAR & BERSTATUS AKTIF</span>
+                        </div>
+                        <p class="leading-relaxed text-[11px] text-slate-700">
+                            Kandidat dengan NIK ini sudah ada di ASystem dalam status <b>AKTIF</b> dengan data profil dan ujian tes online yang telah tercatat.
+                        </p>
+                        <div class="p-2.5 bg-white/90 rounded-xl border border-rose-200 text-[11px] space-y-1.5 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500 font-medium">Terdaftar Under AS / Rekruter:</span>
+                                <span class="font-extrabold text-slate-900" id="previewBlockedAsName">-</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500 font-medium">Email / Kontak AS:</span>
+                                <span class="font-bold text-indigo-700 font-mono" id="previewBlockedAsEmail">-</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500 font-medium">Posisi & Penempatan:</span>
+                                <span class="font-semibold text-slate-800" id="previewBlockedAreaJob">-</span>
+                            </div>
+                            <div class="flex items-center justify-between pt-0.5 border-t border-slate-100">
+                                <span class="text-slate-500 font-medium">Progres CBT & Tes:</span>
+                                <span class="font-bold text-emerald-700" id="previewBlockedTests">-</span>
+                            </div>
+                        </div>
+                        <div class="p-2 bg-amber-50/80 rounded-lg border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-1.5 font-medium leading-snug">
+                            <i class="fa-solid fa-circle-info text-amber-600 text-xs mt-0.5 shrink-0"></i>
+                            <span>Sesuai SOP, data kandidat aktif <b>tidak dapat di-replace</b>. Data baru hanya bisa masuk/me-replace jika data aktif diarsipkan terlebih dahulu. <b>Silakan berkoordinasi dengan AS terkait.</b></span>
+                        </div>
+                    </div>
+
+                    <!-- Warning jika ada kandidat lama yang sudah berstatus ARSIP -->
                     <div id="previewArchiveWarning" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-2">
-                        <i class="fa-solid fa-circle-exclamation text-amber-500 text-xs shrink-0"></i>
-                        <span>NIK ini sebelumnya sudah pernah terdaftar di ASystem. Data lama otomatis di-<strong>REPLACE</strong> dan seluruh data tes online di-<strong>RESET</strong> ke awal agar pelamar dapat memulai seleksi tes dari awal.</span>
+                        <i class="fa-solid fa-clock-rotate-left text-amber-600 text-xs shrink-0"></i>
+                        <span>NIK ini sebelumnya terdaftar di ASystem dengan status <b>ARSIP</b>. Melanjutkan penarikan akan me-replace dan mengaktifkan kembali data kandidat ini.</span>
                     </div>
                 </div>
 
                 <!-- Tombol Eksekusi Tarik & Simpan -->
                 <div class="flex items-center justify-end gap-2.5 pt-1">
-                    <button type="button" onclick="resetOdooNikModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition">
+                    <button type="button" onclick="resetOdooNikModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
                         Batal / Ganti NIK
                     </button>
+                    <div id="btnBlockedNotice" class="hidden inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-100/90 border border-rose-300 text-rose-800 text-xs font-extrabold shadow-xs">
+                        <i class="fa-solid fa-lock text-rose-600"></i>
+                        <span>Penarikan Ditutup: Data Aktif Dilindungi</span>
+                    </div>
                     <button type="button" id="btnSaveCandidate" onclick="saveCandidateFromOdoo()" 
                             class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition hover:-translate-y-0.5 cursor-pointer">
                         <i class="fa-solid fa-cloud-arrow-down"></i>
@@ -2187,6 +2224,10 @@
         currentOdooApplicantData = null;
         document.getElementById('odooNikLoading').classList.add('hidden');
         document.getElementById('odooNikPreview').classList.add('hidden');
+        document.getElementById('previewBlockedAlert')?.classList.add('hidden');
+        document.getElementById('previewArchiveWarning')?.classList.add('hidden');
+        document.getElementById('btnSaveCandidate')?.classList.remove('hidden');
+        document.getElementById('btnBlockedNotice')?.classList.add('hidden');
         document.getElementById('odooNikSuccess').classList.add('hidden');
         document.getElementById('odooNikFooter').classList.remove('hidden');
         const inp = document.getElementById('odooNikInput');
@@ -2284,12 +2325,54 @@
             if (app.age) ttlText += ` (${app.age} Thn)`;
             document.getElementById('previewTtl').textContent = ttlText;
 
-            // Warning jika data lama ada
-            const warnEl = document.getElementById('previewArchiveWarning');
-            if (data.existing_candidate) {
-                warnEl.classList.remove('hidden');
+            // Warning & Proteksi Kandidat Aktif
+            const blockedAlert = document.getElementById('previewBlockedAlert');
+            const archiveWarn = document.getElementById('previewArchiveWarning');
+            const btnSave = document.getElementById('btnSaveCandidate');
+            const btnBlockedNotice = document.getElementById('btnBlockedNotice');
+
+            if (data.is_blocked && data.blocked_data) {
+                const b = data.blocked_data;
+                document.getElementById('previewBlockedAsName').textContent = b.as_name || '-';
+                document.getElementById('previewBlockedAsEmail').textContent = b.as_email || '-';
+                document.getElementById('previewBlockedAreaJob').textContent = `${b.job} • Area ${b.area} (${b.principle})`;
+                document.getElementById('previewBlockedTests').textContent = `${b.profile_status_text} • ${b.tests_text}`;
+
+                blockedAlert.classList.remove('hidden');
+                archiveWarn.classList.add('hidden');
+                btnSave.classList.add('hidden');
+                btnBlockedNotice.classList.remove('hidden');
+
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Kandidat Aktif Sudah Terdaftar!',
+                    html: `
+                        <div style="text-align: left; font-size: 12.5px; line-height: 1.6;">
+                            <p style="margin-bottom: 8px;">Kandidat <b>${b.name}</b> (NIK: <code>${b.nik}</code>) sudah terdaftar di ASystem dan saat ini berstatus <b>AKTIF</b>.</p>
+                            <div style="background-color: #fff1f2; border: 1px solid #fecdd3; padding: 10px; border-radius: 8px; color: #881337; margin-bottom: 10px;">
+                                <div><b>Terdaftar Under AS:</b> ${b.as_name}</div>
+                                <div><b>Email / Akun AS:</b> ${b.as_email}</div>
+                                <div><b>Area / Penempatan:</b> ${b.area} (${b.principle})</div>
+                                <div><b>Progres CBT & Tes:</b> ${b.profile_status_text} • ${b.tests_text}</div>
+                            </div>
+                            <p style="color: #92400e; background-color: #fef3c7; border: 1px solid #fde68a; padding: 8px; border-radius: 6px; font-size: 11.5px; font-weight: 500;">
+                                ⚠️ Sesuai SOP, data kandidat aktif <b>tidak dapat di-replace</b>. Data baru hanya bisa masuk jika data yang aktif diarsipkan terlebih dahulu. <b>Harap berkoordinasi dengan AS terkait.</b>
+                            </p>
+                        </div>
+                    `,
+                    confirmButtonText: 'Saya Mengerti',
+                    confirmButtonColor: '#e11d48',
+                });
+            } else if (data.existing_candidate) {
+                blockedAlert.classList.add('hidden');
+                archiveWarn.classList.remove('hidden');
+                btnSave.classList.remove('hidden');
+                btnBlockedNotice.classList.add('hidden');
             } else {
-                warnEl.classList.add('hidden');
+                blockedAlert.classList.add('hidden');
+                archiveWarn.classList.add('hidden');
+                btnSave.classList.remove('hidden');
+                btnBlockedNotice.classList.add('hidden');
             }
 
             document.getElementById('odooNikPreview').classList.remove('hidden');
@@ -2338,9 +2421,10 @@
 
             if (!data.success) {
                 Swal.fire({
-                    icon: 'error',
-                    title: 'Gagal Menyimpan',
-                    text: data.message || 'Terjadi kesalahan saat menyimpan data kandidat.',
+                    icon: data.is_blocked ? 'warning' : 'error',
+                    title: data.title || (data.is_blocked ? 'Kandidat Aktif Tidak Dapat Di-replace!' : 'Gagal Menyimpan'),
+                    html: `<div style="text-align: left; font-size: 13px; line-height: 1.6;">${(data.message || '').replace(/\n/g, '<br>')}</div>`,
+                    confirmButtonColor: data.is_blocked ? '#e11d48' : '#2563eb',
                 });
                 return;
             }

@@ -299,6 +299,51 @@ class CandidateImportService
                     $existingCandidates = Candidate::where('nik', $cleanKtp)->orderBy('id')->get();
                     $isReplaced = $existingCandidates->isNotEmpty();
 
+                    // VALIDASI PROTEKSI KANDIDAT AKTIF:
+                    // Sesuai aturan sistem, jika kandidat berstatus AKTIF (bukan Arsip):
+                    // Data TIDAK BISA di-replace atau diimpor ulang sampai data yang aktif diarsipkan.
+                    // Data baru hanya bisa me-replace data yang berstatus Arsip.
+                    if ($isReplaced) {
+                        $activeCandidate = $existingCandidates->first(function($c) {
+                            return $c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip';
+                        });
+
+                        if ($activeCandidate) {
+                            $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
+                            $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
+
+                            $testsStatus = [];
+                            if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
+                                $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
+                            }
+                            if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
+                                $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
+                                $mScore = $mRes ? $mRes->score : null;
+                                $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
+                            }
+                            if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
+                                $testsStatus[] = 'Tes Komputer (Selesai)';
+                            }
+                            $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses aktif';
+                            $profText = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness()) ? 'Profil Lengkap' : 'Profil Belum Lengkap';
+
+                            $warnMsg = "Baris {$rowNumber}: NIK {$cleanKtp} ({$applicantsName}) DILEWATI (TIDAK DAPAT DI-REPLACE). Kandidat berstatus AKTIF ({$profText}, {$testsText}) terdaftar under AS: {$asName} ({$asEmail}). Harap koordinasi dengan AS terkait. Hanya data berstatus Arsip yang dapat di-replace.";
+
+                            $onEvent('warning', $warnMsg, [
+                                'row' => $rowNumber,
+                                'nik' => $cleanKtp,
+                                'name' => $applicantsName,
+                                'as_name' => $asName,
+                                'as_email' => $asEmail,
+                                'tests' => $testsText,
+                                'reason' => 'active_candidate_protected',
+                            ]);
+
+                            $stats['failed']++;
+                            continue;
+                        }
+                    }
+
                     $candidatePayload = [
                         'nik'                      => $cleanKtp,
                         'full_name'                => $applicantsName,

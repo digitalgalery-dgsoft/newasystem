@@ -2876,6 +2876,37 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 71. 🚫 Validasi Ketat & Alert Proteksi: Blokir Replace Kandidat Aktif pada Tarik Odoo & Import Excel (25 September 2026)
+- **Kebutuhan & Aturan Bisnis Baru**:
+  1. Jika seorang kandidat di ASystem berstatus **AKTIF** (terutama dengan data profil lengkap atau tes online yang sudah dikerjakan), data kandidat tersebut **TIDAK BOLEH** ditimpa atau di-replace oleh pengguna lain yang melakukan import Excel maupun penarikan NIK dari Odoo ERP.
+  2. Sistem wajib memunculkan **notifikasi / alert interaktif** yang memuat:
+     - Informasi bahwa data kandidat tersebut sudah terdaftar di sistem dalam status aktif.
+     - Status kelengkapan data profil dan progres ujian online yang sudah selesai dikerjakan.
+     - Identitas jelas kepemilikan akun: terdaftar di bawah User / Rekruter (AS) siapa (nama lengkap rekruter, jabatan, dan alamat email).
+     - Instruksi tegas untuk melakukan koordinasi terlebih dahulu dengan AS terkait.
+     - Penegasan aturan bahwa data tidak bisa di-replace sampai kandidat aktif tersebut diarsipkan terlebih dahulu.
+  3. **Ketentuan Mutlak**: Data import Excel atau sinkronisasi Odoo baru **HANYA BISA mereplace data kandidat yang berstatus ARSIP**.
+- **Solusi & Implementasi Teknis**:
+  1. **Backend Endpoint Lookup & Simpan Odoo (`CandidateImportController.php`)**:
+     - **Metode `checkOdooByNik`**:
+       - Memeriksa seluruh kecocokan NIK di database lokal.
+       - Jika terdeteksi kandidat berstatus aktif (bukan Arsip), backend menandai flag `is_blocked = true` dan mengembalikan payload `blocked_data` berisi nama kandidat, nama AS (`user_display_name`), email AS (`useras`), area, prinsiple, kelengkapan profil, serta ringkasan tes yang sudah diselesaikan (Kepribadian, Matematika, Komputer).
+     - **Metode `importOdooByNik`**:
+       - Menambahkan pengecekan proteksi ganda sebelum transaksi database.
+       - Jika kandidat yang ditemukan berstatus aktif (bukan Arsip), request langsung dibatalkan (`DB::rollBack()`) dan mengembalikan pesan SweetAlert informatif dengan instruksi koordinasi dengan AS terkait.
+       - Hanya data yang berstatus `Arsip` yang diizinkan untuk di-replace dan diaktifkan kembali.
+  2. **Backend Import Streaming Excel (`CandidateImportService.php`)**:
+     - Pada setiap baris data Excel yang memiliki NIK terdaftar di sistem, dilakukan pengecekan apakah record kandidat berstatus aktif (bukan Arsip).
+     - Jika aktif, baris data tersebut otomatis **DILEWATI (SKIP)** tanpa mengubah data yang ada.
+     - Sistem memancarkan log event warning ke terminal progress bar dan merekam ke baris failed/warning lengkap dengan keterangan AS pemilik dan instruksi koordinasi.
+  3. **Antarmuka Pengguna & Modal Tarik Odoo (`resources/views/interview/index.blade.php`)**:
+     - Ditambahkan elemen UI banner `#previewBlockedAlert` bernuansa Rose/Red yang mencantumkan detail AS terkait, kontak email, dan progres CBT.
+     - Tombol *"Tarik & Proses Kandidat ke ASystem"* (`btnSaveCandidate`) otomatis disembunyikan dan digantikan dengan badge proteksi `#btnBlockedNotice` (*"Penarikan Ditutup: Data Aktif Dilindungi"*).
+     - Modal SweetAlert2 muncul secara otomatis menginformasikan bahwa kandidat aktif terlindungi dan menghimbau rekruter berkoordinasi dengan AS pemilik data.
+     - Jika kandidat berstatus Arsip, banner `#previewArchiveWarning` berwarna amber akan tampil dan tombol simpan tetap terbuka untuk mereaktivasi kandidat.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

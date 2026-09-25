@@ -300,12 +300,54 @@ class CandidateImportController extends Controller
         }
 
         $allMatchNiks = array_values(array_unique(array_filter([$cleanNik, $targetNik, $targetKk])));
-        $existingCandidate = Candidate::whereIn('nik', $allMatchNiks)
-            ->where(function($q) {
-                $q->whereNull('jenis')->orWhere('jenis', '');
-            })
-            ->where('status', 'Active')
-            ->first();
+        $existingCandidates = Candidate::whereIn('nik', $allMatchNiks)->orderBy('id')->get();
+
+        // Cek apakah ada kandidat dengan NIK ini yang saat ini sedang AKTIF (bukan status Arsip)
+        $activeCandidate = $existingCandidates->first(function($c) {
+            return $c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip';
+        });
+
+        $isBlocked = false;
+        $blockedData = null;
+
+        if ($activeCandidate) {
+            $isBlocked = true;
+            $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
+            $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
+
+            $testsStatus = [];
+            if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
+                $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
+            }
+            if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
+                $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
+                $mScore = $mRes ? $mRes->score : null;
+                $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
+            }
+            if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
+                $testsStatus[] = 'Tes Komputer (Selesai)';
+            }
+            $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses seleksi sedang berjalan';
+            $profComplete = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness());
+
+            $blockedData = [
+                'id' => $activeCandidate->id,
+                'name' => $activeCandidate->full_name,
+                'nik' => $activeCandidate->nik,
+                'status' => $activeCandidate->status,
+                'as_name' => $asName,
+                'as_email' => $asEmail,
+                'area' => $activeCandidate->area ?? '-',
+                'principle' => $activeCandidate->principle ?? '-',
+                'job' => $activeCandidate->applied_job ?? '-',
+                'tests_text' => $testsText,
+                'is_profile_complete' => $profComplete,
+                'profile_status_text' => $profComplete ? 'Lengkap' : 'Belum Lengkap',
+                'created_at' => $activeCandidate->created_at ? $activeCandidate->created_at->format('d/m/Y H:i') : null,
+            ];
+        }
+
+        $lastExisting = $existingCandidates->last();
 
         $rawGender = strtolower(trim((string)($foundApplicant['gender'] ?? '')));
         $gender = 'Laki-laki';
@@ -344,11 +386,14 @@ class CandidateImportController extends Controller
                 'email'        => $foundApplicant['email_from'] ?? null,
                 'gender'       => $gender,
             ],
-            'existing_candidate' => $existingCandidate ? [
-                'id'         => $existingCandidate->id,
-                'name'       => $existingCandidate->full_name,
-                'status'     => $existingCandidate->status,
-                'created_at' => $existingCandidate->created_at ? $existingCandidate->created_at->format('d/m/Y H:i') : null,
+            'is_blocked' => $isBlocked,
+            'blocked_data' => $blockedData,
+            'existing_candidate' => $lastExisting ? [
+                'id'         => $lastExisting->id,
+                'name'       => $lastExisting->full_name,
+                'status'     => $lastExisting->status,
+                'is_active'  => ($lastExisting->status !== 'Arsip' && $lastExisting->status_kandidat !== 'Arsip'),
+                'created_at' => $lastExisting->created_at ? $lastExisting->created_at->format('d/m/Y H:i') : null,
             ] : null,
         ]);
     }
@@ -515,6 +560,56 @@ class CandidateImportController extends Controller
             $allPossibleNiks = array_values(array_unique(array_filter([$cleanNik, $cleanSearched, $targetNik, $targetKk])));
             $existingCandidates = Candidate::whereIn('nik', $allPossibleNiks)->orderBy('id')->get();
             $isReplaced = $existingCandidates->isNotEmpty();
+
+            // VALIDASI PROTEKSI KANDIDAT AKTIF:
+            // Sesuai aturan sistem, jika kandidat berstatus AKTIF (bukan Arsip):
+            // Data TIDAK BISA di-replace atau diimpor ulang sampai data yang aktif diarsipkan.
+            // Data baru hanya bisa me-replace data yang berstatus Arsip.
+            $activeCandidate = $existingCandidates->first(function($c) {
+                return $c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip';
+            });
+
+            if ($activeCandidate) {
+                DB::rollBack();
+                $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
+                $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
+
+                $testsStatus = [];
+                if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
+                    $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
+                }
+                if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
+                    $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
+                    $mScore = $mRes ? $mRes->score : null;
+                    $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
+                }
+                if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
+                    $testsStatus[] = 'Tes Komputer (Selesai)';
+                }
+                $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses seleksi sedang berjalan';
+                $profText = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness()) ? 'Lengkap' : 'Belum Lengkap';
+
+                return response()->json([
+                    'success' => false,
+                    'is_blocked' => true,
+                    'title' => 'Kandidat Aktif Tidak Dapat Di-replace!',
+                    'message' => "Kandidat dengan NIK {$targetNik} ({$activeCandidate->full_name}) sudah terdaftar di ASystem dan saat ini berstatus AKTIF.\n\n"
+                               . "• Status Profil: {$profText}\n"
+                               . "• Progres Tes Online: {$testsText}\n"
+                               . "• Terdaftar under AS: {$asName} ({$asEmail})\n"
+                               . "• Area / Posisi: {$activeCandidate->applied_job} • Area {$activeCandidate->area} ({$activeCandidate->principle})\n\n"
+                               . "Sesuai SOP, data kandidat aktif tidak dapat di-replace. Data baru hanya bisa masuk/me-replace jika data aktif diarsipkan terlebih dahulu. Harap berkoordinasi dengan AS terkait ({$asName} - {$asEmail}).",
+                    'candidate' => [
+                        'id' => $activeCandidate->id,
+                        'name' => $activeCandidate->full_name,
+                        'status' => $activeCandidate->status,
+                        'as_name' => $asName,
+                        'as_email' => $asEmail,
+                        'tests_status' => $testsText,
+                        'profile_status' => $profText,
+                    ]
+                ], 200);
+            }
 
             $candidatePayload = [
                 'nik'                      => $targetNik,
