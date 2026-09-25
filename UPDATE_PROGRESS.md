@@ -2774,6 +2774,33 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
   3. **Tabel Antrean Tiket (`index.blade.php`)**:
      - Menambahkan tombol aksi cepat *"Tutup"* pada kolom Aksi untuk tiket milik pengaju yang masih berstatus aktif, lengkap dengan konfirmasi SweetAlert2.
 
+### 68. 👥 Penyempurnaan Hak Akses Administrator Talent Pool (admin_officer) & Cakupan Scope Nasional Tanpa Pembatasan Rekruter (25 September 2026)
+- **Investigasi Masalah & Akar Penyebab (*Root Cause Analysis*)**:
+  1. **Akar Masalah Pembatasan User (`useras`)**:
+     - Pengguna dengan peran **Administrator Talent Pool (`admin_officer`)** atau pengguna yang telah diatur cakupannya ke **"Semua Prinsiple"** dan **"Cover Area: Nasional"** mengalami masalah di mana tabel Kandidat Portal (`/kandidatportal`) tidak menampilkan satu pun kandidat (0 data) dan hasil ekspor Excel kosong.
+     - **Penyebab**: Di `KandidatPortalController::index` dan `exportExcel`, jika `$canViewAllRecruiters` bernilai `false`, kueri secara otomatis dibatasi pada data kandidat yang kolom `useras`-nya adalah nama/email pengguna yang sedang login (`whereIn('useras', $userIdentifiers)`).
+     - Karena administrator / pengelola talent pool bukan pewawancara/rekruter lapangan yang namanya tercatat pada saat input kandidat, tidak ada satupun kandidat yang terdaftar atas nama pengguna tersebut sehingga kueri menghasilkan 0 data.
+  2. **Akar Masalah Role Tertimpa Saat Impersonasi (`switchUser`)**:
+     - Pada `EmployeeController::switchUser()`, saat Administrator melakukan fitur *Login Sebagai (Impersonate)* untuk menguji akses pengguna, terdapat baris kode `$user->update(['role' => $userRole])` yang secara mutlak menimpa role pengguna kembali ke role bawaan karyawan (`karyawan_inhouse` atau `karyawan_ratecard`), menghapus role khusus `admin_officer` yang sebelumnya telah dikonfigurasi melalui RBAC.
+  3. **Akar Masalah Ketiadaan Permission `view_all_candidates`**:
+     - Logika `canViewAllCandidates()` memeriksa `$this->hasPermission('view_all_candidates')`, namun permission tersebut belum terdaftar dalam tabel `permissions` sehingga tidak dapat diatur melalui matriks perizinan RBAC.
+- **Solusi & Implementasi Teknis**:
+  1. **Model Pengguna (`app/Models/User.php`)**:
+     - Memperbarui metode `canViewAllCandidates()`:
+       - Mengakui seluruh peran administrator talent pool nasional: `admin`, `admin_officer`, `administrator_talent_pools`, `administrator_talent_pool`, `talent_pool_admin`, `head_hr`, `head`.
+       - Mendukung pencocokan nama peran yang mengandung kata kunci `officer`, `talent`, atau `administrator talent pool`.
+       - **Klausul Scope Nasional**: Jika pengguna diatur dengan cakupan **Semua Prinsiple** (`handlesAllPrinciples()`) DAN **Cover Area Nasional** (`coversAllAreas()`), pengguna otomatis memiliki hak melihat seluruh kandidat nasional tanpa dibatasi nama pewawancara (`useras`), berlaku bagi pengguna dengan `scope_override = true` atau pengguna non-recruiter lapangan.
+       - Mempertahankan pembatasan ketat untuk 124 rekruter lapangan reguler (`role === 'recruiter'` tanpa override) agar tetap hanya melihat kandidat miliknya sendiri.
+  2. **Controller Karyawan (`app/Http/Controllers/EmployeeController.php`)**:
+     - Memperbaiki metode `switchUser()`: Menjaga konsistensi role kustom pengguna (`assignedRole`) agar impersonasi tidak menimpa role khusus yang telah diatur di RBAC kembali ke `karyawan_inhouse`.
+  3. **Migrasi Database & Perizinan RBAC (`database/migrations/2026_09_25_113000_seed_view_all_candidates_permission_and_admin_officer_role.php`)**:
+     - Menambahkan izin resmi `view_all_candidates` (*Lihat Seluruh Kandidat Nasional*) pada modul *Rekrutmen & Interview*.
+     - Memastikan role `admin_officer` (*Administrator Talent Pool*) terdaftar di tabel `roles` dengan hak cakupan `handle_all_principles = true` dan `cover_all_areas = true`.
+     - Menautkan izin `view_all_candidates`, `interview.view`, `interview.assess`, `ai.ranking`, `job.manage`, dan `export.data` ke role `admin_officer` dan `admin`.
+- **Hasil Pengujian**:
+  - Simulasi kueri controller pada akun dengan role `admin_officer` maupun akun karyawan dengan cakupan All Prinsiple & Nasional berhasil memuat seluruh 3.456 data kandidat portal secara instan (`select * from candidates where jenis = 'Job Portal'`).
+  - Rekruter lapangan biasa tetap aman dan terisolasi pada kandidat miliknya sendiri.
+
 ---
 
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal

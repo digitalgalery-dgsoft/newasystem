@@ -233,8 +233,12 @@ class User extends Authenticatable
 
     /**
      * Cek apakah user berhak melihat seluruh data kandidat (lintas rekruter / nasional)
-     * Mengembalikan true jika user adalah admin, role head_hr/admin_officer,
-     * ATAU memiliki izin khusus 'view_all_candidates'.
+     * Mengembalikan true jika:
+     * 1. User adalah admin murni (role === 'admin' atau isAdmin())
+     * 2. Role adalah admin_officer / administrator talent pool / head_hr / dsb
+     * 3. Memiliki izin khusus 'view_all_candidates'
+     * 4. User atau Role memiliki cakupan "All Prinsiple" DAN "Cover Area: Nasional"
+     *    (Kecuali jika user adalah role 'recruiter' murni tanpa scope_override kustom)
      */
     public function canViewAllCandidates(): bool
     {
@@ -242,12 +246,46 @@ class User extends Authenticatable
             return true;
         }
 
-        if (in_array($this->role, ['head_hr', 'admin_officer'])) {
+        // Role khusus administrasi & pimpinan talent pool
+        $roleName = strtolower(trim($this->role ?? ''));
+        $roleModelName = strtolower(trim($this->roleModel?->name ?? ''));
+        $roleDisplayName = strtolower(trim($this->roleModel?->display_name ?? ''));
+
+        $nationalAdminRoles = [
+            'admin',
+            'admin_officer',
+            'administrator_talent_pools',
+            'administrator_talent_pool',
+            'talent_pool_admin',
+            'admin_talent_pool',
+            'admin_talent_pools',
+            'head_hr',
+            'head',
+        ];
+
+        if (in_array($roleName, $nationalAdminRoles, true) || in_array($roleModelName, $nationalAdminRoles, true)) {
+            return true;
+        }
+
+        if (
+            str_contains($roleName, 'admin_officer') ||
+            str_contains($roleDisplayName, 'administrator talent pool') ||
+            str_contains($roleDisplayName, 'administrator talent pools')
+        ) {
             return true;
         }
 
         if ($this->hasPermission('view_all_candidates')) {
             return true;
+        }
+
+        // Jika user secara eksplisit di-set All Prinsiple dan Cover Area Nasional (tidak perlu cek berdasarkan usernya)
+        if ($this->handlesAllPrinciples() && $this->coversAllAreas()) {
+            // Berlaku jika user memiliki scope_override aktif (admin sengaja mengatur user ini ke All Prinsiple & Cover Area Nasional)
+            // ATAU jika role user BUKAN recruiter lapangan biasa
+            if ($this->scope_override || !in_array($roleName, ['recruiter', 'role_akses_as'], true)) {
+                return true;
+            }
         }
 
         return false;

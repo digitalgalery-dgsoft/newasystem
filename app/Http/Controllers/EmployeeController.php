@@ -523,11 +523,17 @@ class EmployeeController extends Controller
                 'is_active' => true,
             ]
         );
+        // Pertahankan role khusus yang telah diatur oleh admin (seperti admin_officer, admin, recruiter, head_hr, dsb)
+        $existingRole = $user->role;
+        $assignedRole = (!empty($existingRole) && !in_array($existingRole, ['karyawan_inhouse', 'karyawan_ratecard'], true))
+            ? $existingRole
+            : ($existingRole ?: $userRole);
+
         $user->update([
             'name' => $employee->nama_karyawan,
-            'role' => $userRole,
-            'area' => $employee->area,
-            'job_title' => $employee->jabatan,
+            'role' => $assignedRole,
+            'area' => $employee->area ?: $user->area,
+            'job_title' => $employee->jabatan ?: $user->job_title,
             'is_active' => true,
         ]);
 
