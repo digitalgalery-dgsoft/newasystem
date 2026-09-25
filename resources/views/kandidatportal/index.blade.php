@@ -405,7 +405,7 @@
                         <option value="my" {{ $filterRecruiter === 'my' ? 'selected' : '' }}>👤 Data Saya ({{ auth()->user()->name ?? 'User' }})</option>
                         <optgroup label="Pilih Rekruter Spesifik:">
                             @foreach($allRecruiters as $r)
-                                <option value="{{ $r->useras }}" {{ $filterRecruiter === $r->useras ? 'selected' : '' }}>
+                                <option value="{{ $r->useras }}" {{ ($filterRecruiter === $r->useras || (isset($r->aliases) && in_array(strtolower($filterRecruiter), $r->aliases, true))) ? 'selected' : '' }}>
                                     {{ $r->display_name }} ({{ $r->total }} pelamar)
                                 </option>
                             @endforeach

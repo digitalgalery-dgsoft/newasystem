@@ -120,32 +120,31 @@ class KandidatPortalController extends Controller
                 ->orderByDesc('total')
                 ->get();
 
-            $recruiterEmails = $allRecruiters->pluck('useras')->filter(fn($u) => str_contains($u, '@'))->map(fn($e) => strtolower(trim($e)))->unique()->values()->all();
-            $employeeLookup = [];
-            if (!empty($recruiterEmails)) {
-                $emps = Employee::whereIn(DB::raw('LOWER(TRIM(email))'), $recruiterEmails)
-                    ->whereNotNull('nama_karyawan')
-                    ->where('nama_karyawan', '!=', '')
-                    ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
-                    ->get(['email', 'nama_karyawan', 'jabatan']);
-                foreach ($emps as $e) {
-                    $k = strtolower(trim($e->email));
-                    $nama = trim($e->nama_karyawan);
-                    $jab = trim($e->jabatan ?? '');
-                    $employeeLookup[$k] = !empty($jab) ? "{$nama} ({$jab})" : $nama;
+            $groupedRecruiters = [];
+            foreach ($allRecruiters as $r) {
+                $fake = new Candidate(['useras' => $r->useras]);
+                $disp = $fake->user_display_name;
+                if ($disp === '-' || empty($disp)) {
+                    $disp = str_contains($r->useras, '@') ? $r->useras : \App\Services\CandidateXlsxExportService::cleanPersonName($r->useras);
+                }
+
+                $key = strtolower(trim($disp));
+                if (!isset($groupedRecruiters[$key])) {
+                    $groupedRecruiters[$key] = (object) [
+                        'useras' => $r->useras,
+                        'display_name' => $disp,
+                        'total' => (int) $r->total,
+                        'aliases' => [strtolower(trim($r->useras))],
+                    ];
+                } else {
+                    $groupedRecruiters[$key]->total += (int) $r->total;
+                    $groupedRecruiters[$key]->aliases[] = strtolower(trim($r->useras));
                 }
             }
 
-            foreach ($allRecruiters as $r) {
-                $lower = strtolower(trim($r->useras));
-                if (isset($employeeLookup[$lower])) {
-                    $r->display_name = $employeeLookup[$lower];
-                } elseif (str_contains($r->useras, '@')) {
-                    $r->display_name = $r->useras;
-                } else {
-                    $r->display_name = ucwords(strtolower($r->useras));
-                }
-            }
+            // Sort grouped recruiters alphabetically by display_name
+            usort($groupedRecruiters, fn($a, $b) => strcasecmp($a->display_name, $b->display_name));
+            $allRecruiters = collect($groupedRecruiters);
         }
 
         // Base Query: Pelamar dari Job Portal (jenis = 'Job Portal')
@@ -156,14 +155,18 @@ class KandidatPortalController extends Controller
         $scopeTitle = 'Kandidat Milik Anda (' . $displayUserName . ')';
 
         if ($canViewAllRecruiters) {
-            if (!empty($filterRecruiter) && $filterRecruiter !== 'all' && $filterRecruiter !== 'my') {
-                // Admin / All-scope memfilter rekruter terpilih
-                $baseQuery->where(function ($q) use ($filterRecruiter) {
-                    $q->where('useras', $filterRecruiter)
-                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterRecruiter))]);
+            if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
+                // Admin / All-scope memfilter rekruter terpilih: rangkul seluruh alias (email maupun nama)
+                $recIdentifiers = $this->resolveRecruiterFilterIdentifiers($filterRecruiter);
+                $baseQuery->where(function ($q) use ($filterRecruiter, $recIdentifiers) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $recIdentifiers)
+                      ->orWhere('useras', $filterRecruiter);
                 });
-                $displayUserName = $filterRecruiter;
-                $scopeTitle = 'Rekruter: ' . $filterRecruiter;
+
+                $fakeFilter = new Candidate(['useras' => $filterRecruiter]);
+                $resolvedName = $fakeFilter->user_display_name;
+                $displayUserName = ($resolvedName !== '-' && !empty($resolvedName)) ? $resolvedName : $filterRecruiter;
+                $scopeTitle = 'Rekruter: ' . $displayUserName;
             } elseif ($filterRecruiter === 'my') {
                 $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
                     if (!empty($userIdentifiers)) {
@@ -1392,10 +1395,11 @@ class KandidatPortalController extends Controller
 
         if ($canViewAllRecruiters) {
             if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
-                // Admin / All-scope memfilter rekruter terpilih
-                $baseQuery->where(function ($q) use ($filterRecruiter) {
-                    $q->where('useras', $filterRecruiter)
-                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterRecruiter))]);
+                // Admin / All-scope memfilter rekruter terpilih: rangkul seluruh alias (email maupun nama)
+                $recIdentifiers = $this->resolveRecruiterFilterIdentifiers($filterRecruiter);
+                $baseQuery->where(function ($q) use ($filterRecruiter, $recIdentifiers) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $recIdentifiers)
+                      ->orWhere('useras', $filterRecruiter);
                 });
             } elseif ($filterRecruiter === 'my') {
                 $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
@@ -1523,21 +1527,9 @@ class KandidatPortalController extends Controller
         $recruiterLabel = 'Semua Rekruter (Nasional)';
         if ($isAdmin || $canViewAllRecruiters) {
             if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
-                if (str_contains($filterRecruiter, '@')) {
-                    $emp = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($filterRecruiter))])
-                        ->whereNotNull('nama_karyawan')
-                        ->where('nama_karyawan', '!=', '')
-                        ->first(['nama_karyawan', 'jabatan']);
-                    if ($emp) {
-                        $nama = trim($emp->nama_karyawan);
-                        $jab = trim($emp->jabatan ?? '');
-                        $recruiterLabel = !empty($jab) ? "{$nama} ({$jab})" : $nama;
-                    } else {
-                        $recruiterLabel = $filterRecruiter;
-                    }
-                } else {
-                    $recruiterLabel = $filterRecruiter;
-                }
+                $fakeFilter = new Candidate(['useras' => $filterRecruiter]);
+                $resolvedName = $fakeFilter->user_display_name;
+                $recruiterLabel = ($resolvedName !== '-' && !empty($resolvedName)) ? $resolvedName : $filterRecruiter;
             }
         } else {
             $recruiterLabel = $user ? $user->name : 'User';
@@ -1623,5 +1615,68 @@ class KandidatPortalController extends Controller
         }
 
         return redirect()->back()->with('warning', $result['message'] ?? 'NIK kandidat tidak ditemukan di Odoo.');
+    }
+
+    /**
+     * Resolusi seluruh alias/identitas useras rekruter (email, nama lengkap, nama tanpa jabatan dalam kurung)
+     * untuk query pencarian/filter kandidat agar mencakup seluruh varian input.
+     */
+    protected function resolveRecruiterFilterIdentifiers(string $filterRecruiter): array
+    {
+        $identifiers = [strtolower(trim($filterRecruiter))];
+        $stripped = strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $filterRecruiter)));
+        if (!empty($stripped)) {
+            $identifiers[] = $stripped;
+        }
+
+        try {
+            $emp = Employee::where(function ($q) use ($filterRecruiter, $stripped) {
+                    $q->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($filterRecruiter))])
+                      ->orWhereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower(trim($filterRecruiter))])
+                      ->orWhereRaw('LOWER(TRIM(nama_karyawan)) = ?', [$stripped]);
+                })
+                ->whereNotNull('nama_karyawan')
+                ->where('nama_karyawan', '!=', '')
+                ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
+                ->first(['email', 'nama_karyawan']);
+
+            if ($emp) {
+                if (!empty($emp->email)) {
+                    $identifiers[] = strtolower(trim($emp->email));
+                }
+                if (!empty($emp->nama_karyawan)) {
+                    $identifiers[] = strtolower(trim($emp->nama_karyawan));
+                    $s = strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $emp->nama_karyawan)));
+                    if (!empty($s)) {
+                        $identifiers[] = $s;
+                    }
+                }
+            }
+
+            $user = User::where(function ($q) use ($filterRecruiter, $stripped) {
+                    $q->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($filterRecruiter))])
+                      ->orWhereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim($filterRecruiter))])
+                      ->orWhereRaw('LOWER(TRIM(name)) = ?', [$stripped]);
+                })
+                ->whereNotNull('name')
+                ->first(['email', 'name']);
+
+            if ($user) {
+                if (!empty($user->email)) {
+                    $identifiers[] = strtolower(trim($user->email));
+                }
+                if (!empty($user->name)) {
+                    $identifiers[] = strtolower(trim($user->name));
+                    $s = strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $user->name)));
+                    if (!empty($s)) {
+                        $identifiers[] = $s;
+                    }
+                }
+            }
+        } catch (\Throwable $th) {
+            // safeguard
+        }
+
+        return array_values(array_unique(array_filter($identifiers)));
     }
 }

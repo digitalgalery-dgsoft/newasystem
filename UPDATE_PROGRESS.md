@@ -2803,6 +2803,39 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 69. 📑 Standardisasi & Harmonisasi Kolom Nama AS pada Export Excel Kandidat Portal & Filter Web (25 September 2026)
+- **Latar Belakang & Investigasi Masalah (*Root Cause Analysis*)**:
+  1. **Dualitas Nilai Kolom `Nama AS` pada Excel**:
+     - Pada hasil export data Kandidat Job Portal ke Excel (.xlsx), ditemukan inkonsistensi baris data pada satu personel yang sama, contohnya:
+       - `Anak Agung Gede Surya Wikrama Putra (AS OPS - Mataram)` vs `Anak Agung Gede Surya Wikrama Putra`
+       - `Abdur Rahman (AS OPS - Jambi)` vs `Abdur Rahman`
+     - Hal ini menyebabkan Excel mendeteksinya sebagai dua entitas/user yang berbeda dalam dropdown filter maupun *pivot table*, serta data tampak kurang rapi.
+  2. **Penyebab Teknis (*Root Cause*)**:
+     - Pada skrip export sebelumnya (`CandidateXlsxExportService.php`), penarikan data pegawai (`Employee`) hanya dilakukan berdasarkan alamat email (`str_contains($raw, '@')`).
+     - Jika baris data kandidat di database (`candidates.useras`) tercatat berupa alamat email (misal `abdurrahman2330@gmail.com`), sistem berhasil mencocokkannya ke tabel `Employee` dan menambahkan jabatan menjadi `"Abdur Rahman (AS OPS - Jambi)"`.
+     - Namun jika baris data kandidat tercatat langsung berupa nama lengkap (misal `Abdur Rahman` atau `Anak Agung Gede Surya Wikrama Putra`), sistem tidak mencocokkannya ke tabel pegawai dan jatuh ke fallback string teks mentah tanpa jabatan.
+  3. **Temuan Menyeluruh di Database Produksi**:
+     - Audit mendalam pada seluruh 4.496 kandidat portal di database produksi mendeteksi sebanyak **75 pasang personel rekruter** yang mengalami split/duplikasi nama yang sama (varian email vs varian nama polos) akibat perbedaan riwayat penginputan.
+  4. **Duplikasi pada Dropdown Filter Web**:
+     - Pada dropdown filter Rekruter di halaman web `/kandidatportal`, pengelompokan query sebelumnya menggunakan `groupBy('useras')` mentah, sehingga memunculkan opsi ganda untuk orang yang sama dan memecah jumlah pelamar.
+- **Solusi & Implementasi Teknis**:
+  1. **Kamus Resolusi Terpadu Rekruter (`CandidateXlsxExportService::buildRecruiterLookup`)**:
+     - Membangun mekanisme pre-fetch gabungan yang mengumpulkan seluruh identitas rekruter (email, nama lengkap, nama bersih tanpa kurung, dan relasi `recruiter_id`).
+     - Mencocokkan secara menyeluruh ke tabel `Employee` (memprioritaskan status `Aktiv`) dan fallback ke tabel `User`.
+     - Memetakan seluruh varian input (email lowercase, nama lengkap, nama stripped, akun rekruter) ke satu string kanonikal baku: `"Nama Lengkap (Jabatan)"` atau `"Nama Lengkap"`.
+     - Fungsi penataan nama `cleanPersonName()`: Mengonversi nama berhuruf kapital penuh (ALL CAPS seperti `AMIQUNAJA`, `HENDRIONO`, `ROFIUL SOLICHATININGRUM`) menjadi Title Case rapi (`Amiqunaja`, `Hendriono`, `Rofiul Solichatiningrum`) serta mempertahankan akronim gelar/jabatan resmi (SE, MM, SH, ST, AS, OPS, HRD, dll).
+     - Menghilangkan 100% dari 75 pasangan variasi ganda di file Excel menjadi satu nama identik per orang.
+  2. **Model Kandidat (`app/Models/Candidate.php`)**:
+     - Memperbarui *accessor* `getUserDisplayNameAttribute()`: Kini mendukung resolusi pencocokan pegawai baik saat input `useras` berupa alamat email maupun berupa nama polos, menjamin tampilan nama AS di tabel dan halaman detail kandidat seragam dengan hasil export Excel.
+  3. **Penyempurnaan Controller & Filter Web (`app/Http/Controllers/KandidatPortalController.php`)**:
+     - **Metode `resolveRecruiterFilterIdentifiers()`**: Mendeteksi seluruh alias/identitas seorang rekruter (email dan nama). Saat admin memfilter rekruter tertentu, kueri mencakup seluruh kandidat miliknya (`whereIn('useras', $recIdentifiers)`), sehingga kandidat tidak lagi terpecah.
+     - **Konsolidasi Dropdown Rekruter**: Menggabungkan entri duplikat rekruter pada dropdown filter web menjadi satu opsi per orang lengkap dengan total gabungan pelamar dan diurutkan secara alfabetis.
+     - **Export Subtitle Label**: Memastikan label filter rekruter pada metadata Excel menggunakan nama resmi yang rapi.
+  4. **Tampilan Blade (`resources/views/kandidatportal/index.blade.php`)**:
+     - Memperbarui pengecekan atribut `selected` pada dropdown agar tetap aktif baik saat admin memfilter menggunakan alias email maupun alias nama rekruter.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

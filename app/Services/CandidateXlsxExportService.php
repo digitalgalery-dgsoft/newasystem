@@ -323,42 +323,8 @@ class CandidateXlsxExportService
         }
         $baseUrl = rtrim($baseUrl, '/');
 
-        // Pre-fetch Data Karyawan (Employee) berdasarkan email untuk kolom Nama AS & Jabatan
-        $asEmails = [];
-        foreach ($candidates as $c) {
-            $raw = trim($c->useras ?? '');
-            if (!empty($raw) && str_contains($raw, '@')) {
-                $asEmails[] = strtolower($raw);
-            }
-            if ($c->recruiter && !empty($c->recruiter->email)) {
-                $asEmails[] = strtolower(trim($c->recruiter->email));
-            }
-        }
-        $asEmails = array_values(array_unique($asEmails));
-
-        $asLookup = [];
-        if (!empty($asEmails)) {
-            // Ambil Nama Lengkap & Jabatan dari Data Karyawan (Employee) berdasarkan email
-            try {
-                $emps = Employee::whereIn(DB::raw('LOWER(TRIM(email))'), $asEmails)
-                    ->whereNotNull('nama_karyawan')
-                    ->where('nama_karyawan', '!=', '')
-                    ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
-                    ->orderBy('id', 'desc')
-                    ->get(['email', 'nama_karyawan', 'jabatan']);
-                foreach ($emps as $e) {
-                    $k = strtolower(trim($e->email));
-                    if (!empty($e->nama_karyawan) && !isset($asLookup[$k])) {
-                        $asLookup[$k] = [
-                            'name' => trim($e->nama_karyawan),
-                            'jabatan' => trim($e->jabatan ?? ''),
-                        ];
-                    }
-                }
-            } catch (\Throwable $e) {
-                // safeguard
-            }
-        }
+        // Pre-fetch Data Karyawan (Employee) & User untuk kolom Nama AS & Jabatan secara menyeluruh dan seragam
+        $asLookup = self::buildRecruiterLookup($candidates);
 
         // Data Rows
         $rowNum = 5;
@@ -405,39 +371,37 @@ class CandidateXlsxExportService
             }
             $secCity = !empty($c->city_domicile) ? trim($c->city_domicile) : (!empty($c->penempatan) ? trim($c->penempatan) : $cleanArea);
 
-            // Q: Nama AS & Jabatan (Ambil dari Data Karyawan berdasarkan email)
+            // Q: Nama AS & Jabatan (Resolusi seragam: baik input berupa email maupun nama, menghasilkan string identik)
             $namaAs = '-';
             $rawAs = !empty($c->useras) ? trim($c->useras) : ($c->recruiter ? ($c->recruiter->email ?: $c->recruiter->name) : '');
+
             if (!empty($rawAs)) {
                 $lowerAs = strtolower($rawAs);
+                $strippedAs = strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $rawAs)));
                 $recEmail = ($c->recruiter && !empty($c->recruiter->email)) ? strtolower(trim($c->recruiter->email)) : null;
+                $recName = ($c->recruiter && !empty($c->recruiter->name)) ? strtolower(trim($c->recruiter->name)) : null;
+                $recStripped = $recName ? strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $recName))) : null;
 
                 if (isset($asLookup[$lowerAs])) {
-                    $emp = $asLookup[$lowerAs];
-                    $namaAs = !empty($emp['jabatan']) ? "{$emp['name']} ({$emp['jabatan']})" : $emp['name'];
+                    $namaAs = $asLookup[$lowerAs];
+                } elseif (isset($asLookup[$strippedAs])) {
+                    $namaAs = $asLookup[$strippedAs];
                 } elseif ($recEmail && isset($asLookup[$recEmail])) {
-                    $emp = $asLookup[$recEmail];
-                    $namaAs = !empty($emp['jabatan']) ? "{$emp['name']} ({$emp['jabatan']})" : $emp['name'];
+                    $namaAs = $asLookup[$recEmail];
+                } elseif ($recName && isset($asLookup[$recName])) {
+                    $namaAs = $asLookup[$recName];
+                } elseif ($recStripped && isset($asLookup[$recStripped])) {
+                    $namaAs = $asLookup[$recStripped];
                 } else {
-                    // Jika nama tidak ditemukan di Data Karyawan:
-                    // Fallback JANGAN dibuat 'Administrator ESA' atau Administrator apapun.
-                    // Tampilkan apa adanya email yang tercantum, atau tanda '-' jika kosong/admin text.
                     $isAdminText = (stripos($rawAs, 'administrator') !== false || stripos($rawAs, 'admin esa') !== false);
                     if ($isAdminText) {
-                        if ($recEmail) {
-                            $namaAs = $recEmail;
-                        } elseif (str_contains($rawAs, '@')) {
-                            $namaAs = $rawAs;
-                        } else {
-                            $namaAs = '-';
-                        }
+                        $namaAs = '-';
                     } elseif (str_contains($rawAs, '@')) {
-                        // Tampilkan apa adanya saja berupa email yang tercantum
                         $namaAs = $rawAs;
-                    } elseif (!empty($c->recruiter) && !empty($c->recruiter->email)) {
-                        $namaAs = trim($c->recruiter->email);
+                    } elseif (preg_match('/^(.*?)\s*\((.*?)\)$/', $rawAs, $m)) {
+                        $namaAs = self::cleanPersonName($m[1]) . ' (' . trim($m[2]) . ')';
                     } else {
-                        $namaAs = ucwords(strtolower($rawAs));
+                        $namaAs = self::cleanPersonName($rawAs);
                     }
                 }
             }
@@ -650,5 +614,168 @@ class CandidateXlsxExportService
 
         // 2. Fallback ke server lama jika berkas berada di server lama (data impor legacy)
         return 'https://asystem.co.id/interview/lampiran/' . rawurlencode($baseName);
+    }
+
+    /**
+     * Format nama personel secara rapi (Title Case) sambil mempertahankan akronim gelar/jabatan
+     */
+    public static function cleanPersonName(?string $name): string
+    {
+        $name = trim($name ?? '');
+        if (empty($name)) {
+            return '';
+        }
+
+        // Jika string berupa ALL CAPS atau all lowercase, ubah menjadi Title Case yang rapi
+        if (mb_strtoupper($name) === $name || mb_strtolower($name) === $name) {
+            $words = preg_split('/\s+/', strtolower($name));
+            $clean = array_map(function ($w) {
+                $upper = strtoupper($w);
+                if (in_array($upper, ['II', 'III', 'IV', 'SE', 'MM', 'SH', 'ST', 'BA', 'SPG', 'SPB', 'HRD', 'OPS', 'AE', 'AM', 'AS', 'RM'], true)) {
+                    return $upper;
+                }
+                return ucfirst($w);
+            }, $words);
+            return implode(' ', $clean);
+        }
+
+        return $name;
+    }
+
+    /**
+     * Pre-fetch dan susun kamus resolusi kanonikal untuk Nama AS / Rekruter.
+     * Memetakan seluruh varian input (email, nama lengkap, nama tanpa jabatan dalam kurung, akun rekruter)
+     * ke 1 string baku yang identik: "Nama Karyawan (Jabatan)" atau "Nama Karyawan".
+     */
+    public static function buildRecruiterLookup($candidates): array
+    {
+        $emails = [];
+        $names = [];
+
+        foreach ($candidates as $c) {
+            $raw = trim($c->useras ?? '');
+            if (!empty($raw)) {
+                if (str_contains($raw, '@')) {
+                    $emails[] = strtolower($raw);
+                } else {
+                    $stripped = trim(preg_replace('/\s*\([^)]*\)/', '', $raw));
+                    if (!empty($stripped)) {
+                        $names[] = strtolower($stripped);
+                    }
+                    $names[] = strtolower($raw);
+                }
+            }
+            if ($c->recruiter) {
+                if (!empty($c->recruiter->email)) {
+                    $emails[] = strtolower(trim($c->recruiter->email));
+                }
+                if (!empty($c->recruiter->name)) {
+                    $rName = trim($c->recruiter->name);
+                    $names[] = strtolower($rName);
+                    $rStripped = trim(preg_replace('/\s*\([^)]*\)/', '', $rName));
+                    if (!empty($rStripped)) {
+                        $names[] = strtolower($rStripped);
+                    }
+                }
+            }
+        }
+
+        $emails = array_values(array_unique(array_filter($emails)));
+        $names = array_values(array_unique(array_filter($names)));
+
+        $lookup = [];
+
+        // 1. Ambil data pegawai dari tabel Employee (prioritaskan status Aktiv)
+        if (!empty($emails) || !empty($names)) {
+            try {
+                $emps = Employee::query()
+                    ->whereNotNull('nama_karyawan')
+                    ->where('nama_karyawan', '!=', '')
+                    ->where(function ($q) use ($emails, $names) {
+                        if (!empty($emails)) {
+                            $q->whereIn(DB::raw('LOWER(TRIM(email))'), $emails);
+                        }
+                        if (!empty($names)) {
+                            $q->orWhereIn(DB::raw('LOWER(TRIM(nama_karyawan))'), $names);
+                        }
+                    })
+                    ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
+                    ->orderBy('id', 'desc')
+                    ->get(['email', 'nama_karyawan', 'jabatan']);
+
+                foreach ($emps as $e) {
+                    $cleanName = self::cleanPersonName($e->nama_karyawan);
+                    $jabatan = trim($e->jabatan ?? '');
+                    $canonical = !empty($jabatan) ? "{$cleanName} ({$jabatan})" : $cleanName;
+
+                    if (!empty($e->email)) {
+                        $em = strtolower(trim($e->email));
+                        if (!isset($lookup[$em])) {
+                            $lookup[$em] = $canonical;
+                        }
+                    }
+                    if (!empty($e->nama_karyawan)) {
+                        $nm = strtolower(trim($e->nama_karyawan));
+                        if (!isset($lookup[$nm])) {
+                            $lookup[$nm] = $canonical;
+                        }
+                        $stripped = strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $e->nama_karyawan)));
+                        if (!empty($stripped) && !isset($lookup[$stripped])) {
+                            $lookup[$stripped] = $canonical;
+                        }
+                    }
+                }
+            } catch (\Throwable $th) {
+                // safeguard
+            }
+        }
+
+        // 2. Ambil data user dari tabel User untuk akun yang belum terdata di Employee
+        if (!empty($emails) || !empty($names)) {
+            try {
+                $users = User::query()
+                    ->whereNotNull('name')
+                    ->where('name', '!=', '')
+                    ->where(function ($q) use ($emails, $names) {
+                        if (!empty($emails)) {
+                            $q->whereIn(DB::raw('LOWER(TRIM(email))'), $emails);
+                        }
+                        if (!empty($names)) {
+                            $q->orWhereIn(DB::raw('LOWER(TRIM(name))'), $names);
+                        }
+                    })
+                    ->get(['email', 'name', 'job_title', 'area']);
+
+                foreach ($users as $u) {
+                    $cleanName = self::cleanPersonName($u->name);
+                    $job = trim($u->job_title ?? '');
+                    if (empty($job) && !empty($u->area)) {
+                        $job = 'AS OPS - ' . trim($u->area);
+                    }
+                    $canonical = !empty($job) ? "{$cleanName} ({$job})" : $cleanName;
+
+                    if (!empty($u->email)) {
+                        $em = strtolower(trim($u->email));
+                        if (!isset($lookup[$em])) {
+                            $lookup[$em] = $canonical;
+                        }
+                    }
+                    if (!empty($u->name)) {
+                        $nm = strtolower(trim($u->name));
+                        if (!isset($lookup[$nm])) {
+                            $lookup[$nm] = $canonical;
+                        }
+                        $stripped = strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $u->name)));
+                        if (!empty($stripped) && !isset($lookup[$stripped])) {
+                            $lookup[$stripped] = $canonical;
+                        }
+                    }
+                }
+            } catch (\Throwable $th) {
+                // safeguard
+            }
+        }
+
+        return $lookup;
     }
 }

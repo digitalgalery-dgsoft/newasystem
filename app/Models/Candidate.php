@@ -661,10 +661,15 @@ class Candidate extends Model
             }
         }
 
+        if (stripos($useras, 'administrator') !== false || stripos($useras, 'admin esa') !== false) {
+            return '-';
+        }
+
+        // 1. Jika useras berupa email
         if (str_contains($useras, '@')) {
             $cleanEmail = strtolower($useras);
 
-            // 1. Prioritas Utama: Ambil Nama Lengkap & Jabatan dari Data Karyawan (Employee) berdasarkan email
+            // Prioritas Utama: Ambil Nama Lengkap & Jabatan dari Data Karyawan (Employee) berdasarkan email
             $employee = Employee::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])
                 ->whereNotNull('nama_karyawan')
                 ->where('nama_karyawan', '!=', '')
@@ -673,22 +678,64 @@ class Candidate extends Model
                 ->first(['nama_karyawan', 'jabatan']);
 
             if ($employee && !empty($employee->nama_karyawan)) {
-                $empName = trim($employee->nama_karyawan);
+                $empName = \App\Services\CandidateXlsxExportService::cleanPersonName($employee->nama_karyawan);
                 $empJabatan = trim($employee->jabatan ?? '');
                 return !empty($empJabatan) ? "{$empName} ({$empJabatan})" : $empName;
             }
 
-            // 2. Jika tidak ditemukan di Data Karyawan:
-            // JANGAN fallback ke Administrator ESA / Administrator HR
-            // Tampilkan apa adanya email yang tercantum
+            // Fallback ke tabel User
+            $user = User::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first(['name', 'job_title', 'area']);
+            if ($user && !empty($user->name)) {
+                $uName = \App\Services\CandidateXlsxExportService::cleanPersonName($user->name);
+                $uJob = trim($user->job_title ?? '');
+                if (empty($uJob) && !empty($user->area)) {
+                    $uJob = 'AS OPS - ' . trim($user->area);
+                }
+                return !empty($uJob) ? "{$uName} ({$uJob})" : $uName;
+            }
+
             return $useras;
         }
 
-        if (stripos($useras, 'administrator') !== false || stripos($useras, 'admin esa') !== false) {
-            return '-';
+        // 2. Jika useras berupa nama (bukan email): cocokkan ke Employee berdasarkan nama lengkap atau nama tanpa kurung
+        $strippedName = trim(preg_replace('/\s*\([^)]*\)/', '', $useras));
+        $employee = Employee::where(function ($q) use ($useras, $strippedName) {
+                $q->whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower($useras)])
+                  ->orWhereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower($strippedName)]);
+            })
+            ->whereNotNull('nama_karyawan')
+            ->where('nama_karyawan', '!=', '')
+            ->orderByRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END")
+            ->orderBy('id', 'desc')
+            ->first(['nama_karyawan', 'jabatan']);
+
+        if ($employee && !empty($employee->nama_karyawan)) {
+            $empName = \App\Services\CandidateXlsxExportService::cleanPersonName($employee->nama_karyawan);
+            $empJabatan = trim($employee->jabatan ?? '');
+            return !empty($empJabatan) ? "{$empName} ({$empJabatan})" : $empName;
         }
 
-        return ucwords(strtolower($useras));
+        // Fallback ke User berdasarkan nama
+        $user = User::where(function ($q) use ($useras, $strippedName) {
+                $q->whereRaw('LOWER(TRIM(name)) = ?', [strtolower($useras)])
+                  ->orWhereRaw('LOWER(TRIM(name)) = ?', [strtolower($strippedName)]);
+            })
+            ->first(['name', 'job_title', 'area']);
+
+        if ($user && !empty($user->name)) {
+            $uName = \App\Services\CandidateXlsxExportService::cleanPersonName($user->name);
+            $uJob = trim($user->job_title ?? '');
+            if (empty($uJob) && !empty($user->area)) {
+                $uJob = 'AS OPS - ' . trim($user->area);
+            }
+            return !empty($uJob) ? "{$uName} ({$uJob})" : $uName;
+        }
+
+        if (preg_match('/^(.*?)\s*\((.*?)\)$/', $useras, $m)) {
+            return \App\Services\CandidateXlsxExportService::cleanPersonName($m[1]) . ' (' . trim($m[2]) . ')';
+        }
+
+        return \App\Services\CandidateXlsxExportService::cleanPersonName($useras);
     }
 
     public function getUserPrinsipleOptionsAttribute()
