@@ -330,6 +330,8 @@ class CandidateImportController extends Controller
             $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses seleksi sedang berjalan';
             $profComplete = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness());
 
+            $activePrinName = is_object($activeCandidate->principle) ? ($activeCandidate->principle->name ?? '-') : ($activeCandidate->principle ?? '-');
+
             $blockedData = [
                 'id' => $activeCandidate->id,
                 'name' => $activeCandidate->full_name,
@@ -338,7 +340,7 @@ class CandidateImportController extends Controller
                 'as_name' => $asName,
                 'as_email' => $asEmail,
                 'area' => $activeCandidate->area ?? '-',
-                'principle' => $activeCandidate->principle ?? '-',
+                'principle' => $activePrinName,
                 'job' => $activeCandidate->applied_job ?? '-',
                 'tests_text' => $testsText,
                 'is_profile_complete' => $profComplete,
@@ -588,6 +590,7 @@ class CandidateImportController extends Controller
                 }
                 $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses seleksi sedang berjalan';
                 $profText = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness()) ? 'Lengkap' : 'Belum Lengkap';
+                $activePrinName = is_object($activeCandidate->principle) ? ($activeCandidate->principle->name ?? '-') : ($activeCandidate->principle ?? '-');
 
                 return response()->json([
                     'success' => false,
@@ -597,7 +600,7 @@ class CandidateImportController extends Controller
                                . "• Status Profil: {$profText}\n"
                                . "• Progres Tes Online: {$testsText}\n"
                                . "• Terdaftar under AS: {$asName} ({$asEmail})\n"
-                               . "• Area / Posisi: {$activeCandidate->applied_job} • Area {$activeCandidate->area} ({$activeCandidate->principle})\n\n"
+                               . "• Area / Posisi: {$activeCandidate->applied_job} • Area {$activeCandidate->area} ({$activePrinName})\n\n"
                                . "Sesuai SOP, data kandidat aktif tidak dapat di-replace. Data baru hanya bisa masuk/me-replace jika data aktif diarsipkan terlebih dahulu. Harap berkoordinasi dengan AS terkait ({$asName} - {$asEmail}).",
                     'candidate' => [
                         'id' => $activeCandidate->id,
