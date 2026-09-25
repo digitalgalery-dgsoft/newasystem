@@ -358,42 +358,30 @@ class CandidateImportService
                         $candidate = $existingCandidates->last();
                         $allCandIds = $existingCandidates->pluck('id')->all();
 
-                        // Bersihkan duplikat record jika ada dari import terdahulu
+                        // Bersihkan duplikat record jika ada dari import terdahulu, migrasikan child records ke kandidat utama
                         $duplicateIds = array_diff($allCandIds, [$candidate->id]);
                         if (!empty($duplicateIds)) {
+                            TestResult::whereIn('candidate_id', $duplicateIds)->update(['candidate_id' => $candidate->id]);
+                            WorkExperience::whereIn('candidate_id', $duplicateIds)->update(['candidate_id' => $candidate->id]);
                             Candidate::whereIn('id', $duplicateIds)->delete();
                         }
 
-                        // Hapus seluruh hasil tes online lama dan penilaian sebelumnya
-                        TestResult::whereIn('candidate_id', $allCandIds)->delete();
-                        if (Schema::hasTable('tb_hasilpsikotes')) {
-                            DB::table('tb_hasilpsikotes')->whereIn('id_kandidat', $allCandIds)->delete();
-                        }
-                        if (Schema::hasTable('tb_hasilmath')) {
-                            DB::table('tb_hasilmath')->whereIn('id_kandidat', $allCandIds)->delete();
-                        }
-                        if (Schema::hasTable('hasil_kompt')) {
-                            DB::table('hasil_kompt')->where(function($q) use ($allCandIds, $cleanKtp) {
-                                $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanKtp);
-                            })->delete();
-                        }
-                        if (Schema::hasTable('hasilinterview')) {
-                            DB::table('hasilinterview')->where(function($q) use ($allCandIds, $cleanKtp) {
-                                $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanKtp);
-                            })->delete();
-                        }
-                        InterviewAssessment::whereIn('candidate_id', $allCandIds)->delete();
-                        PrincipleApproval::whereIn('candidate_id', $allCandIds)->delete();
-                        WorkExperience::whereIn('candidate_id', $allCandIds)->delete();
-                        if ($hasTbPengalaman) {
-                            DB::table('tb_pengalaman')->where(function($q) use ($allCandIds, $cleanKtp) {
-                                $q->whereIn('id_kandidat', $allCandIds)->orWhere('nomor_ktp', $cleanKtp);
-                            })->delete();
-                        }
+                        // JANGAN hapus TestResult, tb_hasilpsikotes, tb_hasilmath, hasil_kompt, WorkExperience!
+                        // Pertahankan tes online dan tanda tangan yang sudah dikerjakan kandidat
+                        if (!empty($candidate->tes_kepribadian)) unset($candidatePayload['tes_kepribadian']);
+                        if (!empty($candidate->tes_matematika)) unset($candidatePayload['tes_matematika']);
+                        if (!empty($candidate->tes_komputer)) unset($candidatePayload['tes_komputer']);
+                        if (!empty($candidate->tes_ke)) unset($candidatePayload['tes_ke']);
+                        if (!empty($candidate->buktikomputer)) unset($candidatePayload['buktikomputer']);
+                        if (!empty($candidate->signature_path)) unset($candidatePayload['signature_path']);
+                        if (!empty($candidate->statement_agreed)) unset($candidatePayload['statement_agreed']);
+                        if (!empty($candidate->password)) unset($candidatePayload['password']);
+                        if (empty($candidatePayload['education']) && !empty($candidate->education)) unset($candidatePayload['education']);
 
-                        // Replace data kandidat
+                        // Replace data kandidat dengan payload yang telah dipreservasi
                         $candidate->fill($candidatePayload);
                         $candidate->save();
+                        $candidate->checkProfileCompleteness();
                         $newId = $candidate->id;
                     } else {
                         // Buat kandidat baru
@@ -438,7 +426,7 @@ class CandidateImportService
                             'undangan'            => 'WhatsApp',
                             'waktukirim'          => now(),
 
-                            // Reset seluruh nilai tes online pada tabel legacy
+                            // Nilai default awal tes online pada tabel legacy
                             'tes_kepribadian'     => null,
                             'tes_matematika'      => null,
                             'tes_komputer'        => null,
@@ -449,6 +437,24 @@ class CandidateImportService
 
                         $existingTb = DB::table('tb_kandidat')->where('no_ktp', $cleanKtp)->first();
                         if ($existingTb) {
+                            if (!empty($existingTb->tes_kepribadian) || !empty($candidate->tes_kepribadian)) {
+                                unset($tbKandidatData['tes_kepribadian']);
+                            }
+                            if (!empty($existingTb->tes_matematika) || !empty($candidate->tes_matematika)) {
+                                unset($tbKandidatData['tes_matematika']);
+                            }
+                            if (!empty($existingTb->tes_komputer) || !empty($candidate->tes_komputer)) {
+                                unset($tbKandidatData['tes_komputer']);
+                            }
+                            if (!empty($existingTb->tes_ke) || !empty($candidate->tes_ke)) {
+                                unset($tbKandidatData['tes_ke']);
+                            }
+                            if (!empty($existingTb->password)) {
+                                unset($tbKandidatData['password']);
+                            }
+                            if (empty($tbKandidatData['pendidikan_terakhir']) && !empty($existingTb->pendidikan_terakhir)) {
+                                unset($tbKandidatData['pendidikan_terakhir']);
+                            }
                             DB::table('tb_kandidat')->where('no_ktp', $cleanKtp)->update($tbKandidatData);
                         } else {
                             $tbKandidatData['id'] = $newId;

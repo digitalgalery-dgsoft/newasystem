@@ -2836,6 +2836,46 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 70. 🛡️ Proteksi Integritas Data CBT & Pemulihan Hasil Ujian Kandidat dari Penimpaan Sinkronisasi Odoo (25 September 2026)
+- **Investigasi Masalah & Rekonstruksi Kronologi (*Root Cause Analysis*)**:
+  1. **Keluhan Pengguna**:
+     - Kandidat atas nama **Ratih Purwanti** (NIK: `1275045507830003`, ID: `66096`, TL - Medan) pada log aktivitas tercatat telah menyelesaikan Tes Kepribadian dan Tes Matematika, namun di dasbor CBT (`/cbt`) status tes mendadak berubah menjadi *"Belum Dikerjakan"* (terkunci) dan muncul banner merah *"Data Profil Belum Lengkap! 4 Kolom Belum Terisi"*.
+  2. **Temuan Audit Log & Waktu Kejadian**:
+     - `15:28:12 - 15:32:51`: Kandidat login, mengisi data pribadi, pengalaman kerja, serta menandatangani surat pernyataan integritas.
+     - `15:33:11 - 15:35:28`: Kandidat mengerjakan dan menyelesaikan **Tes Kepribadian** (durasi 00:02:16).
+     - `15:35:57 - 15:36:33`: Kandidat mengerjakan dan menyelesaikan **Tes Matematika** (Tes Ke-1, Nilai: 100).
+     - `15:36:40`: Kandidat logout.
+     - `15:37:19` (kurang dari 1 menit setelah logout): Seorang pengguna/rekruter menekan tombol *"Tarik & Simpan Pelamar dari Odoo ke ASystem"* via route `interview.odoo.import_nik` untuk NIK tersebut.
+     - `15:46:28`: Kandidat login kembali dan menemukan seluruh hasil tes serta profilnya ter-reset.
+  3. **Akar Masalah Teknis (*Technical Root Cause*)**:
+     - Pada implementasi sebelumnya di `CandidateImportController::importOdooByNik` dan `CandidateImportService::importCandidates`, saat NIK kandidat sudah ada di sistem (`$isReplaced = true`), sistem secara destruktif menjalankan kueri:
+       - `TestResult::whereIn('candidate_id', $allCandIds)->delete()`
+       - `DB::table('tb_hasilpsikotes')->delete()`
+       - `DB::table('tb_hasilmath')->delete()`
+       - `WorkExperience::whereIn('candidate_id', $allCandIds)->delete()`
+       - Mereset `tes_kepribadian`, `tes_matematika`, `tes_komputer`, `signature_path`, dan `statement_agreed` menjadi `NULL / false`.
+       - Menimpa `education` dengan nilai `type_id` Odoo yang kosong/false.
+     - Akibatnya, setiap kali seorang rekruter menarik/memperbarui data pelamar dari Odoo, kandidat yang sudah atau sedang mengikuti tes online CBT mengalami kehilangan data (*data loss*) secara diam-diam.
+- **Solusi & Implementasi Teknis**:
+  1. **Proteksi Kode Backend (`CandidateImportController.php`)**:
+     - Mengubah logika `importOdooByNik`: Jika kandidat telah terdaftar di ASystem (`$isReplaced = true`), sistem **DILARANG KERAS** menghapus tabel `TestResult`, `tb_hasilpsikotes`, `tb_hasilmath`, `hasil_kompt`, dan `WorkExperience`.
+     - Mempertahankan progres ujian (`tes_kepribadian`, `tes_matematika`, `tes_komputer`, `tes_ke`) dan integritas berkas tanda tangan digital (`signature_path`, `statement_agreed`).
+     - Tidak menimpa password dan tingkat pendidikan yang sudah diisi kandidat jika data dari Odoo bernilai null/false.
+     - Menyelaraskan child records dan foreign key duplikat ke kandidat utama sebelum menghapus ID ganda.
+     - Menjaga kelengkapan data legacy pada `tb_kandidat` agar tidak di-null-kan kembali.
+  2. **Proteksi Import Massal Excel (`CandidateImportService.php`)**:
+     - Menerapkan perlindungan yang sama pada import file Excel rekrutmen: kandidat yang di-replace tetap mempertahankan hasil ujian CBT, riwayat pengalaman, dan tanda tangan digital yang telah tercatat.
+  3. **Pemulihan Data Kandidat Ratih Purwanti (NIK: 1275045507830003)**:
+     - Melakukan restorasi data di server produksi:
+       - Memulihkan record `TestResult` matematika (Nilai: 100, durasi 36 detik, breakdown 10 butir soal benar) dan butir jawaban `tb_hasilmath`.
+       - Memulihkan record `TestResult` kepribadian DISC/Melankolis-Sanguinis (durasi 00:02:16) dan butir jawaban `tb_hasilpsikotes`.
+       - Mengupdate kolom `candidates.tes_kepribadian = '00:02:16'` dan `candidates.tes_matematika = '00:00:36'`.
+       - Sinkronisasi ke tabel legacy `tb_kandidat`.
+       - Status dasbor CBT kandidat kini kembali normal: profil lengkap (`checkProfileCompleteness = true`), Tes Kepribadian selesai, Tes Matematika selesai (Nilai 100).
+     - Menambahkan catatan audit trail resmi pada `candidate_logs`.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

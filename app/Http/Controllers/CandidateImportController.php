@@ -577,41 +577,60 @@ class CandidateImportController extends Controller
                 $candidate = $existingCandidates->last();
                 $allCandIds = $existingCandidates->pluck('id')->all();
 
-                // Bersihkan duplikat record jika ada dari import terdahulu
+                // Bersihkan duplikat record jika ada dari import terdahulu, migrasikan child records ke kandidat utama
                 $duplicateIds = array_diff($allCandIds, [$candidate->id]);
                 if (!empty($duplicateIds)) {
+                    TestResult::whereIn('candidate_id', $duplicateIds)->update(['candidate_id' => $candidate->id]);
+                    WorkExperience::whereIn('candidate_id', $duplicateIds)->update(['candidate_id' => $candidate->id]);
                     Candidate::whereIn('id', $duplicateIds)->delete();
                 }
 
-                // Hapus seluruh hasil tes online lama dan penilaian sebelumnya
-                TestResult::whereIn('candidate_id', $allCandIds)->delete();
-                if (Schema::hasTable('tb_hasilpsikotes')) {
-                    DB::table('tb_hasilpsikotes')->whereIn('id_kandidat', $allCandIds)->delete();
+                // JANGAN PERNAH menghapus TestResult, tb_hasilpsikotes, tb_hasilmath, hasil_kompt, WorkExperience,
+                // ataupun mereset hasil tes online dan tanda tangan digital yang sudah dikerjakan kandidat!
+
+                // Hanya perbarui data dari Odoo tanpa merusak hasil tes dan data profil portal yang sudah diisi
+                $updateData = [
+                    'odoo_applicant_id'   => $foundApplicant['id'],
+                    'odoo_stage_name'     => $stage,
+                    'odoo_entity'         => $foundEntity,
+                    'odoo_synced_at'      => now(),
+                    'odoo_applicant_data' => $foundApplicant,
+                    'updated_at'          => now(),
+                ];
+
+                if (!empty($job)) $updateData['applied_job'] = $job;
+                if (!empty($prinName)) {
+                    $updateData['principle'] = $prinName;
+                    if ($principleId) $updateData['principle_id'] = $principleId;
                 }
-                if (Schema::hasTable('tb_hasilmath')) {
-                    DB::table('tb_hasilmath')->whereIn('id_kandidat', $allCandIds)->delete();
+                if (!empty($area)) {
+                    $updateData['area'] = $area;
+                    $updateData['penempatan'] = $area;
                 }
-                if (Schema::hasTable('hasil_kompt')) {
-                    DB::table('hasil_kompt')->where(function($q) use ($allCandIds, $allPossibleNiks) {
-                        $q->whereIn('id_kandidat', $allCandIds)->orWhereIn('nomor_ktp', $allPossibleNiks);
-                    })->delete();
+                if ($userEmail && empty($candidate->useras)) $updateData['useras'] = $userEmail;
+                if ($userId && empty($candidate->recruiter_id)) $updateData['recruiter_id'] = $userId;
+
+                // Update data demografi dasar dari Odoo hanya jika data lokal masih kosong
+                if (!empty($name) && empty($candidate->full_name)) $updateData['full_name'] = $name;
+                if (!empty($phone) && empty($candidate->phone)) {
+                    $updateData['phone'] = $phone;
+                    $updateData['whatsapp'] = $phone;
                 }
-                if (Schema::hasTable('hasilinterview')) {
-                    DB::table('hasilinterview')->where(function($q) use ($allCandIds, $allPossibleNiks) {
-                        $q->whereIn('id_kandidat', $allCandIds)->orWhereIn('nomor_ktp', $allPossibleNiks);
-                    })->delete();
+                if (!empty($birthDate) && empty($candidate->birth_date)) $updateData['birth_date'] = $birthDate;
+                if (!empty($foundApplicant['place_of_birth']) && empty($candidate->birth_place)) {
+                    $updateData['birth_place'] = $foundApplicant['place_of_birth'];
                 }
-                InterviewAssessment::whereIn('candidate_id', $allCandIds)->delete();
-                PrincipleApproval::whereIn('candidate_id', $allCandIds)->delete();
-                WorkExperience::whereIn('candidate_id', $allCandIds)->delete();
-                if (Schema::hasTable('tb_pengalaman')) {
-                    DB::table('tb_pengalaman')->where(function($q) use ($allCandIds, $allPossibleNiks) {
-                        $q->whereIn('id_kandidat', $allCandIds)->orWhereIn('nomor_ktp', $allPossibleNiks);
-                    })->delete();
+                if (!empty($foundApplicant['ktp_address']) && empty($candidate->address_ktp)) {
+                    $updateData['address_ktp'] = $foundApplicant['ktp_address'];
+                    $updateData['address_domicile'] = $foundApplicant['ktp_address'];
+                }
+                $odooEducation = is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : ($foundApplicant['type_id'] ?? null);
+                if (!empty($odooEducation) && empty($candidate->education)) {
+                    $updateData['education'] = $odooEducation;
                 }
 
-                $candidate->fill($candidatePayload);
-                $candidate->save();
+                $candidate->update($updateData);
+                $candidate->checkProfileCompleteness();
             } else {
                 $candidatePayload['created_at'] = now();
                 $candidate = Candidate::create($candidatePayload);
@@ -655,6 +674,25 @@ class CandidateImportController extends Controller
 
                 $existingTb = DB::table('tb_kandidat')->whereIn('no_ktp', $allPossibleNiks)->first();
                 if ($existingTb) {
+                    // Pertahankan progres tes jika sudah ada di tb_kandidat atau candidate
+                    if (!empty($existingTb->tes_kepribadian) || !empty($candidate->tes_kepribadian)) {
+                        unset($tbKandidatData['tes_kepribadian']);
+                    }
+                    if (!empty($existingTb->tes_matematika) || !empty($candidate->tes_matematika)) {
+                        unset($tbKandidatData['tes_matematika']);
+                    }
+                    if (!empty($existingTb->tes_komputer) || !empty($candidate->tes_komputer)) {
+                        unset($tbKandidatData['tes_komputer']);
+                    }
+                    if (!empty($existingTb->tes_ke) || !empty($candidate->tes_ke)) {
+                        unset($tbKandidatData['tes_ke']);
+                    }
+                    if (!empty($existingTb->password)) {
+                        unset($tbKandidatData['password']);
+                    }
+                    if (empty($tbKandidatData['pendidikan_terakhir']) && !empty($existingTb->pendidikan_terakhir)) {
+                        unset($tbKandidatData['pendidikan_terakhir']);
+                    }
                     DB::table('tb_kandidat')->where('id', $existingTb->id)->update($tbKandidatData);
                 } else {
                     $tbKandidatData['id'] = $candidate->id;
