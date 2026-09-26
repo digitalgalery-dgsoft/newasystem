@@ -2969,6 +2969,8 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
      - Menjaga tombol simpan tetap terkunci dan banner merah aktif jika kandidat dimiliki oleh AS lain.
   5. **Pengujian & Verifikasi**:
      - Divalidasi melalui script simulasi komprehensif yang menguji kedua skenario (AS sama vs AS berbeda) untuk logika `isOwnedBy`, `CandidateImportService`, serta `CandidateImportController`, dengan hasil 100% lulus.
+  6. **Hotfix Namespace Import ActivityLogger**:
+     - Menambahkan import `use App\Services\ActivityLogger;` secara eksplisit pada `CandidateImportController.php` dan `CandidateImportService.php` guna mengatasi error *Class "App\Http\Controllers\ActivityLogger" not found* saat eksekusi auto-archive penarikan NIK.
 
 ---
 

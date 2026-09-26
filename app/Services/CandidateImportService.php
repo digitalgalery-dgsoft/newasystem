@@ -8,6 +8,7 @@ use App\Models\WorkExperience;
 use App\Models\TestResult;
 use App\Models\InterviewAssessment;
 use App\Models\PrincipleApproval;
+use App\Services\ActivityLogger;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use ZipArchive;
