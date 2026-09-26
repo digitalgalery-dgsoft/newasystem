@@ -1322,16 +1322,34 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
-        $validated = $request->validate([
-            'alasan' => 'required|string',
-        ]);
+        $reason = trim($request->input('alasan') ?? $request->input('archive_reason') ?? '') 
+            ?: ('Diarsipkan dari Kandidat Portal oleh ' . (auth()->user()->name ?? 'Admin'));
 
-        $candidate->status_kandidat = 'Arsip';
-        $candidate->archive_reason = $validated['alasan'];
+        $candidate->status = 'Arsip';
+        if (\Illuminate\Support\Facades\Schema::hasColumn('candidates', 'status_kandidat')) {
+            $candidate->status_kandidat = 'Arsip';
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('candidates', 'archive_reason')) {
+            $candidate->archive_reason = $reason;
+        }
         $candidate->save();
 
-        ActivityLogger::log('ARCHIVE', 'Kandidat Portal', "Mengarsipkan kandidat {$candidate->full_name}. Alasan: {$validated['alasan']}", $candidate, [
-            'alasan' => $validated['alasan'],
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+            $tbData = ['status' => 'Arsip'];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
+                $tbData['status_kandidat'] = 'Arsip';
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'archive_reason')) {
+                $tbData['archive_reason'] = $reason;
+            }
+            \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                ->where('id', $candidate->id)
+                ->orWhere('no_ktp', $candidate->nik)
+                ->update($tbData);
+        }
+
+        ActivityLogger::log('ARCHIVE', 'Kandidat Portal', "Mengarsipkan kandidat {$candidate->full_name}. Alasan: {$reason}", $candidate, [
+            'alasan' => $reason,
         ]);
 
         return redirect()->route('kandidatportal.index', ['tab' => 'arsip'])

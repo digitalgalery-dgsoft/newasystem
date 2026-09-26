@@ -300,47 +300,85 @@ class CandidateImportService
                     $isReplaced = $existingCandidates->isNotEmpty();
 
                     // VALIDASI PROTEKSI KANDIDAT AKTIF:
-                    // Sesuai aturan sistem, jika kandidat berstatus AKTIF (bukan Arsip):
-                    // Data TIDAK BISA di-replace atau diimpor ulang sampai data yang aktif diarsipkan.
-                    // Data baru hanya bisa me-replace data yang berstatus Arsip.
+                    // Sesuai aturan sistem:
+                    // - Jika user / AS yang SAMA yang import lagi: Otomatis langsung bisa & mengarsipkan data sebelumnya.
+                    // - Jika user / AS yang BERBEDA yang import: Tidak bisa (diblokir / di-skip) & harus koordinasi dengan AS terkait.
                     if ($isReplaced) {
                         $activeCandidate = $existingCandidates->first(function($c) {
                             return $c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip';
                         });
 
                         if ($activeCandidate) {
-                            $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
-                            $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
+                            $importUser = $userId ? \App\Models\User::find($userId) : \App\Models\User::where('email', $userEmail)->first();
+                            $isOwned = $activeCandidate->isOwnedBy($importUser ?: $userEmail);
 
-                            $testsStatus = [];
-                            if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
-                                $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
+                            if (!$isOwned) {
+                                // USER BERBEDA -> DILEWATI / BLOKIR
+                                $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
+                                $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
+
+                                $testsStatus = [];
+                                if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
+                                    $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
+                                }
+                                if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
+                                    $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
+                                    $mScore = $mRes ? $mRes->score : null;
+                                    $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
+                                }
+                                if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
+                                    $testsStatus[] = 'Tes Komputer (Selesai)';
+                                }
+                                $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses aktif';
+                                $profText = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness()) ? 'Profil Lengkap' : 'Profil Belum Lengkap';
+
+                                $warnMsg = "Baris {$rowNumber}: NIK {$cleanKtp} ({$applicantsName}) DILEWATI. Kandidat aktif terdaftar under AS LAIN: {$asName} ({$asEmail}). Harap koordinasi dengan AS terkait.";
+
+                                $onEvent('warning', $warnMsg, [
+                                    'row' => $rowNumber,
+                                    'nik' => $cleanKtp,
+                                    'name' => $applicantsName,
+                                    'as_name' => $asName,
+                                    'as_email' => $asEmail,
+                                    'tests' => $testsText,
+                                    'reason' => 'active_candidate_different_user',
+                                ]);
+
+                                $stats['failed']++;
+                                continue;
                             }
-                            if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
-                                $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
-                                $mScore = $mRes ? $mRes->score : null;
-                                $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
+
+                            // USER / AS SAMA -> OTOMATIS BISA & ARSIPKAN DATA SEBELUMNYA!
+                            foreach ($existingCandidates as $existingCand) {
+                                if ($existingCand->status !== 'Arsip' && $existingCand->status_kandidat !== 'Arsip') {
+                                    $existingCand->status = 'Arsip';
+                                    if (Schema::hasColumn('candidates', 'status_kandidat')) {
+                                        $existingCand->status_kandidat = 'Arsip';
+                                    }
+                                    if (Schema::hasColumn('candidates', 'archive_reason')) {
+                                        $existingCand->archive_reason = 'Otomatis diarsipkan: Import ulang oleh AS yang sama (' . ($importUser->name ?? $userEmail) . ')';
+                                    }
+                                    $existingCand->save();
+
+                                    if ($hasTbKandidat) {
+                                        $tbData = ['status' => 'Arsip'];
+                                        if (Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
+                                            $tbData['status_kandidat'] = 'Arsip';
+                                        }
+                                        if (Schema::hasColumn('tb_kandidat', 'archive_reason')) {
+                                            $tbData['archive_reason'] = $existingCand->archive_reason;
+                                        }
+                                        DB::table('tb_kandidat')
+                                            ->where('id', $existingCand->id)
+                                            ->orWhere('no_ktp', $existingCand->nik)
+                                            ->update($tbData);
+                                    }
+
+                                    ActivityLogger::log('ARCHIVE', 'Candidate Import', "Mengarsipkan kandidat aktif sebelumnya {$existingCand->full_name} ({$existingCand->id}) karena import ulang oleh AS yang sama.", $existingCand);
+                                }
                             }
-                            if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
-                                $testsStatus[] = 'Tes Komputer (Selesai)';
-                            }
-                            $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses aktif';
-                            $profText = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness()) ? 'Profil Lengkap' : 'Profil Belum Lengkap';
 
-                            $warnMsg = "Baris {$rowNumber}: NIK {$cleanKtp} ({$applicantsName}) DILEWATI (TIDAK DAPAT DI-REPLACE). Kandidat berstatus AKTIF ({$profText}, {$testsText}) terdaftar under AS: {$asName} ({$asEmail}). Harap koordinasi dengan AS terkait. Hanya data berstatus Arsip yang dapat di-replace.";
-
-                            $onEvent('warning', $warnMsg, [
-                                'row' => $rowNumber,
-                                'nik' => $cleanKtp,
-                                'name' => $applicantsName,
-                                'as_name' => $asName,
-                                'as_email' => $asEmail,
-                                'tests' => $testsText,
-                                'reason' => 'active_candidate_protected',
-                            ]);
-
-                            $stats['failed']++;
-                            continue;
+                            $onEvent('info', "Baris {$rowNumber}: Data kandidat aktif sebelumnya milik Anda ({$activeCandidate->full_name}) otomatis diarsipkan untuk diperbarui dengan batch import terbaru.");
                         }
                     }
 
@@ -399,40 +437,9 @@ class CandidateImportService
                         'ai_cv_analysis'           => null,
                     ];
 
-                    if ($isReplaced) {
-                        $candidate = $existingCandidates->last();
-                        $allCandIds = $existingCandidates->pluck('id')->all();
-
-                        // Bersihkan duplikat record jika ada dari import terdahulu, migrasikan child records ke kandidat utama
-                        $duplicateIds = array_diff($allCandIds, [$candidate->id]);
-                        if (!empty($duplicateIds)) {
-                            TestResult::whereIn('candidate_id', $duplicateIds)->update(['candidate_id' => $candidate->id]);
-                            WorkExperience::whereIn('candidate_id', $duplicateIds)->update(['candidate_id' => $candidate->id]);
-                            Candidate::whereIn('id', $duplicateIds)->delete();
-                        }
-
-                        // JANGAN hapus TestResult, tb_hasilpsikotes, tb_hasilmath, hasil_kompt, WorkExperience!
-                        // Pertahankan tes online dan tanda tangan yang sudah dikerjakan kandidat
-                        if (!empty($candidate->tes_kepribadian)) unset($candidatePayload['tes_kepribadian']);
-                        if (!empty($candidate->tes_matematika)) unset($candidatePayload['tes_matematika']);
-                        if (!empty($candidate->tes_komputer)) unset($candidatePayload['tes_komputer']);
-                        if (!empty($candidate->tes_ke)) unset($candidatePayload['tes_ke']);
-                        if (!empty($candidate->buktikomputer)) unset($candidatePayload['buktikomputer']);
-                        if (!empty($candidate->signature_path)) unset($candidatePayload['signature_path']);
-                        if (!empty($candidate->statement_agreed)) unset($candidatePayload['statement_agreed']);
-                        if (!empty($candidate->password)) unset($candidatePayload['password']);
-                        if (empty($candidatePayload['education']) && !empty($candidate->education)) unset($candidatePayload['education']);
-
-                        // Replace data kandidat dengan payload yang telah dipreservasi
-                        $candidate->fill($candidatePayload);
-                        $candidate->save();
-                        $candidate->checkProfileCompleteness();
-                        $newId = $candidate->id;
-                    } else {
-                        // Buat kandidat baru
-                        $candidate = Candidate::create($candidatePayload);
-                        $newId = $candidate->id;
-                    }
+                    // Buat kandidat baru dengan status Active (data lama tetap tersimpan sebagai Arsip)
+                    $candidate = Candidate::create($candidatePayload);
+                    $newId = $candidate->id;
 
                     // 2. Simpan / Replace ke tabel legacy tb_kandidat jika tabel tersedia
                     if ($hasTbKandidat) {

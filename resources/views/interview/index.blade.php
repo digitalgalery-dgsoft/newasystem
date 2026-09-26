@@ -586,6 +586,13 @@
                                             title="Ubah Prinsiple">
                                         <i class="fa-solid fa-pen-to-square"></i>
                                     </button>
+
+                                    <!-- Arsipkan Kandidat Button -->
+                                    <button onclick="openArchiveModal({{ $candidate->id }}, '{{ addslashes($candidate->full_name) }}')" 
+                                            class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" 
+                                            title="Arsipkan Kandidat">
+                                        <i class="fa-solid fa-box-archive"></i>
+                                    </button>
                                 </div>
                             </td>
                         </tr>
@@ -802,6 +809,13 @@
                                             class="w-8 h-8 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 flex items-center justify-center text-xs transition-all shadow-sm" 
                                             title="Ubah Prinsiple">
                                         <i class="fa-solid fa-pen-to-square"></i>
+                                    </button>
+
+                                    <!-- Arsipkan Kandidat Button -->
+                                    <button onclick="openArchiveModal({{ $candidate->id }}, '{{ addslashes($candidate->full_name) }}')" 
+                                            class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-600 hover:text-white flex items-center justify-center text-xs transition-all shadow-sm" 
+                                            title="Arsipkan Kandidat">
+                                        <i class="fa-solid fa-box-archive"></i>
                                     </button>
                                 </div>
                             </td>
@@ -1363,6 +1377,44 @@
 </div>
 
 <!-- ============================================================== -->
+<!-- MODAL ARSIPKAN KANDIDAT INTERVIEW -->
+<!-- ============================================================== -->
+<div id="archiveCandidateModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
+    <div class="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <h4 class="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <i class="fa-solid fa-box-archive text-rose-600"></i>
+                Arsipkan Kandidat Interview
+            </h4>
+            <button type="button" onclick="closeArchiveModal()" class="text-slate-400 hover:text-slate-600">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+        </div>
+
+        <form id="formArchiveCandidate" action="" method="POST" class="space-y-4">
+            @csrf
+            <div>
+                <p class="text-xs text-slate-600 mb-3">
+                    Kandidat <b id="archiveCandidateNameText" class="text-slate-900"></b> akan dipindahkan dari daftar aktif ke daftar Arsip Interview.
+                </p>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5">Alasan Pengarsipan</label>
+                <textarea name="archive_reason" id="archiveReasonInput" rows="3" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-rose-100 focus:border-rose-600 outline-none" placeholder="Masukkan alasan (misal: Tidak hadir interview, Kualifikasi belum cocok, Batal ikut seleksi)..."></textarea>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button type="button" onclick="closeArchiveModal()" class="px-4 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700">
+                    Batal
+                </button>
+                <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-sm flex items-center gap-1.5">
+                    <i class="fa-solid fa-box-archive"></i>
+                    <span>Ya, Arsipkan</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- ============================================================== -->
 <!-- MODAL UPLOAD EXCEL KANDIDAT INTERVIEW -->
 <!-- ============================================================== -->
 <div id="modalImportCandidate" class="fixed inset-0 z-[999990] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm hidden">
@@ -1709,6 +1761,31 @@
                         </div>
                     </div>
 
+                    <!-- Alert jika kandidat AKTIF under USER/AS YANG SAMA (Otomatis Arsipkan Data Lama) -->
+                    <div id="previewSameUserActiveNotice" class="hidden p-3.5 rounded-2xl bg-sky-50 border-2 border-sky-300 text-sky-950 text-xs space-y-2 shadow-xs">
+                        <div class="flex items-center gap-2 font-black text-sky-800 text-xs uppercase tracking-wider">
+                            <i class="fa-solid fa-arrows-rotate text-sky-600 text-sm shrink-0"></i>
+                            <span>KANDIDAT AKTIF MILIK ANDA - OTOMATIS DIARSIPKAN</span>
+                        </div>
+                        <p class="leading-relaxed text-[11px] text-slate-700">
+                            Kandidat ini saat ini sedang terdaftar dengan status <b>AKTIF</b> under akun Anda (<b id="previewSameUserAsName">-</b>).
+                        </p>
+                        <div class="p-2.5 bg-white/90 rounded-xl border border-sky-200 text-[11px] space-y-1.5 shadow-2xs">
+                            <div class="flex items-center justify-between">
+                                <span class="text-slate-500 font-medium">Posisi & Penempatan Terakhir:</span>
+                                <span class="font-semibold text-slate-800" id="previewSameUserAreaJob">-</span>
+                            </div>
+                            <div class="flex items-center justify-between pt-0.5 border-t border-slate-100">
+                                <span class="text-slate-500 font-medium">Progres CBT & Tes:</span>
+                                <span class="font-bold text-sky-700" id="previewSameUserTests">-</span>
+                            </div>
+                        </div>
+                        <div class="p-2 bg-emerald-50/90 rounded-lg border border-emerald-200 text-[11px] text-emerald-900 flex items-start gap-1.5 font-medium leading-snug">
+                            <i class="fa-solid fa-circle-check text-emerald-600 text-xs mt-0.5 shrink-0"></i>
+                            <span>Melanjutkan penarikan akan <b>otomatis mengarsipkan</b> data kandidat aktif sebelumnya dan mendaftarkan proses aktif yang baru.</span>
+                        </div>
+                    </div>
+
                     <!-- Warning jika ada kandidat lama yang sudah berstatus ARSIP -->
                     <div id="previewArchiveWarning" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-2">
                         <i class="fa-solid fa-clock-rotate-left text-amber-600 text-xs shrink-0"></i>
@@ -1827,6 +1904,18 @@
     }
     function closeEditPrincipleModal() {
         document.getElementById('editPrincipleModal').classList.add('hidden');
+    }
+
+    function openArchiveModal(candidateId, candidateName) {
+        document.getElementById('formArchiveCandidate').action = `/interview/${candidateId}/archive`;
+        document.getElementById('archiveCandidateNameText').textContent = candidateName;
+        document.getElementById('archiveReasonInput').value = '';
+        document.getElementById('archiveCandidateModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+    function closeArchiveModal() {
+        document.getElementById('archiveCandidateModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
     }
 
     // ==============================================================
@@ -2225,8 +2314,14 @@
         document.getElementById('odooNikLoading').classList.add('hidden');
         document.getElementById('odooNikPreview').classList.add('hidden');
         document.getElementById('previewBlockedAlert')?.classList.add('hidden');
+        document.getElementById('previewSameUserActiveNotice')?.classList.add('hidden');
         document.getElementById('previewArchiveWarning')?.classList.add('hidden');
-        document.getElementById('btnSaveCandidate')?.classList.remove('hidden');
+        const btnSave = document.getElementById('btnSaveCandidate');
+        if (btnSave) {
+            btnSave.classList.remove('hidden');
+            btnSave.disabled = false;
+            btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> <span>Tarik & Proses Kandidat ke ASystem</span>`;
+        }
         document.getElementById('btnBlockedNotice')?.classList.add('hidden');
         document.getElementById('odooNikSuccess').classList.add('hidden');
         document.getElementById('odooNikFooter').classList.remove('hidden');
@@ -2327,11 +2422,13 @@
 
             // Warning & Proteksi Kandidat Aktif
             const blockedAlert = document.getElementById('previewBlockedAlert');
+            const sameUserNotice = document.getElementById('previewSameUserActiveNotice');
             const archiveWarn = document.getElementById('previewArchiveWarning');
             const btnSave = document.getElementById('btnSaveCandidate');
             const btnBlockedNotice = document.getElementById('btnBlockedNotice');
 
             if (data.is_blocked && data.blocked_data) {
+                // KASUS 1: Kandidat aktif milik USER LAIN -> BLOKIR PENARIKAN!
                 const b = data.blocked_data;
                 document.getElementById('previewBlockedAsName').textContent = b.as_name || '-';
                 document.getElementById('previewBlockedAsEmail').textContent = b.as_email || '-';
@@ -2339,16 +2436,17 @@
                 document.getElementById('previewBlockedTests').textContent = `${b.profile_status_text} • ${b.tests_text}`;
 
                 blockedAlert.classList.remove('hidden');
+                if (sameUserNotice) sameUserNotice.classList.add('hidden');
                 archiveWarn.classList.add('hidden');
                 btnSave.classList.add('hidden');
                 btnBlockedNotice.classList.remove('hidden');
 
                 Swal.fire({
                     icon: 'warning',
-                    title: 'Kandidat Aktif Sudah Terdaftar!',
+                    title: 'Kandidat Aktif Milik AS Lain!',
                     html: `
                         <div style="text-align: left; font-size: 12.5px; line-height: 1.6;">
-                            <p style="margin-bottom: 8px;">Kandidat <b>${b.name}</b> (NIK: <code>${b.nik}</code>) sudah terdaftar di ASystem dan saat ini berstatus <b>AKTIF</b>.</p>
+                            <p style="margin-bottom: 8px;">Kandidat <b>${b.name}</b> (NIK: <code>${b.nik}</code>) sudah terdaftar di ASystem dan saat ini berstatus <b>AKTIF</b> under AS lain.</p>
                             <div style="background-color: #fff1f2; border: 1px solid #fecdd3; padding: 10px; border-radius: 8px; color: #881337; margin-bottom: 10px;">
                                 <div><b>Terdaftar Under AS:</b> ${b.as_name}</div>
                                 <div><b>Email / Akun AS:</b> ${b.as_email}</div>
@@ -2356,23 +2454,51 @@
                                 <div><b>Progres CBT & Tes:</b> ${b.profile_status_text} • ${b.tests_text}</div>
                             </div>
                             <p style="color: #92400e; background-color: #fef3c7; border: 1px solid #fde68a; padding: 8px; border-radius: 6px; font-size: 11.5px; font-weight: 500;">
-                                ⚠️ Sesuai SOP, data kandidat aktif <b>tidak dapat di-replace</b>. Data baru hanya bisa masuk jika data yang aktif diarsipkan terlebih dahulu. <b>Harap berkoordinasi dengan AS terkait.</b>
+                                ⚠️ Sesuai SOP, tarik NIK tidak diperkenankan jika kandidat masih aktif di AS lain. Data baru hanya bisa masuk jika data yang aktif diarsipkan terlebih dahulu. <b>Harap berkoordinasi dengan AS terkait.</b>
                             </p>
                         </div>
                     `,
                     confirmButtonText: 'Saya Mengerti',
                     confirmButtonColor: '#e11d48',
                 });
-            } else if (data.existing_candidate) {
+            } else if (data.is_same_user && data.same_user_data) {
+                // KASUS 2: Kandidat aktif milik USER / AS YANG SAMA -> BISA TARIK & OTOMATIS ARSIPKAN!
+                const s = data.same_user_data;
+                const sameAsNameEl = document.getElementById('previewSameUserAsName');
+                if (sameAsNameEl) {
+                    sameAsNameEl.textContent = `${s.as_name} (${s.as_email})`;
+                }
+                const sameJobEl = document.getElementById('previewSameUserAreaJob');
+                if (sameJobEl) {
+                    sameJobEl.textContent = `${s.job} • Area ${s.area} (${s.principle})`;
+                }
+                const sameTestsEl = document.getElementById('previewSameUserTests');
+                if (sameTestsEl) {
+                    sameTestsEl.textContent = `${s.profile_status_text} • ${s.tests_text}`;
+                }
+
                 blockedAlert.classList.add('hidden');
-                archiveWarn.classList.remove('hidden');
-                btnSave.classList.remove('hidden');
-                btnBlockedNotice.classList.add('hidden');
-            } else {
-                blockedAlert.classList.add('hidden');
+                if (sameUserNotice) sameUserNotice.classList.remove('hidden');
                 archiveWarn.classList.add('hidden');
                 btnSave.classList.remove('hidden');
                 btnBlockedNotice.classList.add('hidden');
+                btnSave.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> <span>Tarik & Arsipkan Data Sebelumnya</span>`;
+            } else if (data.existing_candidate) {
+                // KASUS 3: Kandidat lama sudah berstatus ARSIP
+                blockedAlert.classList.add('hidden');
+                if (sameUserNotice) sameUserNotice.classList.add('hidden');
+                archiveWarn.classList.remove('hidden');
+                btnSave.classList.remove('hidden');
+                btnBlockedNotice.classList.add('hidden');
+                btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> <span>Tarik & Proses Kandidat ke ASystem</span>`;
+            } else {
+                // KASUS 4: Kandidat baru
+                blockedAlert.classList.add('hidden');
+                if (sameUserNotice) sameUserNotice.classList.add('hidden');
+                archiveWarn.classList.add('hidden');
+                btnSave.classList.remove('hidden');
+                btnBlockedNotice.classList.add('hidden');
+                btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> <span>Tarik & Proses Kandidat ke ASystem</span>`;
             }
 
             document.getElementById('odooNikPreview').classList.remove('hidden');
@@ -2499,6 +2625,7 @@
             closeImportCandidateModal();
             closeSyncOdooModal();
             closeOdooNikModal();
+            closeArchiveModal();
         }
     });
 </script>

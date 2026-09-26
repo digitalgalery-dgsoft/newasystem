@@ -2907,6 +2907,71 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 72. 📦 Perbaikan Komprehensif Sistem Pengarsipan Kandidat Interview & Sinkronisasi Status (26 September 2026)
+- **Identifikasi Masalah & Akar Penyebab**:
+  1. **Parameter Name Mismatch**: Form modal arsip pada `resources/views/interview/show.blade.php` mengirimkan input bernama `alasan`, dan `resources/views/interview/walk.blade.php` mengirimkan `alasanarsip`. Sementara `InterviewController::archive` mewajibkan validasi ketat `$request->validate(['archive_reason' => 'required|string'])`. Akibatnya, setiap pengiriman form selalu gagal karena `ValidationException` dan otomatis di-redirect kembali ke halaman form tanpa perubahan data.
+  2. **Validasi Wajib Tanpa Fallback**: Jika pengguna mengosongkan alasan arsip, validasi `required` menyebabkan proses gagal tanpa penjelasan langsung pada modal.
+  3. **Inkonsistensi Status Ganda**: Sistem memiliki dua kolom penentu status (`status` dan `status_kandidat`). Method arsip sebelumnya hanya mengupdate `status = 'Arsip'`, namun membiarkan `status_kandidat` tetap bernilai lama (misal: 'Interview' / 'Baru'), serta tidak menyelaraskan tabel pendamping `tb_kandidat`.
+  4. **Kebocoran Data pada Antrean Walkin & Index**: Query `baseWalkinQuery` pada `InterviewController::walkInterview` dan query filter pada `interview.index` belum secara konsisten mengecualikan kandidat yang berstatus arsip di kolom `status_kandidat`.
+  5. **Ketiadaan Aksi Arsip Cepat di Tabel Utama**: Di halaman `interview.index`, pewawancara tidak memiliki tombol langsung untuk mengarsipkan kandidat dari baris tabel dan harus membuka halaman detail terlebih dahulu.
+- **Solusi & Implementasi Teknis**:
+  1. **Penanganan Input Fleksibel & Toleran di Backend (`InterviewController::archive`)**:
+     - Menerima masukan dari field `archive_reason`, `alasan`, maupun `alasanarsip` secara otomatis.
+     - Menyediakan nilai default fallback otomatis jika alasan tidak diisi: `"Diarsipkan oleh [Nama User / Pewawancara]"` sehingga proses pengarsipan tidak pernah gagal/terblokir.
+     - Menghandle response fleksibel (redirect back, redirect ke URL tertentu jika ada parameter `redirect_to`, ataupun respon JSON jika dipanggil via AJAX/fetch).
+  2. **Sinkronisasi Lengkap Status & Tabel Pendamping**:
+     - Memperbarui `$candidate->status = 'Arsip'` dan `$candidate->status_kandidat = 'Arsip'`.
+     - Mengisi kolom `archive_reason` dengan alasan yang dicatat.
+     - Menyelaraskan status dan alasan pada tabel `tb_kandidat` jika tabel tersebut tersedia di database.
+     - Mencatat audit trail terstruktur menggunakan `ActivityLogger::log('ARCHIVE', ...)`.
+  3. **Penyempurnaan Antarmuka Form & Modal (`show.blade.php` & `walk.blade.php`)**:
+     - Mengubah field textarea di `interview/show.blade.php` menjadi `name="archive_reason"` dengan placeholder informatif serta tombol konfirmasi bergaya rose dengan ikon arsip.
+     - Menambahkan hidden field `archive_reason` pada form modal arsip di `interview/walk.blade.php`.
+  4. **Penambahan Fitur Arsip Cepat di Halaman Utama (`interview/index.blade.php`)**:
+     - Menambahkan tombol aksi berikon arsip (`fa-box-archive`) pada baris tabel **Kandidat Saya** dan **Kandidat Rekan Se-Area**.
+     - Membuat modal dialog khusus `#archiveCandidateModal` dengan konfirmasi nama kandidat dan kolom catatan alasan pengarsipan.
+     - Mengintegrasikan fungsi JavaScript `openArchiveModal` & `closeArchiveModal` serta penutupan modal via tombol Keyboard `Escape`.
+  5. **Penyaringan Bersih pada Query Walkin & Index**:
+     - Memperbarui `baseWalkinQuery` pada `InterviewController::walkInterview` dengan menambahkan filter `whereNotIn('status', ['Arsip', 'archived'])` dan pengecekan `status_kandidat != 'Arsip'`, sehingga kandidat yang diarsipkan langsung terhapus dari antrean walkin hari ini.
+     - Memperbarui `myCandidatesQuery`, `doneCandidatesQuery`, `countActiveQuery`, dan `allRecruiters` agar konsisten menyaring kandidat berstatus arsip.
+  6. **Penambahan Endpoint Bulk Archive (`InterviewController::bulkArchive`)**:
+     - Dibuat method `bulkArchive` dan route POST `/interview/bulk-archive` (`interview.bulk_archive`) di `routes/web.php` untuk mendukung pengarsipan kandidat secara massal.
+  7. **Standardisasi `KandidatPortalController::arsipkan`**:
+     - Menyelaraskan pengesetan `status = 'Arsip'` dan `status_kandidat = 'Arsip'` serta sinkronisasi `tb_kandidat` pada modul Kandidat Portal.
+---
+
+### 73. 🔄 Pembaruan Validasi Import Excel & Tarik NIK: Otomatis Mengarsipkan Data Sebelumnya untuk User/AS yang Sama dan Memblokir User/AS yang Berbeda (26 September 2026)
+- **Konteks & Kebutuhan Bisnis**:
+  - Pada update validasi proteksi kandidat aktif sebelumnya, seluruh penarikan NIK Odoo maupun import Excel untuk kandidat yang sedang berstatus AKTIF diblokir total tanpa membedakan siapa yang mengunggah data. Hal ini menyulitkan rekruter / AS yang ingin memproses kembali kandidat yang pernah ditanganinya sendiri karena data aktif tidak dapat langsung diperbarui.
+  - Aturan disempurnakan secara presisi:
+    1. **User / AS yang SAMA**: Jika user / AS yang sama mengimpor kembali via Excel atau menarik ulang NIK dari Odoo untuk kandidat yang saat ini masih berstatus aktif, sistem **secara otomatis langsung mengizinkan** dan **mengarsipkan data kandidat aktif yang sebelumnya** (`status = 'Arsip'`, `status_kandidat = 'Arsip'`). Data baru kemudian didaftarkan sebagai kandidat aktif yang segar dengan histori tes online CBT yang di-reset untuk siklus seleksi baru.
+    2. **User / AS yang BERBEDA**: Jika kandidat aktif terdaftar under AS / rekruter lain, sistem **tetap memblokir** proses penarikan atau import guna melindungi integritas proses rekrutmen AS terkait, serta menampilkan peringatan visual detail agar berkoordinasi terlebih dahulu.
+- **Implementasi Teknis & Arsitektur**:
+  1. **Enkapsulasi Ownership Checking (`Candidate::isOwnedBy`)**:
+     - Ditambahkan method `isOwnedBy($user)` pada model `App\Models\Candidate` (`app/Models/Candidate.php`).
+     - Memverifikasi kepemilikan data berdasarkan `recruiter_id`, kecocokan email `useras`, nama/display name, serta seluruh alias/identifier akun rekruter melalui `KandidatPortalController::resolveUserIdentifiers($user)`.
+  2. **Pembaruan Import Excel (`CandidateImportService`)**:
+     - Pada `app/Services/CandidateImportService.php`:
+       - Jika ditemukan kandidat aktif dengan NIK yang sama, sistem memeriksa kepemilikan akun rekruter via `isOwnedBy`.
+       - **User Berbeda**: Baris data dilewati (`stats['failed']++`), memancarkan warning event `active_candidate_different_user` ke terminal import dengan rincian nama AS pemilik dan kontak email.
+       - **User Sama**: Seluruh record kandidat aktif sebelumnya secara otomatis diubah menjadi `status = 'Arsip'`, `status_kandidat = 'Arsip'`, dicatat `archive_reason`, disinkronkan ke tabel `tb_kandidat`, dicatat di `ActivityLogger`, dan baris import diproses menjadi record kandidat baru berstatus `Active`.
+  3. **Pembaruan Tarik by NIK Odoo (`CandidateImportController`)**:
+     - Pada method `checkOdooByNik` (`app/Http/Controllers/CandidateImportController.php`):
+       - Melakukan pengecekan `$isSameUser = $activeCandidate->isOwnedBy($currentUser)`.
+       - Jika user sama: `is_blocked = false`, `is_same_user = true`, mengembalikan payload `same_user_data`.
+       - Jika user berbeda: `is_blocked = true`, `is_same_user = false`, mengembalikan payload `blocked_data`.
+     - Pada method `importOdooByNik`:
+       - Jika user berbeda: transaksi di-rollback dan mengembalikan respon JSON blocked dengan rincian AS pemilik.
+       - Jika user sama: seluruh record aktif sebelumnya diubah ke `status = 'Arsip'`, `status_kandidat = 'Arsip'`, disinkronkan ke `tb_kandidat`, dicatat di `ActivityLogger`, dan dibuat record kandidat baru berstatus `Active`.
+  4. **Penyempurnaan Antarmuka Modal Odoo NIK (`resources/views/interview/index.blade.php`)**:
+     - Menambahkan banner informatif khusus `#previewSameUserActiveNotice` bernuansa biru langit (*Sky/Blue*) yang memberi tahu rekruter bahwa kandidat saat ini aktif under akun mereka dan proses penarikan akan otomatis mengarsipkan data lama.
+     - Mengubah teks tombol simpan secara dinamis menjadi *"Tarik & Arsipkan Data Sebelumnya"* dengan ikon putar (`fa-arrows-rotate`) ketika `is_same_user` bernilai benar.
+     - Menjaga tombol simpan tetap terkunci dan banner merah aktif jika kandidat dimiliki oleh AS lain.
+  5. **Pengujian & Verifikasi**:
+     - Divalidasi melalui script simulasi komprehensif yang menguji kedua skenario (AS sama vs AS berbeda) untuk logika `isOwnedBy`, `CandidateImportService`, serta `CandidateImportController`, dengan hasil 100% lulus.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

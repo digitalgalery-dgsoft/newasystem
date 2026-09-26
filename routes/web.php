@@ -121,6 +121,7 @@ Route::post('/interview/{id}/kompt', [InterviewController::class, 'storeComputer
 Route::post('/interview/{id}/remidi', [InterviewController::class, 'setRemidi'])->name('interview.remidi');
 Route::post('/interview/{id}/archive', [InterviewController::class, 'archive'])->name('interview.archive');
 Route::post('/interview/{id}/unarchive', [InterviewController::class, 'unarchive'])->name('interview.unarchive');
+Route::post('/interview/bulk-archive', [InterviewController::class, 'bulkArchive'])->name('interview.bulk_archive');
 Route::post('/interview/bulk-unarchive', [InterviewController::class, 'bulkUnarchive'])->name('interview.bulk_unarchive');
 Route::post('/interview/{id}/edit-principle', [InterviewController::class, 'editPrinciple'])->name('interview.editPrinciple');
 Route::post('/interview/{id}/ganti-area', [InterviewController::class, 'gantiArea'])->name('interview.ganti-area');

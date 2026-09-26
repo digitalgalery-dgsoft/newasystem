@@ -329,6 +329,9 @@ class InterviewController extends Controller
                 ->select('useras', \Illuminate\Support\Facades\DB::raw('count(*) as total'))
                 ->whereNotIn('status', ['Arsip', 'archived'])
                 ->where(function ($q) {
+                    $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+                })
+                ->where(function ($q) {
                     $q->whereNull('jenis')->orWhere('jenis', '');
                 })
                 ->where(function ($q) {
@@ -370,6 +373,9 @@ class InterviewController extends Controller
         // Hitung Tab Counters (Active, Done, Arsip)
         $countActiveQuery = Candidate::whereNotIn('status', ['Arsip', 'archived'])
             ->where(function ($q) {
+                $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+            })
+            ->where(function ($q) {
                 $q->whereNull('jenis')->orWhere('jenis', '');
             })
             ->where(function ($q) {
@@ -377,6 +383,9 @@ class InterviewController extends Controller
             });
 
         $countDoneQuery = Candidate::whereNotIn('status', ['Arsip', 'archived'])
+            ->where(function ($q) {
+                $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+            })
             ->where(function ($sq) {
                 $sq->where(function ($q2) {
                     $q2->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
@@ -456,6 +465,9 @@ class InterviewController extends Controller
             // Query 1: Data Kandidat Milik Anda / Rekruter Terpilih / Nasional (Tabel 1)
             $myCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
                 ->whereNotIn('status', ['Arsip', 'archived'])
+                ->where(function ($q) {
+                    $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+                })
                 ->where(function ($q) {
                     $q->whereNull('jenis')->orWhere('jenis', '');
                 })
@@ -692,6 +704,9 @@ class InterviewController extends Controller
             // TAB 2: INTERVIEW SELESAI
             $doneCandidatesQuery = Candidate::with(['principle', 'recruiter', 'testResults'])
                 ->whereNotIn('status', ['Arsip', 'archived'])
+                ->where(function ($q) {
+                    $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+                })
                 ->where(function ($sq) {
                     $sq->where(function ($q2) {
                         $q2->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
@@ -1546,18 +1561,60 @@ class InterviewController extends Controller
     public function archive(Request $request, $id)
     {
         $candidate = Candidate::findOrFail($id);
-        $request->validate(['archive_reason' => 'required|string']);
 
-        $candidate->update([
-            'status' => 'Arsip',
-            'archive_reason' => $request->archive_reason,
+        // Fleksibel menangani input 'archive_reason', 'alasan', atau 'alasanarsip'
+        $reason = trim(
+            $request->input('archive_reason') 
+            ?? $request->input('alasan') 
+            ?? $request->input('alasanarsip') 
+            ?? ''
+        );
+
+        if (empty($reason)) {
+            $user = auth()->user();
+            $reason = 'Diarsipkan oleh ' . ($user->name ?? 'Pewawancara');
+        }
+
+        $candidate->status = 'Arsip';
+        if (\Illuminate\Support\Facades\Schema::hasColumn('candidates', 'status_kandidat')) {
+            $candidate->status_kandidat = 'Arsip';
+        }
+        if (\Illuminate\Support\Facades\Schema::hasColumn('candidates', 'archive_reason')) {
+            $candidate->archive_reason = $reason;
+        }
+        $candidate->save();
+
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+            $tbData = ['status' => 'Arsip'];
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
+                $tbData['status_kandidat'] = 'Arsip';
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'archive_reason')) {
+                $tbData['archive_reason'] = $reason;
+            }
+            \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                ->where('id', $candidate->id)
+                ->orWhere('no_ktp', $candidate->nik)
+                ->update($tbData);
+        }
+
+        ActivityLogger::log('ARCHIVE', 'Interview', "Mengarsipkan kandidat {$candidate->full_name} ({$candidate->id}). Alasan: {$reason}", $candidate, [
+            'alasan' => $reason,
         ]);
 
-        ActivityLogger::log('ARCHIVE', 'Interview', "Mengarsipkan kandidat {$candidate->full_name} ({$candidate->id}). Alasan: {$request->archive_reason}", $candidate, [
-            'alasan' => $request->archive_reason,
-        ]);
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'success' => true,
+                'message' => "Kandidat {$candidate->full_name} Berhasil Diarsipkan!"
+            ]);
+        }
 
-        return redirect()->route('interview.index')
+        if ($request->filled('redirect_to')) {
+            return redirect($request->input('redirect_to'))
+                ->with('success', "Kandidat {$candidate->full_name} Berhasil Diarsipkan!");
+        }
+
+        return redirect()->back()
             ->with('success', "Kandidat {$candidate->full_name} Berhasil Diarsipkan!");
     }
 
@@ -1642,6 +1699,54 @@ class InterviewController extends Controller
     }
 
     /**
+     * Mengarsipkan kandidat secara massal (Bulk Archive)
+     */
+    public function bulkArchive(Request $request)
+    {
+        $ids = $request->input('candidate_ids', []);
+        if (empty($ids) || !is_array($ids)) {
+            return redirect()->back()->with('error', 'Silakan pilih minimal 1 kandidat yang ingin diarsipkan.');
+        }
+
+        $reason = trim($request->input('archive_reason') ?? $request->input('alasan') ?? '') 
+            ?: ('Diarsipkan secara massal oleh ' . (auth()->user()->name ?? 'Pewawancara'));
+
+        $candidates = Candidate::whereIn('id', $ids)->get();
+        $count = 0;
+
+        foreach ($candidates as $cand) {
+            $cand->status = 'Arsip';
+            if (\Illuminate\Support\Facades\Schema::hasColumn('candidates', 'status_kandidat')) {
+                $cand->status_kandidat = 'Arsip';
+            }
+            if (\Illuminate\Support\Facades\Schema::hasColumn('candidates', 'archive_reason')) {
+                $cand->archive_reason = $reason;
+            }
+            $cand->save();
+
+            if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
+                $tbData = ['status' => 'Arsip'];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
+                    $tbData['status_kandidat'] = 'Arsip';
+                }
+                if (\Illuminate\Support\Facades\Schema::hasColumn('tb_kandidat', 'archive_reason')) {
+                    $tbData['archive_reason'] = $reason;
+                }
+                \Illuminate\Support\Facades\DB::table('tb_kandidat')
+                    ->where('id', $cand->id)
+                    ->orWhere('no_ktp', $cand->nik)
+                    ->update($tbData);
+            }
+
+            ActivityLogger::log('ARCHIVE', 'Interview', "Mengarsipkan kandidat {$cand->full_name} ({$cand->id}) via multi-select. Alasan: {$reason}", $cand);
+            $count++;
+        }
+
+        return redirect()->back()
+            ->with('success', "Berhasil mengarsipkan {$count} kandidat terpilih!");
+    }
+
+    /**
      * Halaman Walk Interview (Replikasi walkinterview.php sesuai gambar sistem lama)
      */
     public function walkInterview(Request $request)
@@ -1672,7 +1777,11 @@ class InterviewController extends Controller
         }
 
         // Base Walkin Query (data kandidat dengan jenis 'Walkin' sesuai sistem lama)
-        $baseWalkinQuery = Candidate::where('jenis', 'Walkin');
+        $baseWalkinQuery = Candidate::where('jenis', 'Walkin')
+            ->whereNotIn('status', ['Arsip', 'archived'])
+            ->where(function ($q) {
+                $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+            });
 
         if (!$isAdmin && $user) {
             $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);

@@ -440,6 +440,7 @@
             
             <form :action="'{{ url('/interview/archive') }}/' + archiveId" method="POST" class="mt-4">
                 @csrf
+                <input type="hidden" name="archive_reason" value="Diarsipkan dari Kandidat Walkin">
                 <input type="hidden" name="alasanarsip" value="Diarsipkan dari Kandidat Walkin">
                 <div class="flex items-center gap-2 justify-center">
                     <button type="button" @click="openArchive = false" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200">Batal</button>

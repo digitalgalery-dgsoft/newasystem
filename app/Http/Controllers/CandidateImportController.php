@@ -307,11 +307,14 @@ class CandidateImportController extends Controller
             return $c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip';
         });
 
+        $currentUser = $this->getCurrentUser();
         $isBlocked = false;
+        $isSameUser = false;
         $blockedData = null;
+        $sameUserData = null;
 
         if ($activeCandidate) {
-            $isBlocked = true;
+            $isSameUser = $activeCandidate->isOwnedBy($currentUser ?: ($currentUser->email ?? null));
             $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
             $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
 
@@ -332,7 +335,7 @@ class CandidateImportController extends Controller
 
             $activePrinName = is_object($activeCandidate->principle) ? ($activeCandidate->principle->name ?? '-') : ($activeCandidate->principle ?? '-');
 
-            $blockedData = [
+            $candidateInfo = [
                 'id' => $activeCandidate->id,
                 'name' => $activeCandidate->full_name,
                 'nik' => $activeCandidate->nik,
@@ -347,6 +350,16 @@ class CandidateImportController extends Controller
                 'profile_status_text' => $profComplete ? 'Lengkap' : 'Belum Lengkap',
                 'created_at' => $activeCandidate->created_at ? $activeCandidate->created_at->format('d/m/Y H:i') : null,
             ];
+
+            if ($isSameUser) {
+                // USER / AS SAMA -> BISA TARIK & AKAN OTOMATIS ARSIPKAN DATA SEBELUMNYA
+                $isBlocked = false;
+                $sameUserData = $candidateInfo;
+            } else {
+                // USER / AS BERBEDA -> BLOKIR PENARIKAN!
+                $isBlocked = true;
+                $blockedData = $candidateInfo;
+            }
         }
 
         $lastExisting = $existingCandidates->last();
@@ -389,7 +402,9 @@ class CandidateImportController extends Controller
                 'gender'       => $gender,
             ],
             'is_blocked' => $isBlocked,
+            'is_same_user' => $isSameUser,
             'blocked_data' => $blockedData,
+            'same_user_data' => $sameUserData,
             'existing_candidate' => $lastExisting ? [
                 'id'         => $lastExisting->id,
                 'name'       => $lastExisting->full_name,
@@ -564,54 +579,94 @@ class CandidateImportController extends Controller
             $isReplaced = $existingCandidates->isNotEmpty();
 
             // VALIDASI PROTEKSI KANDIDAT AKTIF:
-            // Sesuai aturan sistem, jika kandidat berstatus AKTIF (bukan Arsip):
-            // Data TIDAK BISA di-replace atau diimpor ulang sampai data yang aktif diarsipkan.
-            // Data baru hanya bisa me-replace data yang berstatus Arsip.
+            // Sesuai aturan sistem:
+            // - Jika user / AS yang SAMA yang import / tarik lagi: Otomatis langsung bisa & mengarsipkan data sebelumnya.
+            // - Jika user / AS yang BERBEDA yang import / tarik: Tidak bisa (diblokir) & harus koordinasi dengan AS terkait.
             $activeCandidate = $existingCandidates->first(function($c) {
                 return $c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip';
             });
 
+            $hasTbKandidat = Schema::hasTable('tb_kandidat');
+            $wasActiveArchived = false;
+
             if ($activeCandidate) {
-                DB::rollBack();
+                $isOwned = $activeCandidate->isOwnedBy($user ?: $userEmail);
                 $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
                 $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
 
-                $testsStatus = [];
-                if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
-                    $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
-                }
-                if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
-                    $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
-                    $mScore = $mRes ? $mRes->score : null;
-                    $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
-                }
-                if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
-                    $testsStatus[] = 'Tes Komputer (Selesai)';
-                }
-                $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses seleksi sedang berjalan';
-                $profText = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness()) ? 'Lengkap' : 'Belum Lengkap';
-                $activePrinName = is_object($activeCandidate->principle) ? ($activeCandidate->principle->name ?? '-') : ($activeCandidate->principle ?? '-');
+                if (!$isOwned) {
+                    // USER BERBEDA -> BLOKIR PENARIKAN!
+                    DB::rollBack();
 
-                return response()->json([
-                    'success' => false,
-                    'is_blocked' => true,
-                    'title' => 'Kandidat Aktif Tidak Dapat Di-replace!',
-                    'message' => "Kandidat dengan NIK {$targetNik} ({$activeCandidate->full_name}) sudah terdaftar di ASystem dan saat ini berstatus AKTIF.\n\n"
-                               . "• Status Profil: {$profText}\n"
-                               . "• Progres Tes Online: {$testsText}\n"
-                               . "• Terdaftar under AS: {$asName} ({$asEmail})\n"
-                               . "• Area / Posisi: {$activeCandidate->applied_job} • Area {$activeCandidate->area} ({$activePrinName})\n\n"
-                               . "Sesuai SOP, data kandidat aktif tidak dapat di-replace. Data baru hanya bisa masuk/me-replace jika data aktif diarsipkan terlebih dahulu. Harap berkoordinasi dengan AS terkait ({$asName} - {$asEmail}).",
-                    'candidate' => [
-                        'id' => $activeCandidate->id,
-                        'name' => $activeCandidate->full_name,
-                        'status' => $activeCandidate->status,
-                        'as_name' => $asName,
-                        'as_email' => $asEmail,
-                        'tests_status' => $testsText,
-                        'profile_status' => $profText,
-                    ]
-                ], 200);
+                    $testsStatus = [];
+                    if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
+                        $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
+                    }
+                    if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
+                        $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
+                        $mScore = $mRes ? $mRes->score : null;
+                        $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
+                    }
+                    if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
+                        $testsStatus[] = 'Tes Komputer (Selesai)';
+                    }
+                    $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses seleksi sedang berjalan';
+                    $profText = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness()) ? 'Lengkap' : 'Belum Lengkap';
+                    $activePrinName = is_object($activeCandidate->principle) ? ($activeCandidate->principle->name ?? '-') : ($activeCandidate->principle ?? '-');
+
+                    return response()->json([
+                        'success' => false,
+                        'is_blocked' => true,
+                        'title' => 'Kandidat Aktif Milik AS Lain!',
+                        'message' => "Kandidat dengan NIK {$targetNik} ({$activeCandidate->full_name}) saat ini berstatus AKTIF under AS LAIN: {$asName} ({$asEmail}).\n\n"
+                                   . "• Status Profil: {$profText}\n"
+                                   . "• Progres Tes Online: {$testsText}\n"
+                                   . "• Terdaftar under AS: {$asName} ({$asEmail})\n"
+                                   . "• Area / Posisi: {$activeCandidate->applied_job} • Area {$activeCandidate->area} ({$activePrinName})\n\n"
+                                   . "Sesuai SOP, tarik NIK tidak diperkenankan jika kandidat masih aktif di AS lain. Harap berkoordinasi dengan AS terkait ({$asName} - {$asEmail}).",
+                        'candidate' => [
+                            'id' => $activeCandidate->id,
+                            'name' => $activeCandidate->full_name,
+                            'status' => $activeCandidate->status,
+                            'as_name' => $asName,
+                            'as_email' => $asEmail,
+                            'tests_status' => $testsText,
+                            'profile_status' => $profText,
+                        ]
+                    ], 200);
+                }
+
+                // USER / AS SAMA -> OTOMATIS BISA & ARSIPKAN DATA SEBELUMNYA!
+                foreach ($existingCandidates as $existingCand) {
+                    if ($existingCand->status !== 'Arsip' && $existingCand->status_kandidat !== 'Arsip') {
+                        $existingCand->status = 'Arsip';
+                        if (Schema::hasColumn('candidates', 'status_kandidat')) {
+                            $existingCand->status_kandidat = 'Arsip';
+                        }
+                        if (Schema::hasColumn('candidates', 'archive_reason')) {
+                            $existingCand->archive_reason = 'Otomatis diarsipkan: Tarik NIK ulang dari Odoo oleh AS yang sama (' . ($user->name ?? $userEmail) . ')';
+                        }
+                        $existingCand->save();
+
+                        if ($hasTbKandidat) {
+                            $tbData = ['status' => 'Arsip'];
+                            if (Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
+                                $tbData['status_kandidat'] = 'Arsip';
+                            }
+                            if (Schema::hasColumn('tb_kandidat', 'archive_reason')) {
+                                $tbData['archive_reason'] = $existingCand->archive_reason;
+                            }
+                            DB::table('tb_kandidat')
+                                ->where('id', $existingCand->id)
+                                ->orWhere('no_ktp', $existingCand->nik)
+                                ->update($tbData);
+                        }
+
+                        ActivityLogger::log('ARCHIVE', 'Odoo Sync', "Mengarsipkan kandidat aktif sebelumnya {$existingCand->full_name} ({$existingCand->id}) karena tarik NIK ulang oleh AS yang sama.", $existingCand);
+                    }
+                }
+
+                $wasActiveArchived = true;
             }
 
             $candidatePayload = [
@@ -636,6 +691,7 @@ class CandidateImportController extends Controller
                 'principle_id'             => $principleId,
                 'applied_job'              => $job,
                 'status'                   => 'Active',
+                'status_kandidat'          => 'Active',
                 'jenis'                    => '', // Walkin / Inhouse Interview list
                 'source_type'              => 'odoo_sync',
                 'useras'                   => $userEmail,
@@ -668,74 +724,14 @@ class CandidateImportController extends Controller
                 'catatan_interview'        => null,
                 'hasil_interview'          => null,
                 'interviewer'              => null,
+                'created_at'               => now(),
                 'updated_at'               => now(),
             ];
 
-            if ($isReplaced) {
-                $candidate = $existingCandidates->last();
-                $allCandIds = $existingCandidates->pluck('id')->all();
-
-                // Bersihkan duplikat record jika ada dari import terdahulu, migrasikan child records ke kandidat utama
-                $duplicateIds = array_diff($allCandIds, [$candidate->id]);
-                if (!empty($duplicateIds)) {
-                    TestResult::whereIn('candidate_id', $duplicateIds)->update(['candidate_id' => $candidate->id]);
-                    WorkExperience::whereIn('candidate_id', $duplicateIds)->update(['candidate_id' => $candidate->id]);
-                    Candidate::whereIn('id', $duplicateIds)->delete();
-                }
-
-                // JANGAN PERNAH menghapus TestResult, tb_hasilpsikotes, tb_hasilmath, hasil_kompt, WorkExperience,
-                // ataupun mereset hasil tes online dan tanda tangan digital yang sudah dikerjakan kandidat!
-
-                // Hanya perbarui data dari Odoo tanpa merusak hasil tes dan data profil portal yang sudah diisi
-                $updateData = [
-                    'odoo_applicant_id'   => $foundApplicant['id'],
-                    'odoo_stage_name'     => $stage,
-                    'odoo_entity'         => $foundEntity,
-                    'odoo_synced_at'      => now(),
-                    'odoo_applicant_data' => $foundApplicant,
-                    'updated_at'          => now(),
-                ];
-
-                if (!empty($job)) $updateData['applied_job'] = $job;
-                if (!empty($prinName)) {
-                    $updateData['principle'] = $prinName;
-                    if ($principleId) $updateData['principle_id'] = $principleId;
-                }
-                if (!empty($area)) {
-                    $updateData['area'] = $area;
-                    $updateData['penempatan'] = $area;
-                }
-                if ($userEmail && empty($candidate->useras)) $updateData['useras'] = $userEmail;
-                if ($userId && empty($candidate->recruiter_id)) $updateData['recruiter_id'] = $userId;
-
-                // Update data demografi dasar dari Odoo hanya jika data lokal masih kosong
-                if (!empty($name) && empty($candidate->full_name)) $updateData['full_name'] = $name;
-                if (!empty($phone) && empty($candidate->phone)) {
-                    $updateData['phone'] = $phone;
-                    $updateData['whatsapp'] = $phone;
-                }
-                if (!empty($birthDate) && empty($candidate->birth_date)) $updateData['birth_date'] = $birthDate;
-                if (!empty($foundApplicant['place_of_birth']) && empty($candidate->birth_place)) {
-                    $updateData['birth_place'] = $foundApplicant['place_of_birth'];
-                }
-                if (!empty($foundApplicant['ktp_address']) && empty($candidate->address_ktp)) {
-                    $updateData['address_ktp'] = $foundApplicant['ktp_address'];
-                    $updateData['address_domicile'] = $foundApplicant['ktp_address'];
-                }
-                $odooEducation = is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : ($foundApplicant['type_id'] ?? null);
-                if (!empty($odooEducation) && empty($candidate->education)) {
-                    $updateData['education'] = $odooEducation;
-                }
-
-                $candidate->update($updateData);
-                $candidate->checkProfileCompleteness();
-            } else {
-                $candidatePayload['created_at'] = now();
-                $candidate = Candidate::create($candidatePayload);
-            }
+            $candidate = Candidate::create($candidatePayload);
 
             // 3. Simpan / Replace ke tb_kandidat jika tabel legacy tersedia
-            if (Schema::hasTable('tb_kandidat')) {
+            if ($hasTbKandidat) {
                 $tbKandidatData = [
                     'tanggal'             => date('Y-m-d'),
                     'no_ktp'              => $targetNik,
@@ -757,6 +753,7 @@ class CandidateImportController extends Controller
                     'password'            => $passwordHashed,
                     'useras'              => $userEmail,
                     'status'              => 'Active',
+                    'status_kandidat'     => 'Active',
                     'jenis'               => '',
                     'info'                => 'WhatsApp',
                     'undangan'            => 'WhatsApp',
@@ -772,25 +769,6 @@ class CandidateImportController extends Controller
 
                 $existingTb = DB::table('tb_kandidat')->whereIn('no_ktp', $allPossibleNiks)->first();
                 if ($existingTb) {
-                    // Pertahankan progres tes jika sudah ada di tb_kandidat atau candidate
-                    if (!empty($existingTb->tes_kepribadian) || !empty($candidate->tes_kepribadian)) {
-                        unset($tbKandidatData['tes_kepribadian']);
-                    }
-                    if (!empty($existingTb->tes_matematika) || !empty($candidate->tes_matematika)) {
-                        unset($tbKandidatData['tes_matematika']);
-                    }
-                    if (!empty($existingTb->tes_komputer) || !empty($candidate->tes_komputer)) {
-                        unset($tbKandidatData['tes_komputer']);
-                    }
-                    if (!empty($existingTb->tes_ke) || !empty($candidate->tes_ke)) {
-                        unset($tbKandidatData['tes_ke']);
-                    }
-                    if (!empty($existingTb->password)) {
-                        unset($tbKandidatData['password']);
-                    }
-                    if (empty($tbKandidatData['pendidikan_terakhir']) && !empty($existingTb->pendidikan_terakhir)) {
-                        unset($tbKandidatData['pendidikan_terakhir']);
-                    }
                     DB::table('tb_kandidat')->where('id', $existingTb->id)->update($tbKandidatData);
                 } else {
                     $tbKandidatData['id'] = $candidate->id;
@@ -814,9 +792,11 @@ class CandidateImportController extends Controller
             $waText = "Halo {$name},\n\nAnda telah terdaftar untuk mengikuti tahapan seleksi tes online di ASystem ESA Groups ({$prinName} - {$job}).\n\nSilakan login untuk mengerjakan tes online (Psikotes DISC, Matematika, dan Profil):\n🔗 *Link Tes Online*: {$cbtLoginUrl}\n🆔 *Username (NIK)*: {$targetNik}\n🔑 *Password*: {$passwordPlain}\n\nMohon segera menyelesaikan tes tersebut. Terima kasih.\n*Tim Rekrutmen ESA Groups*";
             $waLink = !empty($waPhone) ? "https://api.whatsapp.com/send?phone={$waPhone}&text=" . rawurlencode($waText) : null;
 
-            $successMsg = $isReplaced
-                ? "Data kandidat {$name} berhasil di-REPLACE dan tes online di-RESET ke awal!"
-                : "Kandidat {$name} berhasil ditarik dari Odoo [{$foundEntity}] dan siap diproses!";
+            $successMsg = $wasActiveArchived
+                ? "Kandidat {$name} berhasil ditarik ulang dari Odoo [{$foundEntity}]. Data aktif sebelumnya telah otomatis diarsipkan dan proses baru siap dimulai!"
+                : ($isReplaced
+                    ? "Kandidat {$name} berhasil ditarik kembali dari Odoo [{$foundEntity}] dan siap diproses!"
+                    : "Kandidat {$name} berhasil ditarik dari Odoo [{$foundEntity}] dan siap diproses!");
 
             return response()->json([
                 'success'          => true,

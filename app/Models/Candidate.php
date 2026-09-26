@@ -100,6 +100,57 @@ class Candidate extends Model
         return $this->belongsTo(User::class, 'recruiter_id');
     }
 
+    /**
+     * Cek apakah kandidat aktif ini dimiliki oleh user / AS yang sama
+     */
+    public function isOwnedBy($user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        $userId = is_object($user) ? $user->id : null;
+        $userEmail = is_object($user) ? strtolower(trim((string)$user->email)) : (str_contains((string)$user, '@') ? strtolower(trim((string)$user)) : '');
+        $userName = is_object($user) ? strtolower(trim((string)$user->name)) : (!str_contains((string)$user, '@') ? strtolower(trim((string)$user)) : '');
+
+        // 1. Cek kecocokan langsung recruiter_id
+        if (!empty($userId) && !empty($this->recruiter_id) && (int)$this->recruiter_id === (int)$userId) {
+            return true;
+        }
+
+        $candUseras = strtolower(trim((string)$this->useras));
+
+        // 2. Cek kecocokan useras dengan email user
+        if (!empty($candUseras) && !empty($userEmail) && $candUseras === $userEmail) {
+            return true;
+        }
+
+        // 3. Cek kecocokan useras dengan seluruh alias/identifiers user (nama employee, alias inhouse)
+        if (is_object($user)) {
+            $identifiers = \App\Http\Controllers\KandidatPortalController::resolveUserIdentifiers($user);
+            if (!empty($candUseras) && in_array($candUseras, $identifiers, true)) {
+                return true;
+            }
+        }
+
+        // 4. Cek kecocokan nama pada useras
+        if (!empty($candUseras) && !empty($userName)) {
+            if ($candUseras === $userName || str_contains($candUseras, $userName) || str_contains($userName, $candUseras)) {
+                return true;
+            }
+        }
+
+        // 5. Cek kecocokan user_display_name kandidat dengan nama user
+        $candDisplayName = strtolower(trim((string)($this->user_display_name ?? '')));
+        if (!empty($candDisplayName) && !empty($userName)) {
+            if ($candDisplayName === $userName || str_contains($candDisplayName, $userName) || str_contains($userName, $candDisplayName)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function workExperiences()
     {
         return $this->hasMany(WorkExperience::class);
