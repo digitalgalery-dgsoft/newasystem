@@ -108,10 +108,10 @@
     "semantic_hash": "2e44b075b564d3d77cb845005ca1d151"
   },
   "app/Http/Controllers/AuthController.php": {
-    "mtime": 1790061523.1926534,
-    "seen": 1790172624.4093866,
-    "ast_hash": "f9a1cbd9ee552cc2d2ae43e5019f2f66",
-    "semantic_hash": "f9a1cbd9ee552cc2d2ae43e5019f2f66"
+    "mtime": 1790571091.1501923,
+    "seen": 1790571158.8999212,
+    "ast_hash": "4925dbaa62ef8aaeb36ec93085522a1e",
+    "semantic_hash": ""
   },
   "app/Http/Controllers/CandidateController.php": {
     "mtime": 1789655549.8434653,
@@ -1566,9 +1566,9 @@
     "semantic_hash": ""
   },
   "UPDATE_PROGRESS.md": {
-    "mtime": 1790570352.5155165,
-    "seen": 1790570910.6402056,
-    "ast_hash": "e2ffe12eae008e3557d8b6e7065a6e12",
+    "mtime": 1790571111.2777288,
+    "seen": 1790571158.9009306,
+    "ast_hash": "ae87dfe0d0e15e4505c4675458a09dee",
     "semantic_hash": ""
   },
   "WHATSAPPCOEX.md": {
@@ -1782,9 +1782,9 @@
     "semantic_hash": ""
   },
   "app/Http/Middleware/PreventIndexingMiddleware.php": {
-    "mtime": 1790569030.293712,
-    "seen": 1790570910.639185,
-    "ast_hash": "d5daa8c95637f36d04f7f489223e8465",
+    "mtime": 1790571067.7633872,
+    "seen": 1790571158.8999212,
+    "ast_hash": "50afcad9ee0cddf42ad4be7fa92f9f27",
     "semantic_hash": ""
   },
   "database/migrations/2026_09_28_110000_fix_job_portal_terima_candidates_status.php": {
@@ -1809,12 +1809,6 @@
     "mtime": 1790569974.635449,
     "seen": 1790570910.639185,
     "ast_hash": "30d3785524d9299f0b998ba41e5736bc",
-    "semantic_hash": ""
-  },
-  "cookies.txt": {
-    "mtime": 1790570834.6871517,
-    "seen": 1790570910.6402056,
-    "ast_hash": "b662a2ef19c261b9b7ff83a81de4c523",
     "semantic_hash": ""
   }
 }
