@@ -3049,6 +3049,88 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 76. 🛡️ Penguncian Autentikasi Kredensial & Proteksi Menyeluruh Akses Data Kandidat Tanpa Login (28 September 2026)
+- **Latar Belakang & Identifikasi Kerentanan Keamanan**:
+  - Ditemukan laporan bahwa detail data kandidat dapat dibuka secara langsung via URL tanpa memerlukan login kredensial (akses publik oleh guest/tamu anonim).
+  - **Penyebab Teknis (*Technical Root Cause*)**:
+    1. **Bypass Admin Fallback pada Controller**:
+       - Pada beberapa controller (`KandidatPortalController`, `InterviewController`, `InterviewInhouseController`, dan `CandidateImportController`), terdapat method helper `getCurrentUser()` dengan fallback:
+         ```php
+         if (auth()->check()) {
+             return auth()->user();
+         }
+         return User::where('role', 'admin')->first() ?? User::first();
+         ```
+       - Logika fallback ini awalnya dibuat saat prototyping awal agar halaman tidak crash tanpa login. Namun akibatnya, setiap pengunjung publik (guest tanpa session login) yang membuka URL langsung (misalnya `/kandidatportal/{id}`, `/interview/{id}`, `/interviewinhouse/{id}`) otomatis dianggap sebagai **Super Administrator HR**! Akibatnya seluruh KTP, riwayat kerja, data keluarga, hasil tes psikotes/matematika, kontak telepon, dan hasil wawancara terbuka secara publik.
+    2. **Rute Internal di Luar Middleware Autentikasi**:
+       - Rute-rute internal seperti `/fitur`, `/kandidatportal`, `/kandidatportal/{id}`, `/interview`, `/interview/{id}`, `/interviewinhouse`, `/interviewinhouse/{id}`, `/airanking`, `/job/statistik`, dsb. berada di luar middleware `auth`.
+- **Solusi & Implementasi Teknis**:
+  1. **Konfigurasi Global Middleware di `bootstrap/app.php`**:
+     - Menambahkan handler redirect otomatis bagi pengunjung unauthenticated (guest):
+       ```php
+       $middleware->redirectGuestsTo(fn () => route('login'));
+       ```
+     - Seluruh request dari pengguna yang belum login ke rute terproteksi secara otomatis dialihkan (HTTP 302) ke halaman login (`/login`).
+  2. **Eliminasi Total Fallback Bypass Admin di Controller**:
+     - `app/Http/Controllers/KandidatPortalController.php`: Diperbarui menjadi `return auth()->user();` (tanpa fallback admin).
+     - `app/Http/Controllers/InterviewController.php`: Diperbarui menjadi `return auth()->user();`.
+     - `app/Http/Controllers/InterviewInhouseController.php`: Diperbarui menjadi `return auth()->user();`.
+     - `app/Http/Controllers/CandidateImportController.php`: Diperbarui menjadi `return auth()->user();`.
+  3. **Restrukturisasi Total `routes/web.php`**:
+     - Memisahkan secara ketat 3 kelompok rute:
+       1. **Rute Publik (Dapat Diakses Guest)**:
+          - Landing Page (`/`, `/home`, `/index.php`)
+          - Autentikasi (`/login`, `/logout`, `/login.php`)
+          - Live Chat Bantuan Login (`/auth/chat/*`)
+          - Lowongan Kerja Publik untuk Pelamar (`/job`, `/job/{id}`, `/job/{id}/apply` dengan `whereNumber('id')`)
+          - Persetujuan Client via Secret Token 20+ Karakter (`/approval/{token}`)
+          - CBT & Tes Online Mandiri Peserta Ujian (`/cbt/*` dengan middleware `candidate.auth`)
+          - Aset/Lampiran Berkas (`/lampiran/*`, `/refcekfile/*`, `/approval/*`, `/prinsiple/ttdfileprinsiple/*`, `/v3/*`)
+          - Deployment Webhook via Token Query (`/deploy-webhook`) & Installer (`/install`)
+       2. **Rute Terproteksi Autentikasi Login (`Route::middleware(['auth'])`)**:
+          - Bagian Fitur Hub (`/fitur`)
+          - Profil & Switch User Impersonation (`/profile`, `/switch-back`)
+          - Rekrutmen & Interview Internal (`/interview`, `/interview/{id}`, `/interview/{id}/pdf`, seluruh POST action interview)
+          - Submodul Walk-in, Done, Arsip, Import & Sync Odoo (`/walkinterview`, `/interviewdone`, `/interviewarsip`, `/interview/import/*`, `/interview/odoo/*`)
+          - Kandidat Job Portal (`/kandidatportal`, `/kandidatportal/{id}`, ekspor, sinkronisasi Odoo, analisa CV, PDF hasil AI)
+          - Kandidat Inhouse (`/interviewinhouse`, `/interviewinhouse/{id}`, approval, unduh berkas)
+          - AI Candidate Ranking (`/airanking`, `/kandidatportal/ranking`, `/ai_ranking.php`)
+          - Job Statistik (`/job/statistik`, `/job/statistik/export`, `/job_stats.php`)
+          - Input Job Requirement (`/inputjob/*`)
+          - Master User Prinsiple (`/user-prinsiple/*`, `/dataprinsiple`)
+          - Work Plan, Kanban, Daily Logs, Notifikasi & Chat Internal (`/workplan`, `/workplan-chat/*`)
+          - Helpdesk & Tiket Pengguna (`/helpdesk/tickets/*`, `/helpdesk`)
+       3. **Rute Khusus Administrator (`Route::middleware(['admin'])`)**:
+          - Master Karyawan, Prinsiple, Soal Matematika, Personality DISC, Dynamic Approval Workflow
+          - Pengaturan AI & WhatsApp Gateway (`/ai-settings`)
+          - Integrasi ERP Odoo (`/odoo-setting/*`, `/odoo-sync`)
+          - Admin Helpdesk Live Chat (`/admin/bantuan-login/*`)
+          - RBAC & Activity Logs Audit Trail (`/setting/rbac/*`, `/activity-logs/*`)
+          - Master Divisi, Canned, Templates, dan Kanban Helpdesk
+  4. **Pencegahan Route Collision pada `/job/{id}`**:
+     - Menambahkan batasan regex numerik `->whereNumber('id')` pada rute lowongan kerja publik `/job/{id}` dan `/job/{id}/apply`.
+     - Mencegah URL `/job/statistik` tertelan secara keliru oleh handler `/job/{id}` publik.
+  5. **Pengujian & Validasi Keamanan Komprehensif**:
+     - Menjalankan serangkaian pengujian terotomasi terhadap seluruh kategori rute:
+       - **Pengujian Akses Guest (Tanpa Login)**:
+         - `GET /kandidatportal/1` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /interview/1` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /interviewinhouse/1` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /fitur` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /job/statistik` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /airanking` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /kandidatportal` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /interview` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /workplan` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /master/karyawan` => **PASS** (Redirect 302 -> `/login`)
+         - `GET /login` => **PASS** (HTTP 200 OK)
+         - `GET /job` => **PASS** (HTTP 200 OK)
+         - `GET /cbt/login` => **PASS** (HTTP 200 OK)
+       - **Pengujian Akses Authenticated (Setelah Login)**:
+         - Seluruh endpoint internal (`/fitur`, `/interview`, `/interview/{id}`, `/kandidatportal`, `/kandidatportal/{id}`, `/interviewinhouse`, `/airanking`, `/job/statistik`, `/workplan`) sukses terbuka dengan **HTTP 200 OK**.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

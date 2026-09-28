@@ -30,14 +30,9 @@ class CandidateImportController extends Controller
         $this->importService = $importService;
     }
 
-    private function getCurrentUser()
+    private function getCurrentUser(): ?User
     {
-        if (auth()->check()) {
-            return auth()->user();
-        }
-
-        return User::where('role', 'admin')->first()
-            ?? User::first();
+        return auth()->user();
     }
 
     /**

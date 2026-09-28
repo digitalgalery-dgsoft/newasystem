@@ -16,9 +16,9 @@ use Illuminate\Support\Facades\DB;
 
 class InterviewInhouseController extends Controller
 {
-    private function getCurrentUser()
+    private function getCurrentUser(): ?User
     {
-        return auth()->user() ?? User::where('role', 'admin')->first() ?? User::first();
+        return auth()->user();
     }
 
     private function getSalam(): string

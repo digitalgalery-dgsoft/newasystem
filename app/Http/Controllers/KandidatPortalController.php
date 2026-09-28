@@ -20,15 +20,11 @@ use Carbon\Carbon;
 class KandidatPortalController extends Controller
 {
     /**
-     * Dapatkan user yang sedang aktif login (dengan fallback)
+     * Dapatkan user yang sedang aktif login
      */
-    protected function getCurrentUser()
+    protected function getCurrentUser(): ?User
     {
-        if (auth()->check()) {
-            return auth()->user();
-        }
-        return User::where('role', 'admin')->first()
-            ?? User::first();
+        return auth()->user();
     }
 
     /**
