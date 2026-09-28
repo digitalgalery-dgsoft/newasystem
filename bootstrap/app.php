@@ -47,5 +47,59 @@ return Application::configure(basePath: dirname(__DIR__))
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        // Tangani kedaluwarsa sesi token CSRF (Status 419 & TokenMismatchException)
+        $exceptions->render(function (\Symfony\Component\HttpKernel\Exception\HttpException $e, \Illuminate\Http\Request $request) {
+            if ($e->getStatusCode() !== 419) {
+                return null;
+            }
+
+            if ($request->expectsJson() || $request->isJson() || $request->ajax()) {
+                return response()->json([
+                    'message' => 'Sesi formulir atau token keamanan telah kedaluwarsa. Silakan muat ulang halaman.',
+                ], 419);
+            }
+
+            // Jika error terjadi pada form login karyawan/admin
+            if ($request->is('login') || $request->is('login/*')) {
+                return redirect()->route('login')
+                    ->withInput($request->except('password', '_token'))
+                    ->with('warning', 'Sesi login telah diperbarui karena pembaruan sistem atau lama tidak aktif. Silakan masukkan kata sandi kembali.');
+            }
+
+            // Jika error terjadi pada form login CBT kandidat
+            if ($request->is('cbt/login') || $request->is('cbt/*')) {
+                return redirect()->route('cbt.login')
+                    ->withInput($request->except('password', '_token'))
+                    ->with('warning', 'Sesi portal CBT telah diperbarui. Silakan login kembali.');
+            }
+
+            // Untuk form lainnya di dalam sistem
+            return redirect()->back(fallback: route('login'))
+                ->withInput($request->except('password', '_token'))
+                ->with('warning', 'Sesi halaman telah kedaluwarsa. Silakan muat ulang dan kirim kembali.');
+        });
+
+        $exceptions->render(function (\Illuminate\Session\TokenMismatchException $e, \Illuminate\Http\Request $request) {
+            if ($request->expectsJson() || $request->isJson() || $request->ajax()) {
+                return response()->json([
+                    'message' => 'Sesi formulir atau token keamanan telah kedaluwarsa. Silakan muat ulang halaman.',
+                ], 419);
+            }
+
+            if ($request->is('login') || $request->is('login/*')) {
+                return redirect()->route('login')
+                    ->withInput($request->except('password', '_token'))
+                    ->with('warning', 'Sesi login telah diperbarui karena pembaruan sistem atau lama tidak aktif. Silakan masukkan kata sandi kembali.');
+            }
+
+            if ($request->is('cbt/login') || $request->is('cbt/*')) {
+                return redirect()->route('cbt.login')
+                    ->withInput($request->except('password', '_token'))
+                    ->with('warning', 'Sesi portal CBT telah diperbarui. Silakan login kembali.');
+            }
+
+            return redirect()->back(fallback: route('login'))
+                ->withInput($request->except('password', '_token'))
+                ->with('warning', 'Sesi halaman telah kedaluwarsa. Silakan muat ulang dan kirim kembali.');
+        });
     })->create();

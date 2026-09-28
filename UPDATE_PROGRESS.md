@@ -3284,6 +3284,31 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 81. 🛡️ Penanganan Anggun Kedaluwarsa Sesi (Error 419 Page Expired), Auto-Recovery Login & Real-Time CSRF Refresh (28 September 2026)
+- **Analisis Masalah & Investigasi Root Cause**:
+  - **Keluhan Pengguna**: Pengguna mengalami layar hitam dengan teks `419 | PAGE EXPIRED` saat mencoba login di `new.asystem.co.id/login`.
+  - **Akar Masalah (*Root Cause*)**:
+    1. **Stale/Expired Token Pasca Deploy & Inaktivitas**: Ketika tab browser login dibiarkan terbuka beberapa saat (atau ditinggalkan saat deployment server yang membersihkan cache `optimize:clear`), token proteksi CSRF di formulir menjadi usang/tidak cocok (*TokenMismatchException*).
+    2. **Ketiadaan Exception Handler & Custom Error Page**: Laravel secara bawaan melempar `TokenMismatchException` yang diubah menjadi `HttpException(419)` oleh HTTP kernel. Tanpa handler tangkap khusus dan tanpa view `resources/views/errors/419.blade.php`, Laravel menampilkan halaman minimalis gelap buntu (*dead-end*) tanpa opsi pemulihan otomatis bagi pengguna.
+- **Solusi & Implementasi Teknis**:
+  1. **Global Exception Handling Terintegrasi (`bootstrap/app.php`)**:
+     - Mengonfigurasi `$exceptions->render()` untuk mencegat seluruh `HttpException` berstatus 419 dan `TokenMismatchException`.
+     - **Form Login Karyawan/Admin (`/login`)**: Otomatis dialihkan kembali (`redirect()->route('login')`) dengan mempertahankan input email pengguna (`withInput`) dan menampilkan pesan flash informatif:
+       *"Sesi login telah diperbarui karena pembaruan sistem atau lama tidak aktif. Silakan masukkan kata sandi kembali."*
+     - **Portal CBT Kandidat (`/cbt/login`)**: Otomatis dialihkan kembali (`redirect()->route('cbt.login')`) dengan input NIK tetap terjaga.
+     - **Form Lainnya**: Dialihkan kembali secara aman (`redirect()->back(fallback: route('login'))`) tanpa menjebak user pada layar buntu.
+     - **Permintaan JSON/AJAX**: Mengembalikan respons JSON 419 dengan pesan deskriptif.
+  2. **Auto-Refresh CSRF Token di Client Side (`resources/views/auth/login.blade.php` & `cbt/login.blade.php`)**:
+     - Ditambahkan endpoint ringan `Route::get('/refresh-csrf')` yang mengembalikan token CSRF terbaru dalam format JSON.
+     - Di sisi frontend login (karyawan dan CBT), sistem mendengarkan event `visibilitychange` (saat pengguna kembali membuka tab login yang ditinggalkan) dan event `focus` pada field password untuk secara otomatis mengambil token CSRF baru di latar belakang tanpa reload halaman.
+  3. **Halaman Error 419 Kustom & Branded (`resources/views/errors/419.blade.php`)**:
+     - Dibuat view error 419 dengan desain modern bertema ASystem ESA Groups (Outfit font, glassmorphism card, Tailwind CSS, ambient glow).
+     - Dilengkapi dengan *countdown timer* 5 detik yang secara otomatis mengarahkan user kembali ke halaman login, serta tombol manual *"Masuk ke Akun Kembali"* dan *"Muat Ulang Halaman"*.
+  4. **Penyempurnaan Alert Flash Warning (`resources/views/auth/login.blade.php`)**:
+     - Ditambahkan blok render `@if(session('warning'))` pada formulir login dengan aksen amber/warning yang rapi dan serasi dengan antarmuka ASystem.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

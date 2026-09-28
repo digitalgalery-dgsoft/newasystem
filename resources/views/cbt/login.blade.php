@@ -105,4 +105,28 @@
         </div>
     </div>
 </div>
+
+<script>
+async function refreshCbtCsrfToken() {
+    try {
+        const resp = await fetch("{{ route('refresh-csrf') }}", { cache: 'no-store' });
+        const data = await resp.json();
+        if (data && data.token) {
+            const tokenInputs = document.querySelectorAll('input[name="_token"]');
+            tokenInputs.forEach(input => input.value = data.token);
+        }
+    } catch (e) {}
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+        refreshCbtCsrfToken();
+    }
+});
+
+const cbtPwdField = document.getElementById('password');
+if (cbtPwdField) {
+    cbtPwdField.addEventListener('focus', refreshCbtCsrfToken, { once: true });
+}
+</script>
 @endsection

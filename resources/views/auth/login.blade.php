@@ -74,6 +74,13 @@
                 </div>
             @endif
 
+            @if(session('warning'))
+                <div class="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2.5">
+                    <i class="fa-solid fa-circle-exclamation text-amber-600 shrink-0 text-sm"></i>
+                    <span>{{ session('warning') }}</span>
+                </div>
+            @endif
+
             @if(session('info'))
                 <div class="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-primary text-xs flex items-center gap-2.5">
                     <i class="fa-solid fa-circle-info text-primary shrink-0 text-sm"></i>
@@ -621,6 +628,31 @@
         btnLogin.focus();
         btnLogin.classList.add('ring-4', 'ring-emerald-500/50');
         setTimeout(() => btnLogin.classList.remove('ring-4', 'ring-emerald-500/50'), 1500);
+    }
+
+    // Auto-refresh CSRF token saat halaman kembali aktif / difokuskan atau saat input password difokuskan
+    async function refreshCsrfToken() {
+        try {
+            const resp = await fetch("{{ route('refresh-csrf') }}", { cache: 'no-store' });
+            const data = await resp.json();
+            if (data && data.token) {
+                const tokenInputs = document.querySelectorAll('input[name="_token"]');
+                tokenInputs.forEach(input => input.value = data.token);
+            }
+        } catch (e) {
+            // Abaikan kegagalan jaringan
+        }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            refreshCsrfToken();
+        }
+    });
+
+    const pwdField = document.getElementById('password');
+    if (pwdField) {
+        pwdField.addEventListener('focus', refreshCsrfToken, { once: true });
     }
     </script>
 </body>

@@ -39,6 +39,7 @@ Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
 Route::post('/login', [AuthController::class, 'login'])->name('login.post');
 Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/login.php', fn() => redirect()->route('login'));
+Route::get('/refresh-csrf', fn() => response()->json(['token' => csrf_token()]))->name('refresh-csrf');
 
 // Live Chat Bantuan Login & Forgot Password (Publik)
 Route::prefix('auth/chat')->name('auth.chat.')->group(function () {
