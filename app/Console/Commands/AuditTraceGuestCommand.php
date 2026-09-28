@@ -149,11 +149,16 @@ class AuditTraceGuestCommand extends Command
                 }
 
                 $totalMatched = count($matchedLines);
-                $this->line("Total akses detail kandidat terdeteksi di log: <fg=yellow>{$totalMatched}</> riwayat.");
+                $this->line("Total akses detail kandidat terdeteksi di log (sample {$limit}): <fg=yellow>{$totalMatched}</> riwayat.");
 
                 if ($totalMatched > 0) {
-                    $logRows = [];
-                    foreach (array_slice($matchedLines, 0, 30) as $rawLine) {
+                    $directHits200 = [];
+                    $blocked302 = [];
+                    $otherHits = [];
+                    $ipCounts = [];
+                    $visitedCandidates = [];
+
+                    foreach ($matchedLines as $rawLine) {
                         if (preg_match('/^(\S+) \S+ \S+ \[(.*?)\] "(GET|POST) (\S+) \S+" (\d{3}) \S+ "(.*?)" "(.*?)"/', $rawLine, $m)) {
                             $ip = $m[1];
                             $waktu = $m[2];
@@ -161,14 +166,76 @@ class AuditTraceGuestCommand extends Command
                             $endpoint = $m[4];
                             $status = $m[5];
                             $referer = $m[6] ?: '-';
-                            $ua = \Illuminate\Support\Str::limit($m[7], 40);
+                            $ua = $m[7];
 
-                            $logRows[] = [$waktu, $ip, "$method $endpoint", $status, $referer, $ua];
-                        } else {
-                            $logRows[] = ['-', '-', \Illuminate\Support\Str::limit($rawLine, 80), '-', '-', '-'];
+                            $ipCounts[$ip] = ($ipCounts[$ip] ?? 0) + 1;
+
+                            // Ekstrak ID kandidat
+                            if (preg_match('#/(?:kandidatportal|interview|interviewinhouse)/(\d+)#', $endpoint, $cid)) {
+                                $visitedCandidates[$cid[1]] = ($visitedCandidates[$cid[1]] ?? 0) + 1;
+                            }
+
+                            $isInternalReferer = str_contains($referer, 'new.asystem.co.id') && (
+                                str_contains($referer, '/kandidatportal') ||
+                                str_contains($referer, '/interview') ||
+                                str_contains($referer, '/fitur')
+                            );
+
+                            $entry = [
+                                'waktu'    => $waktu,
+                                'ip'       => $ip,
+                                'url'      => "$method $endpoint",
+                                'status'   => $status,
+                                'referer'  => $referer,
+                                'ua'       => \Illuminate\Support\Str::limit($ua, 45),
+                                'is_bot'   => (bool) preg_match('/bot|crawl|spider|slurp|semrush|google|bing/i', $ua),
+                            ];
+
+                            if ($status == '200' && (!$isInternalReferer || $entry['is_bot'])) {
+                                $directHits200[] = $entry;
+                            } elseif ($status == '302') {
+                                $blocked302[] = $entry;
+                            } else {
+                                $otherHits[] = $entry;
+                            }
                         }
                     }
-                    $this->table(['Waktu Server', 'IP Address', 'Request URL', 'Status HTTP', 'Referer', 'User Agent'], $logRows);
+
+                    // 1. Tampilkan Akses Direct Hit / Guest yang Sempat Berhasil (HTTP 200)
+                    $this->newLine();
+                    $this->warn("⚠️ [A] Akses Langsung / Tanpa Referer Internal yang Terbuka (HTTP 200) [Sebelum Pengetatan]: " . count($directHits200) . " riwayat");
+                    if (!empty($directHits200)) {
+                        $rows = array_map(fn($e) => [$e['waktu'], $e['ip'], $e['url'], $e['referer'], $e['ua']], array_slice($directHits200, 0, 20));
+                        $this->table(['Waktu Server', 'IP Address', 'URL Detail Kandidat', 'Referer', 'User Agent / Perangkat'], $rows);
+                    } else {
+                        $this->info("✔ Tidak ditemukan akses direct hit berstatus 200.");
+                    }
+
+                    // 2. Tampilkan Akses yang Berhasil Diblokir (HTTP 302 -> Redirect Login)
+                    $this->newLine();
+                    $this->info("🛡️ [B] Akses Tamu/Bot yang Berhasil DIBLOKIR & DIALIHKAN KE LOGIN (HTTP 302) [Setelah Pengetatan]: " . count($blocked302) . " riwayat");
+                    if (!empty($blocked302)) {
+                        $rows = array_map(fn($e) => [$e['waktu'], $e['ip'], $e['url'], $e['status'] . ' (Redirect Login)', $e['ua']], array_slice($blocked302, 0, 15));
+                        $this->table(['Waktu Server', 'IP Address', 'URL Target', 'Status', 'User Agent / Perangkat'], $rows);
+                    }
+
+                    // 3. Ringkasan Top IP Pengakses
+                    $this->newLine();
+                    $this->line("📊 [C] Top IP Address Pengakses Detail Kandidat:");
+                    arsort($ipCounts);
+                    $ipRows = [];
+                    foreach (array_slice($ipCounts, 0, 8, true) as $ip => $cnt) {
+                        $ipRows[] = [$ip, $cnt . " kali request"];
+                    }
+                    $this->table(['IP Address', 'Frekuensi Akses'], $ipRows);
+
+                    // 4. Ringkasan ID Kandidat yang Sering Diakses
+                    if (!empty($visitedCandidates)) {
+                        arsort($visitedCandidates);
+                        $this->line("🎯 [D] Sample ID Kandidat yang Dituju:");
+                        $candIds = array_keys(array_slice($visitedCandidates, 0, 10, true));
+                        $this->line("  ↳ ID: " . implode(', ', $candIds));
+                    }
                 } else {
                     $this->info("✔ Tidak ditemukan rekaman akses pada file log ini.");
                 }
