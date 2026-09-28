@@ -3517,6 +3517,31 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 90. 🛠️ Investigasi & Pelepasan Deadlock Mutex Cron AI Serta Analisa Tuntas Resti Indriani dan Arix Purwadita (28 September 2026)
+- **Konteks & Laporan Pengguna**:
+  - Kandidat an. **Resti Indriani** dan **Arix Purwadita** dilaporkan dilewati (*skipped*) oleh analisa AI dan belum memiliki skor/analisa.
+- **Investigasi & Analisis Akar Masalah (*Root Cause*)**:
+  1. Pada server produksi Server 3, kedua kandidat tercatat baru mendaftar di Job Portal pada tanggal 28 September 2026 (Resti ID #66042 pukul 15:05 WIB, Arix ID #66633 pukul 15:35 WIB).
+  2. Ditemukan bahwa pada pukul 15:02:33 WIB, proses cron latar belakang mengalami pemutusan/interupsi saat eksekusi.
+  3. Konfigurasi `Schedule::command('ai:cron-analyzer ...')->withoutOverlapping()` pada `routes/console.php` sebelumnya tidak mendefinisikan batas waktu kedaluwarsa (*timeout*), sehingga Laravel mengunci mutex di database cache (`framework/schedule-f6e881ad96044daabc1bd8edc8353b6478e60722`) selama 24 jam (1440 menit).
+  4. Akibatnya, setiap menit cron scheduler mendeteksi status *Has Mutex (Locked)* dan membatalkan seluruh eksekusi `ai:cron-analyzer`, menyebabkan antrean antrian kandidat baru tertahan.
+  5. Kandidat lain (Rizqika Amelia Wardani ID #37807) sempat terproses pada pukul 16:12 WIB karena dipicu secara manual via tombol *Analisis Ulang AI* di detail kandidat, bukan dari cron job.
+- **Tindakan Penyelesaian & Hasil**:
+  1. **Pelepasan Deadlock Mutex**: Kunci mutex database cache yang terkunci pada Server 3 dibersihkan dan dilepaskan (*forget mutex*).
+  2. **Pencegahan Mutex Deadlock Permanen (`routes/console.php`)**: Memperbarui konfigurasi menjadi `->withoutOverlapping(10)` agar kunci mutex otomatis kadaluwarsa dalam 10 menit jika terjadi kegagalan proses di server.
+  3. **Eksekusi Analisa AI Tuntas pada Server Produksi**:
+     - **Resti Indriani (ID #66042)**:
+       - Posisi: *Sales Promotion Girl (SPG) Modern Trade*.
+       - Kota Penempatan dievaluasi: `Kota Pekanbaru, Riau` (Area otomatis disesuaikan ke `Kota Pekanbaru`).
+       - Tipe Dokumen: `curriculum_vitae` (CV Lengkap).
+       - Skor Match: **78 (Yellow)**.
+     - **Arix Purwadita (ID #66633)**:
+       - Posisi: *MD Signify* (Penempatan Malang).
+       - Tipe Dokumen: `surat_lamaran_only` (Terdeteksi hanya mengunggah Surat Lamaran Kerja tanpa CV lengkap).
+       - Skor Match: **32 (Red)** - Otomatis dipangkas ke kategori Merah sesuai guard Milestone 89 dengan rekomendasi meminta kandidat mengunggah CV lengkap.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

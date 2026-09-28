@@ -23,7 +23,7 @@ Schedule::command('odoo:sync-updates-resigns --silent')
 // 3. Cron Job: AI CV Analyzer Otomatis Setiap Menit (1 kandidat per 30 detik / 1 menit 2 kandidat)
 Schedule::command('ai:cron-analyzer --limit=2 --interval=30')
     ->everyMinute()
-    ->withoutOverlapping()
+    ->withoutOverlapping(10)
     ->runInBackground();
 
 // 4. Cron Job: Sync Tahapan Kandidat Portal dengan Odoo Recruitment & Auto-Archive > 14 hari
