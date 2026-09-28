@@ -103,45 +103,13 @@ Route::middleware([\App\Http\Middleware\RedirectIfInstalled::class])->group(func
     Route::post('/install', [\App\Http\Controllers\InstallController::class, 'process'])->name('install.process');
 });
 
-// Serving Lampiran File & Fallback Server Lama
-Route::get('/lampiran/{filename}', function ($filename) {
-    $baseName = basename($filename);
-    $localPath = public_path('lampiran/' . $baseName);
-    if (file_exists($localPath)) {
-        return response()->file($localPath);
-    }
-    return redirect()->away('https://asystem.co.id/interview/lampiran/' . rawurlencode($baseName));
-})->where('filename', '.*')->name('lampiran.show');
-
-Route::get('/refcekfile/{filename}', function ($filename) {
-    $baseName = basename($filename);
-    $resolved = \App\Services\LegacyAttachmentService::resolveRefcek($baseName);
-    if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
-        return response()->file($resolved);
-    }
-    return redirect()->away('https://asystem.co.id/v3/refcekfile/' . rawurlencode($baseName));
-})->where('filename', '.*')->name('refcekfile.show');
-
-Route::get('/approval/{filename}', function ($filename) {
-    $baseName = basename($filename);
-    $resolved = \App\Services\LegacyAttachmentService::resolveApproval($baseName);
-    if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
-        return response()->file($resolved);
-    }
-    if (str_starts_with($baseName, 'ttd_')) {
-        return redirect()->away('https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName));
-    }
-    return redirect()->away('https://asystem.co.id/v3/approval/' . rawurlencode($baseName));
-})->where('filename', '.*')->name('approval.show');
-
-Route::get('/prinsiple/ttdfileprinsiple/{filename}', function ($filename) {
-    $baseName = basename($filename);
-    $resolved = \App\Services\LegacyAttachmentService::resolveApproval($baseName);
-    if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
-        return response()->file($resolved);
-    }
-    return redirect()->away('https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName));
-})->where('filename', '.*')->name('prinsiple.ttd.show');
+// ==============================================================
+// 1.1 BERKAS LAMPIRAN & DOKUMEN TERPROTEKSI (WAJIB LOGIN)
+// ==============================================================
+Route::get('/lampiran/{filename}', [\App\Http\Controllers\AttachmentController::class, 'showLampiran'])->where('filename', '.*')->name('lampiran.show');
+Route::get('/refcekfile/{filename}', [\App\Http\Controllers\AttachmentController::class, 'showRefcek'])->where('filename', '.*')->name('refcekfile.show');
+Route::get('/approval/{filename}', [\App\Http\Controllers\AttachmentController::class, 'showApproval'])->where('filename', '.*')->name('approval.show');
+Route::get('/prinsiple/ttdfileprinsiple/{filename}', [\App\Http\Controllers\AttachmentController::class, 'showTtdPrinciple'])->where('filename', '.*')->name('prinsiple.ttd.show');
 
 // Deployment Webhook (Terproteksi Token Query Rahasia)
 Route::any('/deploy-webhook', function(\Illuminate\Http\Request $request) {
@@ -533,18 +501,6 @@ Route::middleware(['admin'])->group(function () {
 
 
 // ==============================================================
-// 4. WILDCARD FALLBACK KE ASET V3 LAMA
+// 4. WILDCARD FALLBACK KE ASET V3 LAMA (WAJIB LOGIN)
 // ==============================================================
-Route::get('/v3/{path}', function ($path) {
-    $candidates = [
-        public_path('v3/' . $path),
-        public_path($path),
-        public_path('storage/' . $path),
-    ];
-    foreach ($candidates as $cand) {
-        if (file_exists($cand) && !is_dir($cand)) {
-            return response()->file($cand);
-        }
-    }
-    return redirect()->away('https://asystem.co.id/v3/' . $path);
-})->where('path', '.*')->name('legacy.v3.fallback');
+Route::get('/v3/{path}', [\App\Http\Controllers\AttachmentController::class, 'showLegacyV3'])->where('path', '.*')->name('legacy.v3.fallback');
