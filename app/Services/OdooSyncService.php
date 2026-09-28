@@ -338,17 +338,18 @@ class OdooSyncService
 
                     $effectiveJoinDate = $rawTanggalJoin ?: ($employee?->tanggal_join ?: date('Y-m-d'));
 
-                    // Proteksi Email & Password:
-                    // Jika data karyawan sudah ada di database lokal dan memiliki email, pertahankan email lokal tersebut.
-                    // Jangan timpa email dan jangan ubah password karyawan yang sudah kustom.
-                    $effectiveEmail = ($employee && !empty($employee->email)) ? $employee->email : $email;
+                    // Proteksi Email, Telepon / No. HP, & Password:
+                    // Jika data karyawan sudah ada di database lokal dan memiliki email / nomor telepon, pertahankan data lokal tersebut.
+                    // Jangan timpa email/telepon dan jangan ubah password karyawan yang sudah kustom atau diperbarui di portal lokal.
+                    $effectiveEmail   = ($employee && !empty($employee->email)) ? $employee->email : $email;
+                    $effectiveTelepon = ($employee && !empty($employee->telepon)) ? $employee->telepon : $telepon;
 
                     $dataToSave = [
                         'nik'           => $nik,
                         'nip'           => $nip,
                         'nama_karyawan' => $nama,
                         'email'         => $effectiveEmail,
-                        'telepon'       => $telepon,
+                        'telepon'       => $effectiveTelepon,
                         'tanggal_join'  => $effectiveJoinDate,
                         'jabatan'       => $jabatan ?: ($employee?->jabatan ?: 'Staff'),
                         'divisi'        => $divisi,
@@ -699,7 +700,7 @@ class OdooSyncService
                             'nip'           => $nip ?: $localEmp->nip,
                             'nama_karyawan' => $recName,
                             'email'         => !empty($localEmp->email) ? $localEmp->email : $email,
-                            'telepon'       => $telepon ?: $localEmp->telepon,
+                            'telepon'       => !empty($localEmp->telepon) ? $localEmp->telepon : $telepon,
                             'tanggal_join'  => $tanggalJoin ?: $localEmp->tanggal_join,
                             'jabatan'       => $jabatan ?: $localEmp->jabatan,
                             'divisi'        => $divisi ?: $localEmp->divisi,
@@ -929,10 +930,11 @@ class OdooSyncService
 
         $effectiveJoinDate = $rawTanggalJoin ?: ($employee?->tanggal_join ?: date('Y-m-d'));
 
-        // Proteksi Email & Password:
-        // Jika data karyawan sudah ada di database lokal dan memiliki email, pertahankan email lokal tersebut.
-        // Jangan timpa email dan jangan ubah password karyawan yang sudah kustom.
-        $effectiveEmail = ($employee && !empty($employee->email)) ? $employee->email : $email;
+        // Proteksi Email, Telepon / No. HP, & Password:
+        // Jika data karyawan sudah ada di database lokal dan memiliki email / nomor telepon, pertahankan data lokal tersebut.
+        // Jangan timpa email/telepon dan jangan ubah password karyawan yang sudah kustom atau diperbarui di portal lokal.
+        $effectiveEmail   = ($employee && !empty($employee->email)) ? $employee->email : $email;
+        $effectiveTelepon = ($employee && !empty($employee->telepon)) ? $employee->telepon : $telepon;
 
         $isNew = false;
         $dataToSave = [
@@ -940,7 +942,7 @@ class OdooSyncService
             'nip'           => $nip,
             'nama_karyawan' => $nama,
             'email'         => $effectiveEmail,
-            'telepon'       => $telepon,
+            'telepon'       => $effectiveTelepon,
             'tanggal_join'  => $effectiveJoinDate,
             'jabatan'       => $jabatan ?: ($employee?->jabatan ?: 'Staff'),
             'divisi'        => $divisi,
@@ -1013,7 +1015,7 @@ class OdooSyncService
                 'is_active'      => ($status === 'Aktiv'),
                 'departure_date' => $depDate,
                 'email'          => $effectiveEmail ?: $email,
-                'telepon'        => $telepon,
+                'telepon'        => $effectiveTelepon ?: $telepon,
                 'tanggal_join'   => $tanggalJoin ?: $effectiveJoinDate,
             ],
         ];

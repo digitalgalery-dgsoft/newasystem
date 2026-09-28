@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 24 September 2026*
+*Terakhir diperbarui: 28 September 2026*
 
 ---
 
@@ -2971,6 +2971,31 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
      - Divalidasi melalui script simulasi komprehensif yang menguji kedua skenario (AS sama vs AS berbeda) untuk logika `isOwnedBy`, `CandidateImportService`, serta `CandidateImportController`, dengan hasil 100% lulus.
   6. **Hotfix Namespace Import ActivityLogger**:
      - Menambahkan import `use App\Services\ActivityLogger;` secara eksplisit pada `CandidateImportController.php` dan `CandidateImportService.php` guna mengatasi error *Class "App\Http\Controllers\ActivityLogger" not found* saat eksekusi auto-archive penarikan NIK.
+
+---
+
+### 74. 📱 Proteksi Nomor Telepon / HP Karyawan dari Penimpaan Sinkronisasi Odoo (28 September 2026)
+- **Latar Belakang & Identifikasi Masalah**:
+  - Ditemukan keluhan bahwa nomor HP / telepon karyawan yang telah diperbarui atau diubah secara mandiri di ASystem (melalui menu profil akun ataupun edit data karyawan oleh HR) tiba-tiba kembali berubah ke nomor lama setelah sinkronisasi Odoo berjalan.
+  - **Penyebab Teknis (*Technical Root Cause*)**:
+    - Pada `App\Services\OdooSyncService`, kolom email (`email`) sebelumnya telah memiliki mekanisme proteksi `$effectiveEmail = ($employee && !empty($employee->email)) ? $employee->email : $email;`, namun kolom telepon (`telepon`) belum menerapkan mekanisme proteksi serupa.
+    - Pada method `syncEmployees()` dan `syncSingleEmployee()`, field `telepon` selalu diisi langsung dari nilai `mobile_phone` Odoo.
+    - Pada method `syncUpdatesAndResigns()`, terdapat logika `$telepon ?: $localEmp->telepon` yang memprioritaskan data `mobile_phone` Odoo daripada nomor telepon lokal yang sudah diperbarui karyawan.
+    - Akibatnya, setiap kali background cron job atau sinkronisasi manual berjalan, nomor telepon mutakhir yang diinput di ASystem tertimpa kembali oleh nomor usang dari server Odoo.
+- **Solusi & Implementasi Teknis**:
+  - **Penerapan Proteksi Terpadu di `app/Services/OdooSyncService.php`**:
+    1. **`syncEmployees()`**:
+       - Menerapkan `$effectiveTelepon = ($employee && !empty($employee->telepon)) ? $employee->telepon : $telepon;`.
+       - Jika karyawan telah memiliki data nomor telepon di database lokal, nomor telepon lokal tersebut **wajib dipertahankan** dan tidak ditimpa oleh data Odoo.
+    2. **`syncUpdatesAndResigns()`**:
+       - Mengubah logika update menjadi `'telepon' => !empty($localEmp->telepon) ? $localEmp->telepon : $telepon,`.
+       - Pengecekan tengah malam tidak akan menimpa nomor telepon lokal aktif.
+    3. **`syncSingleEmployee()`**:
+       - Menerapkan `$effectiveTelepon = ($employee && !empty($employee->telepon)) ? $employee->telepon : $telepon;` pada payload `$dataToSave` dan `odoo_raw`.
+       - Menjamin sinkronisasi instan per NIK tetap menghormati nomor telepon lokal karyawan yang telah diperbarui.
+  - **Hasil & Jaminan Integritas**:
+    - Nomor telepon karyawan baru dari Odoo tetap otomatis tersimpan saat pertama kali dibuat (*create*).
+    - Nomor telepon karyawan yang telah diedit/diperbarui di portal lokal ASystem terlindungi 100% dari penimpaan (*overwrite*) oleh seluruh jenis sinkronisasi Odoo (Hourly, Midnight, Manual, maupun Sync by NIK).
 
 ---
 
