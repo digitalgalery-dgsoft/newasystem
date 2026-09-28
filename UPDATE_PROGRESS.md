@@ -3264,6 +3264,26 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 80. 🛡️ Penanganan De-indexing Cepat Google Search: HTTP 410 Gone untuk Perayap & Koreksi robots.txt (28 September 2026)
+- **Analisis Masalah Pencarian Google (*Google Search Cache Analysis*)**:
+  - **Keluhan Pengguna**: Meskipun akses kandidat sudah aman 100% (terproteksi login), nama-nama kandidat masih muncul ketika dicari di Google Search.
+  - **Akar Masalah (*Root Cause*)**:
+    1. **Cache / Indeks Lama Google**: Google menampilkan cuplikan (*snippet*) dari hasil rayapan masa lalu yang disimpan di server Google sebelum proteksi dipasang.
+    2. **Jebakan `robots.txt Disallow`**: Berdasarkan standar resmi Google Search Central, jika URL diblokir di `robots.txt` (`Disallow: /kandidatportal/`), Googlebot **DILARANG MERAYAPI** URL tersebut. Akibatnya, Googlebot tidak pernah membaca header `X-Robots-Tag: noindex` yang baru dipasang, sehingga Google tetap memajang cuplikan lama di hasil pencarian.
+- **Solusi & Implementasi Teknis**:
+  1. **Interceptor HTTP 410 Gone untuk Search Engine (`PreventIndexingMiddleware.php`)**:
+     - Sistem mendeteksi *User-Agent* perayap mesin pencari (Googlebot, Bingbot, Slurp, DuckDuckBot, Baidu, Yandex).
+     - Jika perayap mencoba mengakses URL internal, data kandidat, portal interview, CBT, atau berkas lampiran non-publik, server langsung mengembalikan status **HTTP 410 Gone** dengan header `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex`.
+     - Dalam standar algoritma Google, status `410 Gone` adalah sinyal permanen terkuat yang memerintahkan Googlebot untuk segera menghapus (*purge/drop*) URL tersebut dari database indeks pencarian.
+     - Untuk pengguna manusia (browser biasa), sistem tetap mengembalikan respons redirect aman `302 Found` ke halaman login.
+  2. **Koreksi `public/robots.txt`**:
+     - Menghapus aturan `Disallow` yang menghalangi Googlebot merayapi URL lama, sehingga Googlebot diizinkan mengakses URL tersebut untuk menerima sinyal `HTTP 410 Gone` dan `noindex`, lalu segera menghapusnya dari hasil pencarian publik.
+     - Hanya lowongan kerja publik (`/job`) dan landing page utama yang diizinkan untuk diindeks pencari kerja.
+  3. **Panduan Penghapusan Instan (< 2 Jam)**:
+     - Disiapkan prosedur penghapusan instan melalui fitur *Removals* pada Google Search Console dan alat publik *Google Outdated Content Removal*.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
