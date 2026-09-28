@@ -2999,6 +2999,56 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 75. 🎯 Perbaikan Hak Akses & Pembatasan Tampilan Kandidat Portal Sesuai AS User (28 September 2026)
+- **Latar Belakang & Identifikasi Masalah**:
+  - Ditemukan laporan bahwa pada modul **Kandidat Portal** (`/kandidatportal`), seluruh pelamar (3.400+ kandidat nasional) tampil untuk semua user yang login, termasuk akun Area Supervisor (AS) lapangan.
+  - Seharusnya akun AS hanya melihat data kandidat yang terdaftar di bawah AS / rekruter akun mereka sendiri.
+  - **Penyebab Teknis (*Technical Root Cause*)**:
+    1. **Logika Fallback di `app/Models/User.php` (`canViewAllCandidates()`)**:
+       - Terdapat klausul:
+         ```php
+         if ($this->handlesAllPrinciples() && $this->coversAllAreas()) {
+             if ($this->scope_override || !in_array($roleName, ['recruiter', 'role_akses_as'], true)) {
+                 return true;
+             }
+         }
+         ```
+       - Karena user AS yang login via `AuthController` otomatis memiliki role `karyawan_inhouse` (atau `user`/`karyawan_ratecard`), maka `!in_array(...)` bernilai `true`.
+       - Karena `handlesAllPrinciples()` dan `coversAllAreas()` secara default bernilai `true` (jika tidak dibatasi area/prinsiple spesifik), seluruh akun AS otomatis terdeteksi memiliki hak akses nasional (`canViewAllCandidates() === true`).
+    2. **Logika Default Query di `app/Http/Controllers/KandidatPortalController.php`**:
+       - Karena `$canViewAllRecruiters` selalu bernilai `true`, kueri saat membuka halaman tanpa parameter `?recruiter=` langsung jatuh ke default *"Semua Rekruter (Nasional)"* dan tidak memfilter kolom `useras` sama sekali.
+       - Serta dropdown selector rekruter nasional ikut muncul untuk user AS biasa.
+- **Solusi & Implementasi Teknis**:
+  1. **Perbaikan Model `app/Models/User.php` (`canViewAllCandidates()`)**:
+     - Menghapus klausul pengecualian terbalik `!in_array($roleName, ['recruiter', 'role_akses_as'])`.
+     - Hak akses nasional kini **HANYA** diberikan kepada:
+       - Super Administrator sejati (`$this->isAdmin() || $this->role === 'admin'`).
+       - Role administrasi pusat yang terdaftar eksplisit (`admin_officer`, `administrator_talent_pools`, `talent_pool_admin`, `head_hr`, `head`).
+       - Izin RBAC eksplisit (`$this->hasPermission('view_all_candidates')`).
+       - User dengan pengaturan khusus admin (`$this->scope_override && $this->handlesAllPrinciples() && $this->coversAllAreas()`).
+     - Seluruh user AS lapangan / karyawan inhouse biasa kini menghasilkan `canViewAllCandidates() === false`.
+  2. **Penyempurnaan Query & Otorisasi di `app/Http/Controllers/KandidatPortalController.php`**:
+     - **Helper `applyAsUserFilter($query, $user, $userIdentifiers)`**:
+       - Mengelompokkan seluruh alias user AS (email, nama lengkap, potongan nama, email employee, dan username email) via `resolveUserIdentifiers($user)`.
+       - Menyaring `candidates` dengan `whereIn(LOWER(TRIM(useras)), $userIdentifiers)` atau `recruiter_id = $user->id`.
+       - Selaras dengan sistem legacy v3: Pelamar jalur `Publik` di area yang sama dengan wilayah kerja user AS (`k.useras = 'Publik' AND k.area = '$userArea'`) tetap dapat dilihat oleh AS setempat.
+     - **Terapkan pada Seluruh Alur Kueri**:
+       - Halaman utama `index()`: Otomatis membatasi listing tabel, counter badge status (*Baru, Interview, Terima, Arsip*), dan metrik ringkasan kartu hanya untuk AS yang login.
+       - Selector dropdown rekruter nasional otomatis tersembunyi bagi user AS.
+       - Fitur `exportExcel()`: Ekspor XLSX dibatasi hanya pada kandidat milik AS yang login.
+       - Antrean & Log Analisa AI (`getAiQueueLogPayload()` & `aiQueueTriggerProcess()`): Dibatasi hanya untuk antrean kandidat milik AS yang login.
+     - **Proteksi Akses IDOR / Direct ID via `canAccessCandidate($user, $candidate)`**:
+       - Memvalidasi kepemilikan kandidat sebelum menampilkan halaman detail (`show()`), unduh PDF hasil analisa AI (`cetakAiPdf()`), unggah lampiran (`uploadAttachments()`), analisa CV (`analyzeCv()`), referensi cek (`storeRefcek()`), tes komputer (`storeComputerTest()`), reset password (`resetPassword()`), pembaruan interview (`updateInterview()`), pengalihan AS (`alihkanAS()`), pergantian area (`gantiArea()`), serta pengarsipan (`arsipkan()`, `unarchive()`).
+       - Upaya mengakses data kandidat milik AS lain via URL langsung ditolak dan dialihkan ke index dengan notifikasi error.
+  3. **Verifikasi & Pengujian Komprehensif**:
+     - Telah diuji dengan script simulasi otorisasi dan kueri:
+       - User Admin HR: Melihat 3.456 kandidat (Nasional).
+       - User AS Arya Setiawan (Recruiter): Hanya melihat 190 kandidat miliknya sendiri.
+       - User AS Karyawan Inhouse (Septia Haryati, Abdurrahman Jamil): Terfilter ketat ke kandidat milik masing-masing.
+       - Uji IDOR: Akses silang antar-AS sukses diblokir 100%.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

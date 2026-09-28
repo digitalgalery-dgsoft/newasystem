@@ -279,13 +279,9 @@ class User extends Authenticatable
             return true;
         }
 
-        // Jika user secara eksplisit di-set All Prinsiple dan Cover Area Nasional (tidak perlu cek berdasarkan usernya)
-        if ($this->handlesAllPrinciples() && $this->coversAllAreas()) {
-            // Berlaku jika user memiliki scope_override aktif (admin sengaja mengatur user ini ke All Prinsiple & Cover Area Nasional)
-            // ATAU jika role user BUKAN recruiter lapangan biasa
-            if ($this->scope_override || !in_array($roleName, ['recruiter', 'role_akses_as'], true)) {
-                return true;
-            }
+        // Jika user secara eksplisit di-set oleh Admin memiliki scope_override untuk All Prinsiple & Cover Area Nasional
+        if ($this->scope_override && $this->handlesAllPrinciples() && $this->coversAllAreas()) {
+            return true;
         }
 
         return false;

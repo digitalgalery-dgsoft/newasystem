@@ -61,7 +61,8 @@ class KandidatPortalController extends Controller
         }
 
         // Cek data karyawan dari tabel employees jika ada
-        if (!empty($user->email) || !empty($user->name)) {
+        $emp = $user->linked_employee ?? null;
+        if (!$emp && (!empty($user->email) || !empty($user->name))) {
             $emp = Employee::where(function ($q) use ($user) {
                 if (!empty($user->email)) {
                     $q->where('email', $user->email);
@@ -70,18 +71,91 @@ class KandidatPortalController extends Controller
                     $q->orWhere('nama_karyawan', $user->name);
                 }
             })->first();
+        }
 
-            if ($emp) {
-                if (!empty($emp->email)) {
-                    $identifiers[] = strtolower(trim($emp->email));
+        if ($emp) {
+            if (!empty($emp->email)) {
+                $identifiers[] = strtolower(trim($emp->email));
+                $empEmailUser = explode('@', strtolower(trim($emp->email)))[0];
+                if (strlen($empEmailUser) >= 3) {
+                    $identifiers[] = $empEmailUser;
                 }
-                if (!empty($emp->nama_karyawan)) {
-                    $identifiers[] = strtolower(trim($emp->nama_karyawan));
-                }
+            }
+            if (!empty($emp->nama_karyawan)) {
+                $identifiers[] = strtolower(trim($emp->nama_karyawan));
             }
         }
 
         return array_values(array_unique(array_filter($identifiers)));
+    }
+
+    /**
+     * Terapkan filter kepemilikan AS ke builder query jika user bukan admin nasional
+     */
+    protected function applyAsUserFilter($query, ?User $user, array $userIdentifiers): void
+    {
+        $userArea = trim($user?->area ?? ($user?->linked_employee?->area ?? ''));
+        $query->where(function ($q) use ($user, $userIdentifiers, $userArea) {
+            $hasFilter = false;
+            if (!empty($userIdentifiers)) {
+                $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                $hasFilter = true;
+                if ($user && !empty($user->id)) {
+                    $q->orWhere('recruiter_id', $user->id);
+                }
+            } elseif ($user && !empty($user->id)) {
+                $q->where('recruiter_id', $user->id);
+                $hasFilter = true;
+            }
+
+            // Sesuai sistem legacy v3: Pelamar jalur Publik yang berada di wilayah/area AS terkait
+            if (!empty($userArea) && !in_array(strtolower($userArea), ['nasional', 'semua', 'all', 'pusat'], true)) {
+                $q->orWhere(function ($sub) use ($userArea) {
+                    $sub->whereRaw("LOWER(TRIM(useras)) = 'publik'")
+                        ->whereRaw("LOWER(TRIM(area)) = ?", [strtolower(trim($userArea))]);
+                });
+                $hasFilter = true;
+            }
+
+            if (!$hasFilter) {
+                $q->whereRaw('1 = 0');
+            }
+        });
+    }
+
+    /**
+     * Memeriksa otorisasi apakah user yang login berhak mengakses kandidat portal spesifik
+     */
+    protected function canAccessCandidate(?User $user, Candidate $candidate): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        $isAdmin = $user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin());
+        $canViewAllRecruiters = $isAdmin || (method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
+        if ($canViewAllRecruiters) {
+            return true;
+        }
+
+        $userIdentifiers = $this->resolveUserIdentifiers($user);
+        $userArea = trim($user->area ?? ($user->linked_employee?->area ?? ''));
+        $candUserAs = strtolower(trim($candidate->useras ?? ''));
+        $candArea = strtolower(trim($candidate->area ?? ''));
+
+        if (!empty($userIdentifiers) && in_array($candUserAs, $userIdentifiers, true)) {
+            return true;
+        }
+
+        if (!empty($user->id) && !empty($candidate->recruiter_id) && (int) $candidate->recruiter_id === (int) $user->id) {
+            return true;
+        }
+
+        if ($candUserAs === 'publik' && !empty($userArea) && !in_array(strtolower($userArea), ['nasional', 'semua', 'all', 'pusat'], true) && strtolower($userArea) === $candArea) {
+            return true;
+        }
+
+        return false;
     }
 
     /**
@@ -185,19 +259,8 @@ class KandidatPortalController extends Controller
                 $scopeTitle = 'Seluruh Lowongan (Nasional)';
             }
         } else {
-            // DEFAULT UNTUK USER BIASA / REKRUTER: TAMPILKAN HANYA DATA MILIK USER YANG LOGIN!
-            $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
-                if (!empty($userIdentifiers)) {
-                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                    if ($user && !empty($user->id)) {
-                        $q->orWhere('recruiter_id', $user->id);
-                    }
-                } elseif ($user && !empty($user->id)) {
-                    $q->where('recruiter_id', $user->id);
-                } else {
-                    $q->whereRaw('1 = 0');
-                }
-            });
+            // DEFAULT UNTUK USER BIASA / REKRUTER / AS: TAMPILKAN HANYA DATA MILIK AS YANG LOGIN!
+            $this->applyAsUserFilter($baseQuery, $user, $userIdentifiers);
             $scopeTitle = 'Kandidat Milik Anda (' . $displayUserName . ')';
         }
 
@@ -427,10 +490,24 @@ class KandidatPortalController extends Controller
             return '-';
         };
 
+        $user = $this->getCurrentUser();
+        $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
+        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
+        $userIdentifiers = $this->resolveUserIdentifiers($user);
+
         $queueQuery = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
             ->where(function ($q) {
                 $q->whereNull('ai_score')->orWhere('ai_score', 0);
             });
+
+        $completedQuery = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+            ->whereNotNull('ai_score')
+            ->where('ai_score', '>', 0);
+
+        if (!$canViewAllRecruiters && $user) {
+            $this->applyAsUserFilter($queueQuery, $user, $userIdentifiers);
+            $this->applyAsUserFilter($completedQuery, $user, $userIdentifiers);
+        }
 
         $queueCount = (clone $queueQuery)->count();
 
@@ -456,10 +533,6 @@ class KandidatPortalController extends Controller
                     'detail_url' => route('kandidatportal.show', $c->id),
                 ];
             });
-
-        $completedQuery = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
-            ->whereNotNull('ai_score')
-            ->where('ai_score', '>', 0);
 
         $completedCount = (clone $completedQuery)->count();
         $greenCount = (clone $completedQuery)->where('ai_score', '>=', 85)->count();
@@ -738,11 +811,21 @@ class KandidatPortalController extends Controller
      */
     public function aiQueueTriggerProcess(Request $request)
     {
-        $candidate = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
+        $user = $this->getCurrentUser();
+        $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
+        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
+
+        $candQuery = Candidate::whereRaw("LOWER(TRIM(jenis)) = 'job portal'")
             ->where(function ($q) {
                 $q->whereNull('ai_score')->orWhere('ai_score', 0);
-            })
-            ->orderByRaw("CASE 
+            });
+
+        if (!$canViewAllRecruiters && $user) {
+            $userIdentifiers = $this->resolveUserIdentifiers($user);
+            $this->applyAsUserFilter($candQuery, $user, $userIdentifiers);
+        }
+
+        $candidate = $candQuery->orderByRaw("CASE 
                 WHEN created_at IS NOT NULL AND created_at > '1970-01-01' THEN created_at 
                 WHEN updated_at IS NOT NULL AND updated_at > '1970-01-01' THEN updated_at 
                 ELSE '9999-12-31' 
@@ -784,6 +867,12 @@ class KandidatPortalController extends Controller
             'principleApprovals',
             'testResults'
         ])->findOrFail($id);
+
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return redirect()->route('kandidatportal.index')
+                ->with('error', 'Anda tidak memiliki hak akses untuk melihat data kandidat milik rekruter / AS lain.');
+        }
 
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
         $userPrinsiples = \App\Http\Controllers\InterviewController::getUserPrinsipleOptions($candidate);
@@ -848,8 +937,6 @@ class KandidatPortalController extends Controller
             ->limit(5)
             ->get();
 
-        $user = $this->getCurrentUser();
-
         $asRecruiterOptions = \App\Http\Controllers\InterviewController::getAsRecruiterOptions();
 
         return view('kandidatportal.show', array_merge([
@@ -874,6 +961,12 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::with(['principle'])->findOrFail($id);
 
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return redirect()->route('kandidatportal.index')
+                ->with('error', 'Anda tidak memiliki hak akses untuk mencetak berkas kandidat milik rekruter / AS lain.');
+        }
+
         if (!$candidate->hasCv() || empty($candidate->ai_score)) {
             return back()->with('error', 'Kandidat ' . $candidate->full_name . ' belum memiliki berkas CV atau belum dianalisis oleh AI. Unggah berkas CV terlebih dahulu.');
         }
@@ -894,6 +987,11 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return back()->with('error', 'Anda tidak memiliki wewenang untuk mengunggah berkas kandidat milik AS / rekruter lain.');
+        }
+
         $request->validate([
             'foto_profil' => 'nullable|file|mimes:jpeg,png,jpg,webp|max:5120',
             'file_cv' => 'nullable|file|mimes:pdf,jpeg,png,jpg|max:10240',
@@ -912,7 +1010,7 @@ class KandidatPortalController extends Controller
         if ($request->hasFile('foto_profil')) {
             $foto = $request->file('foto_profil');
             $fotoName = 'foto_' . $nik . '_' . time() . '.' . $foto->getClientOriginalExtension();
-            $foto->move($lampiranPath, $fotoName);
+            $fotomove = $foto->move($lampiranPath, $fotoName);
             $candidate->photo_path = $fotoName;
             $updatedFiles[] = 'Foto Profil';
         }
@@ -965,6 +1063,11 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return back()->with('error', 'Anda tidak memiliki wewenang untuk menganalisis kandidat milik AS / rekruter lain.');
+        }
+
         $analyzer = app(AiAnalyzerService::class);
         $res = $analyzer->analyzeCandidate($candidate);
 
@@ -986,6 +1089,11 @@ class KandidatPortalController extends Controller
     public function storeRefcek(Request $request, $id)
     {
         $candidate = Candidate::findOrFail($id);
+
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return back()->with('error', 'Anda tidak memiliki wewenang untuk menyimpan referensi cek kandidat milik AS / rekruter lain.');
+        }
 
         $companyId = $request->input('company_id');
         $exp = null;
@@ -1081,6 +1189,11 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return back()->with('error', 'Anda tidak memiliki wewenang untuk menyimpan tes komputer kandidat milik AS / rekruter lain.');
+        }
+
         $scores = [
             'vlookup' => $request->input('vlookup', 'Baik'),
             'hlookup' => $request->input('hlookup', 'Baik'),
@@ -1135,6 +1248,17 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Unauthorized: Anda tidak memiliki akses ke kandidat ini.'
+                ], 403);
+            }
+            return back()->with('error', 'Unauthorized: Anda tidak memiliki akses ke kandidat ini.');
+        }
+
         if (!$candidate->birth_date) {
             if ($request->wantsJson()) {
                 return response()->json([
@@ -1171,6 +1295,11 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return back()->with('error', 'Anda tidak memiliki wewenang untuk memodifikasi kandidat milik AS / rekruter lain.');
+        }
+
         $validated = $request->validate([
             'work_willingness' => 'required|string',
             'appearance' => 'required|string',
@@ -1184,7 +1313,6 @@ class KandidatPortalController extends Controller
             'assessor_signature' => 'nullable|string',
         ]);
 
-        $user = $this->getCurrentUser();
         $userSigFile = 'signatures/user_' . $user->id . '.png';
         $sigData = $validated['assessor_signature'] ?? null;
 
@@ -1245,6 +1373,11 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return back()->with('error', 'Anda tidak memiliki wewenang untuk mengalihkan kandidat milik AS / rekruter lain.');
+        }
+
         $validated = $request->validate([
             'prinsiple_id' => 'nullable|integer',
             'useras' => 'required|string',
@@ -1276,6 +1409,12 @@ class KandidatPortalController extends Controller
     public function gantiArea(Request $request, $id)
     {
         $candidate = Candidate::findOrFail($id);
+
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return back()->with('error', 'Anda tidak memiliki wewenang untuk mengganti area kandidat milik AS / rekruter lain.');
+        }
+
         $oldArea = $candidate->area;
         $oldPrincipleName = $candidate->principle?->name ?? $candidate->principle ?? '-';
 
@@ -1322,6 +1461,11 @@ class KandidatPortalController extends Controller
     {
         $candidate = Candidate::findOrFail($id);
 
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return back()->with('error', 'Anda tidak memiliki wewenang untuk mengarsipkan kandidat milik AS / rekruter lain.');
+        }
+
         $reason = trim($request->input('alasan') ?? $request->input('archive_reason') ?? '') 
             ?: ('Diarsipkan dari Kandidat Portal oleh ' . (auth()->user()->name ?? 'Admin'));
 
@@ -1362,6 +1506,11 @@ class KandidatPortalController extends Controller
     public function unarchive(Request $request, $id)
     {
         $candidate = Candidate::findOrFail($id);
+
+        $user = $this->getCurrentUser();
+        if (!$this->canAccessCandidate($user, $candidate)) {
+            return back()->with('error', 'Anda tidak memiliki wewenang untuk mengaktifkan kandidat milik AS / rekruter lain.');
+        }
 
         $candidate->status = 'Active';
         $candidate->status_kandidat = 'Interview';
@@ -1434,18 +1583,7 @@ class KandidatPortalController extends Controller
             // Jika $filterRecruiter bernilai 'all' atau kosong -> Export semua kandidat sesuai scope
         } else {
             // User biasa / AS / Rekruter: Hanya kandidat miliknya
-            $baseQuery->where(function ($q) use ($user, $userIdentifiers) {
-                if (!empty($userIdentifiers)) {
-                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
-                    if ($user && !empty($user->id)) {
-                        $q->orWhere('recruiter_id', $user->id);
-                    }
-                } elseif ($user && !empty($user->id)) {
-                    $q->where('recruiter_id', $user->id);
-                } else {
-                    $q->whereRaw('1 = 0');
-                }
-            });
+            $this->applyAsUserFilter($baseQuery, $user, $userIdentifiers);
         }
 
         // Terapkan Pembatasan Scope Role (Prinsiple & Area Cover)
