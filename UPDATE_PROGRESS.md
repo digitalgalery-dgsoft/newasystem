@@ -3128,6 +3128,13 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
          - `GET /cbt/login` => **PASS** (HTTP 200 OK)
        - **Pengujian Akses Authenticated (Setelah Login)**:
          - Seluruh endpoint internal (`/fitur`, `/interview`, `/interview/{id}`, `/kandidatportal`, `/kandidatportal/{id}`, `/interviewinhouse`, `/airanking`, `/job/statistik`, `/workplan`) sukses terbuka dengan **HTTP 200 OK**.
+  6. **Pelacakan Forensik Audit Trail Akses Detail Kandidat Tanpa Login (php artisan audit:trace-guest)**:
+     - Dibuat command artisan investigasi forensik AuditTraceGuestCommand yang memeriksa rekaman database ctivity_logs dan access log server Nginx (/www/wwwlogs/new.asystem.co.id.log).
+     - **Hasil Forensik Produksi (Server 3)**:
+       - Terdeteksi akses langsung (direct hit) sebelum pengetatan dari:
+         1. **Pengguna Riil via WhatsApp**: IP 182.6.77.254 (User-Agent: WhatsApp/2.23.20.0 & Android Chrome) membuka detail kandidat ID 55517 pada pukul 09:30 - 09:31 WIB.
+         2. **Web Crawler Bot**: SemrushBot (185.191.171.x), Googlebot (192.178.6.x), dan Bingbot (40.77.167.x).
+       - Terbukti bahwa per pukul **09:41 WIB** (setelah patch diaplikasikan), **100% upaya akses tanpa login langsung DIBLOKIR dengan status HTTP 302 (Redirect ke Login)**.
 
 ---
 
