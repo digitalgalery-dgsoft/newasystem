@@ -298,9 +298,14 @@ class CandidateImportController extends Controller
         $allMatchNiks = array_values(array_unique(array_filter([$cleanNik, $targetNik, $targetKk])));
         $existingCandidates = Candidate::whereIn('nik', $allMatchNiks)->orderBy('id')->get();
 
-        // Cek apakah ada kandidat dengan NIK ini yang saat ini sedang AKTIF (bukan status Arsip)
+        // Cek apakah ada kandidat dengan NIK ini yang saat ini sedang AKTIF dan memiliki AS riil (bukan status Arsip & bukan unassigned)
         $activeCandidate = $existingCandidates->first(function($c) {
-            return $c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip';
+            if ($c->status === 'Arsip' || $c->status_kandidat === 'Arsip') {
+                return false;
+            }
+            $candUseras = strtolower(trim((string)$c->useras));
+            return (!empty($candUseras) && !in_array($candUseras, ['-', '', 'publik', 'online', 'unassigned', 'null'], true)) 
+                || !empty($c->recruiter_id);
         });
 
         $currentUser = $this->getCurrentUser();
@@ -310,7 +315,14 @@ class CandidateImportController extends Controller
         $sameUserData = null;
 
         if ($activeCandidate) {
-            $isSameUser = $activeCandidate->isOwnedBy($currentUser ?: ($currentUser->email ?? null));
+            $isAdminOrTalentPool = $currentUser && (
+                $currentUser->isAdmin() ||
+                ($currentUser->role ?? '') === 'admin' ||
+                (method_exists($currentUser, 'canExportNationalCandidates') && $currentUser->canExportNationalCandidates()) ||
+                (method_exists($currentUser, 'isAdministratorTalentPool') && $currentUser->isAdministratorTalentPool())
+            );
+
+            $isSameUser = $isAdminOrTalentPool ? true : $activeCandidate->isOwnedBy($currentUser ?: ($currentUser->email ?? null));
             $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
             $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
 
@@ -576,17 +588,31 @@ class CandidateImportController extends Controller
 
             // VALIDASI PROTEKSI KANDIDAT AKTIF:
             // Sesuai aturan sistem:
-            // - Jika user / AS yang SAMA yang import / tarik lagi: Otomatis langsung bisa & mengarsipkan data sebelumnya.
-            // - Jika user / AS yang BERBEDA yang import / tarik: Tidak bisa (diblokir) & harus koordinasi dengan AS terkait.
+            // - Jika kandidat aktif under AS tertentu:
+            //   - Jika user / AS yang SAMA (atau Admin / Talent Pool): Otomatis langsung bisa & mengarsipkan data sebelumnya.
+            //   - Jika user / AS yang BERBEDA: Tidak bisa (diblokir) & harus koordinasi dengan AS terkait.
+            // - Jika kandidat berstatus Arsip atau unassigned (belum ada AS): Bebas ditarik oleh user manapun.
             $activeCandidate = $existingCandidates->first(function($c) {
-                return $c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip';
+                if ($c->status === 'Arsip' || $c->status_kandidat === 'Arsip') {
+                    return false;
+                }
+                $candUseras = strtolower(trim((string)$c->useras));
+                return (!empty($candUseras) && !in_array($candUseras, ['-', '', 'publik', 'online', 'unassigned', 'null'], true)) 
+                    || !empty($c->recruiter_id);
             });
 
             $hasTbKandidat = Schema::hasTable('tb_kandidat');
             $wasActiveArchived = false;
 
             if ($activeCandidate) {
-                $isOwned = $activeCandidate->isOwnedBy($user ?: $userEmail);
+                $isAdminOrTalentPool = $user && (
+                    $user->isAdmin() ||
+                    ($user->role ?? '') === 'admin' ||
+                    (method_exists($user, 'canExportNationalCandidates') && $user->canExportNationalCandidates()) ||
+                    (method_exists($user, 'isAdministratorTalentPool') && $user->isAdministratorTalentPool())
+                );
+
+                $isOwned = $isAdminOrTalentPool ? true : $activeCandidate->isOwnedBy($user ?: $userEmail);
                 $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
                 $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
 

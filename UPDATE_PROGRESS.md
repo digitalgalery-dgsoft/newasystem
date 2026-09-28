@@ -3406,6 +3406,30 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 86. 🛠️ Perbaikan Validasi Tarik / Sinkronisasi NIK Kandidat dari Odoo dan Penyelarasan Duplikat Arsip (28 September 2026)
+- **Kendala Pengguna**:
+  - Kandidat (seperti Windy Yanti.anggraeni, NIK: `3577036006950006`) sudah berstatus Arsip di sistem, namun saat pengguna mencoba melakukan penarikan / impor / sinkronisasi data kandidat dari Odoo berdasarkan NIK, muncul popup peringatan: *"Kandidat Aktif Milik AS Lain! Terdaftar Under AS: - Email / Akun AS: - Area: Surabaya (PT ARINA MULTI KARYA)..."* dan proses penarikan kandidat diblokir.
+- **Akar Masalah (Root Cause)**:
+  1. Terdapat lebih dari satu record kandidat dengan NIK yang sama (misal hasil pendaftaran walk-in atau pendaftaran portal sebelumnya). Record pertama (ID 57892) sudah berstatus 'Arsip', namun record kedua (ID 64648) masih berstatus 'Active' dan belum memiliki AS penanggung jawab (`useras = ''` dan `recruiter_id = null`).
+  2. Logika pengecekan kepemilikan (`isOwnedBy()`) sebelumnya membandingkan string `useras` kosong dengan email pengguna login, sehingga selalu mereturn `false`. Akibatnya, kandidat yang tidak memiliki AS (`unassigned`) keliru dianggap sebagai milik "AS Lain".
+  3. Proses pengarsipan sebelumnya (di `InterviewController`, `KandidatPortalController`, maupun aturan auto-archive di `OdooRecruitmentSyncService`) hanya memperbarui 1 baris ID record yang dipilih tanpa menyelaraskan duplikat record lain dengan NIK yang sama.
+- **Implementasi Solusi & Perbaikan**:
+  1. **Pembaruan Model Kandidat (`app/Models/Candidate.php`)**:
+     - Memperbarui `isOwnedBy($user)` agar mengenali hak Super Administrator dan Administrator Talent Pool atas seluruh kandidat nasional.
+     - Memastikan kandidat yang belum memiliki AS (`empty($useras)` / `unassigned` / `null` dan `recruiter_id = null`) bebas ditarik / diklaim oleh rekruter manapun tanpa diblokir.
+  2. **Penyempurnaan Logika Proteksi Impor NIK (`app/Http/Controllers/CandidateImportController.php`)**:
+     - Pada `lookupOdooByNik()` dan `importOdooByNik()`: Pemeriksaan proteksi kandidat aktif diperketat agar **hanya mendeteksi kandidat aktif yang benar-benar memiliki AS riil**. Kandidat unassigned atau kandidat yang sudah diarsipkan tidak lagi memicu modal *"Kandidat Aktif Milik AS Lain"*.
+     - Jika kandidat berstatus unassigned atau seluruh record sebelumnya adalah Arsip, sistem langsung memberikan opsi *"Tarik & Proses Kandidat ke ASystem"* tanpa peringatan blokir.
+     - Saat proses impor berhasil, seluruh duplikat record lama dengan NIK tersebut di `candidates` maupun `tb_kandidat` otomatis diarsipkan sehingga riwayat tersimpan bersih dan tidak ada duplikat aktif yang tertinggal.
+  3. **Penyempurnaan Proteksi Batch Import (`app/Services/CandidateImportService.php`)**:
+     - Menerapkan aturan proteksi kepemilikan AS riil yang sama pada proses impor berkas massal.
+  4. **Penyelarasan Pengarsipan NIK (`app/Http/Controllers/InterviewController.php`, `app/Http/Controllers/KandidatPortalController.php`, `app/Services/OdooRecruitmentSyncService.php`)**:
+     - Pada aksi arsip perorangan (`archive`), aksi arsip massal (`bulkArchive`), dan auto-archive 14 hari tanpa pembaruan: Seluruh record kandidat yang memiliki NIK sama otomatis diselaraskan statusnya menjadi `'Arsip'`, mencegah terjadinya rekaman aktif ganda di kemudian hari.
+  5. **Migrasi Penyembuhan Data Duplikat (`database/migrations/2026_09_28_143000_heal_duplicate_archived_candidates_and_unassigned_walkin.php`)**:
+     - Mengubah status record ID 64648 (dan record walkin unassigned lain yang NIK-nya telah memiliki status Arsip) menjadi `'Arsip'` di tabel `candidates` dan `tb_kandidat`.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

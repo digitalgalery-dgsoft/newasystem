@@ -1593,6 +1593,17 @@ class InterviewController extends Controller
                 ->update($tbData);
         }
 
+        // Selaraskan duplikat record kandidat dengan NIK yang sama agar tidak tersisa duplikat Active
+        if (!empty($candidate->nik)) {
+            Candidate::where('nik', $candidate->nik)
+                ->where('id', '!=', $candidate->id)
+                ->update([
+                    'status' => 'Arsip',
+                    'status_kandidat' => 'Arsip',
+                    'archive_reason' => $reason,
+                ]);
+        }
+
         ActivityLogger::log('ARCHIVE', 'Interview', "Mengarsipkan kandidat {$candidate->full_name} ({$candidate->id}). Alasan: {$reason}", $candidate, [
             'alasan' => $reason,
         ]);
@@ -1731,6 +1742,17 @@ class InterviewController extends Controller
                     ->where('id', $cand->id)
                     ->orWhere('no_ktp', $cand->nik)
                     ->update($tbData);
+            }
+
+            // Selaraskan duplikat record kandidat dengan NIK yang sama agar tidak tersisa duplikat Active
+            if (!empty($cand->nik)) {
+                Candidate::where('nik', $cand->nik)
+                    ->where('id', '!=', $cand->id)
+                    ->update([
+                        'status' => 'Arsip',
+                        'status_kandidat' => 'Arsip',
+                        'archive_reason' => $reason,
+                    ]);
             }
 
             ActivityLogger::log('ARCHIVE', 'Interview', "Mengarsipkan kandidat {$cand->full_name} ({$cand->id}) via multi-select. Alasan: {$reason}", $cand);

@@ -109,6 +109,24 @@ class Candidate extends Model
             return false;
         }
 
+        // 0a. Administrator dan Administrator Talent Pool berhak atas seluruh kandidat nasional
+        $userObj = is_object($user) ? $user : User::where('email', $user)->first();
+        if ($userObj && (
+            (method_exists($userObj, 'isAdmin') && $userObj->isAdmin()) ||
+            ($userObj->role ?? '') === 'admin' ||
+            (method_exists($userObj, 'isAdministratorTalentPool') && $userObj->isAdministratorTalentPool()) ||
+            (method_exists($userObj, 'canExportNationalCandidates') && $userObj->canExportNationalCandidates())
+        )) {
+            return true;
+        }
+
+        // 0b. Kandidat yang belum memiliki AS (unassigned / kosong / '-') bebas diambil/di-import oleh user manapun
+        $candUseras = strtolower(trim((string)$this->useras));
+        $hasNoAs = (empty($candUseras) || in_array($candUseras, ['-', '', 'publik', 'online', 'unassigned', 'null'], true)) && empty($this->recruiter_id);
+        if ($hasNoAs) {
+            return true;
+        }
+
         $userId = is_object($user) ? $user->id : null;
         $userEmail = is_object($user) ? strtolower(trim((string)$user->email)) : (str_contains((string)$user, '@') ? strtolower(trim((string)$user)) : '');
         $userName = is_object($user) ? strtolower(trim((string)$user->name)) : (!str_contains((string)$user, '@') ? strtolower(trim((string)$user)) : '');

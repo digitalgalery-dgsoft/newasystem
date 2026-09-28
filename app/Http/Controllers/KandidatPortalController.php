@@ -1525,6 +1525,17 @@ class KandidatPortalController extends Controller
                 ->update($tbData);
         }
 
+        // Selaraskan duplikat record kandidat dengan NIK yang sama agar tidak tersisa duplikat Active
+        if (!empty($candidate->nik)) {
+            Candidate::where('nik', $candidate->nik)
+                ->where('id', '!=', $candidate->id)
+                ->update([
+                    'status' => 'Arsip',
+                    'status_kandidat' => 'Arsip',
+                    'archive_reason' => $reason,
+                ]);
+        }
+
         ActivityLogger::log('ARCHIVE', 'Kandidat Portal', "Mengarsipkan kandidat {$candidate->full_name}. Alasan: {$reason}", $candidate, [
             'alasan' => $reason,
         ]);

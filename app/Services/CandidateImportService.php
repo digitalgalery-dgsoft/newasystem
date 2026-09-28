@@ -306,12 +306,24 @@ class CandidateImportService
                     // - Jika user / AS yang BERBEDA yang import: Tidak bisa (diblokir / di-skip) & harus koordinasi dengan AS terkait.
                     if ($isReplaced) {
                         $activeCandidate = $existingCandidates->first(function($c) {
-                            return $c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip';
+                            if ($c->status === 'Arsip' || $c->status_kandidat === 'Arsip') {
+                                return false;
+                            }
+                            $candUseras = strtolower(trim((string)$c->useras));
+                            return (!empty($candUseras) && !in_array($candUseras, ['-', '', 'publik', 'online', 'unassigned', 'null'], true)) 
+                                || !empty($c->recruiter_id);
                         });
 
                         if ($activeCandidate) {
                             $importUser = $userId ? \App\Models\User::find($userId) : \App\Models\User::where('email', $userEmail)->first();
-                            $isOwned = $activeCandidate->isOwnedBy($importUser ?: $userEmail);
+                            $isAdminOrTalentPool = $importUser && (
+                                $importUser->isAdmin() ||
+                                ($importUser->role ?? '') === 'admin' ||
+                                (method_exists($importUser, 'canExportNationalCandidates') && $importUser->canExportNationalCandidates()) ||
+                                (method_exists($importUser, 'isAdministratorTalentPool') && $importUser->isAdministratorTalentPool())
+                            );
+
+                            $isOwned = $isAdminOrTalentPool ? true : $activeCandidate->isOwnedBy($importUser ?: $userEmail);
 
                             if (!$isOwned) {
                                 // USER BERBEDA -> DILEWATI / BLOKIR

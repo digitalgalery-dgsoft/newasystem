@@ -446,6 +446,17 @@ class OdooRecruitmentSyncService
                 $cand->status = 'Arsip';
                 $cand->archive_reason = 'Otomatis diarsipkan: Tidak ada update tahapan seleksi dalam 14 hari sejak pendaftaran';
                 $cand->saveQuietly();
+
+                // Selaraskan duplikat record dengan NIK yang sama agar tidak tertinggal status Active
+                if (!empty($cand->nik)) {
+                    Candidate::where('nik', $cand->nik)
+                        ->where('id', '!=', $cand->id)
+                        ->update([
+                            'status' => 'Arsip',
+                            'status_kandidat' => 'Arsip',
+                            'archive_reason' => 'Otomatis diarsipkan: Tidak ada update tahapan seleksi dalam 14 hari sejak pendaftaran',
+                        ]);
+                }
             }
 
             $log('auto_archive', "📦 Berhasil mengarsipkan {$count} kandidat yang tidak aktif selama lebih dari 14 hari.");
