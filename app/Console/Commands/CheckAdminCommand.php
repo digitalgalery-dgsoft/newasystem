@@ -47,6 +47,25 @@ class CheckAdminCommand extends Command
             $this->info("Emp ID: {$e->id}, Name: {$e->nama_karyawan}, Status: {$e->status}, Tipe: {$e->tipe_karyawan}, Akses: {$e->akses_login}");
         }
 
+        $this->info('--- Simulating AuthController::login ---');
+        $session = app('session')->driver();
+        $session->setId('test_cli_session');
+        $session->start();
+        $req = \Illuminate\Http\Request::create('/login', 'POST', [
+            'email' => 'admin@asystem.co.id',
+            'password' => $testPassword ?: 'admin123'
+        ]);
+        $req->setLaravelSession($session);
+        $resp = app(\App\Http\Controllers\AuthController::class)->login($req);
+        $this->info("Login response status: " . $resp->getStatusCode());
+        $this->info("Login target: " . ($resp->headers->get('Location') ?? 'None'));
+        if ($resp->isRedirection()) {
+            $sessionData = $session->all();
+            $this->info("Session errors: " . json_encode($sessionData['errors'] ?? []));
+            $this->info("Session success: " . ($sessionData['success'] ?? 'none'));
+            $this->info("Session warning: " . ($sessionData['warning'] ?? 'none'));
+        }
+
         return 0;
     }
 }
