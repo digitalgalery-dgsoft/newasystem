@@ -3325,6 +3325,52 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 83. 🎯 Perbaikan Input Hasil Interview Kandidat Portal & Sinkronisasi Tahapan Odoo ERP (Joined) (28 September 2026)
+- **Analisis Masalah & Investigasi Root Cause**:
+  - **Keluhan Pengguna**:
+    1. Saat submit hasil interview di portal kandidat (`kandidatportal/{id}`) dan mengubah statusnya menjadi **Terima**, status tahapan berpindah namun data kriteria penilaian interview (Kemauan Kerja, Penampilan, Attitude, Daya Tangkap, Catatan Lain-lain) tidak tersimpan / muncul kosong.
+    2. Pada kandidat terkait (Yayuk Dewi Utari, NIK: `3528044204980003`), banner Odoo menampilkan *"Belum Terdaftar di Odoo"* padahal di Odoo ERP (AMK) sudah masuk tahapan **Joined**.
+  - **Akar Masalah (*Root Cause*)**:
+    1. **Mismatch Kolom & Silent Dropping Eloquent**:
+       - Form `resources/views/kandidatportal/show.blade.php` mengirimkan nama field `work_willingness` dan `notes`.
+       - Tabel database `interview_assessments` menggunakan nama kolom `work_motivation` dan `other_notes`.
+       - Karena `work_willingness` dan `notes` tidak terdaftar dalam `$fillable` model `InterviewAssessment`, Eloquent mengabaikan (*drop*) kedua field tersebut saat `updateOrCreate()`.
+    2. **MySQL Integer Type-Casting 0**:
+       - Kolom `work_motivation`, `appearance`, `attitude`, `comprehension` pada skema database bertipe numerik `unsignedTinyInteger` (1-5).
+       - Form mengirimkan string label teks (`'Baik'`, `'Sangat Baik'`).
+       - MySQL secara implisit mengonversi string teks non-numerik tersebut menjadi integer `0`.
+    3. **Pengecekan Radio Button Blank di Blade View**:
+       - Blade view mengecek `($assess && $assess->$field === $opt)`.
+       - Karena nilai kolom di database adalah `0` (atau `null` untuk `work_willingness`), kondisi `$assess->$field === $opt` bernilai `false` (misal `0 === 'Baik'` adalah false).
+       - Karena `$assess` sudah ada (not null), kondisi fallback `(!$assess && $opt === 'Baik')` juga `false`. Akibatnya, seluruh radio button tidak tercentang sama sekali.
+    4. **Penekanan Stage Odoo pada `isHistoricalPastRecord`**:
+       - Pada `OdooRecruitmentSyncService.php`, terdapat pengecekan historis tanggal buat record pelamar Odoo terhadap tanggal lamaran Job Portal.
+       - Jika berkas Odoo dibuat lebih awal, fungsi `applyOdooApplicantData()` langsung mengembalikan `odoo_stage => null` dan tidak menyimpan `odoo_stage_name`, `odoo_applicant_id`, maupun `odoo_entity` ke model kandidat. Akibatnya, antarmuka selalu menampilkan badge *"Belum Terdaftar di Odoo"*.
+- **Solusi & Implementasi Teknis**:
+  1. **Penyempurnaan Model `InterviewAssessment` (`app/Models/InterviewAssessment.php`)**:
+     - Menambahkan alias field (`work_willingness`, `notes`, `work_motivation_score`, `appearance_score`, `attitude_score`, `comprehension_score`, `salary_offered`, `interviewer_signature`) ke dalam properti `$fillable`.
+     - Menambahkan metode konverter statis dwiarah:
+       - `scoreToLabel(?int $score): string` (mengonversi skor 1-5 ke `'Sangat Baik'`, `'Baik'`, `'Cukup'`, `'Kurang'`).
+       - `labelToScore($label): int` (mengonversi string teks atau angka ke integer 1-5 dengan default 3/4).
+     - Menambahkan accessors & mutators cerdas:
+       - `getWorkWillingnessAttribute()` & `setWorkWillingnessAttribute()` untuk sinkronisasi dwiarah dengan `work_motivation`.
+       - `getNotesAttribute()` & `setNotesAttribute()` untuk sinkronisasi dwiarah dengan `other_notes`.
+       - Mutators pada `appearance`, `attitude`, `comprehension`, dan `work_motivation` yang secara otomatis mengonversi string label menjadi integer valid, mencegah nilai `0` pada database MySQL.
+  2. **Penyempurnaan Controller Kandidat Portal (`app/Http/Controllers/KandidatPortalController.php`)**:
+     - Pada `updateInterview()`: Secara eksplisit memetakan string kriteria interview menggunakan `InterviewAssessment::labelToScore()` sebelum persistensi, menyimpan `other_notes`, serta memastikan status pelamar `Active` saat status tahapan dipilih `Terima`.
+     - Menambahkan auto-sync Odoo pada `updateInterview()` dan `show()`: Jika kandidat memiliki NIK namun data `odoo_stage_name` masih kosong, sistem secara otomatis melakukan sinkronisasi satu kandidat (*single sync*) ke Odoo ERP di latar belakang sehingga pengguna langsung melihat status rekrutmen terkini.
+  3. **Penyempurnaan Layanan Sinkronisasi Odoo (`app/Services/OdooRecruitmentSyncService.php`)**:
+     - Menghilangkan supresi Odoo stage pada berkas masa lalu: sistem SELALU menyimpan data otentik rekrutmen Odoo (`odoo_applicant_id`, `odoo_entity`, `odoo_stage_id`, `odoo_stage_name`, `odoo_synced_at`, dan metadata lamaran).
+     - Menyelaraskan status `Joined` di Odoo untuk langsung memvalidasi status `Terima` di ASystem.
+  4. **Pembaruan Template Antarmuka (`resources/views/kandidatportal/show.blade.php`)**:
+     - Memperbarui perulangan kriteria penilaian interview agar mengevaluasi baik integer score maupun string label dengan `scoreToLabel()`, memastikan opsi terpilih selalu tercentang aktif dengan benar.
+     - Memperbarui textarea catatan lain-lain untuk membaca `$assess->other_notes ?? $assess->notes`.
+  5. **Migrasi Data Auto-Heal & Perbaikan Database Server (`2026_09_28_130000_fix_interview_assessment_scores_and_odoo_sync.php`)**:
+     - Memperbaiki record penilaian yang sempat tersimpan dengan skor 0 menjadi 4 (*Baik*).
+     - Memastikan data kandidat Yayuk Dewi Utari (ID 57432, NIK 3528044204980003) terisi lengkap dengan status tahapan `Terima`, penilaian evaluasi 4 (*Baik*), dan terhubung langsung ke Odoo ERP AMK dengan tahapan `Joined` (#130043).
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

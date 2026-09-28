@@ -327,43 +327,21 @@ class OdooRecruitmentSyncService
 
         $isHistoricalPastRecord = false;
         if ($appCreateDate && $candidateApplyDate) {
-            // Jika record pelamar di Odoo dibuat jauh sebelum pelamar mendaftar ke lowongan ini (> 2 hari)
-            if ($appCreateDate->lt($candidateApplyDate->copy()->subDays(2))) {
+            // Jika record pelamar di Odoo dibuat jauh sebelum pelamar mendaftar ke lowongan ini (> 30 hari)
+            if ($appCreateDate->lt($candidateApplyDate->copy()->subDays(30))) {
                 $isHistoricalPastRecord = true;
             }
         }
 
-        // Jika ini adalah lamaran historis masa lalu dan kandidat baru mendaftar di Job Portal:
-        // Jangan timpa status kandidat baru dan jangan tampilkan stage lama sebagai status lowongan saat ini.
-        if ($isHistoricalPastRecord && ($candidate->jenis === 'Job Portal' || $oldStatus === 'Baru')) {
-            $candidate->odoo_synced_at = now();
-            $candidate->odoo_applicant_data = [
-                'is_historical'     => true,
-                'historical_entity' => $entityCode,
-                'historical_job'    => isset($odooApp['job_id']) && is_array($odooApp['job_id']) ? $odooApp['job_id'][1] : null,
-                'historical_stage'  => $stageName,
-                'historical_date'   => $odooApp['create_date'] ?? null,
-                'write_date'        => $odooApp['write_date'] ?? null,
-                'active'            => $isActive,
-            ];
-            $candidate->saveQuietly();
-
-            return [
-                'status_changed' => false,
-                'old_status'     => $oldStatus,
-                'new_status'     => $oldStatus,
-                'odoo_stage'     => null,
-                'is_historical'  => true,
-            ];
-        }
-
-        // ATURAN 1: Refused / Inactive di Odoo -> Pindah ke Arsip
+        // ATURAN 1: Refused / Inactive di Odoo -> Pindah ke Arsip (hanya jika bukan berkas historis lama saat kandidat mendaftar baru)
         if (!$isActive || str_contains($stageLower, 'refuse') || str_contains($stageLower, 'tolak')) {
-            $newStatus = 'Arsip';
-            $candidate->archive_reason = 'Ditolak / Di-arsip pada sistem Odoo Recruitment';
-            $candidate->status = 'Arsip';
+            if (!$isHistoricalPastRecord || $oldStatus !== 'Baru') {
+                $newStatus = 'Arsip';
+                $candidate->archive_reason = 'Ditolak / Di-arsip pada sistem Odoo Recruitment';
+                $candidate->status = 'Arsip';
+            }
         }
-        // ATURAN 2: Joined -> Pindah ke Terima
+        // ATURAN 2: Joined -> Pindah ke Terima (atau jika di lokal sudah Terima, pertahankan)
         elseif (str_contains($stageLower, 'joined')) {
             $newStatus = 'Terima';
             if (empty($candidate->status) || $candidate->status === 'Arsip' || $candidate->status === 'archived') {
@@ -382,9 +360,9 @@ class OdooRecruitmentSyncService
             if ($oldStatus === 'Baru' || empty($oldStatus)) {
                 $newStatus = 'Interview';
             }
-            // Jika sudah Terima di lokal tapi di Odoo belum Joined (misal masih PKWT), pertahankan atau sesuaikan
+            // Jika sudah Terima di lokal tapi di Odoo belum Joined (misal masih PKWT), pertahankan Terima
             elseif ($oldStatus === 'Terima') {
-                // Biarkan tetap Terima jika sudah ttd prinsiple
+                // Biarkan tetap Terima
             } else {
                 $newStatus = 'Interview';
             }
@@ -399,16 +377,18 @@ class OdooRecruitmentSyncService
             }
         }
 
-        // Simpan data Odoo ke record kandidat
+        // Simpan data Odoo ke record kandidat (SELALU simpan agar UI menampilkan tahapan di Odoo)
         $candidate->odoo_applicant_id = $applicantId;
         $candidate->odoo_entity = $entityCode;
         $candidate->odoo_stage_id = $stageId;
         $candidate->odoo_stage_name = $stageName;
         $candidate->odoo_synced_at = now();
         $candidate->odoo_applicant_data = [
+            'is_historical' => $isHistoricalPastRecord,
             'job'         => isset($odooApp['job_id']) && is_array($odooApp['job_id']) ? $odooApp['job_id'][1] : null,
             'department'  => isset($odooApp['department_id']) && is_array($odooApp['department_id']) ? $odooApp['department_id'][1] : null,
             'recruiter'   => isset($odooApp['user_id']) && is_array($odooApp['user_id']) ? $odooApp['user_id'][1] : null,
+            'create_date' => $odooApp['create_date'] ?? null,
             'write_date'  => $odooApp['write_date'] ?? null,
             'active'      => $isActive,
         ];
@@ -422,6 +402,7 @@ class OdooRecruitmentSyncService
             'old_status'     => $oldStatus,
             'new_status'     => $newStatus,
             'odoo_stage'     => $stageName,
+            'is_historical'  => $isHistoricalPastRecord,
         ];
     }
 

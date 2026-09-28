@@ -519,20 +519,41 @@
                                 @php
                                     $assess = $candidate->interviewAssessment;
                                     $criteria = [
-                                        'work_willingness' => 'Kemauan Kerja',
-                                        'appearance' => 'Penampilan',
-                                        'attitude' => 'Attitude / Sikap',
-                                        'comprehension' => 'Daya Tangkap',
+                                        'work_willingness' => ['label' => 'Kemauan Kerja', 'col' => 'work_motivation'],
+                                        'appearance'       => ['label' => 'Penampilan', 'col' => 'appearance'],
+                                        'attitude'         => ['label' => 'Attitude / Sikap', 'col' => 'attitude'],
+                                        'comprehension'    => ['label' => 'Daya Tangkap', 'col' => 'comprehension'],
                                     ];
                                 @endphp
-                                @foreach($criteria as $field => $label)
+                                @foreach($criteria as $field => $cfg)
+                                @php
+                                    $label = $cfg['label'];
+                                    $col = $cfg['col'];
+                                    $curVal = null;
+                                    if ($assess) {
+                                        $rawVal = $assess->$col ?? $assess->$field ?? null;
+                                        if (is_numeric($rawVal) && (int)$rawVal > 0) {
+                                            $curVal = \App\Models\InterviewAssessment::scoreToLabel((int)$rawVal);
+                                        } elseif (is_string($rawVal) && !empty($rawVal)) {
+                                            $curVal = $rawVal;
+                                        }
+                                    }
+                                @endphp
                                 <tr>
                                     <td class="font-bold text-slate-800">{{ $label }}</td>
                                     @foreach(['Sangat Baik', 'Baik', 'Cukup', 'Kurang'] as $opt)
+                                    @php
+                                        $isChecked = false;
+                                        if ($curVal !== null) {
+                                            $isChecked = ($curVal === $opt);
+                                        } else {
+                                            $isChecked = ($opt === 'Baik');
+                                        }
+                                    @endphp
                                     <td class="text-center">
                                         <label class="inline-flex items-center justify-center p-1.5 cursor-pointer">
                                             <input type="radio" name="{{ $field }}" value="{{ $opt }}" 
-                                                   {{ ($assess && $assess->$field === $opt) || (!$assess && $opt === 'Baik') ? 'checked' : '' }}
+                                                   {{ $isChecked ? 'checked' : '' }}
                                                    class="w-4 h-4 text-primary focus:ring-primary-500">
                                         </label>
                                     </td>
@@ -571,7 +592,7 @@
 
                         <div class="md:col-span-3">
                             <label class="block text-xs font-bold text-slate-700 mb-1">Catatan Lain-lain</label>
-                            <textarea name="notes" rows="3" placeholder="Catatan hasil wawancara tatap muka..." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700">{{ $assess ? $assess->notes : '' }}</textarea>
+                            <textarea name="notes" rows="3" placeholder="Catatan hasil wawancara tatap muka..." class="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-medium text-slate-700">{{ $assess ? ($assess->other_notes ?? $assess->notes) : '' }}</textarea>
                         </div>
                     </div>
 

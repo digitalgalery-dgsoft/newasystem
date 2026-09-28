@@ -874,6 +874,16 @@ class KandidatPortalController extends Controller
                 ->with('error', 'Anda tidak memiliki hak akses untuk melihat data kandidat milik rekruter / AS lain.');
         }
 
+        // Auto-sinkronisasi status Odoo jika stage belum ada / kosong dan belum dicek dalam 2 jam terakhir
+        if (empty($candidate->odoo_stage_name) && !empty($candidate->nik) && (!$candidate->odoo_synced_at || $candidate->odoo_synced_at->lt(now()->subHours(2)))) {
+            try {
+                app(\App\Services\OdooRecruitmentSyncService::class)->syncSingleCandidate($candidate);
+                $candidate->refresh();
+            } catch (\Throwable $e) {
+                // Silently bypass jika Odoo timeout
+            }
+        }
+
         $principles = Principle::where('is_active', true)->orderBy('name')->get();
         $userPrinsiples = \App\Http\Controllers\InterviewController::getUserPrinsipleOptions($candidate);
         try {
@@ -1329,16 +1339,27 @@ class KandidatPortalController extends Controller
             }
         }
 
+        // Convert to standard 1-5 integer scores
+        $workMotivationScore = InterviewAssessment::labelToScore($validated['work_willingness']);
+        $appearanceScore = InterviewAssessment::labelToScore($validated['appearance']);
+        $attitudeScore = InterviewAssessment::labelToScore($validated['attitude']);
+        $comprehensionScore = InterviewAssessment::labelToScore($validated['comprehension']);
+        $notesText = $validated['notes'] ?? null;
+
         // Update assessment
         InterviewAssessment::updateOrCreate(
             ['candidate_id' => $candidate->id],
             [
                 'interviewer_id' => $user->id,
-                'work_willingness' => $validated['work_willingness'],
-                'appearance' => $validated['appearance'],
-                'attitude' => $validated['attitude'],
-                'comprehension' => $validated['comprehension'],
-                'notes' => $validated['notes'] ?? null,
+                'work_motivation' => $workMotivationScore,
+                'work_willingness' => $workMotivationScore,
+                'appearance' => $appearanceScore,
+                'attitude' => $attitudeScore,
+                'comprehension' => $comprehensionScore,
+                'other_notes' => $notesText,
+                'notes' => $notesText,
+                'recommendation' => 'recommended',
+                'placement_area' => $candidate->area ?? 'JAKARTA',
                 'interview_date' => $validated['interview_date'],
                 'interviewer_signature_path' => $savedSigPath,
             ]
@@ -1353,8 +1374,20 @@ class KandidatPortalController extends Controller
         }
         if (!empty($validated['status_kandidat'])) {
             $candidate->status_kandidat = $validated['status_kandidat'];
+            if ($validated['status_kandidat'] === 'Terima' && (empty($candidate->status) || in_array($candidate->status, ['Arsip', 'archived']))) {
+                $candidate->status = 'Active';
+            }
         }
         $candidate->save();
+
+        // Jika status_kandidat = Terima dan odoo_stage_name masih kosong, coba sync Odoo
+        if ($candidate->status_kandidat === 'Terima' && empty($candidate->odoo_stage_name)) {
+            try {
+                app(\App\Services\OdooRecruitmentSyncService::class)->syncSingleCandidate($candidate);
+            } catch (\Throwable $e) {
+                \Illuminate\Support\Facades\Log::warning("Auto-sync Odoo on candidate {$candidate->id} interview update: " . $e->getMessage());
+            }
+        }
 
         ActivityLogger::log('UPDATE', 'Kandidat Portal', "Memperbarui hasil interview kandidat {$candidate->full_name} (Status: {$candidate->status_kandidat})", $candidate, [
             'status_kandidat' => $candidate->status_kandidat,
