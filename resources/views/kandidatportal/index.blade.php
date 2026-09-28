@@ -545,6 +545,7 @@
                         <th class="text-center">AI Match</th>
                         <th class="text-center">Kategori</th>
                         <th class="text-center">CV</th>
+                        <th class="text-center">CV Analisa AI</th>
                         <th class="text-center w-32">Aksi</th>
                     </tr>
                 </thead>
@@ -709,6 +710,20 @@
                             @if($cand->cv_path)
                                 <a href="{{ $cand->cv_url }}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-sm" title="Buka File CV">
                                     <i class="fa-solid fa-file-pdf"></i> Ada
+                                    <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+                                </a>
+                            @else
+                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-400">
+                                    Tidak Ada
+                                </span>
+                            @endif
+                        </td>
+
+                        <!-- CV Hasil Analisa AI -->
+                        <td class="text-center">
+                            @if(!empty($cand->ai_score) && $cand->ai_score > 0)
+                                <a href="{{ route('kandidatportal.cetak-ai', $cand->id) }}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors shadow-sm" title="Download / Buka PDF CV Hasil Analisa AI">
+                                    <i class="fa-solid fa-wand-magic-sparkles text-[9px] text-indigo-600"></i> Ada
                                     <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
                                 </a>
                             @else

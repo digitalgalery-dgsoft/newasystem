@@ -3371,6 +3371,19 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 84. 📄 Penambahan Kolom "CV Analisa AI" pada Tabel Data Pelamar Job Portal (28 September 2026)
+- **Kebutuhan Pengguna**:
+  - Pada tabel daftar pelamar Job Portal (`/kandidatportal`), ditambahkan satu kolom baru yang menampilkan berkas CV hasil analisa AI berupa tautan langsung (*direct link*), serasi dengan kolom file CV fisik yang sudah ada.
+- **Implementasi Teknis**:
+  1. **Penambahan Kolom pada Tabel Data Pelamar (`resources/views/kandidatportal/index.blade.php`)**:
+     - Menambahkan header kolom baru `<th class="text-center">CV Analisa AI</th>` berdampingan dengan kolom `CV` fisik.
+     - Untuk kandidat yang telah memiliki hasil analisis AI (`ai_score > 0`), ditampilkan badge link modern beraksen indigo (`bg-indigo-50 text-indigo-700 border-indigo-200`) bertuliskan *"Ada"* lengkap dengan ikon `fa-wand-magic-sparkles` dan ikon *external link*, yang membuka file PDF hasil evaluasi AI di tab baru (`target="_blank"`).
+     - Untuk kandidat yang belum memiliki hasil analisa AI, ditampilkan badge abu-abu netral *"Tidak Ada"*.
+  2. **Penyempurnaan Download/Preview PDF AI (`app/Http/Controllers/KandidatPortalController.php`)**:
+     - Pada method `cetakAiPdf()`: Menghilangkan dependensi kaku pada berkas fisik `hasCv()`, sehingga kandidat yang dianalisis melalui form pendaftaran (tanpa file CV fisik terpisah) tetap dapat mengunduh dan mencetak berkas PDF analisis AI secara mulus.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

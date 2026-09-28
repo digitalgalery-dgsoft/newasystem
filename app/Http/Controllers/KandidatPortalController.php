@@ -977,8 +977,8 @@ class KandidatPortalController extends Controller
                 ->with('error', 'Anda tidak memiliki hak akses untuk mencetak berkas kandidat milik rekruter / AS lain.');
         }
 
-        if (!$candidate->hasCv() || empty($candidate->ai_score)) {
-            return back()->with('error', 'Kandidat ' . $candidate->full_name . ' belum memiliki berkas CV atau belum dianalisis oleh AI. Unggah berkas CV terlebih dahulu.');
+        if (empty($candidate->ai_score) && empty($candidate->ai_raw_response)) {
+            return back()->with('error', 'Kandidat ' . $candidate->full_name . ' belum memiliki hasil analisis AI. Silakan jalankan analisis AI terlebih dahulu.');
         }
 
         $pdfContent = $pdfService->generate($candidate);
