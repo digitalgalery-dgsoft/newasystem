@@ -58,60 +58,33 @@ return new class extends Migration
 
         // 2. Pembersihan massal: Semua kandidat yang memiliki NIK dengan record Arsip
         // namun masih memiliki duplikat record unassigned / kosong yang berstatus Active
-        $archivedNiks = DB::table('candidates')
-            ->select('nik')
-            ->whereNotNull('nik')
-            ->where('nik', '!=', '')
-            ->where(function ($q) {
-                $q->where('status', 'Arsip')
-                  ->orWhere('status_kandidat', 'Arsip');
-            })
-            ->distinct()
-            ->pluck('nik')
-            ->toArray();
-
-        if (!empty($archivedNiks)) {
-            // Ambil kandidat aktif unassigned yang NIK-nya sudah pernah diarsipkan
-            $unassignedDuplicateQuery = DB::table('candidates')
-                ->whereIn('nik', $archivedNiks)
-                ->where('status', '!=', 'Arsip')
-                ->where(function ($q) {
-                    $q->whereNull('useras')
-                      ->orWhere('useras', '')
-                      ->orWhereIn('useras', ['-', 'publik', 'online', 'unassigned', 'null']);
-                })
-                ->whereNull('recruiter_id');
-
-            $affectedIds = $unassignedDuplicateQuery->pluck('id')->toArray();
-
-            if (!empty($affectedIds)) {
-                $healData = ['status' => 'Arsip'];
-                if ($hasStatusKandidat) {
-                    $healData['status_kandidat'] = 'Arsip';
-                }
-                if ($hasArchiveReason) {
-                    $healData['archive_reason'] = 'Disinkronkan ke Arsip: Data kandidat sudah berstatus Arsip sebelumnya';
-                }
-
-                DB::table('candidates')
-                    ->whereIn('id', $affectedIds)
-                    ->update($healData);
-
-                if ($hasTbKandidat) {
-                    $tbHeal = ['status' => 'Arsip'];
-                    if (Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
-                        $tbHeal['status_kandidat'] = 'Arsip';
-                    }
-                    if (Schema::hasColumn('tb_kandidat', 'archive_reason')) {
-                        $tbHeal['archive_reason'] = 'Disinkronkan ke Arsip: Data kandidat sudah berstatus Arsip sebelumnya';
-                    }
-
-                    DB::table('tb_kandidat')
-                        ->whereIn('id', $affectedIds)
-                        ->update($tbHeal);
-                }
-            }
+        $healData = ['status' => 'Arsip'];
+        if ($hasStatusKandidat) {
+            $healData['status_kandidat'] = 'Arsip';
         }
+        if ($hasArchiveReason) {
+            $healData['archive_reason'] = 'Disinkronkan ke Arsip: Data kandidat sudah berstatus Arsip sebelumnya';
+        }
+
+        DB::table('candidates')
+            ->whereIn('nik', function ($sub) {
+                $sub->select('nik')
+                    ->from('candidates')
+                    ->whereNotNull('nik')
+                    ->where('nik', '!=', '')
+                    ->where(function ($q) {
+                        $q->where('status', 'Arsip')
+                          ->orWhere('status_kandidat', 'Arsip');
+                    });
+            })
+            ->where('status', '!=', 'Arsip')
+            ->where(function ($q) {
+                $q->whereNull('useras')
+                  ->orWhere('useras', '')
+                  ->orWhereIn('useras', ['-', 'publik', 'online', 'unassigned', 'null']);
+            })
+            ->whereNull('recruiter_id')
+            ->update($healData);
     }
 
     /**
