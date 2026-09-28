@@ -48,8 +48,19 @@
                             @endif
                         @endif
                     </div>
-                    <p class="text-xs text-slate-500 font-medium mt-0.5">
-                        Posisi: <span class="font-bold text-slate-700">{{ $candidate->applied_job ?? 'Belum Ditentukan' }}</span> • Area: <span class="font-bold text-slate-700">{{ $candidate->area ?? 'JAKARTA' }}</span>
+                    <p class="text-xs text-slate-500 font-medium mt-0.5 flex items-center gap-1.5 flex-wrap">
+                        <span>Posisi: <b class="text-slate-700">{{ $candidate->applied_job ?? 'Belum Ditentukan' }}</b></span>
+                        <span>•</span>
+                        <span>Area: <b class="text-slate-700">{{ $candidate->area ?? 'JAKARTA' }}</b></span>
+                        @php
+                            $headerInfo = $candidate->info_lowongan ?? $candidate->info ?? $candidate->source_type;
+                        @endphp
+                        @if(!empty($headerInfo) && strtolower($headerInfo) !== 'job_portal')
+                            <span>•</span>
+                            <span class="inline-flex items-center gap-1 text-[11px] font-semibold text-slate-600">
+                                <i class="fa-solid fa-bullhorn text-slate-400"></i> Info: <b class="text-slate-800">{{ $headerInfo }}</b>
+                            </span>
+                        @endif
                     </p>
                 </div>
             </div>
@@ -261,6 +272,37 @@
                     <div class="flex items-start gap-2">
                         <span class="w-32 text-slate-400 font-medium flex-shrink-0">Posisi Dilamar:</span>
                         <span class="font-bold text-slate-900">{{ $candidate->applied_job ?? '-' }}</span>
+                    </div>
+
+                    <!-- Jalur Info Lowongan -->
+                    <div class="flex items-start gap-2">
+                        <span class="w-32 text-slate-400 font-medium flex-shrink-0">Info Lowongan:</span>
+                        @php
+                            $detailInfo = $candidate->info_lowongan ?? $candidate->info ?? $candidate->source_type ?? '-';
+                        @endphp
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg text-xs font-bold 
+                            @if(stripos($detailInfo, 'whatsapp') !== false) bg-emerald-50 text-emerald-800 border border-emerald-200
+                            @elseif(stripos($detailInfo, 'instagram') !== false) bg-pink-50 text-pink-800 border border-pink-200
+                            @elseif(stripos($detailInfo, 'tiktok') !== false) bg-slate-100 text-slate-900 border border-slate-300
+                            @elseif(stripos($detailInfo, 'web') !== false) bg-blue-50 text-blue-800 border border-blue-200
+                            @elseif(strtolower($detailInfo) === 'job_portal') bg-indigo-50 text-indigo-800 border border-indigo-200
+                            @else bg-slate-50 text-slate-700 border border-slate-200
+                            @endif">
+                            @if(stripos($detailInfo, 'whatsapp') !== false)
+                                <i class="fa-brands fa-whatsapp text-emerald-600"></i>
+                            @elseif(stripos($detailInfo, 'instagram') !== false)
+                                <i class="fa-brands fa-instagram text-pink-600"></i>
+                            @elseif(stripos($detailInfo, 'tiktok') !== false)
+                                <i class="fa-brands fa-tiktok text-slate-900"></i>
+                            @elseif(stripos($detailInfo, 'web') !== false)
+                                <i class="fa-solid fa-globe text-blue-600"></i>
+                            @elseif(strtolower($detailInfo) === 'job_portal')
+                                <i class="fa-solid fa-earth-americas text-indigo-600"></i>
+                            @else
+                                <i class="fa-solid fa-bullhorn text-amber-500"></i>
+                            @endif
+                            <span>{{ (strtolower($detailInfo) === 'job_portal') ? 'Job Portal (Direct Web)' : $detailInfo }}</span>
+                        </span>
                     </div>
 
                     <!-- 9. Status Seleksi -->

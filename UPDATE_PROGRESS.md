@@ -3456,6 +3456,30 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 88. 📢 Filter Jalur Info Lowongan & Tampilan Detail Kandidat Portal (28 September 2026)
+- **Kebutuhan & Permintaan Pengguna**:
+  - Pada halaman Kandidat Portal (`/kandidatportal`), menambahkan filter berdasarkan **Info Lowongan** agar rekruter / AS dapat melihat dan menganalisis kandidat yang masuk berdasarkan jalur informasi sumber lamaran (misalnya: WhatsApp, Instagram, Tiktok, Web, Lainnya).
+  - Menampilkan informasi jalur info lowongan ini secara jelas pada halaman Detail Kandidat Portal (`/kandidatportal/{id}`).
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Logika Filter di Controller (`app/Http/Controllers/KandidatPortalController.php`)**:
+     - Menangkap parameter `info_lowongan` dari permintaan HTTP (`$request->query('info_lowongan')`).
+     - Menerapkan kondisi filter SQL multi-sumber (`info_lowongan`, `info`, dan `source_type`) menggunakan ekspresi `COALESCE(NULLIF(info_lowongan, ''), NULLIF(info, ''), NULLIF(source_type, ''))` agar mencakup seluruh data historis maupun entri pendaftaran portal terbaru.
+     - Menyediakan opsi filter: `Semua Info Lowongan`, `WhatsApp`, `Instagram`, `Tiktok`, `Web`, `Lainnya`, serta `Belum Terdata / Job Portal Lama`.
+     - Mengintegrasikan filter `info_lowongan` ke fungsi `exportExcel()` agar hasil unduhan spreadsheet Excel sinkron dengan data yang sedang disaring di layar.
+  2. **Antarmuka Pengguna / UI (`resources/views/kandidatportal/index.blade.php`)**:
+     - Menambahkan dropdown `<select name="info_lowongan">` pada header bar filter dengan ikon representatif setiap kanal.
+     - Memperbarui tautan tombol *Reset Filter* agar dapat mereset filter Info Lowongan bersama filter lainnya.
+     - Menampilkan badge/pill visual interaktif Info Lowongan (WhatsApp, Instagram, Tiktok, Web, Lainnya) tepat di bawah kolom *Posisi Dilamar* pada tabel baris kandidat.
+     - Menyediakan opsi seleksi Info Lowongan pada Modal Export Excel.
+  3. **Halaman Detail Kandidat Portal (`resources/views/kandidatportal/show.blade.php`)**:
+     - Menambahkan tag jalur Info Lowongan pada header subtitle kandidat berdampingan dengan Posisi dan Area Penempatan.
+     - Menambahkan data point baru **Info Lowongan** pada kartu *Profil Lengkap Pelamar* lengkap dengan styling badge warna kanal dan ikon pendukung.
+  4. **Penyempurnaan Model & Layanan Export (`app/Models/Candidate.php` & `app/Services/CandidateXlsxExportService.php`)**:
+     - Memperbarui accessor `getInfoLowonganAttribute` di `Candidate.php` agar membaca atribut `$this->attributes` secara aman tanpa rekursi.
+     - Memutakhirkan resolver `CandidateXlsxExportService.php` agar membaca kolom `info` di samping `info_lowongan` dan `source_type`.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

@@ -443,7 +443,7 @@ class CandidateXlsxExportService
             }
 
             // Info Lowongan
-            $infoLoker = !empty($c->info_lowongan) ? trim($c->info_lowongan) : (!empty($c->source_type) ? trim($c->source_type) : '-');
+            $infoLoker = !empty($c->info_lowongan) ? trim($c->info_lowongan) : (!empty($c->info) ? trim($c->info) : (!empty($c->source_type) ? trim($c->source_type) : '-'));
             if (strtolower($infoLoker) === 'job_portal') {
                 $infoLoker = 'Job Portal';
             }

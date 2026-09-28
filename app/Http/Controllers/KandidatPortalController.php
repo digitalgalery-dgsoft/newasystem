@@ -188,6 +188,7 @@ class KandidatPortalController extends Controller
         $search = $request->query('q') ?? $request->query('search');
         $filterRecruiter = $request->query('recruiter');
         $odooStage = $request->query('odoo_stage');
+        $infoLowongan = $request->query('info_lowongan');
 
         $user = $this->getCurrentUser();
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
@@ -418,6 +419,36 @@ class KandidatPortalController extends Controller
             $tableQuery->where('created_at', '<=', $endDate->copy()->endOfDay());
         }
 
+        // Filter Info Lowongan (Jalur Info Lowongan Masuk)
+        if (!empty($infoLowongan)) {
+            $infoClean = strtolower(trim($infoLowongan));
+            if ($infoClean === 'none' || $infoClean === 'portal_lama' || $infoClean === 'job_portal') {
+                $tableQuery->where(function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->whereNull('info_lowongan')
+                            ->orWhere('info_lowongan', '')
+                            ->orWhereRaw("LOWER(TRIM(info_lowongan)) = 'job_portal'");
+                    })
+                    ->where(function ($sub) {
+                        $sub->whereNull('info')
+                            ->orWhere('info', '');
+                    })
+                    ->where(function ($sub) {
+                        $sub->whereNull('source_type')
+                            ->orWhere('source_type', '')
+                            ->orWhereRaw("LOWER(TRIM(source_type)) = 'job_portal'");
+                    });
+                });
+            } else {
+                $tableQuery->where(function ($q) use ($infoClean) {
+                    $q->whereRaw("LOWER(TRIM(COALESCE(NULLIF(info_lowongan, ''), NULLIF(info, ''), NULLIF(source_type, '')))) = ?", [$infoClean])
+                      ->orWhereRaw("LOWER(TRIM(info_lowongan)) = ?", [$infoClean])
+                      ->orWhereRaw("LOWER(TRIM(info)) = ?", [$infoClean])
+                      ->orWhereRaw("LOWER(TRIM(source_type)) = ?", [$infoClean]);
+                });
+            }
+        }
+
         // Pencarian Teks
         if (!empty($search)) {
             $tableQuery->where(function ($q) use ($search) {
@@ -445,6 +476,8 @@ class KandidatPortalController extends Controller
             ->orderBy('odoo_stage_name')
             ->pluck('odoo_stage_name');
 
+        $distinctInfoLowongan = ['WhatsApp', 'Instagram', 'Tiktok', 'Web', 'Lainnya'];
+
         $aiLiveStatus = \App\Services\AiAnalyzerService::getLiveRunningStatus();
 
         return view('kandidatportal.index', compact(
@@ -453,6 +486,8 @@ class KandidatPortalController extends Controller
             'kategori',
             'odooStage',
             'distinctOdooStages',
+            'infoLowongan',
+            'distinctInfoLowongan',
             'start',
             'end',
             'search',
@@ -1617,6 +1652,7 @@ class KandidatPortalController extends Controller
         $end = $request->query('end');
         $search = $request->query('q') ?? $request->query('search');
         $filterRecruiter = $request->query('recruiter');
+        $infoLowongan = $request->query('info_lowongan');
 
         $user = $this->getCurrentUser();
         $canExportNational = $user && method_exists($user, 'canExportNationalCandidates') && $user->canExportNationalCandidates();
@@ -1738,6 +1774,36 @@ class KandidatPortalController extends Controller
                   ->orWhere('applied_job', 'like', "%{$search}%")
                   ->orWhere('area', 'like', "%{$search}%");
             });
+        }
+
+        // Filter Info Lowongan (Jalur Info Lowongan Masuk)
+        if (!empty($infoLowongan)) {
+            $infoClean = strtolower(trim($infoLowongan));
+            if ($infoClean === 'none' || $infoClean === 'portal_lama' || $infoClean === 'job_portal') {
+                $baseQuery->where(function ($q) {
+                    $q->where(function ($sub) {
+                        $sub->whereNull('info_lowongan')
+                            ->orWhere('info_lowongan', '')
+                            ->orWhereRaw("LOWER(TRIM(info_lowongan)) = 'job_portal'");
+                    })
+                    ->where(function ($sub) {
+                        $sub->whereNull('info')
+                            ->orWhere('info', '');
+                    })
+                    ->where(function ($sub) {
+                        $sub->whereNull('source_type')
+                            ->orWhere('source_type', '')
+                            ->orWhereRaw("LOWER(TRIM(source_type)) = 'job_portal'");
+                    });
+                });
+            } else {
+                $baseQuery->where(function ($q) use ($infoClean) {
+                    $q->whereRaw("LOWER(TRIM(COALESCE(NULLIF(info_lowongan, ''), NULLIF(info, ''), NULLIF(source_type, '')))) = ?", [$infoClean])
+                      ->orWhereRaw("LOWER(TRIM(info_lowongan)) = ?", [$infoClean])
+                      ->orWhereRaw("LOWER(TRIM(info)) = ?", [$infoClean])
+                      ->orWhereRaw("LOWER(TRIM(source_type)) = ?", [$infoClean]);
+                });
+            }
         }
 
         $candidates = $baseQuery->with(['workExperiences'])

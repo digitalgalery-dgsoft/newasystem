@@ -435,6 +435,17 @@
                         @endif
                     </select>
 
+                    <!-- Filter Info Lowongan -->
+                    <select name="info_lowongan" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 outline-none">
+                        <option value="">Semua Info Lowongan</option>
+                        <option value="WhatsApp" {{ ($infoLowongan ?? '') === 'WhatsApp' ? 'selected' : '' }}>💬 WhatsApp</option>
+                        <option value="Instagram" {{ ($infoLowongan ?? '') === 'Instagram' ? 'selected' : '' }}>📸 Instagram</option>
+                        <option value="Tiktok" {{ ($infoLowongan ?? '') === 'Tiktok' ? 'selected' : '' }}>🎵 Tiktok</option>
+                        <option value="Web" {{ ($infoLowongan ?? '') === 'Web' ? 'selected' : '' }}>🌐 Web</option>
+                        <option value="Lainnya" {{ ($infoLowongan ?? '') === 'Lainnya' ? 'selected' : '' }}>📢 Lainnya</option>
+                        <option value="none" {{ ($infoLowongan ?? '') === 'none' ? 'selected' : '' }}>⚪ Belum Terdata / Lama</option>
+                    </select>
+
                     <!-- Tanggal Dari -->
                     <input type="date" 
                            name="start" 
@@ -463,7 +474,7 @@
                         <i class="fa-solid fa-filter mr-1"></i> Filter
                     </button>
 
-                    @if($kategori || !empty($odooStage) || $start || $end || $search || ($isAdmin && !empty($filterRecruiter)))
+                    @if($kategori || !empty($odooStage) || !empty($infoLowongan) || $start || $end || $search || ($isAdmin && !empty($filterRecruiter)))
                     <a href="{{ route('kandidatportal.index', ['tab' => $tab]) }}" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all">
                         Reset
                     </a>
@@ -628,11 +639,38 @@
                             <span class="text-slate-700 font-semibold">{{ $cand->education ?? '-' }}</span>
                         </td>
 
-                        <!-- Posisi Dilamar -->
+                        <!-- Posisi Dilamar & Info Lowongan -->
                         <td>
                             <div class="font-bold text-slate-900 text-xs leading-snug">
                                 {{ $cand->applied_job ?? '-' }}
                             </div>
+                            @php
+                                $candInfo = $cand->info_lowongan ?? $cand->info ?? $cand->source_type;
+                            @endphp
+                            @if(!empty($candInfo) && strtolower($candInfo) !== 'job_portal')
+                                <div class="mt-1 flex items-center">
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold 
+                                        @if(stripos($candInfo, 'whatsapp') !== false) bg-emerald-50 text-emerald-700 border border-emerald-200
+                                        @elseif(stripos($candInfo, 'instagram') !== false) bg-pink-50 text-pink-700 border border-pink-200
+                                        @elseif(stripos($candInfo, 'tiktok') !== false) bg-slate-100 text-slate-800 border border-slate-300
+                                        @elseif(stripos($candInfo, 'web') !== false) bg-blue-50 text-blue-700 border border-blue-200
+                                        @else bg-slate-50 text-slate-600 border border-slate-200
+                                        @endif" title="Info Lowongan: {{ $candInfo }}">
+                                        @if(stripos($candInfo, 'whatsapp') !== false)
+                                            <i class="fa-brands fa-whatsapp text-emerald-600 text-[10px]"></i>
+                                        @elseif(stripos($candInfo, 'instagram') !== false)
+                                            <i class="fa-brands fa-instagram text-pink-600 text-[10px]"></i>
+                                        @elseif(stripos($candInfo, 'tiktok') !== false)
+                                            <i class="fa-brands fa-tiktok text-slate-900 text-[10px]"></i>
+                                        @elseif(stripos($candInfo, 'web') !== false)
+                                            <i class="fa-solid fa-globe text-blue-600 text-[10px]"></i>
+                                        @else
+                                            <i class="fa-solid fa-bullhorn text-amber-500 text-[10px]"></i>
+                                        @endif
+                                        <span>{{ $candInfo }}</span>
+                                    </span>
+                                </div>
+                            @endif
                         </td>
 
                         <!-- Area & Region -->
@@ -936,6 +974,20 @@
                                 <option value="{{ $areaOpt }}">{{ $areaOpt }}</option>
                             @endforeach
                         @endif
+                    </select>
+                </div>
+
+                <!-- 6. Info Lowongan (Jalur Masuk Lowongan) -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Info Lowongan (Jalur Info)</label>
+                    <select name="info_lowongan" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer">
+                        <option value="">Semua Info Lowongan</option>
+                        <option value="WhatsApp">💬 WhatsApp</option>
+                        <option value="Instagram">📸 Instagram</option>
+                        <option value="Tiktok">🎵 Tiktok</option>
+                        <option value="Web">🌐 Web</option>
+                        <option value="Lainnya">📢 Lainnya</option>
+                        <option value="none">⚪ Belum Terdata / Job Portal Lama</option>
                     </select>
                 </div>
 

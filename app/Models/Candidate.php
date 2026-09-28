@@ -430,7 +430,11 @@ class Candidate extends Model
 
     public function getInfoLowonganAttribute()
     {
-        return $this->info_lowongan ?? $this->info ?? $this->source_type;
+        $val = $this->attributes['info_lowongan'] ?? $this->attributes['info'] ?? $this->attributes['source_type'] ?? null;
+        if (!empty($val) && strtolower(trim($val)) === 'job_portal') {
+            return 'Job Portal';
+        }
+        return $val;
     }
 
     public function getRingkasanPengalamanAttribute()
