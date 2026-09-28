@@ -3138,6 +3138,45 @@ Aplikasi **ASystem Portal** telah mengalami serangkaian pembaruan besar, moderni
 
 ---
 
+### 77. 🔒 Penguncian Total Akses Berkas Lampiran & Dokumen Kandidat Tanpa Login (Nginx & Laravel Multi-Layer Protection) (28 September 2026)
+- **Latar Belakang & Identifikasi Kerentanan Static File Serving**:
+  - Ditemukan laporan bahwa tautan berkas lampiran (foto profil 3x4, CV, bukti tes komputer, berkas lamaran, bukti referensi cek, dan approval prinsiple) masih dapat dibuka langsung dari URL tanpa autentikasi login.
+  - **Penyebab Teknis (*Technical Root Cause*)**:
+    1. **Bypass File Statis Web Server (Nginx)**:
+       - File-file lampiran yang diunggah disimpan di dalam web root publik (public/lampiran/, public/refcekfile/, public/approval/, public/prinsiple/).
+       - Konfigurasi rewrite Nginx standar (	ry_files  / /index.php?;) memeriksa keberadaan file fisik di disk terlebih dahulu. Jika file ada secara fisik di disk, Nginx langsung mengirimkannya ke browser sebagai aset statis publik (HTTP 200 OK) tanpa pernah memanggil script PHP/Laravel sama sekali.
+    2. **Rute Lampiran Berada di Rute Publik**:
+       - Rute fallback lampiran (/lampiran/{filename}, /refcekfile/{filename}, /approval/{filename}, /prinsiple/ttdfileprinsiple/{filename}, /v3/{path}) sebelumnya berada di kelompok rute publik tanpa verifikasi sesi pengguna.
+- **Solusi & Implementasi Multi-Layer Keamanan**:
+  1. **Layer 1: Intersepsi Web Server Nginx (/www/server/panel/vhost/rewrite/new.asystem.co.id.conf)**:
+     - Menambahkan aturan rewrite prioritas sebelum blok handler default untuk membelokkan seluruh request berkas lampiran langsung ke Laravel:
+       `
+ginx
+       location ~* ^/(lampiran|refcekfile|approval|prinsiple/ttdfileprinsiple) {
+           rewrite ^ /index.php last;
+       }
+       `
+     - Nginx tidak lagi menyajikan file-file tersebut sebagai file statis publik, melainkan selalu meneruskannya ke kernel autentikasi Laravel.
+  2. **Layer 2: Dedicated Controller App\Http\Controllers\AttachmentController**:
+     - Dibuat controller khusus AttachmentController untuk mengontrol otorisasi akses berkas:
+       - showLampiran(): Melayani foto profil, berkas CV, bukti tes, dan lampiran lamaran.
+       - showRefcek(): Melayani berkas verifikasi referensi kerja.
+       - showApproval() & showTtdPrinciple(): Melayani bukti persetujuan user prinsiple dan tanda tangan digital.
+       - showLegacyV3(): Melayani aset legacy V3.
+     - **Pemeriksaan Sesi Ketat (ensureAuthenticated())**:
+       - Jika visitor adalah **Guest (belum login)**: Otomatis dialihkan (**HTTP 302**) ke halaman login (/login) dengan flash warning: *'Silakan login terlebih dahulu untuk mengakses berkas lampiran.'* File biner sama sekali tidak dikirim.
+       - Jika visitor adalah **Pengguna Login** (Karyawan, Admin, AS, atau Kandidat CBT): Sistem mencari file lokal (public_path, storage_path) dan menyajikannya via 
+esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cache, no-store).
+  3. **Verifikasi Pengujian Keamanan**:
+     - Uji akses guest tanpa login via curl ke file fisik nyata (https://new.asystem.co.id/lampiran/1789701604_ref_cek_lusi.png):
+       - **Hasil**: **HTTP 302 Found** -> Location: https://new.asystem.co.id/login (Aman 100%).
+     - Uji endpoint /refcekfile/... dan /approval/...:
+       - **Hasil**: **HTTP 302 Found** -> Location: https://new.asystem.co.id/login (Aman 100%).
+     - Uji user terautentikasi (login):
+       - **Hasil**: **HTTP 200 OK** (File gambar/PDF terbuka normal untuk staf yang berhak).
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
