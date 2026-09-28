@@ -271,9 +271,9 @@ class KandidatPortalController extends Controller
             SUM(CASE WHEN date(created_at) = ? THEN 1 ELSE 0 END) as masuk_hari_ini,
             SUM(CASE WHEN kategori_kandidat = 'Green' THEN 1 ELSE 0 END) as green,
             SUM(CASE WHEN ai_score IS NULL OR ai_score = 0 THEN 1 ELSE 0 END) as belum_dianalisa,
-            SUM(CASE WHEN status NOT IN ('Arsip', 'archived') AND (ttd_prinsiple IS NULL OR ttd_prinsiple = '') AND (status_kandidat = 'Baru' OR status_kandidat IS NULL OR status_kandidat NOT IN ('Interview', 'Terima', 'Arsip')) THEN 1 ELSE 0 END) as count_baru,
+            SUM(CASE WHEN status NOT IN ('Arsip', 'archived') AND (status_kandidat = 'Baru' OR ((ttd_prinsiple IS NULL OR ttd_prinsiple = '') AND (status_kandidat IS NULL OR status_kandidat NOT IN ('Interview', 'Terima', 'Arsip')))) THEN 1 ELSE 0 END) as count_baru,
             SUM(CASE WHEN status NOT IN ('Arsip', 'archived') AND (ttd_prinsiple IS NULL OR ttd_prinsiple = '') AND status_kandidat = 'Interview' THEN 1 ELSE 0 END) as count_interview,
-            SUM(CASE WHEN status NOT IN ('Arsip', 'archived') AND ((ttd_prinsiple IS NOT NULL AND ttd_prinsiple != '') OR status_kandidat = 'Terima') THEN 1 ELSE 0 END) as count_terima,
+            SUM(CASE WHEN status NOT IN ('Arsip', 'archived') AND status_kandidat != 'Baru' AND ((ttd_prinsiple IS NOT NULL AND ttd_prinsiple != '') OR status_kandidat = 'Terima') THEN 1 ELSE 0 END) as count_terima,
             SUM(CASE WHEN status = 'Arsip' OR status = 'archived' OR status_kandidat = 'Arsip' THEN 1 ELSE 0 END) as count_arsip
         ", [$today])->first();
 
@@ -320,6 +320,7 @@ class KandidatPortalController extends Controller
                 ->where('status_kandidat', 'Interview');
         } elseif ($tab === 'terima') {
             $tableQuery->whereNotIn('status', ['Arsip', 'archived'])
+                ->where('status_kandidat', '!=', 'Baru')
                 ->where(function ($q) {
                     $q->where(function ($sub) {
                         $sub->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
@@ -335,12 +336,15 @@ class KandidatPortalController extends Controller
             // Tab 'baru' / default
             $tableQuery->whereNotIn('status', ['Arsip', 'archived'])
                 ->where(function ($q) {
-                    $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
-                })
-                ->where(function ($q) {
                     $q->where('status_kandidat', 'Baru')
-                      ->orWhereNull('status_kandidat')
-                      ->orWhereNotIn('status_kandidat', ['Interview', 'Terima', 'Arsip']);
+                      ->orWhere(function ($sub) {
+                          $sub->where(function($sq) {
+                              $sq->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
+                          })->where(function($sq) {
+                              $sq->whereNull('status_kandidat')
+                                ->orWhereNotIn('status_kandidat', ['Interview', 'Terima', 'Arsip']);
+                          });
+                      });
                 });
         }
 

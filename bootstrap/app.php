@@ -35,6 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'candidate.auth' => \App\Http\Middleware\EnsureCandidateAuthenticated::class,
         ]);
+        $middleware->append(\App\Http\Middleware\PreventIndexingMiddleware::class);
         $middleware->redirectGuestsTo(fn () => route('login'));
         $middleware->trustProxies(at: '*');
         $middleware->validateCsrfTokens(except: [

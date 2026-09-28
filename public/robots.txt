@@ -1,2 +1,31 @@
 User-agent: *
-Disallow:
+# Proteksi Privasi & De-indexing Data Pribadi Kandidat & Internal ESA Groups
+Disallow: /kandidatportal/
+Disallow: /interview/
+Disallow: /interviewinhouse/
+Disallow: /karyawan/
+Disallow: /cbt/
+Disallow: /lampiran/
+Disallow: /refcekfile/
+Disallow: /approval/
+Disallow: /prinsiple/
+Disallow: /workplan/
+Disallow: /helpdesk/
+Disallow: /api/
+Disallow: /master/
+Disallow: /storage/
+Disallow: /attachments/
+Disallow: /download/
+Disallow: /login
+Disallow: /logout
+Disallow: /job/*/apply
+Disallow: /*show*
+Disallow: /*detail*
+Disallow: /*kandidat*
+
+# Izinkan perayap mesin pencari hanya untuk landing page dan informasi lowongan kerja publik
+Allow: /$
+Allow: /home$
+Allow: /job$
+Allow: /job?*
+Allow: /job/

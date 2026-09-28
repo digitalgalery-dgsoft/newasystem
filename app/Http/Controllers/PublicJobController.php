@@ -311,22 +311,24 @@ class PublicJobController extends Controller
             'updated_at' => now(),
         ];
 
-        // Jika kandidat sebelumnya dalam status arsip, reset approval, evaluasi, dan modul tes untuk seleksi baru
-        if ($isArchived) {
-            $candidateData['status_approval'] = null;
-            $candidateData['idprinsiple'] = null;
-            $candidateData['ttd_prinsiple'] = null;
-            $candidateData['time_prinsiple'] = null;
-            $candidateData['note_principle'] = null;
-            $candidateData['tes_ke'] = max(1, intval($candidate->tes_ke ?? 1)) + 1;
-            $candidateData['tes_kepribadian'] = null;
-            $candidateData['tes_matematika'] = null;
-            $candidateData['tes_komputer'] = null;
-            $candidateData['buktikomputer'] = null;
-            $candidateData['statement_agreed'] = 0;
-            $candidateData['odoo_stage_name'] = null;
-            $candidateData['odoo_applicant_id'] = null;
-        }
+        // Reset approval prinsiple, evaluasi tes, dan riwayat tahapan Odoo lama agar lamaran baru ini mulai dari awal (Tab Baru)
+        $candidateData['status_approval'] = null;
+        $candidateData['idprinsiple'] = null;
+        $candidateData['ttd_prinsiple'] = null;
+        $candidateData['time_prinsiple'] = null;
+        $candidateData['note_principle'] = null;
+        $candidateData['tes_ke'] = $candidate ? (max(1, intval($candidate->tes_ke ?? 1)) + 1) : 1;
+        $candidateData['tes_kepribadian'] = null;
+        $candidateData['tes_matematika'] = null;
+        $candidateData['tes_komputer'] = null;
+        $candidateData['buktikomputer'] = null;
+        $candidateData['statement_agreed'] = 0;
+        $candidateData['odoo_stage_name'] = null;
+        $candidateData['odoo_applicant_id'] = null;
+        $candidateData['odoo_entity'] = null;
+        $candidateData['odoo_synced_at'] = null;
+        $candidateData['status_kandidat'] = 'Baru';
+        $candidateData['status'] = 'Active';
 
         if ($candidate) {
             $candidate->update($candidateData);

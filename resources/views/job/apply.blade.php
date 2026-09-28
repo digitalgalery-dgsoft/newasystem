@@ -2,6 +2,11 @@
 
 @section('title', 'Lamar Posisi: ' . $job->job_title . ' - ASystem Career ESA Groups')
 
+@section('meta_robots')
+    <meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+    <meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+@endsection
+
 @section('content')
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10 space-y-8">
     <!-- TOP NAV / BREADCRUMB -->

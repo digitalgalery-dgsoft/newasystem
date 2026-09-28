@@ -24,6 +24,16 @@ class AttachmentController extends Controller
         return null;
     }
 
+    private function secureHeaders(): array
+    {
+        return [
+            'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+            'X-Robots-Tag' => 'noindex, nofollow, noarchive, nosnippet, noimageindex',
+        ];
+    }
+
     /**
      * Tampilkan Berkas Lampiran Kandidat (Foto Profil, CV, Bukti Komputer, Berkas Lamaran)
      * URL: /lampiran/{filename}
@@ -49,11 +59,7 @@ class AttachmentController extends Controller
 
         foreach ($candidatePaths as $path) {
             if (file_exists($path) && !is_dir($path)) {
-                return response()->file($path, [
-                    'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
-                    'Pragma' => 'no-cache',
-                    'Expires' => '0',
-                ]);
+                return response()->file($path, $this->secureHeaders());
             }
         }
 
@@ -78,9 +84,7 @@ class AttachmentController extends Controller
 
         $resolved = LegacyAttachmentService::resolveRefcek($baseName);
         if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
-            return response()->file($resolved, [
-                'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
-            ]);
+            return response()->file($resolved, $this->secureHeaders());
         }
 
         return redirect()->away('https://asystem.co.id/v3/refcekfile/' . rawurlencode($baseName));
@@ -103,9 +107,7 @@ class AttachmentController extends Controller
 
         $resolved = LegacyAttachmentService::resolveApproval($baseName);
         if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
-            return response()->file($resolved, [
-                'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
-            ]);
+            return response()->file($resolved, $this->secureHeaders());
         }
 
         if (str_starts_with($baseName, 'ttd_')) {
@@ -132,9 +134,7 @@ class AttachmentController extends Controller
 
         $resolved = LegacyAttachmentService::resolveApproval($baseName);
         if ($resolved && file_exists($resolved) && !is_dir($resolved)) {
-            return response()->file($resolved, [
-                'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
-            ]);
+            return response()->file($resolved, $this->secureHeaders());
         }
 
         return redirect()->away('https://asystem.co.id/v3/prinsiple/ttdfileprinsiple/' . rawurlencode($baseName));
@@ -153,14 +153,13 @@ class AttachmentController extends Controller
         $candidates = [
             public_path('v3/' . $path),
             public_path($path),
+            storage_path('app/v3/' . $path),
             public_path('storage/' . $path),
         ];
 
         foreach ($candidates as $cand) {
             if (file_exists($cand) && !is_dir($cand)) {
-                return response()->file($cand, [
-                    'Cache-Control' => 'private, no-cache, no-store, must-revalidate',
-                ]);
+                return response()->file($cand, $this->secureHeaders());
             }
         }
 

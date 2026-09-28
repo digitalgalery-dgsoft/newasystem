@@ -1566,9 +1566,9 @@
     "semantic_hash": ""
   },
   "UPDATE_PROGRESS.md": {
-    "mtime": 1790565291.541137,
-    "seen": 1790565341.2515264,
-    "ast_hash": "e616a202651b0c1bc186e640cd9da0c1",
+    "mtime": 1790563600.5192556,
+    "seen": 1790563615.846866,
+    "ast_hash": "cc284f400877446dacf43bb35199ce84",
     "semantic_hash": ""
   },
   "WHATSAPPCOEX.md": {
@@ -1773,12 +1773,6 @@
     "mtime": 1790564301.2766612,
     "seen": 1790564349.7116067,
     "ast_hash": "6e05335b01ae042a394324ab4b1b8b8f",
-    "semantic_hash": ""
-  },
-  "scripts/setup_nginx_attachment_protection.sh": {
-    "mtime": 1790564367.7898016,
-    "seen": 1790565341.2515264,
-    "ast_hash": "a5a4b434519f5fc0603c735ceb16f351",
     "semantic_hash": ""
   }
 }

@@ -5,6 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'ASystem - Career & Integrated Support System ESA Groups')</title>
     
+    @hasSection('meta_robots')
+        @yield('meta_robots')
+    @else
+        <meta name="robots" content="index, follow">
+    @endif
+    
     <!-- Google Fonts: Outfit -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

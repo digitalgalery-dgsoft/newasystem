@@ -3177,6 +3177,54 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 78. 🔍 Penyelidikan Tab Terima Kandidat Portal, Koreksi Sinkronisasi Odoo & Proteksi Anti-Indexing Google Search (28 September 2026)
+- **Investigasi Akar Masalah 11 Kandidat di Tab "Terima" & Badge "Joined"**:
+  - **Laporan Masalah**: Pada Kandidat Portal (user AS Reyna Sastri Dewi Asrini - Surabaya), terdapat 11 pelamar baru di tab **Terima** dengan badge **Joined** (entitas AMK, ATB, ATK), namun saat dicek langsung pada lowongan Odoo ERP yang bersangkutan, datanya tidak ada.
+  - **Akar Penyebab Teknis (*Technical Root Causes*)**:
+    1. **Bawaan Data Lamaran Masa Lalu saat Apply Ulang (`PublicJobController.php`)**:
+       - Ketika kandidat mendaftar kembali melalui portal lowongan kerja web (`/job/{id}/apply`), sistem mencari record kandidat berdasarkan NIK (`Candidate::where('nik', $nik)->first()`).
+       - Sebelumnya, sistem hanya me-reset kolom `ttd_prinsiple` jika kandidat berstatus `'Arsip'`. Jika status lamaran sebelumnya masih aktif/berjalan di masa lalu, kolom `ttd_prinsiple` (berkas tanda tangan approval lama) dan riwayat Odoo lama **tidak dibersihkan**.
+       - Di `KandidatPortalController.php`, tab **Terima** memfilter kandidat yang memiliki `ttd_prinsiple != ''` ATAU `status_kandidat = 'Terima'`. Akibatnya, pelamar yang baru saja mendaftar kemarin (23-24 September 2026) langsung terlempar ke tab **Terima** karena masih menyimpan nama file approval lama dari bulan Mei/Juni 2026!
+    2. **Sinkronisasi NIK Odoo Tanpa Filter Tanggal Lowongan (`OdooRecruitmentSyncService.php`)**:
+       - Service sinkronisasi Odoo mencocokkan pelamar hanya berdasarkan NIK (`no_ktp`).
+       - Pelamar-pelamar tersebut (misal Ahsanul Yaum, Dayatika, Hehan Cita Nusa) pernah bekerja atau pernah melamar di Odoo pada tahun 2025 atau awal 2026 untuk posisi yang berbeda (seperti *SMD - Surabaya*, *DC - Bojonegoro*, *BA Azzura* di entitas ATB/ATK/AMK) dengan status `Joined`.
+       - Service Odoo membaca record lama tersebut lalu otomatis mengubah `status_kandidat = 'Terima'` dan `odoo_stage_name = 'Joined'` pada lamaran baru pelamar di ASystem.
+       - Akibatnya, saat recruiter mengecek di Odoo pada lowongan baru yang sedang dibuka (*SPG EVEN*, *SALES MOTORIS*, *SPG REGULER*), pelamar tersebut memang tidak ada di lowongan Odoo tersebut karena di Odoo hanya ada lamaran masa lalu mereka.
+  - **Solusi & Perbaikan Kode**:
+    1. **Reset Total pada Pendaftaran Pelamar Baru (`PublicJobController.php`)**:
+       - Setiap kali pelamar mendaftar ke lowongan baru via portal web, seluruh data approval lama (`ttd_prinsiple`, `idprinsiple`, `status_approval`, `time_prinsiple`, `note_principle`), skor tes lama, dan status Odoo lama (`odoo_stage_name`, `odoo_applicant_id`, `odoo_entity`, `odoo_synced_at`) **wajib di-reset menjadi NULL** dan `status_kandidat = 'Baru'`.
+    2. **Validasi Waktu Record Odoo (`OdooRecruitmentSyncService.php`)**:
+       - Menambahkan pengecekan tanggal (`isHistoricalPastRecord`): Jika tanggal pembuatan record pelamar di Odoo (`create_date`) lebih lama dari tanggal lamaran di ASystem (`created_at`), record Odoo tersebut dianggap sebagai **arsip histori masa lalu**.
+       - Status pelamar baru di Job Portal tidak akan ditimpa menjadi `Terima` / `Joined` oleh record masa lalu Odoo.
+    3. **Penyempurnaan Filter Tab Kandidat Portal (`KandidatPortalController.php`)**:
+       - Tab **Baru** memprioritaskan kandidat dengan `status_kandidat = 'Baru'`, dan tab **Terima** secara eksplisit mengecualikan `status_kandidat = 'Baru'` (`where('status_kandidat', '!=', 'Baru')`).
+    4. **Migrasi Pembersihan Data 11 Kandidat**:
+       - Dibuat migration `2026_09_28_110000_fix_job_portal_terima_candidates_status.php` untuk me-reset 11 kandidat dan pelamar Job Portal baru lainnya kembali ke tab **Baru** dengan status bersih.
+
+- **Proteksi Total Anti-Indexing Google Search (SEO De-indexing & Privasi Kandidat)**:
+  - **Latar Belakang**: Memastikan seluruh data nama, identitas, KTP, dan berkas lampiran kandidat tidak pernah dapat dicari (*searchable*) atau muncul pada hasil pencarian Google Search maupun mesin pencari lainnya.
+  - **Implementasi 4 Lapis Perlindungan (*4-Layer De-indexing Protection*)**:
+    1. **Lapis 1: Global HTTP Header Middleware (`PreventIndexingMiddleware.php`)**:
+       - Dibuat middleware global `App\Http\Middleware\PreventIndexingMiddleware` yang secara otomatis menyisipkan header HTTP:
+         `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex`
+       - Berlaku untuk seluruh endpoint internal, modul kandidat portal, interview, CBT, approval, karyawan, dan seluruh respons berkas lampiran.
+       - Hanya halaman lowongan umum (`/job` dan `/job/{id}`) serta landing page (`/`) yang diizinkan untuk diindeks calon pelamar umum.
+    2. **Lapis 2: Header Aman pada Berkas Lampiran (`AttachmentController.php`)**:
+       - Seluruh penyajian berkas fisik (foto profil, CV, sertifikat, bukti tes komputer, tanda tangan digital) menyertakan `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex` serta kontrol cache privat (`Cache-Control: private, no-store`).
+    3. **Lapis 3: Meta Tag HTML Anti-Robot**:
+       - Ditambahkan meta tag pada layout utama `resources/views/layouts/app.blade.php`:
+         `<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">`
+         `<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet, noimageindex">`
+       - Ditambahkan pada layout CBT `resources/views/layouts/cbt.blade.php`.
+       - Ditambahkan pada halaman persetujuan prinsiple `resources/views/principles/approval.blade.php`.
+       - Ditambahkan blok yield khusus pada form apply `resources/views/job/apply.blade.php`.
+    4. **Lapis 4: Konfigurasi `public/robots.txt`**:
+       - Mengubah `robots.txt` yang sebelumnya memperbolehkan seluruh crawling (`Disallow: `) menjadi aturan pemblokiran ketat:
+         `Disallow: /kandidatportal/`, `/interview/`, `/interviewinhouse/`, `/lampiran/`, `/refcekfile/`, `/approval/`, `/prinsiple/`, `/karyawan/`, `/cbt/`, `/storage/`, `/download/`, `/*kandidat*`, dsb.
+       - Dengan kombinasi `X-Robots-Tag` + `<meta name="robots">` + `robots.txt`, Googlebot akan langsung menghapus (*drop*) URL terkait dari indeks Google Search dan tidak akan pernah mengindeks nama kandidat.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

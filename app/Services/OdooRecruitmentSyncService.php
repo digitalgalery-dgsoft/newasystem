@@ -321,6 +321,42 @@ class OdooRecruitmentSyncService
         $newStatus = $oldStatus;
         $stageLower = strtolower($stageName);
 
+        // Periksa apakah data pelamar Odoo ini adalah berkas historis masa lalu (bukan untuk lamaran saat ini)
+        $appCreateDate = !empty($odooApp['create_date']) ? Carbon::parse($odooApp['create_date']) : null;
+        $candidateApplyDate = $candidate->created_at ? Carbon::parse($candidate->created_at) : null;
+
+        $isHistoricalPastRecord = false;
+        if ($appCreateDate && $candidateApplyDate) {
+            // Jika record pelamar di Odoo dibuat jauh sebelum pelamar mendaftar ke lowongan ini (> 2 hari)
+            if ($appCreateDate->lt($candidateApplyDate->copy()->subDays(2))) {
+                $isHistoricalPastRecord = true;
+            }
+        }
+
+        // Jika ini adalah lamaran historis masa lalu dan kandidat baru mendaftar di Job Portal:
+        // Jangan timpa status kandidat baru dan jangan tampilkan stage lama sebagai status lowongan saat ini.
+        if ($isHistoricalPastRecord && ($candidate->jenis === 'Job Portal' || $oldStatus === 'Baru')) {
+            $candidate->odoo_synced_at = now();
+            $candidate->odoo_applicant_data = [
+                'is_historical'     => true,
+                'historical_entity' => $entityCode,
+                'historical_job'    => isset($odooApp['job_id']) && is_array($odooApp['job_id']) ? $odooApp['job_id'][1] : null,
+                'historical_stage'  => $stageName,
+                'historical_date'   => $odooApp['create_date'] ?? null,
+                'write_date'        => $odooApp['write_date'] ?? null,
+                'active'            => $isActive,
+            ];
+            $candidate->saveQuietly();
+
+            return [
+                'status_changed' => false,
+                'old_status'     => $oldStatus,
+                'new_status'     => $oldStatus,
+                'odoo_stage'     => null,
+                'is_historical'  => true,
+            ];
+        }
+
         // ATURAN 1: Refused / Inactive di Odoo -> Pindah ke Arsip
         if (!$isActive || str_contains($stageLower, 'refuse') || str_contains($stageLower, 'tolak')) {
             $newStatus = 'Arsip';
