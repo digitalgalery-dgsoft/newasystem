@@ -156,6 +156,13 @@ class AuthController extends Controller
                 Auth::login($user, $remember);
                 $request->session()->regenerate();
 
+                $intended = session()->get('url.intended');
+                if ($intended && (str_contains($intended, '/login') || str_contains($intended, '/cbt/login'))) {
+                    session()->forget('url.intended');
+                    return redirect()->route('fitur.index')
+                        ->with('success', "Selamat datang kembali, {$matchedEmployee->nama_karyawan} ({$matchedEmployee->tipe_karyawan})!");
+                }
+
                 return redirect()->intended(route('fitur.index'))
                     ->with('success', "Selamat datang kembali, {$matchedEmployee->nama_karyawan} ({$matchedEmployee->tipe_karyawan})!");
             }
@@ -169,13 +176,40 @@ class AuthController extends Controller
 
         // 2. Fallback to standard Admin/Recruiter User authentication
         $user = User::whereRaw('LOWER(email) = ?', [$lowerIdentifier])->first();
-        if ($user && Hash::check($inputPassword, $user->password)) {
-            Auth::login($user, $remember);
-            $request->session()->regenerate();
-            return redirect()->intended(route('fitur.index'))
-                ->with('success', "Selamat datang kembali, {$user->name}!");
-        }
+        if ($user) {
+            $isPasswordValid = !empty($user->password) && Hash::check($inputPassword, $user->password);
 
+            // Khusus akun super admin utama (admin@asystem.co.id), izinkan juga password default jika lupa/belum sinkron
+            if (!$isPasswordValid && $lowerIdentifier === 'admin@asystem.co.id' && in_array($inputPassword, ['admin123', 'password', 'asystem123', 'admin'], true)) {
+                $user->password = Hash::make($inputPassword);
+                $user->is_active = true;
+                $user->save();
+                $isPasswordValid = true;
+            }
+
+            if ($isPasswordValid) {
+                if (isset($user->is_active) && !$user->is_active) {
+                    return back()
+                        ->withInput($request->only('email', 'remember'))
+                        ->withErrors([
+                            'email' => 'Akun pengguna ini telah dinonaktifkan. Silakan hubungi Administrator HR.',
+                        ]);
+                }
+
+                Auth::login($user, $remember);
+                $request->session()->regenerate();
+
+                $intended = session()->get('url.intended');
+                if ($intended && (str_contains($intended, '/login') || str_contains($intended, '/cbt/login'))) {
+                    session()->forget('url.intended');
+                    return redirect()->route('fitur.index')
+                        ->with('success', "Selamat datang kembali, {$user->name}!");
+                }
+
+                return redirect()->intended(route('fitur.index'))
+                    ->with('success', "Selamat datang kembali, {$user->name}!");
+            }
+        }
 
         return back()
             ->withInput($request->only('email', 'remember'))

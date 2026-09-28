@@ -15,8 +15,6 @@ class PreventIndexingMiddleware
      */
     public function handle(Request $request, Closure $next): Response
     {
-        $response = $next($request);
-
         $path = trim($request->path(), '/');
 
         // Halaman yang diizinkan untuk diindeks oleh mesin pencari (hanya info lowongan & landing page publik)
