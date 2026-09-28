@@ -37,8 +37,29 @@ class KandidatPortalController extends Controller
             return $identifiers;
         }
 
+        if (is_string($user)) {
+            $uObj = User::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($user))])->first();
+            if ($uObj) {
+                $user = $uObj;
+            } else {
+                return [strtolower(trim($user))];
+            }
+        }
+
         if (!empty($user->email)) {
             $identifiers[] = strtolower(trim($user->email));
+        }
+
+        // Tambahkan seluruh email alias historis jika ada
+        if (!empty($user->email_aliases)) {
+            $aliases = is_array($user->email_aliases) ? $user->email_aliases : (is_string($user->email_aliases) ? json_decode($user->email_aliases, true) : []);
+            if (is_array($aliases)) {
+                foreach ($aliases as $alias) {
+                    if (!empty($alias)) {
+                        $identifiers[] = strtolower(trim((string)$alias));
+                    }
+                }
+            }
         }
 
         if (!empty($user->name)) {
@@ -1860,11 +1881,19 @@ class KandidatPortalController extends Controller
                       ->orWhereRaw('LOWER(TRIM(name)) = ?', [$stripped]);
                 })
                 ->whereNotNull('name')
-                ->first(['email', 'name']);
+                ->first();
 
             if ($user) {
                 if (!empty($user->email)) {
                     $identifiers[] = strtolower(trim($user->email));
+                }
+                if (!empty($user->email_aliases)) {
+                    $aliases = is_array($user->email_aliases) ? $user->email_aliases : (is_string($user->email_aliases) ? json_decode($user->email_aliases, true) : []);
+                    if (is_array($aliases)) {
+                        foreach ($aliases as $al) {
+                            if (!empty($al)) $identifiers[] = strtolower(trim((string)$al));
+                        }
+                    }
                 }
                 if (!empty($user->name)) {
                     $identifiers[] = strtolower(trim($user->name));

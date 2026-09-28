@@ -3430,6 +3430,32 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 87. 🔄 Penyelarasan Otomatis Data Kandidat Portal Saat Pengguna / AS Mengubah Email Profil (28 September 2026)
+- **Kendala Pengguna**:
+  - Ketika user AS melakukan pembaruan/edit alamat email pada menu Profil Akun (`/profile`), data kandidat portal miliknya menjadi tidak terbaca / hilang dari antarmuka Kandidat Portal & Interview. Hal ini dikarenakan data kandidat sebelumnya membaca penanggung jawab berdasarkan alamat email lama akun AS tersebut.
+- **Akar Masalah (Root Cause)**:
+  1. Pada tabel `candidates` dan `tb_kandidat`, identitas penanggung jawab AS dicatat di kolom `useras` menggunakan alamat email akun saat kandidat didaftarkan / di-import.
+  2. Saat pengguna memperbarui profil di `UserProfileController`, hanya tabel `users` (dan sebagian `employees`) yang diperbarui, sementara kolom `candidates.useras` tetap berisi email lama dan `candidates.recruiter_id` masih bernilai `null`.
+  3. Filter hak akses kandidat di `KandidatPortalController::applyAsUserFilter()` dan `InterviewController` mencocokkan `LOWER(TRIM(useras))` dengan email aktif pengguna saat ini. Karena email profil telah berganti, query pencocokan email gagal dan kandidat lama menjadi hilang dari daftar AS.
+- **Implementasi Solusi & Perbaikan**:
+  1. **Cascade Sync Otomatis Saat Ganti Email Profil (`app/Http/Controllers/UserProfileController.php`)**:
+     - Ketika pengguna mengganti email profil (`$oldEmail !== $newEmail`), sistem secara otomatis menjalankan kaskade pembaruan:
+       - Memperbarui seluruh baris kandidat di tabel `candidates` yang memiliki `useras = $oldEmail` atau `recruiter_id = $user->id` menjadi `useras = $newEmail` sekaligus menetapkan `recruiter_id = $user->id`.
+       - Menyelaraskan kandidat yang tercatat atas nama lengkap user tersebut di kolom `useras`.
+       - Memperbarui tabel legacy `tb_kandidat` (`useras` dan `nama_as`).
+       - Memperbarui kolom `created_by` pada tabel `jobs`, `interviewer` pada `interview_assessments`, dan `user` pada `candidate_logs`.
+       - Menyinkronkan perubahan ke tabel master `employees`.
+  2. **Penyimpanan Riwayat Email Alias (`app/Models/User.php` & `database/migrations`)**:
+     - Menambahkan kolom `email_aliases` (JSON) pada tabel `users` untuk menyimpan riwayat email lama pengguna.
+     - Setiap kali pengguna mengganti email, alamat email lama otomatis ditambahkan ke `email_aliases` sehingga sistem tetap mengenali identitas historis AS tersebut selamanya.
+  3. **Penyempurnaan Resolusi Identitas Rekruter (`app/Http/Controllers/KandidatPortalController.php`)**:
+     - Method `resolveUserIdentifiers($user)` dan `resolveRecruiterFilterIdentifiers($filterRecruiter)` kini otomatis menyertakan seluruh email alias dari `user->email_aliases`.
+     - Dengan demikian, filter pencarian kandidat di modul Kandidat Portal maupun Interview akan mengenali baik email baru, seluruh email historis, nama lengkap, maupun relasi `recruiter_id`.
+  4. **Migrasi Penyembuhan Data Historis (`database/migrations/2026_09_28_150000_add_email_aliases_and_heal_as_profile_candidates.php`)**:
+     - Menyembuhkan data kandidat akun AS yang baru saja mengganti email di server live (antara lain Christo Norman Debby Fredrick, Kartika Sari, Canny Amerilyse Caesar, Ary Ervina, Maulida Vina, Tytho Viandhika, dll.), memulihkan seluruh kandidat yang sempat hilang kembali ke dashboard masing-masing.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

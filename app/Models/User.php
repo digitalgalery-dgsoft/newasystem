@@ -34,6 +34,7 @@ class User extends Authenticatable
         'allowed_principles',
         'cover_all_areas',
         'allowed_areas',
+        'email_aliases',
     ];
 
     /**
@@ -62,7 +63,25 @@ class User extends Authenticatable
             'allowed_principles' => 'array',
             'cover_all_areas' => 'boolean',
             'allowed_areas' => 'array',
+            'email_aliases' => 'array',
         ];
+    }
+
+    /**
+     * Menambahkan email alias historis untuk user ini
+     */
+    public function addEmailAlias(string $email): void
+    {
+        $clean = strtolower(trim($email));
+        if (empty($clean) || $clean === strtolower(trim($this->email))) {
+            return;
+        }
+        $aliases = is_array($this->email_aliases) ? $this->email_aliases : [];
+        if (!in_array($clean, $aliases, true)) {
+            $aliases[] = $clean;
+            $this->email_aliases = array_values(array_unique(array_filter($aliases)));
+            $this->saveQuietly();
+        }
     }
 
     public function candidates(): HasMany
