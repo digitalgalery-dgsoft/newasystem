@@ -1221,6 +1221,24 @@
             </div>
 
             @if(!empty($aiData) && empty($aiData['error']) && !empty($candidate->ai_score))
+            @if($candidate->is_only_cover_letter || ($aiData['document_type'] ?? '') === 'surat_lamaran_only')
+            <!-- Alert Peringatan Dokumen Hanya Surat Lamaran (Bukan CV Lengkap) -->
+            <div class="mb-6 p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-start gap-3 shadow-xs">
+                <div class="w-10 h-10 rounded-xl bg-rose-100 border border-rose-200 text-rose-600 flex items-center justify-center flex-shrink-0 text-lg">
+                    <i class="fa-solid fa-file-circle-exclamation"></i>
+                </div>
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded text-[10px] font-black uppercase bg-rose-600 text-white tracking-wider">Perhatian Rekruter</span>
+                        <h5 class="text-xs font-bold text-rose-900">Lampiran Hanya Surat Lamaran Kerja (Bukan CV Lengkap)</h5>
+                    </div>
+                    <p class="text-xs text-rose-700 leading-relaxed">
+                        Dokumen yang dilampirkan kandidat terdeteksi <b>HANYA berupa Surat Lamaran Kerja / Cover Letter</b> tanpa rincian riwayat pendidikan formal dan pengalaman kerja Curriculum Vitae yang lengkap. Skor AI dibatasi maksimal ke kategori <b>Merah (Red)</b>. Rekruter disarankan meminta kandidat mengunggah CV lengkap sebelum melanjutkan proses seleksi.
+                    </p>
+                </div>
+            </div>
+            @endif
+
             <!-- Section 1: Radial Gauge Match & Candidate Biodata -->
             <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-stretch">
                 <!-- Match Gauge Box -->

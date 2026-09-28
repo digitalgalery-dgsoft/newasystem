@@ -3480,6 +3480,43 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 89. 🎯 Optimalisasi AI CV Analyzer: Pembacaan Area dari Kota Penempatan Kerja & Guard Khusus Berkas Surat Lamaran Tanpa CV (28 September 2026)
+- **Latar Belakang & Analisis Masalah**:
+  1. **Akurasi Lokasi Penempatan Kerja vs Area Kantor User AS**:
+     - Pada sistem rekrutmen, seorang Account Supervisor (AS) yang berkantor di suatu cabang (misal Malang) seringkali membuka lowongan untuk penugasan di kota lain (misal Pasuruan, Klaten, Ngawi, Sidoarjo, Berau, dll.).
+     - Sebelumnya, saat pendaftaran dan evaluasi AI, area yang dibaca adalah area kantor AS pembuat lowongan (`job_area` = Malang) dan bukan Kota Penempatan sesungguhnya (`city` = Pasuruan), sehingga kandidat berdomisili Pasuruan mendapatkan penalti jarak yang salah dari AI.
+  2. **Kasus Berkas Lampiran Hanya Surat Lamaran Kerja (Bukan CV Lengkap) tapi Mendapat Skor 90% (Green)**:
+     - Terdapat kasus pelamar yang mengunggah berkas yang isinya hanya selembar Surat Lamaran Kerja / Surat Permohonan (Cover Letter) tanpa lembar Curriculum Vitae (CV) lengkap dengan riwayat pendidikan dan pengalaman kerja formal.
+     - Karena prompt sebelumnya belum memiliki instruksi negatif pembeda antara Surat Lamaran dan CV Lengkap, AI memberikan skor tinggi (~90% Green) hanya karena posisi cocok dan form biodata terisi.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Resolusi Cerdas Kota Penempatan Kerja (`app/Services/AiAnalyzerService.php`)**:
+     - Menambahkan method `resolveMatchedJob(Candidate $candidate): ?JobSpec` untuk mencocokkan lowongan paling relevan berdasarkan judul pekerjaan dan rekruter/AS.
+     - Menambahkan method `resolvePlacementCity(Candidate $candidate, ?JobSpec $job): string` dengan hierarki prioritas:
+       1. Kota penempatan sebenarnya (`job_specs.city`).
+       2. Provinsi penempatan (`job_specs.province`).
+       3. Ekstraksi kota dari judul posisi (`extractCityFromJobTitle()`).
+       4. Kolom `penempatan` / `area` kandidat.
+     - Memutakhirkan `Candidate->area` dan `Candidate->penempatan` (serta `tb_kandidat->area`) secara otomatis ke Kota Penempatan sebenarnya saat evaluasi dijalankan.
+     - Memperbarui `buildJobSpecsText()`, `buildBiodataText()`, dan `buildPrompt()` agar menyertakan Kota Penempatan Kerja Sebenarnya dan memerintahkan AI mengevaluasi kesesuaian domisili HANYA terhadap Kota Penempatan tersebut.
+  2. **Penyempurnaan Pendaftaran Pelamar Baru (`app/Http/Controllers/PublicJobController.php`)**:
+     - Pada saat kandidat melamar lowongan publik (`submitApply()`), kolom `area` dan `penempatan` kini langsung diisi dengan `$job->city` (Kota Penempatan) jika tersedia, bukan lagi `$job->job_area` (kantor AS).
+     - Menyesuaikan query hitung pelamar lowongan pada `index()` dan `show()` agar mencakup pencarian berdasarkan `city` maupun `job_area`.
+  3. **Guard Validasi Kelengkapan Berkas CV & Surat Lamaran Kerja (`app/Services/AiAnalyzerService.php`)**:
+     - Menambahkan aturan ketat pada prompt AI multimodal untuk membedakan Curriculum Vitae (CV) lengkap vs Surat Lamaran Kerja (Cover Letter):
+       - Meminta key `document_type`: `"curriculum_vitae"` | `"surat_lamaran_only"` | `"other_non_cv"`.
+       - Meminta key `is_cv_complete`: boolean (`true` jika ada rincian riwayat pendidikan & pengalaman kerja).
+       - Jika berkas hanya surat lamaran kerja: AI diwajibkan membatasi skor maksimal 35 - 45 (Merah / Red), mengisi `data_discrepancy` dengan peringatan tegas, dan `recommendation` tidak meloloskan otomatis.
+     - **Backend Safety Net Post-Processing**:
+       - Memeriksa `$decoded['document_type']`, `$decoded['is_cv_complete']`, dan analisis kata kunci heuristik pada `data_discrepancy` & `recommendation`.
+       - Jika terdeteksi berkas hanya surat lamaran kerja: skor AI secara mutlak dipangkas (**hard clamp**) ke maksimal 40 (Kategori `Red`), sehingga otomatis tidak memenuhi syarat pengiriman WhatsApp otomatis (yang membutuhkan skor >= 85).
+  4. **Penyempurnaan Model & Tampilan UI (`app/Models/Candidate.php` & Blade Views)**:
+     - Menambahkan accessor `$candidate->is_only_cover_letter` di `Candidate.php`.
+     - Memperbaiki `Candidate->ai_data` agar tetap mengurai JSON hasil AI meskipun berkas CV fisik berstatus khusus.
+     - Pada halaman Detail Kandidat Portal (`resources/views/kandidatportal/show.blade.php`), menampilkan banner peringatan merah khusus jika berkas yang diunggah hanya berupa Surat Lamaran Kerja.
+     - Pada daftar tabel Kandidat Portal (`resources/views/kandidatportal/index.blade.php`), menampilkan indikator badge "Surat" dan ikon peringatan pada skor Red.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

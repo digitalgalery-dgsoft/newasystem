@@ -735,8 +735,11 @@
                                     <span class="w-1.5 h-1.5 rounded-full bg-amber-500"></span> Yellow
                                 </span>
                             @elseif($cand->kategori_kandidat === 'Red')
-                                <span class="badge-pill bg-rose-50 text-rose-700 border-rose-200">
+                                <span class="badge-pill bg-rose-50 text-rose-700 border-rose-200" @if($cand->is_only_cover_letter) title="Lampiran hanya berupa Surat Lamaran (Bukan CV Lengkap)" @endif>
                                     <span class="w-1.5 h-1.5 rounded-full bg-rose-500"></span> Red
+                                    @if($cand->is_only_cover_letter)
+                                        <i class="fa-solid fa-file-circle-exclamation text-rose-500 ml-0.5 text-[9px]"></i>
+                                    @endif
                                 </span>
                             @else
                                 <span class="badge-pill bg-slate-100 text-slate-600 border-slate-200">-</span>
@@ -746,10 +749,17 @@
                         <!-- File CV -->
                         <td class="text-center">
                             @if($cand->cv_path)
-                                <a href="{{ $cand->cv_url }}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-sm" title="Buka File CV">
-                                    <i class="fa-solid fa-file-pdf"></i> Ada
-                                    <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
-                                </a>
+                                <div class="inline-flex items-center gap-1">
+                                    <a href="{{ $cand->cv_url }}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-sm" title="Buka File CV">
+                                        <i class="fa-solid fa-file-pdf"></i> Ada
+                                        <i class="fa-solid fa-arrow-up-right-from-square text-[8px]"></i>
+                                    </a>
+                                    @if($cand->is_only_cover_letter)
+                                        <span class="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-50 text-amber-800 border border-amber-200" title="Lampiran hanya berupa Surat Lamaran (Bukan CV)">
+                                            Surat
+                                        </span>
+                                    @endif
+                                </div>
                             @else
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-100 text-slate-400">
                                     Tidak Ada

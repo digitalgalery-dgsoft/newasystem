@@ -514,9 +514,6 @@ class Candidate extends Model
 
     public function getAiDataAttribute(): array
     {
-        if (!$this->hasCv()) {
-            return [];
-        }
         if (!empty($this->ai_cv_analysis)) {
             $data = json_decode($this->ai_cv_analysis, true);
             if (!is_array($data) && is_string($this->ai_cv_analysis)) {
@@ -528,6 +525,31 @@ class Candidate extends Model
             return $this->ai_analysis;
         }
         return [];
+    }
+
+    /**
+     * Memeriksa apakah berkas lampiran terdeteksi HANYA berupa Surat Lamaran Kerja (tanpa CV lengkap)
+     */
+    public function getIsOnlyCoverLetterAttribute(): bool
+    {
+        $aiData = $this->ai_data;
+        if (empty($aiData)) {
+            return false;
+        }
+        if (isset($aiData['document_type']) && in_array($aiData['document_type'], ['surat_lamaran_only', 'surat_lamaran', 'cover_letter_only'])) {
+            return true;
+        }
+        if (isset($aiData['is_cv_complete']) && ($aiData['is_cv_complete'] === false || $aiData['is_cv_complete'] === 'false' || $aiData['is_cv_complete'] === 0)) {
+            return true;
+        }
+        $combined = strtolower(($aiData['data_discrepancy'] ?? '') . ' ' . ($aiData['recommendation'] ?? ''));
+        if (
+            (str_contains($combined, 'surat lamaran') || str_contains($combined, 'cover letter') || str_contains($combined, 'surat permohonan'))
+            && (str_contains($combined, 'hanya') || str_contains($combined, 'bukan cv') || str_contains($combined, 'tidak ada cv') || str_contains($combined, 'tidak memuat cv'))
+        ) {
+            return true;
+        }
+        return false;
     }
 
     public function getAiScoreColorHexAttribute(): string

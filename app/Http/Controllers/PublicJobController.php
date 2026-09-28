@@ -58,8 +58,11 @@ class PublicJobController extends Controller
         foreach ($jobs as $j) {
             $j->applicant_count = Candidate::where('applied_job', $j->job_title)
                 ->where(function ($q) use ($j) {
-                    $q->where('area', $j->job_area)
-                      ->orWhereNull('area');
+                    $q->where('area', $j->job_area);
+                    if (!empty($j->city)) {
+                        $q->orWhere('area', $j->city);
+                    }
+                    $q->orWhereNull('area');
                 })->count();
         }
 
@@ -91,8 +94,11 @@ class PublicJobController extends Controller
         // Hitung total pelamar
         $totalApplicants = Candidate::where('applied_job', $job->job_title)
             ->where(function ($q) use ($job) {
-                $q->where('area', $job->job_area)
-                  ->orWhereNull('area');
+                $q->where('area', $job->job_area);
+                if (!empty($job->city)) {
+                    $q->orWhere('area', $job->city);
+                }
+                $q->orWhereNull('area');
             })->count();
 
         // Rekomendasi lowongan sejenis lainnya
@@ -287,7 +293,8 @@ class PublicJobController extends Controller
             'whatsapp' => $request->input('no_wa'),
             'education' => $request->input('pendidikan'),
             'applied_job' => $job->job_title,
-            'area' => $job->job_area ?? 'JAKARTA',
+            'area' => !empty($job->city) ? $job->city : ($job->job_area ?? 'JAKARTA'),
+            'penempatan' => !empty($job->city) ? $job->city : ($job->job_area ?? 'JAKARTA'),
             'principle_id' => $principle?->id ?? 1,
             'info_lowongan' => $request->input('info_lowongan'),
             'info' => $request->input('info_lowongan'),

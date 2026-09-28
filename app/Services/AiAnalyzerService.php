@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\AiSetting;
 use App\Models\Candidate;
+use App\Models\Employee;
 use App\Models\JobSpec;
+use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -72,14 +74,36 @@ class AiAnalyzerService
             $log("PROCESSING: Memulai analisis profil untuk #$id - $candidateName (Tanpa berkas CV, evaluasi berbasis Data Form Inputan, Posisi: " . ($candidate->applied_job ?? '-') . ")...");
         }
 
-        // 2. Bangun Job Specs Text
-        $jobSpecsText = $this->buildJobSpecsText($candidate->applied_job);
+        // 1b. Resolusi Job Specification & Kota Penempatan Sebenarnya (BUKAN area kantor user pembuat job)
+        $matchedJob = $this->resolveMatchedJob($candidate);
+        $placementCity = $this->resolvePlacementCity($candidate, $matchedJob);
+        $log("INFO: Lokasi Penempatan Kerja Sebenarnya yang dievaluasi: '{$placementCity}'.");
 
-        // 3. Bangun Biodata Input Text
-        $biodataText = $this->buildBiodataText($candidate);
+        // Sinkronisasi area kandidat ke Kota Penempatan kerja sesungguhnya jika tersedia
+        if ($matchedJob && !empty($matchedJob->city) && trim($matchedJob->city) !== '-' && strtolower(trim($matchedJob->city)) !== 'all') {
+            $truePlacementCity = trim($matchedJob->city);
+            if ($candidate->area !== $truePlacementCity) {
+                $log("INFO: Menyesuaikan Area Kandidat dari Kota Penempatan Lowongan: '{$truePlacementCity}' (sebelumnya: '" . ($candidate->area ?? '-') . "').");
+                $candidate->update([
+                    'area' => $truePlacementCity,
+                    'penempatan' => $truePlacementCity,
+                ]);
+                if (Schema::hasTable('tb_kandidat')) {
+                    DB::table('tb_kandidat')->where('id', $candidate->id)->orWhere('no_ktp', $candidate->nik)->update([
+                        'area' => $truePlacementCity,
+                    ]);
+                }
+            }
+        }
 
-        // 4. Bangun Full Prompt
-        $prompt = $this->buildPrompt($candidate, $jobSpecsText, $biodataText, $hasUsableCv);
+        // 2. Bangun Job Specs Text dengan menyertakan Kota Penempatan Kerja
+        $jobSpecsText = $this->buildJobSpecsText($candidate->applied_job, $matchedJob, $placementCity);
+
+        // 3. Bangun Biodata Input Text dengan lokasi penugasan sebenarnya
+        $biodataText = $this->buildBiodataText($candidate, $placementCity);
+
+        // 4. Bangun Full Prompt dengan panduan penempatan & validasi dokumen CV lengkap vs surat lamaran
+        $prompt = $this->buildPrompt($candidate, $jobSpecsText, $biodataText, $hasUsableCv, $placementCity);
         $promptLen = strlen($prompt);
         $estTokens = intval($promptLen / 4);
         $log("INFO: Prompt AI siap diproses. Panjang: {$promptLen} karakter (~{$estTokens} token teks).");
@@ -296,14 +320,71 @@ class AiAnalyzerService
             return ['success' => false, 'message' => 'Format response AI tidak valid', 'raw' => $aiResult];
         }
 
+        $aiScore = intval($decoded['evaluation_match_score']);
+        $aiScore = max(0, min(100, $aiScore)); // Clamp between 0 - 100
+
+        // =========================================================================
+        // VALIDASI KEASLIAN & KELENGKAPAN BERKAS CV (SURAT LAMARAN KERJA GUARD)
+        // =========================================================================
+        $isOnlyCoverLetter = false;
+        $docType = strtolower(trim($decoded['document_type'] ?? ''));
+        if (in_array($docType, ['surat_lamaran_only', 'surat_lamaran', 'cover_letter_only', 'cover_letter', 'other_non_cv', 'non_cv'])) {
+            $isOnlyCoverLetter = true;
+        }
+        if (isset($decoded['is_cv_complete']) && ($decoded['is_cv_complete'] === false || $decoded['is_cv_complete'] === 'false' || $decoded['is_cv_complete'] === 0)) {
+            $isOnlyCoverLetter = true;
+        }
+
+        // Analisa teks discrepancy & recommendation untuk fallback deteksi
+        $combinedEvalText = strtolower(
+            ($decoded['data_discrepancy'] ?? '') . ' ' . 
+            ($decoded['recommendation'] ?? '') . ' ' . 
+            json_encode($decoded['weaknesses'] ?? []) . ' ' . 
+            json_encode($decoded['work_history'] ?? [])
+        );
+
+        $hasCoverLetterKeywords = str_contains($combinedEvalText, 'surat lamaran') || 
+                                  str_contains($combinedEvalText, 'cover letter') || 
+                                  str_contains($combinedEvalText, 'surat permohonan') ||
+                                  str_contains($combinedEvalText, 'hanya surat');
+
+        $hasIncompleteCvKeywords = str_contains($combinedEvalText, 'bukan cv') || 
+                                   str_contains($combinedEvalText, 'tidak ada cv') || 
+                                   str_contains($combinedEvalText, 'tidak memuat cv') || 
+                                   str_contains($combinedEvalText, 'hanya berisi') || 
+                                   str_contains($combinedEvalText, 'hanya berupa') ||
+                                   str_contains($combinedEvalText, 'tanpa cv') ||
+                                   str_contains($combinedEvalText, 'tidak terdapat cv');
+
+        if ($hasCoverLetterKeywords && $hasIncompleteCvKeywords) {
+            $isOnlyCoverLetter = true;
+        }
+
+        if ($isOnlyCoverLetter) {
+            $decoded['document_type'] = 'surat_lamaran_only';
+            $decoded['is_cv_complete'] = false;
+            
+            // Batasi skor maksimal 40 (Kategori Merah / Red)
+            if ($aiScore > 40) {
+                $log("WARNING: Berkas lampiran kandidat #$id terdeteksi HANYA Surat Lamaran Kerja / Cover Letter (tanpa rincian riwayat CV). Skor AI dipangkas dari {$aiScore} menjadi 40 (Kategori Red).", 'warning');
+                $aiScore = 40;
+                $decoded['evaluation_match_score'] = 40;
+            }
+
+            if (empty($decoded['data_discrepancy']) || strtolower(trim($decoded['data_discrepancy'])) === 'tidak ada perbedaan') {
+                $decoded['data_discrepancy'] = 'Berkas lampiran yang diunggah HANYA berupa Surat Lamaran Kerja / Cover Letter, BUKAN Curriculum Vitae (CV) lengkap. Tidak ditemukan rincian riwayat pendidikan formal dan riwayat pengalaman kerja pada lampiran.';
+            }
+
+            if (empty($decoded['recommendation']) || !str_contains(strtolower($decoded['recommendation']), 'tidak direkomendasikan')) {
+                $decoded['recommendation'] = 'TIDAK DIREKOMENDASIKAN LOLOS OTOMATIS (SKOR MERAH). Berkas kandidat hanya berupa surat lamaran kerja. Rekruter wajib meminta kandidat mengunggah berkas Curriculum Vitae (CV) lengkap.';
+            }
+        }
+
         // Simpan metadata model & provider yang sukses digunakan
         $decoded['_model'] = $usedModel;
         $decoded['_provider'] = $usedProvider;
         $decoded['_analyzed_at'] = now('Asia/Jakarta')->toIso8601String();
         $cleanJson = json_encode($decoded, JSON_UNESCAPED_UNICODE);
-
-        $aiScore = intval($decoded['evaluation_match_score']);
-        $aiScore = max(0, min(100, $aiScore)); // Clamp between 0 - 100
 
         // Tentukan Kategori Kandidat Sesuai Skema
         if ($aiScore < 60) {
@@ -715,20 +796,22 @@ class AiAnalyzerService
     }
 
     /**
-     * Ambil Spesifikasi Pekerjaan dari JobSpec dengan pembersihan HTML & gambar base64
+     * Ambil Spesifikasi Pekerjaan dari JobSpec dengan menyertakan Kota Penempatan Kerja
      */
-    protected function buildJobSpecsText(?string $appliedJob): string
+    protected function buildJobSpecsText(?string $appliedJob, ?JobSpec $job = null, string $placementCity = '-'): string
     {
         if (empty($appliedJob)) {
             return "Persyaratan Pekerjaan:\n- Belum ditentukan";
         }
 
-        $job = JobSpec::whereRaw('LOWER(TRIM(job_title)) = ?', [strtolower(trim($appliedJob))])
-            ->where('status', 'active')
-            ->first();
-
         if (!$job) {
-            $job = JobSpec::whereRaw('LOWER(TRIM(job_title)) LIKE ?', ['%' . strtolower(trim($appliedJob)) . '%'])->first();
+            $job = JobSpec::whereRaw('LOWER(TRIM(job_title)) = ?', [strtolower(trim($appliedJob))])
+                ->where('status', 'active')
+                ->first();
+
+            if (!$job) {
+                $job = JobSpec::whereRaw('LOWER(TRIM(job_title)) LIKE ?', ['%' . strtolower(trim($appliedJob)) . '%'])->first();
+            }
         }
 
         if ($job) {
@@ -739,6 +822,7 @@ class AiAnalyzerService
             $info = $this->sanitizeTextForPrompt($job->additional_info, 1000);
 
             $text = "Persyaratan Pekerjaan ({$job->job_title}):\n" .
+                    "- Kota Penempatan Kerja (Lokasi Penugasan Sebenarnya): " . $placementCity . "\n" .
                     "- Pendidikan & Kualifikasi: " . $quals . "\n" .
                     "- Keterampilan (Skills): " . $skills . "\n" .
                     "- Pengalaman: " . $exp . "\n" .
@@ -749,13 +833,13 @@ class AiAnalyzerService
             return $text;
         }
 
-        return "Persyaratan Pekerjaan:\n- Posisi: $appliedJob\n- Kualifikasi: Menyesuaikan standar umum untuk posisi $appliedJob";
+        return "Persyaratan Pekerjaan:\n- Posisi: $appliedJob\n- Kota Penempatan Kerja (Lokasi Penugasan Sebenarnya): $placementCity\n- Kualifikasi: Menyesuaikan standar umum untuk posisi $appliedJob";
     }
 
     /**
-     * Ambil Biodata Inputan Kandidat dengan sanitasi teks
+     * Ambil Biodata Inputan Kandidat dengan lokasi penugasan sebenarnya
      */
-    protected function buildBiodataText(Candidate $candidate): string
+    protected function buildBiodataText(Candidate $candidate, string $placementCity = '-'): string
     {
         $dob = $candidate->birth_date ? Carbon::parse($candidate->birth_date)->format('d F Y') : '-';
         $age = $candidate->birth_date ? Carbon::parse($candidate->birth_date)->age . ' tahun' : '-';
@@ -780,7 +864,7 @@ class AiAnalyzerService
                "- Alamat KTP: " . ($candidate->address_ktp ?? '-') . "\n" .
                "- Alamat Domisili: " . ($candidate->address_domicile ?? '-') . "\n" .
                "- Kota / Provinsi Domisili: " . ($candidate->city_domicile ?? '-') . " / " . ($candidate->province_domicile ?? '-') . "\n" .
-               "- Kota Penempatan (Tujuan): " . ($candidate->area ?? '-') . "\n" .
+               "- Kota Penempatan yang Dilamar (Lokasi Tugas Sebenarnya): " . $placementCity . "\n" .
                "- Motivasi Kerja: " . $workMotivation . "\n" .
                "- Kelebihan Diri: " . $strengths . "\n" .
                "- Kekurangan Diri: " . $weaknesses . "\n" .
@@ -861,26 +945,43 @@ class AiAnalyzerService
     /**
      * Bangun Prompt Evaluasi AI Sesuai Standar Sistem (Mendukung Evaluasi Berkas CV maupun Data Form)
      */
-    protected function buildPrompt(Candidate $candidate, string $jobSpecsText, string $biodataText, bool $hasCvFile = true): string
+    protected function buildPrompt(Candidate $candidate, string $jobSpecsText, string $biodataText, bool $hasCvFile = true, string $placementCity = '-'): string
     {
         $currentDate = now()->translatedFormat('d F Y');
 
+        $locationGuide = "- PANDUAN AREA & DOMISILI: Lokasi penempatan kerja yang dievaluasi adalah Kota Penempatan: '{$placementCity}' (BUKAN area kantor rekruter/pembuat job). Cocokkan Kota/Provinsi domisili kandidat dengan Kota Penempatan ('{$placementCity}'). Jika domisili kandidat berada di kota/wilayah penempatan tersebut atau menyatakan bersedia ditempatkan di mana saja, maka aspek lokasi dinilai COCOK dan jangan dikurangi nilainya.";
+
         if ($hasCvFile) {
-            $instructionCv = "Tolong baca teks atau gambar CV yang saya berikan dan evaluasi kecocokannya dengan Persyaratan Pekerjaan di atas. Selain itu, Anda HARUS mencocokkan data pada file CV dengan Data Form Inputan Kandidat di atas. Khusus untuk Kota Penempatan (Tujuan), mohon cocokkan dengan Kota/Provinsi Domisili yang diinputkan kandidat atau domisili di CV. Jika jaraknya sangat jauh (beda kota/provinsi/pulau) dan kandidat tidak mencantumkan keterangan bersedia ditempatkan di mana saja pada CV/Kelebihan/Motivasi, jadikan ini pertimbangan dalam evaluasi.";
-            $discrepancyGuide = "Tuliskan 'Tidak ada perbedaan' jika data inputan cocok dengan CV. Jika berbeda, jelaskan detail perbedaannya secara lengkap dan tegas (misal: 'Nama di form Budi, di CV Andi').";
-            $scoreGuide = "- evaluation_match_score adalah angka 0-100, mencerminkan seberapa cocok CV dan profil kandidat dengan spesifikasi pekerjaan yang diminta. Jika sangat tidak cocok, berikan skor rendah.\n- Kurangi evaluation_match_score secara signifikan jika terdapat ketidaksesuaian/manipulasi (data_discrepancy) yang fatal (seperti nama beda, dll).";
+            $instructionCv = "Tolong baca teks atau gambar CV yang saya berikan dan evaluasi kecocokannya dengan Persyaratan Pekerjaan di atas. Selain itu, Anda HARUS mencocokkan data pada file lampiran dengan Data Form Inputan Kandidat di atas.\n" . $locationGuide . "\n\n" .
+            "ATURAN MUTLAK KELENGKAPAN BERKAS LAMPIRAN:\n" .
+            "1. Periksa berkas lampiran secara cermat: Apakah memuat CURRICULUM VITAE (CV) LENGKAP dengan rincian riwayat pendidikan formal dan riwayat pengalaman kerja/keahlian, ATAU HANYA BERISI SURAT LAMARAN KERJA / COVER LETTER / SURAT PERMOHONAN KERJA?\n" .
+            "2. JIKA BERKAS HANYA BERISI SURAT LAMARAN KERJA (tanpa ada lembar Curriculum Vitae lengkap):\n" .
+            "   - document_type WAJIB bernilai 'surat_lamaran_only'\n" .
+            "   - is_cv_complete WAJIB bernilai false\n" .
+            "   - evaluation_match_score WAJIB DIBATASI MAKSIMAL 35 - 45 (KATEGORI MERAH / RED). DILARANG KERAS memberikan skor di atas 50 atau Green (>=85), karena surat lamaran selembar bukanlah CV dan tidak dapat memverifikasi rekam jejak kualifikasi kandidat!\n" .
+            "   - data_discrepancy WAJIB menjelaskan secara tegas: 'Berkas lampiran yang diunggah HANYA berupa Surat Lamaran Kerja / Cover Letter, BUKAN Curriculum Vitae (CV) lengkap. Tidak ditemukan rincian riwayat pendidikan formal dan riwayat pengalaman kerja pada lampiran.'\n" .
+            "   - recommendation WAJIB menyatakan: 'TIDAK DIREKOMENDASIKAN LOLOS OTOMATIS (SKOR MERAH). Berkas kandidat hanya berupa surat lamaran kerja. Rekruter wajib meminta kandidat mengunggah Curriculum Vitae (CV) lengkap.'\n" .
+            "3. JIKA BERKAS ADALAH CURRICULUM VITAE LENGKAP:\n" .
+            "   - document_type WAJIB bernilai 'curriculum_vitae'\n" .
+            "   - is_cv_complete WAJIB bernilai true\n" .
+            "   - Tuliskan 'Tidak ada perbedaan' pada data_discrepancy jika data inputan form cocok dengan CV. Jika ada perbedaan, jelaskan secara detail.";
+
+            $scoreGuide = "- evaluation_match_score adalah angka 0-100, mencerminkan seberapa cocok CV dan profil kandidat dengan spesifikasi pekerjaan yang diminta. Jika berkas hanya surat lamaran tanpa CV lengkap, skor MAKSIMAL 40 (Red).\n- Kurangi evaluation_match_score secara signifikan jika terdapat ketidaksesuaian/manipulasi (data_discrepancy) yang fatal (seperti nama beda, dll).";
         } else {
-            $instructionCv = "CATATAN PENTING: Kandidat ini TIDAK MELAMPIRKAN BERKAS CV (file CV kosong atau belum diunggah). Oleh karena itu, lakukan evaluasi profil kandidat SEPENUHNYA berdasarkan Data Form Inputan Kandidat di atas (Pendidikan, Pengalaman Kerja, Keterampilan, Motivasi, Kelebihan, Domisili, dsb) terhadap Persyaratan Pekerjaan.";
-            $discrepancyGuide = "Kandidat tidak mengunggah file CV, evaluasi dinilai berdasarkan data form pendaftaran.";
+            $instructionCv = "CATATAN PENTING: Kandidat ini TIDAK MELAMPIRKAN BERKAS CV (file CV kosong atau belum diunggah). Oleh karena itu, lakukan evaluasi profil kandidat SEPENUHNYA berdasarkan Data Form Inputan Kandidat di atas terhadap Persyaratan Pekerjaan.\n" . $locationGuide . "\n" .
+            "- document_type diisi 'no_cv_file'\n" .
+            "- is_cv_complete diisi false";
             $scoreGuide = "- evaluation_match_score adalah angka 0-100, mencerminkan seberapa cocok data isian formulir kandidat dengan spesifikasi pekerjaan yang diminta. Berikan penilaian objektif berdasarkan kelengkapan dan kesesuaian kualifikasi form terhadap kriteria posisi.";
         }
 
-        return "Anda adalah AI CV Analyzer Profesional. INFO PENTING: Hari ini adalah tanggal " . $currentDate . " (semua tahun sebelum atau sama dengan tahun ini adalah masa lalu/sekarang, bukan masa depan). Tugas Anda adalah menganalisis profil kandidat ini untuk posisi: " . ($candidate->applied_job ?? 'Karyawan') . ".\n\n" .
+        return "Anda adalah AI CV Analyzer Profesional. INFO PENTING: Hari ini adalah tanggal " . $currentDate . " (semua tahun sebelum atau sama dengan tahun ini adalah masa lalu/sekarang, bukan masa depan). Tugas Anda adalah menganalisis profil kandidat ini untuk posisi: " . ($candidate->applied_job ?? 'Karyawan') . " dengan Kota Penempatan: " . $placementCity . ".\n\n" .
                $jobSpecsText . "\n\n" .
                $biodataText . "\n\n" .
-               $instructionCv . " Hasilkan output JSON murni tanpa markdown ```json.
+               $instructionCv . "\n\nHasilkan output JSON murni tanpa markdown ```json.
 Struktur dan keys (berbahasa inggris) persis seperti ini:
 {
+  \"document_type\": \"curriculum_vitae\",
+  \"is_cv_complete\": true,
   \"evaluation_match_score\": 85,
   \"candidate_biodata\": {\"name\": \"...\", \"contact\": \"...\", \"education\": \"...\"},
   \"core_strengths\": [\"strength 1\", \"strength 2\"],
@@ -888,13 +989,173 @@ Struktur dan keys (berbahasa inggris) persis seperti ini:
   \"psychological_traits\": {\"personality\": [\"trait1\", \"trait2\"], \"work_style\": \"...\", \"cultural_fit\": \"...\"},
   \"work_history\": [\"history 1\", \"history 2\"],
   \"core_skills\": [\"skill 1\", \"skill 2\"],
-  \"data_discrepancy\": \"" . $discrepancyGuide . "\",
+  \"data_discrepancy\": \"Tidak ada perbedaan\",
   \"recommendation\": \"SANGAT DIREKOMENDASIKAN. [alasan...]\"
 }
 Catatan:
 " . $scoreGuide . "
 - Isi value dalam bahasa Indonesia yang formal dan profesional.
 - Pastikan response hanya berupa string JSON valid tanpa tambahan teks lain.";
+    }
+
+    /**
+     * Resolusi JobSpec yang paling akurat untuk kandidat (mencocokkan judul job dan AS / rekruter)
+     */
+    protected function resolveMatchedJob(Candidate $candidate): ?JobSpec
+    {
+        $appliedJob = trim($candidate->applied_job ?? '');
+        if (empty($appliedJob)) {
+            return null;
+        }
+
+        $userAs = trim($candidate->useras ?? '');
+
+        // 1. Coba cocokkan dengan useras (email atau nama rekruter)
+        if (!empty($userAs) && strtolower($userAs) !== 'publik') {
+            $q = JobSpec::whereRaw('LOWER(TRIM(job_title)) = ?', [strtolower($appliedJob)]);
+            $userAsLower = strtolower($userAs);
+
+            if (str_contains($userAs, '@')) {
+                $job = (clone $q)->whereRaw('LOWER(TRIM(created_by)) = ?', [$userAsLower])->orderByDesc('id')->first();
+                if ($job) {
+                    return $job;
+                }
+            }
+
+            $emails = [];
+            try {
+                $emp = Employee::whereRaw('LOWER(TRIM(nama_karyawan)) = ?', [$userAsLower])->first();
+                if ($emp && !empty($emp->email)) {
+                    $emails[] = strtolower(trim($emp->email));
+                }
+            } catch (\Throwable $e) {}
+
+            try {
+                $u = User::whereRaw('LOWER(TRIM(name)) = ?', [$userAsLower])->first();
+                if ($u && !empty($u->email)) {
+                    $emails[] = strtolower(trim($u->email));
+                }
+            } catch (\Throwable $e) {}
+
+            if (!empty($emails)) {
+                $job = (clone $q)->whereIn(DB::raw('LOWER(TRIM(created_by))'), $emails)->orderByDesc('id')->first();
+                if ($job) {
+                    return $job;
+                }
+            }
+        }
+
+        // 2. Jika ada kandidat area / domisili, cocokkan dengan city job
+        $candArea = strtolower(trim($candidate->area ?? ''));
+        $candCity = strtolower(trim($candidate->city_domicile ?? ''));
+        if (!empty($candCity) || !empty($candArea)) {
+            $job = JobSpec::whereRaw('LOWER(TRIM(job_title)) = ?', [strtolower($appliedJob)])
+                ->where(function ($q) use ($candCity, $candArea) {
+                    if (!empty($candCity)) {
+                        $q->whereRaw('LOWER(TRIM(city)) = ?', [$candCity]);
+                    }
+                    if (!empty($candArea)) {
+                        $q->orWhereRaw('LOWER(TRIM(city)) = ?', [$candArea]);
+                    }
+                })
+                ->where('status', 'active')
+                ->orderByDesc('id')
+                ->first();
+            if ($job) {
+                return $job;
+            }
+        }
+
+        // 3. Cari JobSpec aktif dengan judul yang sama persis
+        $job = JobSpec::whereRaw('LOWER(TRIM(job_title)) = ?', [strtolower($appliedJob)])
+            ->where('status', 'active')
+            ->orderByDesc('id')
+            ->first();
+        if ($job) {
+            return $job;
+        }
+
+        // 4. JobSpec apapun statusnya dengan judul sama persis
+        $job = JobSpec::whereRaw('LOWER(TRIM(job_title)) = ?', [strtolower($appliedJob)])
+            ->orderByDesc('id')
+            ->first();
+        if ($job) {
+            return $job;
+        }
+
+        // 5. Fallback LIKE job_title
+        return JobSpec::whereRaw('LOWER(TRIM(job_title)) LIKE ?', ['%' . strtolower($appliedJob) . '%'])
+            ->orderByDesc('id')
+            ->first();
+    }
+
+    /**
+     * Resolusi Kota Penempatan Kerja yang sebenarnya (BUKAN area kantor user pembuat job)
+     */
+    protected function resolvePlacementCity(Candidate $candidate, ?JobSpec $job = null): string
+    {
+        // 1. Ambil dari field 'city' (Kota Penempatan) pada JobSpec
+        if ($job && !empty($job->city) && trim($job->city) !== '-' && strtolower(trim($job->city)) !== 'all') {
+            $city = trim($job->city);
+            if (!empty($job->province) && trim($job->province) !== '-' && !str_contains(strtolower($city), strtolower(trim($job->province)))) {
+                return $city . ', ' . trim($job->province);
+            }
+            return $city;
+        }
+
+        // 2. Ambil dari field 'province' jika city kosong
+        if ($job && !empty($job->province) && trim($job->province) !== '-') {
+            return trim($job->province);
+        }
+
+        // 3. Ekstraksi nama kota dari judul lowongan jika tercantum (misal "SPG MOBILE PASURUAN", "BA KUPANG")
+        $titleCity = $this->extractCityFromJobTitle($candidate->applied_job ?? '');
+        if (!empty($titleCity)) {
+            return $titleCity;
+        }
+
+        // 4. Field penempatan pada kandidat jika ada
+        if (!empty($candidate->penempatan) && trim($candidate->penempatan) !== '-') {
+            return trim($candidate->penempatan);
+        }
+
+        // 5. Field area pada kandidat
+        if (!empty($candidate->area) && trim($candidate->area) !== '-') {
+            return trim($candidate->area);
+        }
+
+        // 6. Job area dari JobSpec
+        if ($job && !empty($job->job_area) && trim($job->job_area) !== '-') {
+            return trim($job->job_area);
+        }
+
+        return 'Sesuai Lokasi Penempatan Kerja';
+    }
+
+    /**
+     * Ekstraksi nama kota Indonesia dari judul posisi lowongan kerja
+     */
+    protected function extractCityFromJobTitle(string $jobTitle): ?string
+    {
+        $knownCities = [
+            'Aceh', 'Balikpapan', 'Bandung', 'Banjarmasin', 'Batam', 'Bekasi', 'Berau', 'Blitar', 'Bogor', 
+            'Bojonegoro', 'Bontang', 'Cianjur', 'Cilacap', 'Cirebon', 'Denpasar', 'Depok', 'Gorontalo', 
+            'Gresik', 'Jakarta', 'Jambi', 'Jember', 'Kediri', 'Kendari', 'Klaten', 'Kudus', 'Kupang', 
+            'Lampung', 'Madiun', 'Magelang', 'Makassar', 'Malang', 'Manado', 'Mataram', 'Medan', 'Mojokerto', 
+            'Ngawi', 'Padang', 'Palangkaraya', 'Palembang', 'Palu', 'Pasuruan', 'Pekalongan', 'Pekanbaru', 
+            'Pematang Siantar', 'Pontianak', 'Probolinggo', 'Purwokerto', 'Salatiga', 'Samarinda', 'Semarang', 
+            'Sidoarjo', 'Solo', 'Sukabumi', 'Surabaya', 'Surakarta', 'Tangerang', 'Tasikmalaya', 'Tegal', 
+            'Tuban', 'Tulungagung', 'Yogyakarta', 'Jogja'
+        ];
+
+        $titleClean = ' ' . preg_replace('/[^a-zA-Z0-9]/', ' ', $jobTitle) . ' ';
+        foreach ($knownCities as $city) {
+            if (stripos($titleClean, ' ' . $city . ' ') !== false) {
+                return $city;
+            }
+        }
+
+        return null;
     }
 
     /**
