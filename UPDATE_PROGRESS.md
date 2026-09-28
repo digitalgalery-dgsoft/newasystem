@@ -3384,6 +3384,28 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 85. 📊 Standardisasi Hak Ekspor Data Kandidat Nasional untuk Administrator Talent Pool & Pembatasan Ekspor Akun Non-Admin (28 September 2026)
+- **Kebutuhan Pengguna**:
+  - Pada fitur export Kandidat Job Portal (`/kandidatportal/export`), akun yang memiliki peran **Administrator Talent Pool** harus dapat mengekspor seluruh data kandidat skala nasional sama persis seperti akun **Administrator** (`admin`). Selain kedua peran tersebut, akun **hanya boleh mengekspor data kandidat milik usernya sendiri**.
+  - Begitu juga pada fitur export Kandidat Interview (`/export/interview` dan `/walkinterview/export`), aturan otorisasi dan pembatasan kepemilikan kandidat yang sama harus diterapkan secara konsisten.
+- **Implementasi Teknis**:
+  1. **Penambahan Otorisasi Terpusat pada Model Pengguna (`app/Models/User.php`)**:
+     - Menambahkan method `isAdministratorTalentPool(): bool` untuk mendeteksi peran Administrator Talent Pool (role code `admin_officer`, relasi model role, dan display name `Administrator Talent Pool`).
+     - Menambahkan method `canExportNationalCandidates(): bool` yang mereturn `true` hanya jika user adalah Super Administrator (`isAdmin()`) atau Administrator Talent Pool (`isAdministratorTalentPool()`).
+  2. **Penyempurnaan Ekspor Kandidat Job Portal (`app/Http/Controllers/KandidatPortalController.php`)**:
+     - Pada `exportExcel()`: Mengganti pengecekan luas sebelumnya dengan `$canExportNational = $user->canExportNationalCandidates()`.
+     - Akun Admin & Administrator Talent Pool dapat mengekspor seluruh kandidat portal nasional atau memfilter rekrutor tertentu jika dipilih.
+     - Akun selain itu secara ketat dipaksa hanya mengekspor kandidat miliknya (`applyAsUserFilter()`), mengabaikan parameter URL `recruiter=all` jika ada upaya manipulasi query string.
+  3. **Penyempurnaan & Refaktor Ekspor Kandidat Interview (`app/Http/Controllers/InterviewController.php` & `routes/web.php`)**:
+     - Mengganti route closure lama `/export/interview` yang sebelumnya mengekspor semua data tanpa otorisasi dengan method terstruktur `InterviewController::exportInterview`.
+     - `exportInterview()` mendukung filter tab aktif (`interview`, `done`/terima, `arsip`, atau `all`), pencarian nama/NIK/posisi, filter area, serta rentang tanggal.
+     - Format ekspor menghasilkan file CSV berstandar UTF-8 BOM yang langsung rapi dan kompatibel dibuka di Microsoft Excel, lengkap dengan kolom NIK (format teks tanda petik), Nama Kandidat, Tanggal Lahir, Usia, Pendidikan, WhatsApp, Prinsiple, Posisi, Area, Rekrutor/AS, Status Tahapan, Status Kandidat, dan Catatan/Hasil Wawancara.
+     - Pada `exportWalkInterview()`: Menerapkan pembatasan otorisasi ekspor nasional yang sama sehingga akun non-admin hanya dapat mengunduh data walk-in milik AS/rekrutor terkait.
+  4. **Pembaruan Link Ekspor Antarmuka (`resources/views/interview/index.blade.php` & `resources/views/interviewinhouse/index.blade.php`)**:
+     - Memperbarui tombol tautan `route('interview.export')` dengan menyertakan `request()->query()` agar filter aktif yang sedang dilihat pengguna (seperti tab hasil seleksi atau pencarian) otomatis terunduh sesuai tampilan.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

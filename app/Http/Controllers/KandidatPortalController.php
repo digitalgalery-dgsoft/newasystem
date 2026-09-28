@@ -1587,15 +1587,14 @@ class KandidatPortalController extends Controller
         $filterRecruiter = $request->query('recruiter');
 
         $user = $this->getCurrentUser();
-        $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
-        $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
+        $canExportNational = $user && method_exists($user, 'canExportNationalCandidates') && $user->canExportNationalCandidates();
         $userIdentifiers = $this->resolveUserIdentifiers($user);
 
         $baseQuery = Candidate::where('jenis', 'Job Portal');
 
-        if ($canViewAllRecruiters) {
+        if ($canExportNational) {
             if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
-                // Admin / All-scope memfilter rekruter terpilih: rangkul seluruh alias (email maupun nama)
+                // Admin / Administrator Talent Pool memfilter rekruter terpilih: rangkul seluruh alias (email maupun nama)
                 $recIdentifiers = $this->resolveRecruiterFilterIdentifiers($filterRecruiter);
                 $baseQuery->where(function ($q) use ($filterRecruiter, $recIdentifiers) {
                     $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $recIdentifiers)
@@ -1613,9 +1612,9 @@ class KandidatPortalController extends Controller
                     }
                 });
             }
-            // Jika $filterRecruiter bernilai 'all' atau kosong -> Export semua kandidat sesuai scope
+            // Jika $filterRecruiter bernilai 'all' atau kosong -> Export semua kandidat nasional
         } else {
-            // User biasa / AS / Rekruter: Hanya kandidat miliknya
+            // User selain Administrator / Administrator Talent Pool: HANYA bisa export data kandidat miliknya sendiri
             $this->applyAsUserFilter($baseQuery, $user, $userIdentifiers);
         }
 
@@ -1714,11 +1713,13 @@ class KandidatPortalController extends Controller
             ->get();
 
         $recruiterLabel = 'Semua Rekruter (Nasional)';
-        if ($isAdmin || $canViewAllRecruiters) {
+        if ($canExportNational) {
             if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
                 $fakeFilter = new Candidate(['useras' => $filterRecruiter]);
                 $resolvedName = $fakeFilter->user_display_name;
                 $recruiterLabel = ($resolvedName !== '-' && !empty($resolvedName)) ? $resolvedName : $filterRecruiter;
+            } elseif ($filterRecruiter === 'my') {
+                $recruiterLabel = $user ? $user->name : 'User';
             }
         } else {
             $recruiterLabel = $user ? $user->name : 'User';

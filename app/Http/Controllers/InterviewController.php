@@ -2211,11 +2211,17 @@ class InterviewController extends Controller
 
     /**
      * Export Data Walkin Interview ke format CSV
+     * Otorisasi: Administrator dan Administrator Talent Pool dapat ekspor skala nasional,
+     * selain itu HANYA dapat ekspor data kandidat usernya sendiri.
      */
     public function exportWalkInterview(Request $request)
     {
+        $user = $this->getCurrentUser();
+        $canExportNational = $user && method_exists($user, 'canExportNationalCandidates') && $user->canExportNationalCandidates();
+
         $search = $request->query('search');
         $kategori = $request->query('kategori');
+        $filterRecruiter = $request->query('recruiter', $request->query('useras'));
         $today = Carbon::now('Asia/Jakarta')->toDateString();
 
         if ($request->has('start_date') || $request->has('end_date')) {
@@ -2229,7 +2235,50 @@ class InterviewController extends Controller
             $endDate = $today;
         }
 
-        $query = Candidate::where('jenis', 'Walkin');
+        $query = Candidate::where('jenis', 'Walkin')
+            ->whereNotIn('status', ['Arsip', 'archived'])
+            ->where(function ($q) {
+                $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+            });
+
+        // Otorisasi Ekspor: Hanya Administrator & Administrator Talent Pool yang bisa ekspor data nasional
+        if ($canExportNational) {
+            if (!empty($filterRecruiter) && !in_array(strtolower($filterRecruiter), ['all', 'my', 'semua', ''])) {
+                $query->where(function ($q) use ($filterRecruiter) {
+                    $q->where('useras', $filterRecruiter)
+                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterRecruiter))]);
+                });
+            } elseif ($filterRecruiter === 'my') {
+                $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
+                $query->where(function ($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    }
+                });
+            }
+            // Jika filter 'all' atau kosong: ekspor seluruh data nasional
+        } else {
+            // User selain Administrator / Administrator Talent Pool: HANYA bisa export data kandidat miliknya sendiri
+            $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
+            $query->where(function ($q) use ($user, $userIdentifiers) {
+                if (!empty($userIdentifiers)) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    if ($user && !empty($user->id)) {
+                        $q->orWhere('recruiter_id', $user->id);
+                    }
+                } elseif ($user && !empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+            if ($user) {
+                $user->applyRoleScopeToCandidates($query);
+            }
+        }
 
         if ($startDate && $endDate) {
             $query->whereBetween('created_at', [
@@ -2257,7 +2306,8 @@ class InterviewController extends Controller
                 $q->where('full_name', 'like', "%{$search}%")
                   ->orWhere('nik', 'like', "%{$search}%")
                   ->orWhere('applied_job', 'like', "%{$search}%")
-                  ->orWhere('area', 'like', "%{$search}%");
+                  ->orWhere('area', 'like', "%{$search}%")
+                  ->orWhere('useras', 'like', "%{$search}%");
             });
         }
 
@@ -2298,6 +2348,209 @@ class InterviewController extends Controller
             }
             fclose($file);
         };
+
+        ActivityLogger::export('Walk Interview', "Mengekspor data walk-in interview sebanyak " . count($candidates) . " baris", [
+            'total_rows' => count($candidates),
+            'is_national' => $canExportNational,
+            'recruiter' => $filterRecruiter,
+        ]);
+
+        return response()->stream($callback, 200, $headers);
+    }
+
+    /**
+     * Export Data Kandidat Interview ke format CSV / Spreadsheet
+     * Otorisasi: Administrator dan Administrator Talent Pool dapat ekspor skala nasional,
+     * selain itu HANYA dapat ekspor data kandidat usernya sendiri.
+     */
+    public function exportInterview(Request $request)
+    {
+        $user = $this->getCurrentUser();
+        $canExportNational = $user && method_exists($user, 'canExportNationalCandidates') && $user->canExportNationalCandidates();
+
+        $tab = $request->query('tab', 'interview');
+        $search = $request->query('search_my', $request->query('search'));
+        $searchArea = $request->query('search_area', $request->query('area'));
+        $filterUser = $request->query('filter_user', $request->query('recruiter'));
+        $startDate = $request->query('start_date', $request->query('start'));
+        $endDate = $request->query('end_date', $request->query('end'));
+
+        $query = Candidate::with(['principle', 'interviewAssessment']);
+
+        // Filter Tab / Status Seleksi
+        if ($tab === 'done') {
+            $query->whereNotIn('status', ['Arsip', 'archived'])
+                ->where(function ($q) {
+                    $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+                })
+                ->where(function ($sq) {
+                    $sq->where(function ($q2) {
+                        $q2->whereNotNull('ttd_prinsiple')->where('ttd_prinsiple', '!=', '');
+                    })->orWhere(function ($q2) {
+                        $q2->whereNotNull('note_principle')->where('note_principle', '!=', '');
+                    })->orWhere('status_kandidat', 'Terima');
+                });
+        } elseif ($tab === 'arsip') {
+            $query->where(function ($sq) {
+                $sq->where('status', 'Arsip')
+                   ->orWhere('status', 'archived')
+                   ->orWhere('status_kandidat', 'Arsip');
+            });
+        } elseif ($tab === 'all') {
+            // Semua kandidat tanpa filter status
+        } else {
+            // Default tab: interview (kandidat aktif interview yang belum ttd / belum arsip)
+            $query->whereNotIn('status', ['Arsip', 'archived'])
+                ->where(function ($q) {
+                    $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+                })
+                ->where(function ($q) {
+                    $q->whereNull('jenis')->orWhere('jenis', '');
+                })
+                ->where(function ($q) {
+                    $q->whereNull('ttd_prinsiple')->orWhere('ttd_prinsiple', '');
+                });
+        }
+
+        // OTORISASI EKSPOR
+        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
+
+        if ($canExportNational) {
+            // Administrator & Administrator Talent Pool: Berhak ekspor skala nasional
+            if (!empty($filterUser) && !in_array(strtolower($filterUser), ['all', 'semua', 'my', ''])) {
+                $query->where(function ($q) use ($filterUser) {
+                    $q->where('useras', $filterUser)
+                      ->orWhereRaw('LOWER(TRIM(useras)) = ?', [strtolower(trim($filterUser))]);
+                });
+            } elseif ($filterUser === 'my') {
+                $query->where(function ($q) use ($user, $userIdentifiers) {
+                    if (!empty($userIdentifiers)) {
+                        $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                        if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                    } elseif ($user && !empty($user->id)) {
+                        $q->where('recruiter_id', $user->id);
+                    }
+                });
+            }
+            // Jika filterUser 'all' atau kosong: Ekspor seluruh data nasional
+        } else {
+            // Selain itu: HANYA BISA EKSPOR DATA KANDIDAT USERNYA SENDIRI
+            $query->where(function ($q) use ($user, $userIdentifiers) {
+                if (!empty($userIdentifiers)) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $userIdentifiers);
+                    if ($user && !empty($user->id)) $q->orWhere('recruiter_id', $user->id);
+                } elseif ($user && !empty($user->id)) {
+                    $q->where('recruiter_id', $user->id);
+                } else {
+                    $q->whereRaw('1 = 0');
+                }
+            });
+            if ($user) {
+                $user->applyRoleScopeToCandidates($query);
+            }
+        }
+
+        // Filter Area
+        if (!empty($searchArea)) {
+            $query->where('area', 'like', "%{$searchArea}%");
+        }
+
+        // Filter Kata Kunci
+        if (!empty($search)) {
+            $query->where(function ($q) use ($search) {
+                $q->where('full_name', 'like', "%{$search}%")
+                  ->orWhere('nik', 'like', "%{$search}%")
+                  ->orWhere('applied_job', 'like', "%{$search}%")
+                  ->orWhere('area', 'like', "%{$search}%")
+                  ->orWhere('useras', 'like', "%{$search}%");
+            });
+        }
+
+        // Filter Rentang Tanggal
+        if (!empty($startDate) && !empty($endDate)) {
+            $query->whereBetween('created_at', [
+                Carbon::parse($startDate)->startOfDay(),
+                Carbon::parse($endDate)->endOfDay()
+            ]);
+        } elseif (!empty($startDate)) {
+            $query->whereDate('created_at', '>=', $startDate);
+        } elseif (!empty($endDate)) {
+            $query->whereDate('created_at', '<=', $endDate);
+        }
+
+        $candidates = $query->orderBy('id', 'desc')->get();
+        self::attachInhouseEmployeeNames($candidates);
+
+        $tabSuffix = match($tab) {
+            'done' => 'selesai',
+            'arsip' => 'arsip',
+            'all' => 'semua',
+            default => 'interview'
+        };
+        $csvFileName = 'kandidat_interview_' . $tabSuffix . '_' . date('Ymd_His') . '.csv';
+
+        $headers = [
+            "Content-type"        => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename={$csvFileName}",
+            "Pragma"              => "no-cache",
+            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
+            "Expires"             => "0"
+        ];
+
+        $columns = [
+            'NO',
+            'TANGGAL DAFTAR',
+            'NIK',
+            'NAMA KANDIDAT',
+            'TANGGAL LAHIR',
+            'USIA',
+            'PENDIDIKAN',
+            'NO WHATSAPP',
+            'PRINSIPLE',
+            'JABATAN DILAMAR',
+            'AREA',
+            'REKRUTOR / AS',
+            'STATUS TAHAPAN',
+            'STATUS KANDIDAT',
+            'CATATAN / HASIL INTERVIEW'
+        ];
+
+        $callback = function() use ($candidates, $columns) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF)); // UTF-8 BOM untuk Microsoft Excel
+            fputcsv($file, $columns);
+            $no = 1;
+            foreach ($candidates as $c) {
+                $rekrutor = $c->user_name_formatted ?? $c->useras ?? '-';
+                $tahapan = !empty($c->ttd_prinsiple) ? 'Diterima' : (!empty($c->status_kandidat) ? $c->status_kandidat : ($c->status ?? '-'));
+                $catatan = $c->note_principle ?? $c->interviewAssessment?->catatan ?? $c->interviewAssessment?->kesimpulan ?? '-';
+                fputcsv($file, [
+                    $no++,
+                    $c->created_at ? $c->created_at->format('Y-m-d') : '-',
+                    "'" . $c->nik,
+                    $c->full_name,
+                    $c->formatted_birth_date ?? ($c->birth_date ? Carbon::parse($c->birth_date)->format('d/m/Y') : '-'),
+                    $c->age ? $c->age . ' Tahun' : '-',
+                    $c->education ?? '-',
+                    "'" . ($c->whatsapp ?: $c->phone ?: '-'),
+                    $c->principle->name ?? $c->prinsiple ?? '-',
+                    $c->applied_job ?? '-',
+                    $c->area ?? '-',
+                    $rekrutor,
+                    $tahapan,
+                    $c->status_kandidat ?? $c->status ?? '-',
+                    $catatan,
+                ]);
+            }
+            fclose($file);
+        };
+
+        ActivityLogger::export('Interview', "Mengekspor data kandidat interview ({$tab}) sebanyak " . count($candidates) . " baris", [
+            'total_rows' => count($candidates),
+            'tab' => $tab,
+            'is_national' => $canExportNational,
+            'recruiter_filter' => $filterUser,
+        ]);
 
         return response()->stream($callback, 200, $headers);
     }

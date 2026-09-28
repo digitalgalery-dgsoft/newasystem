@@ -54,7 +54,7 @@
             </button>
 
             <!-- 4. Export Data Button -->
-            <a href="{{ route('interview.export') }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all shadow-sm">
+            <a href="{{ route('interview.export', request()->query()) }}" class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all shadow-sm">
                 <i class="fa-solid fa-file-excel text-emerald-600"></i>
                 <span>Export Data</span>
             </a>

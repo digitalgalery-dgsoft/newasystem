@@ -195,39 +195,7 @@ Route::middleware(['auth'])->group(function () {
     Route::match(['get', 'post'], '/interview/odoo/import-nik', [CandidateImportController::class, 'importOdooByNik'])->name('interview.odoo.import_nik');
 
     // Export Interview & Download PDF / Cetak
-    Route::get('/export/interview', function () {
-        $candidates = \App\Models\Candidate::with('principle')->where('status', 'Active')->get();
-        $csvFileName = 'kandidat_interview_' . date('Ymd_His') . '.csv';
-        $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$csvFileName",
-            "Pragma"              => "no-cache",
-            "Cache-Control"       => "must-revalidate, post-check=0, pre-check=0",
-            "Expires"             => "0"
-        ];
-        $columns = ['NO', 'NIK', 'NAMA KANDIDAT', 'TANGGAL LAHIR', 'USIA', 'PENDIDIKAN', 'PRINSIPLE', 'JABATAN', 'AREA', 'STATUS'];
-        $callback = function() use($candidates, $columns) {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, $columns);
-            $no = 1;
-            foreach ($candidates as $c) {
-                fputcsv($file, [
-                    $no++,
-                    $c->nik,
-                    $c->full_name,
-                    $c->formatted_birth_date,
-                    $c->age,
-                    $c->education,
-                    $c->principle->name ?? '-',
-                    $c->applied_job,
-                    $c->area,
-                    $c->status,
-                ]);
-            }
-            fclose($file);
-        };
-        return response()->stream($callback, 200, $headers);
-    })->name('interview.export');
+    Route::get('/export/interview', [InterviewController::class, 'exportInterview'])->name('interview.export');
 
     Route::get('/interview/{id}/pdf', [InterviewController::class, 'downloadPdf'])->name('interview.pdf');
     Route::get('/interview/{id}/print', [InterviewController::class, 'downloadPdf'])->name('interview.print');

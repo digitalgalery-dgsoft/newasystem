@@ -16,7 +16,7 @@
         </div>
 
         <div class="flex flex-wrap items-center gap-2.5">
-            <a href="{{ route('interview.export') }}" class="btn-att-secondary text-xs">
+            <a href="{{ route('interview.export', request()->query()) }}" class="btn-att-secondary text-xs">
                 <i class="fa-solid fa-file-excel text-emerald-600"></i>
                 <span>Export Data</span>
             </a>

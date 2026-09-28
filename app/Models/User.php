@@ -97,6 +97,54 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    /**
+     * Cek apakah user memiliki peran Administrator Talent Pool
+     */
+    public function isAdministratorTalentPool(): bool
+    {
+        $roleName = strtolower(trim($this->role ?? ''));
+        $roleModel = $this->roleModel;
+        if (!$roleModel && is_numeric($this->role)) {
+            $roleModel = Role::find($this->role);
+        }
+
+        $roleModelName = strtolower(trim($roleModel?->name ?? ''));
+        $roleDisplayName = strtolower(trim($roleModel?->display_name ?? ''));
+
+        $talentPoolAdminRoles = [
+            'admin_officer',
+            'administrator_talent_pools',
+            'administrator_talent_pool',
+            'talent_pool_admin',
+            'admin_talent_pool',
+            'admin_talent_pools',
+        ];
+
+        if (in_array($roleName, $talentPoolAdminRoles, true) || in_array($roleModelName, $talentPoolAdminRoles, true)) {
+            return true;
+        }
+
+        if (
+            str_contains($roleName, 'admin_officer') ||
+            str_contains($roleDisplayName, 'administrator talent pool') ||
+            str_contains($roleDisplayName, 'administrator talent pools')
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Cek apakah user berhak mengekspor data kandidat skala nasional
+     * Hanya Administrator dan Administrator Talent Pool yang berhak export data kandidat nasional.
+     * User/role selain itu HANYA bisa export data kandidat miliknya sendiri.
+     */
+    public function canExportNationalCandidates(): bool
+    {
+        return $this->isAdmin() || $this->role === 'admin' || $this->isAdministratorTalentPool();
+    }
+
     public function isHelpdeskAdmin(): bool
     {
         return $this->role === 'admin' || $this->isAdmin();
