@@ -235,6 +235,23 @@ class CbtController extends Controller
             }
 
             $candidate->save();
+            $this->syncProfileAcrossCandidates($candidate, [
+                'full_name' => $candidate->full_name,
+                'birth_place' => $candidate->birth_place,
+                'birth_date' => $candidate->birth_date,
+                'gender' => $candidate->gender,
+                'religion' => $candidate->religion,
+                'education' => $candidate->education,
+                'phone' => $candidate->phone,
+                'whatsapp' => $candidate->whatsapp,
+                'address_ktp' => $candidate->address_ktp,
+                'address_domicile' => $candidate->address_domicile,
+                'height' => $candidate->height,
+                'weight' => $candidate->weight,
+                'marital_status' => $candidate->marital_status,
+                'photo_path' => $candidate->photo_path,
+                'cv_path' => $candidate->cv_path,
+            ]);
             $this->logActivity($candidate, 'Memperbarui Data Pribadi & Kontak', $request);
 
         } elseif ($tab === 'keluarga') {
@@ -248,6 +265,16 @@ class CbtController extends Controller
             $candidate->emergency_contact_relation = $request->emergency_contact_relation;
 
             $candidate->save();
+            $this->syncProfileAcrossCandidates($candidate, [
+                'spouse_name' => $candidate->spouse_name,
+                'spouse_job' => $candidate->spouse_job,
+                'children_count' => $candidate->children_count,
+                'child_order' => $candidate->child_order,
+                'mother_name' => $candidate->mother_name,
+                'emergency_contact_name' => $candidate->emergency_contact_name,
+                'emergency_contact_phone' => $candidate->emergency_contact_phone,
+                'emergency_contact_relation' => $candidate->emergency_contact_relation,
+            ]);
             $this->logActivity($candidate, 'Memperbarui Data Keluarga & Kontak Darurat', $request);
 
         } elseif ($tab === 'keuangan') {
@@ -259,6 +286,14 @@ class CbtController extends Controller
             $candidate->expected_salary = $request->expected_salary ?? 0;
 
             $candidate->save();
+            $this->syncProfileAcrossCandidates($candidate, [
+                'bank_name' => $candidate->bank_name,
+                'bank_account_number' => $candidate->bank_account_number,
+                'bank_account_holder' => $candidate->bank_account_holder,
+                'npwp' => $candidate->npwp,
+                'last_salary' => $candidate->last_salary,
+                'expected_salary' => $candidate->expected_salary,
+            ]);
             $this->logActivity($candidate, 'Memperbarui Data Keuangan & Rekening', $request);
 
         } elseif ($tab === 'tambahan') {
@@ -274,6 +309,18 @@ class CbtController extends Controller
             $candidate->other_skills_level = $request->other_skills_level;
 
             $candidate->save();
+            $this->syncProfileAcrossCandidates($candidate, [
+                'work_motivation' => $candidate->work_motivation,
+                'strengths' => $candidate->strengths,
+                'weaknesses' => $candidate->weaknesses,
+                'current_activity' => $candidate->current_activity,
+                'vehicle' => $candidate->vehicle,
+                'driving_license' => $candidate->driving_license,
+                'computer_skill' => $candidate->computer_skill,
+                'english_skill' => $candidate->english_skill,
+                'other_skills' => $candidate->other_skills,
+                'other_skills_level' => $candidate->other_skills_level,
+            ]);
             $this->logActivity($candidate, 'Memperbarui Data Tambahan & Keterampilan', $request);
 
         } elseif ($tab === 'pengalaman') {
@@ -859,5 +906,20 @@ class CbtController extends Controller
                 'signature_path' => $candidate->signature_path,
                 'statement_agreed' => true,
             ]);
+    }
+
+    private function syncProfileAcrossCandidates(Candidate $candidate, array $attributes): void
+    {
+        if (empty($candidate->nik)) {
+            return;
+        }
+
+        try {
+            Candidate::where('nik', $candidate->nik)
+                ->where('id', '!=', $candidate->id)
+                ->update($attributes);
+        } catch (\Throwable $e) {
+            // Abaikan jika ada kegagalan sinkronisasi profil antar record
+        }
     }
 }

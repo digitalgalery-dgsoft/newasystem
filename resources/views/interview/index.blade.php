@@ -483,7 +483,7 @@
 
                             <!-- PENDIDIKAN -->
                             <td>
-                                <div class="text-xs font-semibold text-slate-800">{{ $candidate->education ?? '-' }}</div>
+                                <div class="text-xs font-semibold text-slate-800">{{ (!empty($candidate->education) && $candidate->education !== '0') ? $candidate->education : '-' }}</div>
                                 @if($candidate->major)
                                     <div class="text-[10px] text-slate-400 truncate max-w-[120px]">{{ $candidate->major }}</div>
                                 @endif
@@ -548,6 +548,10 @@
                                 @if($candidate->is_komputer_done)
                                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold shadow-sm" title="Sudah Tes Komputer">
                                         <i class="fa-solid fa-check"></i>
+                                    </span>
+                                @elseif(isset($candidate->is_komputer) && ($candidate->is_komputer === 0 || $candidate->is_komputer === '0'))
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" title="Tidak Wajib Komputer (N/A)">
+                                        <i class="fa-solid fa-minus"></i>
                                     </span>
                                 @else
                                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold" title="Belum Selesai">
@@ -736,7 +740,7 @@
                                 <div class="text-[11px] text-slate-500 font-medium">{{ $candidate->age }} Thn</div>
                             </td>
                             <td>
-                                <div class="text-xs font-semibold text-slate-800">{{ $candidate->education ?? '-' }}</div>
+                                <div class="text-xs font-semibold text-slate-800">{{ (!empty($candidate->education) && $candidate->education !== '0') ? $candidate->education : '-' }}</div>
                                 @if($candidate->major)
                                     <div class="text-[10px] text-slate-400 truncate max-w-[120px]">{{ $candidate->major }}</div>
                                 @endif
@@ -789,6 +793,8 @@
                             <td class="text-center">
                                 @if($candidate->is_komputer_done)
                                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-emerald-100 text-emerald-600 text-xs font-bold shadow-sm" title="Sudah Tes Komputer"><i class="fa-solid fa-check"></i></span>
+                                @elseif(isset($candidate->is_komputer) && ($candidate->is_komputer === 0 || $candidate->is_komputer === '0'))
+                                    <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-400 text-xs font-bold" title="Tidak Wajib Komputer (N/A)"><i class="fa-solid fa-minus"></i></span>
                                 @else
                                     <span class="inline-flex items-center justify-center w-6 h-6 rounded-full bg-rose-100 text-rose-500 text-xs font-bold" title="Belum Selesai"><i class="fa-solid fa-xmark"></i></span>
                                 @endif

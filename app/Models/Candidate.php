@@ -550,7 +550,7 @@ class Candidate extends Model
         if (empty($this->birth_date)) $pribadiMissing[] = 'Tanggal Lahir';
         if (empty(trim($this->gender ?? ''))) $pribadiMissing[] = 'Jenis Kelamin';
         if (empty(trim($this->religion ?? ''))) $pribadiMissing[] = 'Agama';
-        if (empty(trim($this->education ?? ''))) $pribadiMissing[] = 'Pendidikan Terakhir';
+        if (empty(trim($this->education ?? '')) || trim((string)$this->education) === '0') $pribadiMissing[] = 'Pendidikan Terakhir';
         if (empty(trim($this->phone ?? '')) && empty(trim($this->whatsapp ?? ''))) $pribadiMissing[] = 'Nomor WhatsApp / HP';
         if (empty($this->height) || floatval($this->height) <= 0) $pribadiMissing[] = 'Tinggi Badan (cm)';
         if (empty($this->weight) || floatval($this->weight) <= 0) $pribadiMissing[] = 'Berat Badan (kg)';
@@ -655,6 +655,70 @@ class Candidate extends Model
         $missing = $this->getMissingProfileFields();
         $isComplete = empty($missing);
 
+        // Auto-heal: Jika profil belum lengkap, cek apakah ada record lain untuk NIK yang sama
+        // yang sudah lengkap atau memiliki data profil yang dapat diwarisi
+        if (!$isComplete && !empty($this->nik)) {
+            $donor = self::where('nik', $this->nik)
+                ->where('id', '!=', $this->id)
+                ->where(function ($q) {
+                    $q->where('is_profile_complete', 1)
+                      ->orWhereNotNull('mother_name')
+                      ->orWhereNotNull('bank_name');
+                })
+                ->orderByDesc('is_profile_complete')
+                ->orderByDesc('id')
+                ->first();
+
+            if ($donor) {
+                $fieldsToSync = [
+                    'education', 'birth_place', 'religion', 'marital_status', 'address_ktp', 'address_domicile',
+                    'expected_salary', 'last_salary', 'height', 'weight', 'mother_name',
+                    'emergency_contact_name', 'emergency_contact_phone', 'emergency_contact_relation',
+                    'bank_name', 'bank_account_number', 'bank_account_holder', 'npwp',
+                    'work_motivation', 'strengths', 'weaknesses', 'current_activity',
+                    'vehicle', 'driving_license', 'computer_skill', 'english_skill', 'other_skills',
+                    'photo_path', 'cv_path', 'signature_path', 'statement_agreed', 'experience_summary'
+                ];
+                $changed = false;
+                foreach ($fieldsToSync as $f) {
+                    $currVal = trim((string)($this->$f ?? ''));
+                    $donorVal = trim((string)($donor->$f ?? ''));
+                    if (($currVal === '' || $currVal === '0') && ($donorVal !== '' && $donorVal !== '0')) {
+                        $this->$f = $donor->$f;
+                        $changed = true;
+                    }
+                }
+
+                if ($donor->is_profile_complete && !$this->is_profile_complete) {
+                    $this->is_profile_complete = true;
+                    $changed = true;
+                }
+
+                if ($changed) {
+                    $this->saveQuietly();
+                }
+
+                // Salin riwayat kerja jika belum ada pada record ini namun tersedia di donor
+                if (!$this->workExperiences()->exists() && $donor->workExperiences()->exists()) {
+                    foreach ($donor->workExperiences as $exp) {
+                        $this->workExperiences()->create([
+                            'company_name'  => $exp->company_name,
+                            'position'      => $exp->position,
+                            'start_date'    => $exp->start_date,
+                            'end_date'      => $exp->end_date,
+                            'salary'        => $exp->salary,
+                            'job_desc'      => $exp->job_desc,
+                            'leave_reason'  => $exp->leave_reason,
+                            'order'         => $exp->order,
+                        ]);
+                    }
+                }
+
+                $missing = $this->getMissingProfileFields();
+                $isComplete = empty($missing);
+            }
+        }
+
         if ($this->is_profile_complete !== $isComplete) {
             $this->updateQuietly(['is_profile_complete' => $isComplete]);
         }
@@ -694,7 +758,7 @@ class Candidate extends Model
 
     public function getAllTestsCompletedAttribute(): bool
     {
-        $requiresComputer = $this->is_komputer ?? true;
+        $requiresComputer = !empty($this->is_komputer) && $this->is_komputer != 0;
         if ($requiresComputer) {
             return $this->is_psikotes_done && $this->is_math_done && $this->is_komputer_done;
         }

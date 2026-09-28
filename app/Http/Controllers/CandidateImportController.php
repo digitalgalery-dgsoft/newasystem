@@ -665,22 +665,42 @@ class CandidateImportController extends Controller
                 $wasActiveArchived = true;
             }
 
+            $rawEdu = is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : ($foundApplicant['type_id'] ?? null);
+            if ($rawEdu === false || $rawEdu === '0') {
+                $rawEdu = null;
+            }
+
+            // Cari data existing candidate dengan NIK yang sama untuk mewarisi profil jika ada
+            $existingProfileCand = Candidate::whereIn('nik', $allPossibleNiks)
+                ->where(function ($q) {
+                    $q->where('is_profile_complete', 1)
+                      ->orWhereNotNull('mother_name')
+                      ->orWhereNotNull('bank_name');
+                })
+                ->orderByDesc('is_profile_complete')
+                ->orderByDesc('id')
+                ->first();
+
+            if (empty($rawEdu) && $existingProfileCand && !empty($existingProfileCand->education) && $existingProfileCand->education !== '0') {
+                $rawEdu = $existingProfileCand->education;
+            }
+
             $candidatePayload = [
                 'nik'                      => $targetNik,
                 'full_name'                => $name,
-                'birth_place'              => $foundApplicant['place_of_birth'] ?? null,
-                'birth_date'               => $birthDate,
-                'address_ktp'              => $foundApplicant['ktp_address'] ?? null,
-                'address_domicile'         => $foundApplicant['ktp_address'] ?? null,
-                'gender'                   => $gender,
-                'height'                   => (int)($foundApplicant['height'] ?? null) ?: null,
-                'weight'                   => (int)($foundApplicant['weight'] ?? null) ?: null,
-                'religion'                 => $foundApplicant['religion'] ?? null,
-                'marital_status'           => $foundApplicant['marital_status'] ?? null,
-                'education'                => is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : ($foundApplicant['type_id'] ?? null),
-                'phone'                    => $phone,
-                'whatsapp'                 => $phone,
-                'email'                    => $foundApplicant['email_from'] ?? null,
+                'birth_place'              => $foundApplicant['place_of_birth'] ?? ($existingProfileCand?->birth_place ?? null),
+                'birth_date'               => $birthDate ?: ($existingProfileCand?->birth_date ?? null),
+                'address_ktp'              => $foundApplicant['ktp_address'] ?? ($existingProfileCand?->address_ktp ?? null),
+                'address_domicile'         => $foundApplicant['ktp_address'] ?? ($existingProfileCand?->address_domicile ?? null),
+                'gender'                   => $gender ?: ($existingProfileCand?->gender ?? null),
+                'height'                   => (int)($foundApplicant['height'] ?? null) ?: ($existingProfileCand?->height ?? null),
+                'weight'                   => (int)($foundApplicant['weight'] ?? null) ?: ($existingProfileCand?->weight ?? null),
+                'religion'                 => $foundApplicant['religion'] ?? ($existingProfileCand?->religion ?? null),
+                'marital_status'           => $foundApplicant['marital_status'] ?? ($existingProfileCand?->marital_status ?? null),
+                'education'                => $rawEdu,
+                'phone'                    => $phone ?: ($existingProfileCand?->phone ?? null),
+                'whatsapp'                 => $phone ?: ($existingProfileCand?->whatsapp ?? null),
+                'email'                    => $foundApplicant['email_from'] ?? ($existingProfileCand?->email ?? null),
                 'area'                     => $area,
                 'penempatan'               => $area,
                 'principle'                => $prinName,
@@ -698,7 +718,29 @@ class CandidateImportController extends Controller
                 'odoo_entity'              => $foundEntity,
                 'odoo_synced_at'           => now(),
                 'odoo_applicant_data'      => $foundApplicant,
-                'is_profile_complete'      => false,
+                'mother_name'              => $existingProfileCand?->mother_name,
+                'emergency_contact_name'   => $existingProfileCand?->emergency_contact_name,
+                'emergency_contact_phone'  => $existingProfileCand?->emergency_contact_phone,
+                'emergency_contact_relation'=> $existingProfileCand?->emergency_contact_relation,
+                'bank_name'                => $existingProfileCand?->bank_name,
+                'bank_account_number'      => $existingProfileCand?->bank_account_number,
+                'bank_account_holder'      => $existingProfileCand?->bank_account_holder,
+                'npwp'                     => $existingProfileCand?->npwp,
+                'work_motivation'          => $existingProfileCand?->work_motivation,
+                'strengths'                => $existingProfileCand?->strengths,
+                'weaknesses'               => $existingProfileCand?->weaknesses,
+                'current_activity'         => $existingProfileCand?->current_activity,
+                'vehicle'                  => $existingProfileCand?->vehicle,
+                'driving_license'          => $existingProfileCand?->driving_license,
+                'computer_skill'           => $existingProfileCand?->computer_skill,
+                'english_skill'            => $existingProfileCand?->english_skill,
+                'other_skills'             => $existingProfileCand?->other_skills,
+                'photo_path'               => $existingProfileCand?->photo_path,
+                'cv_path'                  => $existingProfileCand?->cv_path,
+                'signature_path'           => $existingProfileCand?->signature_path,
+                'statement_agreed'         => $existingProfileCand ? ($existingProfileCand->statement_agreed ? 1 : 0) : 0,
+                'experience_summary'       => $existingProfileCand?->experience_summary,
+                'is_profile_complete'      => $existingProfileCand ? ($existingProfileCand->is_profile_complete ? 1 : 0) : 0,
 
                 // RESET DATA TES ONLINE & EVALUASI KE AWAL
                 'tes_kepribadian'          => null,
@@ -706,8 +748,6 @@ class CandidateImportController extends Controller
                 'tes_komputer'             => null,
                 'tes_ke'                   => 1,
                 'buktikomputer'            => null,
-                'signature_path'           => null,
-                'statement_agreed'         => false,
                 'idprinsiple'              => null,
                 'ttd_prinsiple'            => null,
                 'time_prinsiple'           => null,
@@ -726,6 +766,22 @@ class CandidateImportController extends Controller
 
             $candidate = Candidate::create($candidatePayload);
 
+            // Warisi riwayat kerja jika belum ada pada kandidat baru tapi ada di record lama
+            if ($existingProfileCand && $existingProfileCand->workExperiences()->exists()) {
+                foreach ($existingProfileCand->workExperiences as $exp) {
+                    $candidate->workExperiences()->create([
+                        'company_name'  => $exp->company_name,
+                        'position'      => $exp->position,
+                        'start_date'    => $exp->start_date,
+                        'end_date'      => $exp->end_date,
+                        'salary'        => $exp->salary,
+                        'job_desc'      => $exp->job_desc,
+                        'leave_reason'  => $exp->leave_reason,
+                        'order'         => $exp->order,
+                    ]);
+                }
+            }
+
             // 3. Simpan / Replace ke tb_kandidat jika tabel legacy tersedia
             if ($hasTbKandidat) {
                 $tbKandidatData = [
@@ -739,7 +795,7 @@ class CandidateImportController extends Controller
                     'height'              => (string)($foundApplicant['height'] ?? ''),
                     'weight'              => (string)($foundApplicant['weight'] ?? ''),
                     'religion'            => (string)($foundApplicant['religion'] ?? ''),
-                    'pendidikan_terakhir' => is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : (string)($foundApplicant['type_id'] ?? ''),
+                    'pendidikan_terakhir' => $rawEdu ?: '',
                     'phone'               => $phone,
                     'mobile'              => $phone,
                     'area'                => $area,

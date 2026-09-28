@@ -219,16 +219,16 @@
 
                     <!-- Action Button -->
                     <div class="pt-5 mt-4 border-t border-slate-100">
-                        @if(!$isProfileComplete)
-                            <button disabled class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-lock"></i>
-                                <span>Terkunci (Lengkapi Profil)</span>
-                            </button>
-                        @elseif($psikoSelesai)
+                        @if($psikoSelesai)
                             <a href="{{ route('cbt.kepribadian.result') }}" class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-chart-pie"></i>
                                 <span>Lihat Hasil Evaluasi</span>
                             </a>
+                        @elseif(!$isProfileComplete)
+                            <button disabled class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Terkunci (Lengkapi Profil)</span>
+                            </button>
                         @else
                             <a href="{{ route('cbt.kepribadian') }}" class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-primary hover:bg-primary-700 text-white shadow-md shadow-primary/20 transition-all flex items-center justify-center gap-2">
                                 <span>Mulai Tes Sekarang</span>
@@ -285,16 +285,16 @@
 
                     <!-- Action Button -->
                     <div class="pt-5 mt-4 border-t border-slate-100">
-                        @if(!$isProfileComplete)
-                            <button disabled class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-lock"></i>
-                                <span>Terkunci (Lengkapi Profil)</span>
-                            </button>
-                        @elseif($mathSelesai)
+                        @if($mathSelesai)
                             <a href="{{ route('cbt.matematika.result') }}" class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-all flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-chart-simple"></i>
                                 <span>Lihat Skor & Hasil</span>
                             </a>
+                        @elseif(!$isProfileComplete)
+                            <button disabled class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Terkunci (Lengkapi Profil)</span>
+                            </button>
                         @else
                             <a href="{{ route('cbt.matematika') }}" class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
                                 <span>Mulai Tes Sekarang</span>
@@ -332,6 +332,10 @@
                                 <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[11px] flex items-center gap-1">
                                     <i class="fa-solid fa-check text-[10px]"></i> Selesai
                                 </span>
+                            @elseif(isset($candidate->is_komputer) && ($candidate->is_komputer === 0 || $candidate->is_komputer === '0'))
+                                <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-bold text-[11px] flex items-center gap-1">
+                                    <i class="fa-solid fa-minus text-[10px]"></i> Tidak Wajib (N/A)
+                                </span>
                             @else
                                 <span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[11px] flex items-center gap-1">
                                     <i class="fa-solid fa-clock text-[10px]"></i> Belum Dikerjakan
@@ -340,7 +344,11 @@
                         </div>
 
                         <div class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            Praktik keterampilan komputer berbasis studi kasus operasional. Catat waktu pengerjaan dan unggah tangkapan layar/bukti file.
+                            @if(isset($candidate->is_komputer) && ($candidate->is_komputer === 0 || $candidate->is_komputer === '0'))
+                                Modul tes komputer tidak diwajibkan untuk posisi yang Anda lamar. Anda cukup menyelesaikan Tes Kepribadian dan Tes Matematika.
+                            @else
+                                Praktik keterampilan komputer berbasis studi kasus operasional. Catat waktu pengerjaan dan unggah tangkapan layar/bukti file.
+                            @endif
                             @if($komptSelesai && $komputerResult)
                                 <div class="mt-2 pt-2 border-t border-slate-200 text-teal-700 font-bold text-[11px]">
                                     Waktu: {{ $komputerResult->test_details['duration_formatted'] ?? '-' }} • Bukti: Terkirim
@@ -351,15 +359,20 @@
 
                     <!-- Action Button -->
                     <div class="pt-5 mt-4 border-t border-slate-100">
-                        @if(!$isProfileComplete)
-                            <button disabled class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2">
-                                <i class="fa-solid fa-lock"></i>
-                                <span>Terkunci (Lengkapi Profil)</span>
-                            </button>
-                        @elseif($komptSelesai)
+                        @if($komptSelesai)
                             <button disabled class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 text-emerald-700 border border-emerald-200 cursor-default flex items-center justify-center gap-2">
                                 <i class="fa-solid fa-circle-check"></i>
                                 <span>Bukti Telah Terunggah</span>
+                            </button>
+                        @elseif(isset($candidate->is_komputer) && ($candidate->is_komputer === 0 || $candidate->is_komputer === '0'))
+                            <button disabled class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 text-slate-500 border border-slate-200 cursor-default flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-circle-check text-emerald-500"></i>
+                                <span>Tidak Diwajibkan untuk Posisi Ini</span>
+                            </button>
+                        @elseif(!$isProfileComplete)
+                            <button disabled class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-slate-100 text-slate-400 cursor-not-allowed flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-lock"></i>
+                                <span>Terkunci (Lengkapi Profil)</span>
                             </button>
                         @else
                             <a href="{{ route('cbt.komputer') }}" class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-teal-600 hover:bg-teal-700 text-white shadow-md shadow-teal-600/20 transition-all flex items-center justify-center gap-2">

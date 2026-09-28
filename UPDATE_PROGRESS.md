@@ -3225,6 +3225,45 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 79. 🛠️ Perbaikan Sinkronisasi Profil CBT Kandidat, Inherit Data Lintas Record & Pembersihan Nilai Pendidikan Odoo (28 September 2026)
+- **Investigasi Masalah (Kasus Kandidat Novianti Waruwu - NIK: 1403095511010003)**:
+  - **Keluhan Pengguna**:
+    1. Di dashboard Talent Pool / Interview AS (Medan - Pian Alatas Purba), hasil tes Psikotes dan Math sudah centang hijau (`00:10:18` dan `00:07:59`), status Step Odoo `E-Learning` (ABO), namun kolom Pendidikan tertulis angka `0`.
+    2. Di dashboard CBT kandidat (`/cbt`), muncul banner merah mencolok: *"Data Profil Belum Lengkap! 15 Kolom Belum Terisi. Seluruh modul tes online masih terkunci."* dan tombol pengerjaan/hasil tes terkunci.
+    3. Di tab Arsip Interview, terdapat record lama Novianti Waruwu yang diarsipkan dengan alasan *"KANDIDAT AREA MEDAN SALAH MASUK KAMAR"* oleh Administrator ESA.
+  - **Akar Masalah Teknis (*Root Cause Analysis*)**:
+    1. **Data Tertinggal Saat Re-import / Pemindahan Kamar AS**:
+       - Record ID `66212` (milik admin@asystem.co.id) memiliki profil 100% lengkap (Pendidikan 'SMA / SMK', nama ibu, kontak darurat, bank BCA, dsb., serta 3 riwayat kerja di tabel `work_experiences`).
+       - Ketika diarsipkan karena salah kamar dan dibuat record baru ID `66219` untuk AS Medan (`pianalataspurba95@gmail.com`), penarikan data dari Odoo (`CandidateImportController.php`) tidak mewarisi profil yang telah diisi sebelumnya, sehingga record 66219 memiliki field profil kosong dan `is_profile_complete = false`.
+    2. **Nilai String `'0'` pada Kolom `education`**:
+       - XML-RPC Odoo mengembalikan nilai `false` untuk `type_id` yang kosong.
+       - Pada ekspresi `$foundApplicant['type_id'] ?? null`, nilai `false` tidak dianggap null, sehingga tersimpan ke database MySQL sebagai string `'0'`.
+       - String `'0'` ini menyebabkan kolom Pendidikan di dasbor AS menampilkan angka `0`, dan di validasi kelengkapan profil CBT dianggap tidak valid / kosong.
+    3. **Terkuncinya Tombol Hasil Tes di CBT**:
+       - Pada tampilan `cbt/dashboard.blade.php`, tombol modul tes mengecek status kelengkapan profil terlebih dahulu (`@if(!$isProfileComplete)`), sehingga modul terkunci meskipun kandidat sebenarnya sudah selesai mengerjakan tes.
+- **Solusi & Implementasi Teknis**:
+  1. **Migrasi Data & Pemulihan Record (`2026_09_28_120000_sync_novianti_waruwu_profile_and_experiences.php`)**:
+     - Menyalin data profil lengkap dari record `66212` ke record aktif `66219`.
+     - Memindahkan 3 record `work_experiences` ke record `66219`.
+     - Menetapkan `education = 'SMA / SMK'`, `is_profile_complete = 1`, dan `is_komputer = 0` (karena posisi BA GT / SPG tidak memerlukan tes komputer).
+     - Auto-heal untuk seluruh kandidat aktif lainnya yang memiliki nilai `education = '0'`.
+  2. **Auto-Heal pada Model Candidate (`app/Models/Candidate.php`)**:
+     - Pada `checkProfileCompleteness()`, jika profil kandidat belum lengkap tetapi terdapat record donor dengan NIK yang sama yang sudah lengkap, sistem secara otomatis mewarisi seluruh data profil dan riwayat kerja.
+     - Pada `getMissingProfileFields()`, validasi pendidikan ditingkatkan untuk menolak string `'0'`.
+     - Pada `getAllTestsCompletedAttribute`, posisi non-komputer (`is_komputer == 0`) langsung dinyatakan selesai jika Psikotes dan Matematika telah tuntas.
+  3. **Proteksi Penarikan Odoo (`app/Http/Controllers/CandidateImportController.php`)**:
+     - Memastikan `type_id` dari Odoo yang bernilai `false` atau `'0'` disanitasi menjadi `null`.
+     - Jika NIK kandidat sudah pernah terdaftar di ASystem dan memiliki profil lengkap, penarikan baru secara otomatis mewarisi data profil lengkap dan menduplikasi riwayat pekerjaannya.
+     - Mencegah tabel legacy `tb_kandidat` menyimpan nilai `'0'` pada kolom `pendidikan_terakhir`.
+  4. **Sinkronisasi Lintas Record CBT (`app/Http/Controllers/CbtController.php`)**:
+     - Ditambahkan helper `syncProfileAcrossCandidates()`: setiap kali kandidat menyimpan pembaruan profil di CBT, perubahan langsung disinkronkan ke seluruh record kandidat dengan NIK yang sama.
+  5. **Penyempurnaan UI Dasbor CBT (`resources/views/cbt/dashboard.blade.php`) & Talent Pool (`resources/views/interview/index.blade.php`)**:
+     - Di dasbor CBT: Modul tes yang sudah selesai (`$psikoSelesai`, `$mathSelesai`) langsung menampilkan tombol evaluasi/hasil tes (*Lihat Hasil Evaluasi*, *Lihat Skor & Hasil*).
+     - Untuk modul Tes Komputer: Jika posisi pelamar tidak memerlukan komputer (`is_komputer = 0`), ditampilkan status *"Tidak Wajib (N/A)"* dan badge *"Tidak Diwajibkan untuk Posisi Ini"*.
+     - Di Talent Pool AS: Kolom Pendidikan menampilkan strip (`-`) jika bernilai kosong/'0', dan kolom Computer menampilkan badge minus/N/A jika `is_komputer = 0`.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
