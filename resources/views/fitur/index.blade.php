@@ -749,8 +749,10 @@
             </div>
         </div>
 
+    </div>
+
     <!-- 3. PAPAN PINTASAN & WIDGET DESKTOP (WINDOWS STYLE) -->
-    <div x-data="desktopWidgetManager()" x-init="init()" class="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-6 sm:p-7 relative overflow-hidden transition-all">
+    <div x-data="desktopWidgetManager()" x-init="init()" class="w-full bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-6 sm:p-7 relative overflow-hidden transition-all">
         
         <!-- Header Widget -->
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 mb-5 border-b border-slate-100 dark:border-slate-800">
@@ -820,8 +822,8 @@
         <!-- Desktop Wallpaper / Workspace Area -->
         <div class="rounded-2xl bg-gradient-to-b from-slate-50/80 via-white/50 to-slate-100/60 dark:from-slate-950/40 dark:via-slate-900/30 dark:to-slate-900/60 border border-slate-200/70 dark:border-slate-800/80 p-4 sm:p-6 min-h-[160px] relative">
             
-            <!-- Grid of Windows Desktop Icons -->
-            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9 gap-3 sm:gap-4 items-start justify-items-center">
+            <!-- Grid of Windows Desktop Icons (Full-Width Responsive) -->
+            <div class="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 2xl:grid-cols-12 gap-3 sm:gap-4 items-start justify-items-center">
                 
                 <!-- Active Desktop Shortcut Icons -->
                 <template x-for="item in activeWidgets" :key="item.id">
@@ -1065,7 +1067,6 @@
             <span x-text="toastMessage"></span>
         </div>
 
-    </div>
     </div>
 
 </div>
