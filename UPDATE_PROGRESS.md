@@ -3601,6 +3601,46 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 93. 🖥️ Fitur Papan Pintasan & Widget Desktop (Windows Desktop Icons) di Beranda Utama dengan Filter Hak Akses Peran Pengguna (29 September 2026)
+- **Kebutuhan Pengguna**:
+  - Menghadirkan fitur **Widget & Shortcut Desktop** pada halaman depan / Beranda (`/fitur`).
+  - Pengguna dapat menyematkan dan membuka modul / menu favorit secara instan (seperti *Work Plan*, *Helpdesk*, *Talent Pool*, *CBT*, *Master Karyawan*, *Sync Odoo*, dll.).
+  - Tampilan visual menyerupai **icon aplikasi di desktop Windows 11**:
+    - Kontainer squircle modern dengan palet gradasi cerah yang elegan dan drop shadow lembut.
+    - Mini badge panah shortcut melengkung khas Windows di sudut kiri bawah icon.
+    - Label nama modul yang rapi dan terpusat di bawah icon.
+    - Efek hover desktop tile khas Windows 11 dengan highlight border biru dan transisi interaktif.
+  - **Pembatasan Hak Akses Ketat (Strict Role Filtering)**:
+    - User non-admin (karyawan inhouse, karyawan ratecard) hanya dapat memilih modul operasional universal yang diizinkan untuk mereka (Work Plan, Daily Log, Groups Chat, Helpdesk Support, Buat Tiket, CBT Online, Portal Karir, Profil).
+    - Recruiter & HR dapat mengakses modul di atas ditambah seluruh modul Talent Pool Rekrutmen (Interview, Walkin, Kandidat Portal, AI Ranking, Input Job, Statistik Job, User Client, dll.).
+    - Administrator memiliki akses penuh ke seluruh katalog modul termasuk Master Data (Karyawan, Prinsiple, Math, Personality, Alur Approver) dan Pengaturan Sistem (Sync Odoo, RBAC, Setting AI & WA, Bantuan Login, Audit Log, Kanban Helpdesk).
+  - **Kustomisasi & Persistensi Mandiri**:
+    - Tersedia tombol **"+ Tambah Shortcut"** yang membuka modal katalog modul lengkap dengan fitur pencarian instan (*instant search*) dan tab filter kategori (*Semua Modul, Operasional, Rekrutmen, Master Data, Pengaturan*).
+    - Tersedia **Mode Atur (Edit Mode)** dengan tombol silang (X) pada setiap icon untuk melepas shortcut dari desktop.
+    - Tombol **Reset Default** untuk mengembalikan susunan shortcut ke rekomendasi awal yang disesuaikan dengan peran pengguna saat pertama kali masuk.
+    - Data susunan pintasan tersimpan secara otomatis dan persisten di browser per pengguna (`localStorage` terisolasi berbasis user ID).
+
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Registry & Filter Keamanan Berbasis Peran (`resources/views/fitur/index.blade.php`)**:
+     - Mendefinisikan array `$desktopWidgetRegistry` yang memetakan seluruh modul sistem lengkap dengan URL, icon FontAwesome, gradasi warna Tailwind, shadow, kategori, deskripsi, dan aturan boolean `role_allowed`.
+     - Menyaring array menggunakan `array_filter($desktopWidgetRegistry, fn($item) => $item['role_allowed'] === true)` sehingga browser hanya menerima daftar modul yang benar-benar diizinkan untuk peran user aktif.
+     - Menyediakan daftar kunci default per peran (`$defaultWidgetKeys`) untuk Admin, Tim Rekrutmen, dan Karyawan umum.
+  2. **Komponen Antarmuka Papan Pintasan Desktop Windows 11**:
+     - Membangun container berdesain glassmorphism (`bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/90 dark:bg-slate-900/80`) tepat di bawah Hero Welcome Banner.
+     - Grid desktop responsif (`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9`) yang menata icon layaknya desktop Windows.
+     - Setiap item icon memiliki squircle 64x64px dengan gradasi tematik, badge shortcut Windows, label teks 2 baris terpusat, dan tombol hapus cepat saat hover / edit mode.
+     - Placeholder tile dashed `+ Tambah` di akhir baris grid untuk memudahkan penambahan modul baru.
+  3. **Modal Dialog Katalog Shortcut**:
+     - Modal interaktif Alpine.js (`showAddModal`) yang menampilkan seluruh modul yang berhak diakses.
+     - Dilengkapi kotak pencarian real-time dan tab filter kategori responsif.
+     - Tombol status dinamis: menampilkan badge hijau *"Terpasang"* (bisa diklik untuk melepas) atau tombol biru *"+ Pasang"* untuk langsung menambahkan shortcut ke desktop.
+  4. **State Management & Sinkronisasi Alpine.js (`desktopWidgetManager()`)**:
+     - Disusun dalam fungsi `desktopWidgetManager()` di `@push('scripts')`.
+     - Membaca dan memvalidasi data dari `localStorage.getItem('asystem_desktop_widgets_' + userId)`. Jika data kosong atau terdapat modul yang tidak diizinkan, otomatis dibersihkan dan disesuaikan dengan rekomendasi default.
+     - Mengelola state `activeKeys`, `editMode`, `showAddModal`, `searchQuery`, `selectedCategory`, serta floating toast notifikasi saat shortcut berhasil dipasang atau dilepas.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
