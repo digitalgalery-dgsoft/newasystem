@@ -3668,6 +3668,36 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 95. 🔔 Penambahan Tombol 'Clear' pada Dropdown Lonceng Notifikasi Navbar — Pembersihan Badge Notifikasi & Penandaan Telah Dibaca Global (29 September 2026)
+- **Kebutuhan Pengguna**:
+  - Pada ikon lonceng notifikasi di bilah navigasi (navbar), badge angka notifikasi berwarna merah kerap tampil terus menerus karena menghitung seluruh tiket helpdesk berstatus aktif dan tugas work plan yang belum selesai.
+  - Pengguna membutuhkan tombol **"Clear"** untuk membersihkan badge angka notifikasi agar tidak tampil terus-menerus dan menandai semua notifikasi yang ada sebagai sudah dibaca (*mark as read*).
+  - Saat ada notifikasi atau pesan baru berikutnya setelah tombol Clear ditekan, badge notifikasi dan lonceng notifikasi baru akan aktif kembali secara akurat.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Migrasi Database & Model User (`database/migrations/2026_09_29_101500_add_notifications_read_at_to_users_table.php` & `app/Models/User.php`)**:
+     - Menambahkan kolom `notifications_read_at` (tipe `timestamp`, nullable) pada tabel `users`.
+     - Menambahkan `notifications_read_at` ke properti `$fillable` dan `$casts` (tipe `'datetime'`) pada `App\Models\User`.
+  2. **Endpoint Pembersihan Notifikasi & Penyesuaian Polling (`routes/web.php` & `app/Http/Controllers/WorkPlanChatController.php`)**:
+     - Mendaftarkan rute baru: `POST /workplan-chat/notifications/clear` (`workplan.chat.notifications.clear`).
+     - Menambahkan method `clearNotifications(Request $request)` di `WorkPlanChatController`:
+       - Mengupdate `last_read_at = now()` pada tabel `WpChatGroupMember` untuk seluruh grup chat tempat user terdaftar.
+       - Mengupdate `notifications_read_at = now()` pada record pengguna login di tabel `users`.
+       - Mengembalikan respon JSON terkonfirmasi `{ success: true, notifications_read_at: '...', message: '...' }`.
+     - Memperbarui method `checkNotifications(Request $request)`:
+       - Membaca waktu `$readAt = $user->notifications_read_at`.
+       - Menyaring query `pendingResetsCount`, `unreadTicketsCount`, `unreadTasksCount`, `new_tickets`, `new_replies`, dan `new_tasks` agar hanya menghitung aktivitas baru yang dibuat atau diperbarui setelah `$readAt`.
+       - Query unread chat groups sudah secara otomatis menghitung pesan setelah `last_read_at`.
+       - Menghasilkan `unread_total = 0` seketika setelah tombol clear ditekan, sehingga badge angka merah tidak lagi muncul terus-menerus selama tidak ada aktivitas baru.
+  3. **Antarmuka Dropdown & Alpine.js (`resources/views/layouts/app.blade.php`)**:
+     - Menambahkan tombol **"Clear"** di header dropdown lonceng notifikasi (`px-2 py-0.5 rounded-lg text-[10px] font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200`) dengan ikon check ganda (`fa-solid fa-check-double`).
+     - Menambahkan tombol **"Clear Notif"** di footer dropdown notifikasi di samping tombol Tutup (`text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50`).
+     - Menyediakan state `isClearing: false` dan fungsi asinkron `clearAllNotifications()` di komponen Alpine.js `asystemNotifications()`:
+       - Mengirimkan request POST ke endpoint `workplan.chat.notifications.clear` dengan proteksi token CSRF.
+       - Mereset secara instan nilai `unreadTotal = 0`, `unreadTicketsCount = 0`, `unreadTasksCount = 0`, `pendingResetsCount = 0`, daftar notifikasi, serta mematikan animasi dering lonceng.
+       - Menampilkan feedback floating toast SweetAlert2: *"Notifikasi Ditandai Sudah Dibaca — Badge notifikasi berhasil dibersihkan."*
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

@@ -1590,9 +1590,19 @@
                                     </div>
                                     <span class="text-xs font-bold text-slate-800">Pemberitahuan & Chat</span>
                                 </div>
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
-                                      :class="unreadTotal > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'"
-                                      x-text="unreadTotal > 0 ? (unreadTotal + ' pemberitahuan') : 'Semua terbaca'"></span>
+                                <div class="flex items-center gap-1.5">
+                                    <button type="button" 
+                                            @click="clearAllNotifications()" 
+                                            :disabled="isClearing || unreadTotal === 0"
+                                            class="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold text-slate-600 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed shadow-2xs" 
+                                            title="Tandai semua sudah dibaca & bersihkan badge">
+                                        <i class="fa-solid fa-check-double text-[9px] text-rose-500"></i>
+                                        <span x-text="isClearing ? 'Clearing...' : 'Clear'"></span>
+                                    </button>
+                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded-full"
+                                          :class="unreadTotal > 0 ? 'bg-rose-100 text-rose-700' : 'bg-slate-200 text-slate-600'"
+                                          x-text="unreadTotal > 0 ? (unreadTotal + ' baru') : 'Semua terbaca'"></span>
+                                </div>
                             </div>
 
                             <!-- Desktop Windows Notification Permission Banner -->
@@ -1836,9 +1846,19 @@
                                         <span>Chat</span>
                                     </a>
                                 </div>
-                                <button type="button" @click="isOpen = false" class="text-[11px] font-semibold text-slate-400 hover:text-slate-600 px-2 py-1">
-                                    Tutup
-                                </button>
+                                <div class="flex items-center gap-1">
+                                    <button type="button" 
+                                            @click="clearAllNotifications()" 
+                                            :disabled="isClearing || unreadTotal === 0" 
+                                            class="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2 py-1 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" 
+                                            title="Tandai semua sudah dibaca & bersihkan badge">
+                                        <i class="fa-solid fa-broom text-xs"></i>
+                                        <span>Clear Notif</span>
+                                    </button>
+                                    <button type="button" @click="isOpen = false" class="text-[11px] font-semibold text-slate-400 hover:text-slate-600 px-2 py-1">
+                                        Tutup
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -2141,6 +2161,7 @@
             desktopPermission: ('Notification' in window) ? Notification.permission : 'denied',
             pollTimer: null,
             isRinging: false,
+            isClearing: false,
 
             initNotifications() {
                 // Update permission status
@@ -2563,6 +2584,51 @@
                     // Fail gracefully
                 }
                 @endauth
+            },
+
+            async clearAllNotifications() {
+                if (this.isClearing || this.unreadTotal === 0) return;
+                this.isClearing = true;
+                try {
+                    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+                    const res = await fetch(`{{ route('workplan.chat.notifications.clear') }}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRF-TOKEN': token,
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+
+                    if (res.ok) {
+                        this.unreadTotal = 0;
+                        this.unreadGroups = [];
+                        this.unreadTickets = [];
+                        this.unreadTicketsCount = 0;
+                        this.unreadTasks = [];
+                        this.unreadTasksCount = 0;
+                        this.pendingResets = [];
+                        this.pendingResetsCount = 0;
+                        this.isRinging = false;
+
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire({
+                                toast: true,
+                                position: 'top-end',
+                                icon: 'success',
+                                title: 'Notifikasi Ditandai Sudah Dibaca',
+                                text: 'Badge notifikasi berhasil dibersihkan.',
+                                showConfirmButton: false,
+                                timer: 2500
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error clearing notifications:', e);
+                } finally {
+                    this.isClearing = false;
+                }
             },
 
             escape(str) {

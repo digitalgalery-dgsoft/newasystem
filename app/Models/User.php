@@ -35,6 +35,7 @@ class User extends Authenticatable
         'cover_all_areas',
         'allowed_areas',
         'email_aliases',
+        'notifications_read_at',
     ];
 
     /**
@@ -64,6 +65,7 @@ class User extends Authenticatable
             'cover_all_areas' => 'boolean',
             'allowed_areas' => 'array',
             'email_aliases' => 'array',
+            'notifications_read_at' => 'datetime',
         ];
     }
 

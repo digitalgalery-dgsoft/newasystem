@@ -331,6 +331,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/workplan-chat/groups/{id}/messages', [WorkPlanChatController::class, 'sendMessage'])->name('workplan.chat.messages.send');
     Route::get('/workplan-chat/groups-poll', [WorkPlanChatController::class, 'getGroups'])->name('workplan.chat.groups.poll');
     Route::get('/workplan-chat/notifications/check', [WorkPlanChatController::class, 'checkNotifications'])->name('workplan.chat.notifications.check');
+    Route::post('/workplan-chat/notifications/clear', [WorkPlanChatController::class, 'clearNotifications'])->name('workplan.chat.notifications.clear');
 
     // --- HELPDESK & TICKET PENGGUNA ---
     Route::prefix('helpdesk')->name('helpdesk.')->group(function () {

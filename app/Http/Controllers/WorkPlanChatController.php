@@ -533,6 +533,41 @@ class WorkPlanChatController extends Controller
     }
 
     /**
+     * Tandai semua notifikasi sudah dibaca & bersihkan badge
+     */
+    public function clearNotifications(Request $request)
+    {
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $userName = $this->getUserOfficialName($user);
+        $now = now();
+
+        // 1. Update last_read_at pada semua grup chat user ini
+        WpChatGroupMember::where(function ($q) use ($userName, $user) {
+            $q->where('user_name', $userName)
+              ->orWhere('user_name', $user->name)
+              ->orWhere(DB::raw('LOWER(TRIM(user_name))'), strtolower($userName))
+              ->orWhere(DB::raw('LOWER(TRIM(user_name))'), strtolower($user->name));
+        })->update(['last_read_at' => $now]);
+
+        // 2. Simpan waktu baca notifikasi global pada user
+        $user->notifications_read_at = $now;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'notifications_read_at' => $now->toDateTimeString(),
+            'message' => 'Semua notifikasi berhasil dibersihkan dan ditandai sudah dibaca.',
+        ]);
+    }
+
+    /**
      * Polling Global Notifikasi Chat, Helpdesk Tiket, Balasan, Work Plan & Bantuan Login
      */
     public function checkNotifications(Request $request)
@@ -563,13 +598,18 @@ class WorkPlanChatController extends Controller
         $userName = $this->getUserOfficialName($user);
         $isAdmin = ($user->isAdmin() || $user->role === 'admin');
         $isHelpdeskAdmin = ($isAdmin || $user->isHelpdeskAdmin());
+        $readAt = $user->notifications_read_at;
 
         // 1. Cek Notifikasi Permintaan Reset Password / Bantuan Login (Khusus Admin)
         $pendingResets = [];
         $pendingResetsCount = 0;
         if ($isAdmin) {
-            $pendingResetsCount = \App\Models\PasswordResetRequest::where('status', 'pending')->count();
-            $pendingResets = \App\Models\PasswordResetRequest::where('status', 'pending')
+            $resetQuery = \App\Models\PasswordResetRequest::where('status', 'pending');
+            if ($readAt) {
+                $resetQuery->where('created_at', '>', $readAt);
+            }
+            $pendingResetsCount = (clone $resetQuery)->count();
+            $pendingResets = (clone $resetQuery)
                 ->latest('created_at')
                 ->take(10)
                 ->get()
@@ -690,12 +730,19 @@ class WorkPlanChatController extends Controller
                 $ticketQuery->whereIn('division_id', $myDivisionIds);
             }
 
-            $unreadTicketsCount = (clone $ticketQuery)->whereIn('status', ['open', 'in_progress'])->count();
+            $activeTicketQuery = (clone $ticketQuery)->whereIn('status', ['open', 'in_progress']);
+            if ($readAt) {
+                $activeTicketQuery->where(function ($q) use ($readAt) {
+                    $q->where('created_at', '>', $readAt)
+                      ->orWhere('updated_at', '>', $readAt);
+                });
+            }
 
-            $unreadTickets = (clone $ticketQuery)
-                ->whereIn('status', ['open', 'in_progress'])
+            $unreadTicketsCount = (clone $activeTicketQuery)->count();
+
+            $unreadTickets = (clone $activeTicketQuery)
                 ->with(['creator', 'division'])
-                ->latest('id')
+                ->latest('updated_at')
                 ->take(5)
                 ->get()
                 ->map(function ($t) {
@@ -716,8 +763,12 @@ class WorkPlanChatController extends Controller
             // Ambil tiket baru yang masuk sejak last_ticket_id (untuk Toast & Windows Notification)
             $lastTicketId = (int) $request->query('last_ticket_id', 0);
             if ($lastTicketId > 0) {
-                $newTickets = (clone $ticketQuery)
-                    ->where('id', '>', $lastTicketId)
+                $newTicketQuery = (clone $ticketQuery)
+                    ->where('id', '>', $lastTicketId);
+                if ($readAt) {
+                    $newTicketQuery->where('created_at', '>', $readAt);
+                }
+                $newTickets = $newTicketQuery
                     ->with(['creator', 'division'])
                     ->orderBy('id', 'asc')
                     ->take(10)
@@ -753,24 +804,30 @@ class WorkPlanChatController extends Controller
                                 ->orWhereIn('division_id', $myDivisionIds); // Agen divisi tiket
                         });
                     }
-                })
+                });
+
+            if ($readAt) {
+                $replyQuery->where('created_at', '>', $readAt);
+            }
+
+            $newReplies = $replyQuery
                 ->with(['ticket.division', 'user'])
                 ->orderBy('id', 'asc')
-                ->take(10);
-
-            $newReplies = $replyQuery->get()->map(function ($r) {
-                return [
-                    'id' => $r->id,
-                    'ticket_id' => $r->ticket_id,
-                    'ticket_number' => $r->ticket ? $r->ticket->ticket_number : ('#' . $r->ticket_id),
-                    'ticket_subject' => $r->ticket ? $r->ticket->subject : 'Tiket',
-                    'sender_name' => $r->user ? $r->user->name : 'Petugas Helpdesk',
-                    'sender_avatar' => $r->user ? $r->user->avatar_url : null,
-                    'message_snippet' => \Illuminate\Support\Str::limit($r->message, 120),
-                    'time' => $r->created_at ? $r->created_at->format('H:i') : '',
-                    'url' => route('helpdesk.tickets.show', $r->ticket_id),
-                ];
-            });
+                ->take(10)
+                ->get()
+                ->map(function ($r) {
+                    return [
+                        'id' => $r->id,
+                        'ticket_id' => $r->ticket_id,
+                        'ticket_number' => $r->ticket ? $r->ticket->ticket_number : ('#' . $r->ticket_id),
+                        'ticket_subject' => $r->ticket ? $r->ticket->subject : 'Tiket',
+                        'sender_name' => $r->user ? $r->user->name : 'Petugas Helpdesk',
+                        'sender_avatar' => $r->user ? $r->user->avatar_url : null,
+                        'message_snippet' => \Illuminate\Support\Str::limit($r->message, 120),
+                        'time' => $r->created_at ? $r->created_at->format('H:i') : '',
+                        'url' => route('helpdesk.tickets.show', $r->ticket_id),
+                    ];
+                });
         }
 
         // 5. Notifikasi Tugas Work Plan
@@ -788,10 +845,17 @@ class WorkPlanChatController extends Controller
         });
 
         // Tugas aktif yang belum selesai
-        $unreadTasksCount = (clone $taskQuery)->whereNotIn('status', ['done', 'completed', 'cancelled'])->count();
-        $unreadTasks = (clone $taskQuery)
-            ->whereNotIn('status', ['done', 'completed', 'cancelled'])
-            ->latest('id')
+        $activeTaskQuery = (clone $taskQuery)->whereNotIn('status', ['done', 'completed', 'cancelled']);
+        if ($readAt) {
+            $activeTaskQuery->where(function ($q) use ($readAt) {
+                $q->where('created_at', '>', $readAt)
+                  ->orWhere('updated_at', '>', $readAt);
+            });
+        }
+
+        $unreadTasksCount = (clone $activeTaskQuery)->count();
+        $unreadTasks = (clone $activeTaskQuery)
+            ->latest('updated_at')
             ->take(5)
             ->get()
             ->map(function ($tsk) {
@@ -807,8 +871,12 @@ class WorkPlanChatController extends Controller
             });
 
         if ($lastTaskId > 0) {
-            $newTasks = (clone $taskQuery)
-                ->where('id', '>', $lastTaskId)
+            $newTaskQuery = (clone $taskQuery)
+                ->where('id', '>', $lastTaskId);
+            if ($readAt) {
+                $newTaskQuery->where('created_at', '>', $readAt);
+            }
+            $newTasks = $newTaskQuery
                 ->orderBy('id', 'asc')
                 ->take(10)
                 ->get()
