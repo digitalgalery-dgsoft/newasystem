@@ -298,79 +298,24 @@ class CandidateImportController extends Controller
         $allMatchNiks = array_values(array_unique(array_filter([$cleanNik, $targetNik, $targetKk])));
         $existingCandidates = Candidate::whereIn('nik', $allMatchNiks)->orderBy('id')->get();
 
-        // Cek apakah ada kandidat dengan NIK ini yang saat ini sedang AKTIF dan memiliki AS riil (bukan status Arsip & bukan unassigned)
+        // Cek apakah kandidat dengan NIK ini sudah pernah ada di database
+        $hasExisting = $existingCandidates->isNotEmpty();
         $activeCandidate = $existingCandidates->first(function($c) {
-            if ($c->status === 'Arsip' || $c->status_kandidat === 'Arsip') {
-                return false;
-            }
-            $candUseras = strtolower(trim((string)$c->useras));
-            return (!empty($candUseras) && !in_array($candUseras, ['-', '', 'publik', 'online', 'unassigned', 'null'], true)) 
-                || !empty($c->recruiter_id);
+            return ($c->status !== 'Arsip' && $c->status_kandidat !== 'Arsip');
         });
-
-        $currentUser = $this->getCurrentUser();
-        $isBlocked = false;
-        $isSameUser = false;
-        $blockedData = null;
-        $sameUserData = null;
-
-        if ($activeCandidate) {
-            $isAdminOrTalentPool = $currentUser && (
-                $currentUser->isAdmin() ||
-                ($currentUser->role ?? '') === 'admin' ||
-                (method_exists($currentUser, 'canExportNationalCandidates') && $currentUser->canExportNationalCandidates()) ||
-                (method_exists($currentUser, 'isAdministratorTalentPool') && $currentUser->isAdministratorTalentPool())
-            );
-
-            $isSameUser = $isAdminOrTalentPool ? true : $activeCandidate->isOwnedBy($currentUser ?: ($currentUser->email ?? null));
-            $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
-            $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
-
-            $testsStatus = [];
-            if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
-                $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
-            }
-            if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
-                $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
-                $mScore = $mRes ? $mRes->score : null;
-                $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
-            }
-            if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
-                $testsStatus[] = 'Tes Komputer (Selesai)';
-            }
-            $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses seleksi sedang berjalan';
-            $profComplete = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness());
-
-            $activePrinName = is_object($activeCandidate->principle) ? ($activeCandidate->principle->name ?? '-') : ($activeCandidate->principle ?? '-');
-
-            $candidateInfo = [
-                'id' => $activeCandidate->id,
-                'name' => $activeCandidate->full_name,
-                'nik' => $activeCandidate->nik,
-                'status' => $activeCandidate->status,
-                'as_name' => $asName,
-                'as_email' => $asEmail,
-                'area' => $activeCandidate->area ?? '-',
-                'principle' => $activePrinName,
-                'job' => $activeCandidate->applied_job ?? '-',
-                'tests_text' => $testsText,
-                'is_profile_complete' => $profComplete,
-                'profile_status_text' => $profComplete ? 'Lengkap' : 'Belum Lengkap',
-                'created_at' => $activeCandidate->created_at ? $activeCandidate->created_at->format('d/m/Y H:i') : null,
-            ];
-
-            if ($isSameUser) {
-                // USER / AS SAMA -> BISA TARIK & AKAN OTOMATIS ARSIPKAN DATA SEBELUMNYA
-                $isBlocked = false;
-                $sameUserData = $candidateInfo;
-            } else {
-                // USER / AS BERBEDA -> BLOKIR PENARIKAN!
-                $isBlocked = true;
-                $blockedData = $candidateInfo;
-            }
-        }
-
         $lastExisting = $existingCandidates->last();
+
+        $existingInfo = null;
+        if ($lastExisting) {
+            $existingInfo = [
+                'id'         => $lastExisting->id,
+                'name'       => $lastExisting->full_name,
+                'nik'        => $lastExisting->nik,
+                'status'     => $lastExisting->status,
+                'is_active'  => ($lastExisting->status !== 'Arsip' && $lastExisting->status_kandidat !== 'Arsip'),
+                'created_at' => $lastExisting->created_at ? $lastExisting->created_at->format('d/m/Y H:i') : null,
+            ];
+        }
 
         $rawGender = strtolower(trim((string)($foundApplicant['gender'] ?? '')));
         $gender = 'Laki-laki';
@@ -409,17 +354,10 @@ class CandidateImportController extends Controller
                 'email'        => $foundApplicant['email_from'] ?? null,
                 'gender'       => $gender,
             ],
-            'is_blocked' => $isBlocked,
-            'is_same_user' => $isSameUser,
-            'blocked_data' => $blockedData,
-            'same_user_data' => $sameUserData,
-            'existing_candidate' => $lastExisting ? [
-                'id'         => $lastExisting->id,
-                'name'       => $lastExisting->full_name,
-                'status'     => $lastExisting->status,
-                'is_active'  => ($lastExisting->status !== 'Arsip' && $lastExisting->status_kandidat !== 'Arsip'),
-                'created_at' => $lastExisting->created_at ? $lastExisting->created_at->format('d/m/Y H:i') : null,
-            ] : null,
+            'is_blocked' => false,
+            'has_existing' => $hasExisting,
+            'is_active_existing' => (bool)$activeCandidate,
+            'existing_candidate' => $existingInfo,
         ]);
     }
 
@@ -586,87 +524,26 @@ class CandidateImportController extends Controller
             $existingCandidates = Candidate::whereIn('nik', $allPossibleNiks)->orderBy('id')->get();
             $isReplaced = $existingCandidates->isNotEmpty();
 
-            // VALIDASI PROTEKSI KANDIDAT AKTIF:
-            // Sesuai aturan sistem:
-            // - Jika kandidat aktif under AS tertentu:
-            //   - Jika user / AS yang SAMA (atau Admin / Talent Pool): Otomatis langsung bisa & mengarsipkan data sebelumnya.
-            //   - Jika user / AS yang BERBEDA: Tidak bisa (diblokir) & harus koordinasi dengan AS terkait.
-            // - Jika kandidat berstatus Arsip atau unassigned (belum ada AS): Bebas ditarik oleh user manapun.
-            $activeCandidate = $existingCandidates->first(function($c) {
-                if ($c->status === 'Arsip' || $c->status_kandidat === 'Arsip') {
-                    return false;
-                }
-                $candUseras = strtolower(trim((string)$c->useras));
-                return (!empty($candUseras) && !in_array($candUseras, ['-', '', 'publik', 'online', 'unassigned', 'null'], true)) 
-                    || !empty($c->recruiter_id);
-            });
-
             $hasTbKandidat = Schema::hasTable('tb_kandidat');
             $wasActiveArchived = false;
 
-            if ($activeCandidate) {
-                $isAdminOrTalentPool = $user && (
-                    $user->isAdmin() ||
-                    ($user->role ?? '') === 'admin' ||
-                    (method_exists($user, 'canExportNationalCandidates') && $user->canExportNationalCandidates()) ||
-                    (method_exists($user, 'isAdministratorTalentPool') && $user->isAdministratorTalentPool())
-                );
+            $currentUserName = $user ? ($user->name ?? $user->email) : 'User';
+            $currentUserEmail = $user ? $user->email : 'recruitment@asystem.co.id';
+            $archiveExplanation = 'Otomatis diarsipkan (Auto Replace): Data kandidat baru ditambahkan oleh user ' . $currentUserName . ' (' . $currentUserEmail . ') pada ' . now()->format('d/m/Y H:i');
 
-                $isOwned = $isAdminOrTalentPool ? true : $activeCandidate->isOwnedBy($user ?: $userEmail);
-                $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
-                $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
-
-                if (!$isOwned) {
-                    // USER BERBEDA -> BLOKIR PENARIKAN!
-                    DB::rollBack();
-
-                    $testsStatus = [];
-                    if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
-                        $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
-                    }
-                    if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
-                        $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
-                        $mScore = $mRes ? $mRes->score : null;
-                        $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
-                    }
-                    if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
-                        $testsStatus[] = 'Tes Komputer (Selesai)';
-                    }
-                    $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses seleksi sedang berjalan';
-                    $profText = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness()) ? 'Lengkap' : 'Belum Lengkap';
-                    $activePrinName = is_object($activeCandidate->principle) ? ($activeCandidate->principle->name ?? '-') : ($activeCandidate->principle ?? '-');
-
-                    return response()->json([
-                        'success' => false,
-                        'is_blocked' => true,
-                        'title' => 'Kandidat Aktif Milik AS Lain!',
-                        'message' => "Kandidat dengan NIK {$targetNik} ({$activeCandidate->full_name}) saat ini berstatus AKTIF under AS LAIN: {$asName} ({$asEmail}).\n\n"
-                                   . "• Status Profil: {$profText}\n"
-                                   . "• Progres Tes Online: {$testsText}\n"
-                                   . "• Terdaftar under AS: {$asName} ({$asEmail})\n"
-                                   . "• Area / Posisi: {$activeCandidate->applied_job} • Area {$activeCandidate->area} ({$activePrinName})\n\n"
-                                   . "Sesuai SOP, tarik NIK tidak diperkenankan jika kandidat masih aktif di AS lain. Harap berkoordinasi dengan AS terkait ({$asName} - {$asEmail}).",
-                        'candidate' => [
-                            'id' => $activeCandidate->id,
-                            'name' => $activeCandidate->full_name,
-                            'status' => $activeCandidate->status,
-                            'as_name' => $asName,
-                            'as_email' => $asEmail,
-                            'tests_status' => $testsText,
-                            'profile_status' => $profText,
-                        ]
-                    ], 200);
-                }
-
-                // USER / AS SAMA -> OTOMATIS BISA & ARSIPKAN DATA SEBELUMNYA!
+            // AUTO REPLACE: Setiap data kandidat yang ada sebelumnya dengan NIK ini yang belum berstatus Arsip otomatis diarsipkan
+            if ($existingCandidates->isNotEmpty()) {
                 foreach ($existingCandidates as $existingCand) {
-                    if ($existingCand->status !== 'Arsip' && $existingCand->status_kandidat !== 'Arsip') {
+                    if ($existingCand->status !== 'Arsip' || $existingCand->status_kandidat !== 'Arsip') {
                         $existingCand->status = 'Arsip';
                         if (Schema::hasColumn('candidates', 'status_kandidat')) {
                             $existingCand->status_kandidat = 'Arsip';
                         }
                         if (Schema::hasColumn('candidates', 'archive_reason')) {
-                            $existingCand->archive_reason = 'Otomatis diarsipkan: Tarik NIK ulang dari Odoo oleh AS yang sama (' . ($user->name ?? $userEmail) . ')';
+                            $existingCand->archive_reason = $archiveExplanation;
+                        }
+                        if (Schema::hasColumn('candidates', 'status_replace')) {
+                            $existingCand->status_replace = 'Replaced';
                         }
                         $existingCand->save();
 
@@ -676,7 +553,10 @@ class CandidateImportController extends Controller
                                 $tbData['status_kandidat'] = 'Arsip';
                             }
                             if (Schema::hasColumn('tb_kandidat', 'archive_reason')) {
-                                $tbData['archive_reason'] = $existingCand->archive_reason;
+                                $tbData['archive_reason'] = $archiveExplanation;
+                            }
+                            if (Schema::hasColumn('tb_kandidat', 'alasanarsip')) {
+                                $tbData['alasanarsip'] = $archiveExplanation;
                             }
                             DB::table('tb_kandidat')
                                 ->where('id', $existingCand->id)
@@ -684,11 +564,10 @@ class CandidateImportController extends Controller
                                 ->update($tbData);
                         }
 
-                        ActivityLogger::log('ARCHIVE', 'Odoo Sync', "Mengarsipkan kandidat aktif sebelumnya {$existingCand->full_name} ({$existingCand->id}) karena tarik NIK ulang oleh AS yang sama.", $existingCand);
+                        ActivityLogger::log('ARCHIVE', 'Odoo Sync', "Mengarsipkan kandidat sebelumnya {$existingCand->full_name} ({$existingCand->id}) karena auto replace oleh user: {$currentUserName}.", $existingCand);
+                        $wasActiveArchived = true;
                     }
                 }
-
-                $wasActiveArchived = true;
             }
 
             $rawEdu = is_array($foundApplicant['type_id']) ? $foundApplicant['type_id'][1] : ($foundApplicant['type_id'] ?? null);

@@ -300,98 +300,59 @@ class CandidateImportService
                     $existingCandidates = Candidate::where('nik', $cleanKtp)->orderBy('id')->get();
                     $isReplaced = $existingCandidates->isNotEmpty();
 
-                    // VALIDASI PROTEKSI KANDIDAT AKTIF:
-                    // Sesuai aturan sistem:
-                    // - Jika user / AS yang SAMA yang import lagi: Otomatis langsung bisa & mengarsipkan data sebelumnya.
-                    // - Jika user / AS yang BERBEDA yang import: Tidak bisa (diblokir / di-skip) & harus koordinasi dengan AS terkait.
+                    // AUTO REPLACE KANDIDAT LAMA (JIKA SUDAH ADA NIK SEBELUMNYA):
+                    // Sesuai SOP terbaru: Data NIK lama otomatis diarsipkan & di-replace dengan data baru
+                    // Keterangan arsip mencatat nama user penambah/pengimport data.
                     if ($isReplaced) {
-                        $activeCandidate = $existingCandidates->first(function($c) {
-                            if ($c->status === 'Arsip' || $c->status_kandidat === 'Arsip') {
-                                return false;
-                            }
-                            $candUseras = strtolower(trim((string)$c->useras));
-                            return (!empty($candUseras) && !in_array($candUseras, ['-', '', 'publik', 'online', 'unassigned', 'null'], true)) 
-                                || !empty($c->recruiter_id);
-                        });
+                        $importUser = $userId ? \App\Models\User::find($userId) : \App\Models\User::where('email', $userEmail)->first();
+                        $userName = $importUser ? ($importUser->name ?? $importUser->email) : ($userEmail ?? 'User');
+                        $archiveExplanation = 'Otomatis diarsipkan (Auto Replace): Data kandidat baru ditambahkan oleh user ' . $userName . ' (' . ($userEmail ?? '-') . ') pada ' . now()->format('d/m/Y H:i');
 
-                        if ($activeCandidate) {
-                            $importUser = $userId ? \App\Models\User::find($userId) : \App\Models\User::where('email', $userEmail)->first();
-                            $isAdminOrTalentPool = $importUser && (
-                                $importUser->isAdmin() ||
-                                ($importUser->role ?? '') === 'admin' ||
-                                (method_exists($importUser, 'canExportNationalCandidates') && $importUser->canExportNationalCandidates()) ||
-                                (method_exists($importUser, 'isAdministratorTalentPool') && $importUser->isAdministratorTalentPool())
-                            );
-
-                            $isOwned = $isAdminOrTalentPool ? true : $activeCandidate->isOwnedBy($importUser ?: $userEmail);
-
-                            if (!$isOwned) {
-                                // USER BERBEDA -> DILEWATI / BLOKIR
-                                $asName = $activeCandidate->user_display_name ?: $activeCandidate->useras ?: 'Rekruter Terkait';
-                                $asEmail = $activeCandidate->useras ?: ($activeCandidate->recruiter->email ?? '-');
-
-                                $testsStatus = [];
-                                if ($activeCandidate->is_psikotes_done || !empty($activeCandidate->tes_kepribadian)) {
-                                    $testsStatus[] = 'Tes Kepribadian (' . ($activeCandidate->tes_kepribadian ?: 'Selesai') . ')';
+                        $archivedCount = 0;
+                        foreach ($existingCandidates as $existingCand) {
+                            if ($existingCand->status !== 'Arsip' || $existingCand->status_kandidat !== 'Arsip') {
+                                $existingCand->status = 'Arsip';
+                                if (Schema::hasColumn('candidates', 'status_kandidat')) {
+                                    $existingCand->status_kandidat = 'Arsip';
                                 }
-                                if ($activeCandidate->is_math_done || !empty($activeCandidate->tes_matematika)) {
-                                    $mRes = $activeCandidate->testResults()->where('test_type', 'math')->first();
-                                    $mScore = $mRes ? $mRes->score : null;
-                                    $testsStatus[] = 'Tes Matematika (' . ($mScore !== null ? 'Nilai: ' . $mScore : 'Selesai') . ')';
+                                if (Schema::hasColumn('candidates', 'archive_reason')) {
+                                    $existingCand->archive_reason = $archiveExplanation;
                                 }
-                                if ($activeCandidate->is_computer_done || !empty($activeCandidate->tes_komputer)) {
-                                    $testsStatus[] = 'Tes Komputer (Selesai)';
+                                if (Schema::hasColumn('candidates', 'status_replace')) {
+                                    $existingCand->status_replace = 'Replaced';
                                 }
-                                $testsText = !empty($testsStatus) ? implode(', ', $testsStatus) : 'Proses aktif';
-                                $profText = ($activeCandidate->is_profile_complete || $activeCandidate->checkProfileCompleteness()) ? 'Profil Lengkap' : 'Profil Belum Lengkap';
+                                $existingCand->save();
 
-                                $warnMsg = "Baris {$rowNumber}: NIK {$cleanKtp} ({$applicantsName}) DILEWATI. Kandidat aktif terdaftar under AS LAIN: {$asName} ({$asEmail}). Harap koordinasi dengan AS terkait.";
-
-                                $onEvent('warning', $warnMsg, [
-                                    'row' => $rowNumber,
-                                    'nik' => $cleanKtp,
-                                    'name' => $applicantsName,
-                                    'as_name' => $asName,
-                                    'as_email' => $asEmail,
-                                    'tests' => $testsText,
-                                    'reason' => 'active_candidate_different_user',
-                                ]);
-
-                                $stats['failed']++;
-                                continue;
-                            }
-
-                            // USER / AS SAMA -> OTOMATIS BISA & ARSIPKAN DATA SEBELUMNYA!
-                            foreach ($existingCandidates as $existingCand) {
-                                if ($existingCand->status !== 'Arsip' && $existingCand->status_kandidat !== 'Arsip') {
-                                    $existingCand->status = 'Arsip';
-                                    if (Schema::hasColumn('candidates', 'status_kandidat')) {
-                                        $existingCand->status_kandidat = 'Arsip';
+                                if ($hasTbKandidat) {
+                                    $tbData = ['status' => 'Arsip'];
+                                    if (Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
+                                        $tbData['status_kandidat'] = 'Arsip';
                                     }
-                                    if (Schema::hasColumn('candidates', 'archive_reason')) {
-                                        $existingCand->archive_reason = 'Otomatis diarsipkan: Import ulang oleh AS yang sama (' . ($importUser->name ?? $userEmail) . ')';
+                                    if (Schema::hasColumn('tb_kandidat', 'archive_reason')) {
+                                        $tbData['archive_reason'] = $archiveExplanation;
                                     }
-                                    $existingCand->save();
-
-                                    if ($hasTbKandidat) {
-                                        $tbData = ['status' => 'Arsip'];
-                                        if (Schema::hasColumn('tb_kandidat', 'status_kandidat')) {
-                                            $tbData['status_kandidat'] = 'Arsip';
-                                        }
-                                        if (Schema::hasColumn('tb_kandidat', 'archive_reason')) {
-                                            $tbData['archive_reason'] = $existingCand->archive_reason;
-                                        }
-                                        DB::table('tb_kandidat')
-                                            ->where('id', $existingCand->id)
-                                            ->orWhere('no_ktp', $existingCand->nik)
-                                            ->update($tbData);
+                                    if (Schema::hasColumn('tb_kandidat', 'alasanarsip')) {
+                                        $tbData['alasanarsip'] = $archiveExplanation;
                                     }
-
-                                    ActivityLogger::log('ARCHIVE', 'Candidate Import', "Mengarsipkan kandidat aktif sebelumnya {$existingCand->full_name} ({$existingCand->id}) karena import ulang oleh AS yang sama.", $existingCand);
+                                    DB::table('tb_kandidat')
+                                        ->where('id', $existingCand->id)
+                                        ->orWhere('no_ktp', $existingCand->nik)
+                                        ->update($tbData);
                                 }
-                            }
 
-                            $onEvent('info', "Baris {$rowNumber}: Data kandidat aktif sebelumnya milik Anda ({$activeCandidate->full_name}) otomatis diarsipkan untuk diperbarui dengan batch import terbaru.");
+                                ActivityLogger::log('ARCHIVE', 'Candidate Import', "Mengarsipkan kandidat sebelumnya {$existingCand->full_name} ({$existingCand->id}) karena auto replace oleh user: {$userName}.", $existingCand);
+                                $archivedCount++;
+                            }
+                        }
+
+                        if ($archivedCount > 0) {
+                            $onEvent('replace', "Baris {$rowNumber}: NIK {$cleanKtp} ({$applicantsName}) - Data lama otomatis diarsipkan & di-replace oleh user {$userName}.", [
+                                'row' => $rowNumber,
+                                'nik' => $cleanKtp,
+                                'name' => $applicantsName,
+                                'action' => 'auto_replace',
+                                'user' => $userName,
+                            ]);
                         }
                     }
 

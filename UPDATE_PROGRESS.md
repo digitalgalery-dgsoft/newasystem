@@ -3641,6 +3641,33 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 94. ⚡ Penyempurnaan Metode Import & Tarik NIK Kandidat Interview — Auto Replace Tanpa Notifikasi Blokir AS Lain & Keterangan Arsip Transparan Berbasis User (29 September 2026)
+- **Kebutuhan Pengguna**:
+  - Menghilangkan pembatasan dan notifikasi peringatan *"Kandidat Aktif under AS lain"* yang sebelumnya memblokir penarikan atau import NIK jika kandidat aktif tercatat di bawah AS (Area Supervisor / Rekruter) lain.
+  - Mengubah seluruh alur tarik NIK Odoo maupun import file Excel/stream menjadi mekanisme **Auto Replace** otomatis.
+  - Menyematkan informasi transparan pada keterangan arsip (`archive_reason` & `alasanarsip`) yang menjelaskan secara spesifik nama dan email pengguna (user) yang menambahkan data baru / melakukan auto replace beserta waktu eksekusi.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Tarik NIK Odoo (`app/Http/Controllers/CandidateImportController.php`)**:
+     - **Pencarian NIK (`lookupOdooByNik`)**:
+       - Menghilangkan logika pemblokiran berstatus `is_blocked = true` dan objek `blocked_data` yang memicu popup penolakan.
+       - Menyediakan flag bersih `has_existing` dan ringkasan data kandidat lama tanpa memblokir tombol aksi.
+     - **Simpan & Auto Replace (`importOdooByNik`)**:
+       - Menghapus pengecekan kepemilikan AS (`!$isOwned`) yang sebelumnya membatalkan transaksi (`DB::rollBack()`).
+       - Menerapkan auto-archive terhadap semua record kandidat sebelumnya yang ber-NIK sama (`status = 'Arsip'`, `status_kandidat = 'Arsip'`, `status_replace = 'Replaced'`).
+       - Menyimpan keterangan arsip yang memuat identitas user penambah:
+         > *"Otomatis diarsipkan (Auto Replace): Data kandidat baru ditambahkan oleh user [Nama User] ([Email User]) pada dd/mm/yyyy hh:ii"*
+       - Menyelaraskan pembaruan ke tabel legasi `tb_kandidat` (`status`, `status_kandidat`, `archive_reason`, `alasanarsip`) dan audit trail `ActivityLogger`.
+  2. **Import Excel & Stream Terminal (`app/Services/CandidateImportService.php`)**:
+     - Pada `importRow()`: Menghilangkan pemeriksaan proteksi kepemilikan AS lain yang sebelumnya menyebabkan baris dilewati (*skipped*) dengan status gagal dan warning `active_candidate_different_user`.
+     - Mengubahnya menjadi auto-archive instan terhadap kandidat eksisting dengan keterangan arsip yang sama (`archive_reason` mencatat nama user pengimpor).
+     - Memancarkan event `replace` ke terminal SSE secara mulus sehingga baris data berhasil diproses tanpa error.
+  3. **Antarmuka Modal Tarik NIK Odoo (`resources/views/interview/index.blade.php`)**:
+     - Menghapus komponen banner peringatan keras `previewBlockedAlert`, `previewSameUserActiveNotice`, dan tombol kunci `btnBlockedNotice`.
+     - Menambahkan banner informatif tunggal `previewArchiveNotice` berdesain ramah (`bg-amber-50 border-amber-300`) yang memberi tahu pengguna bahwa NIK telah terdaftar dan akan otomatis di-replace.
+     - Tombol simpan `btnSaveCandidate` selalu tampil aktif, siap klik, dan otomatis bertransformasi label menjadi *"Tarik & Auto Replace Data Kandidat"* saat NIK sudah ada di database.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

@@ -1734,68 +1734,15 @@
                         </span>
                     </div>
 
-                    <!-- Alert jika kandidat AKTIF dan tidak dapat di-replace -->
-                    <div id="previewBlockedAlert" class="hidden p-3.5 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs space-y-2 shadow-xs">
-                        <div class="flex items-center gap-2 font-black text-rose-800 text-xs uppercase tracking-wider">
-                            <i class="fa-solid fa-triangle-exclamation text-rose-600 text-sm shrink-0"></i>
-                            <span>KANDIDAT SUDAH TERDAFTAR & BERSTATUS AKTIF</span>
+                    <!-- Info Auto Replace jika NIK sudah ada sebelumnya -->
+                    <div id="previewArchiveNotice" class="hidden p-3 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 text-xs space-y-1.5 shadow-xs">
+                        <div class="flex items-center gap-2 font-black text-amber-800 text-xs uppercase tracking-wider">
+                            <i class="fa-solid fa-arrows-rotate text-amber-600 text-sm shrink-0"></i>
+                            <span>NIK SUDAH TERDAFTAR SEBELUMNYA (AUTO REPLACE)</span>
                         </div>
                         <p class="leading-relaxed text-[11px] text-slate-700">
-                            Kandidat dengan NIK ini sudah ada di ASystem dalam status <b>AKTIF</b> dengan data profil dan ujian tes online yang telah tercatat.
+                            Kandidat dengan NIK ini sudah ada di ASystem. Melanjutkan proses ini akan <b>otomatis mengarsipkan data sebelumnya</b> dan me-replace dengan data baru dari Odoo.
                         </p>
-                        <div class="p-2.5 bg-white/90 rounded-xl border border-rose-200 text-[11px] space-y-1.5 shadow-2xs">
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-500 font-medium">Terdaftar Under AS / Rekruter:</span>
-                                <span class="font-extrabold text-slate-900" id="previewBlockedAsName">-</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-500 font-medium">Email / Kontak AS:</span>
-                                <span class="font-bold text-indigo-700 font-mono" id="previewBlockedAsEmail">-</span>
-                            </div>
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-500 font-medium">Posisi & Penempatan:</span>
-                                <span class="font-semibold text-slate-800" id="previewBlockedAreaJob">-</span>
-                            </div>
-                            <div class="flex items-center justify-between pt-0.5 border-t border-slate-100">
-                                <span class="text-slate-500 font-medium">Progres CBT & Tes:</span>
-                                <span class="font-bold text-emerald-700" id="previewBlockedTests">-</span>
-                            </div>
-                        </div>
-                        <div class="p-2 bg-amber-50/80 rounded-lg border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-1.5 font-medium leading-snug">
-                            <i class="fa-solid fa-circle-info text-amber-600 text-xs mt-0.5 shrink-0"></i>
-                            <span>Sesuai SOP, data kandidat aktif <b>tidak dapat di-replace</b>. Data baru hanya bisa masuk/me-replace jika data aktif diarsipkan terlebih dahulu. <b>Silakan berkoordinasi dengan AS terkait.</b></span>
-                        </div>
-                    </div>
-
-                    <!-- Alert jika kandidat AKTIF under USER/AS YANG SAMA (Otomatis Arsipkan Data Lama) -->
-                    <div id="previewSameUserActiveNotice" class="hidden p-3.5 rounded-2xl bg-sky-50 border-2 border-sky-300 text-sky-950 text-xs space-y-2 shadow-xs">
-                        <div class="flex items-center gap-2 font-black text-sky-800 text-xs uppercase tracking-wider">
-                            <i class="fa-solid fa-arrows-rotate text-sky-600 text-sm shrink-0"></i>
-                            <span>KANDIDAT AKTIF MILIK ANDA - OTOMATIS DIARSIPKAN</span>
-                        </div>
-                        <p class="leading-relaxed text-[11px] text-slate-700">
-                            Kandidat ini saat ini sedang terdaftar dengan status <b>AKTIF</b> under akun Anda (<b id="previewSameUserAsName">-</b>).
-                        </p>
-                        <div class="p-2.5 bg-white/90 rounded-xl border border-sky-200 text-[11px] space-y-1.5 shadow-2xs">
-                            <div class="flex items-center justify-between">
-                                <span class="text-slate-500 font-medium">Posisi & Penempatan Terakhir:</span>
-                                <span class="font-semibold text-slate-800" id="previewSameUserAreaJob">-</span>
-                            </div>
-                            <div class="flex items-center justify-between pt-0.5 border-t border-slate-100">
-                                <span class="text-slate-500 font-medium">Progres CBT & Tes:</span>
-                                <span class="font-bold text-sky-700" id="previewSameUserTests">-</span>
-                            </div>
-                        </div>
-                        <div class="p-2 bg-emerald-50/90 rounded-lg border border-emerald-200 text-[11px] text-emerald-900 flex items-start gap-1.5 font-medium leading-snug">
-                            <i class="fa-solid fa-circle-check text-emerald-600 text-xs mt-0.5 shrink-0"></i>
-                            <span>Melanjutkan penarikan akan <b>otomatis mengarsipkan</b> data kandidat aktif sebelumnya dan mendaftarkan proses aktif yang baru.</span>
-                        </div>
-                    </div>
-
-                    <!-- Warning jika ada kandidat lama yang sudah berstatus ARSIP -->
-                    <div id="previewArchiveWarning" class="hidden p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-[11px] flex items-center gap-2">
-                        <i class="fa-solid fa-clock-rotate-left text-amber-600 text-xs shrink-0"></i>
-                        <span>NIK ini sebelumnya terdaftar di ASystem dengan status <b>ARSIP</b>. Melanjutkan penarikan akan me-replace dan mengaktifkan kembali data kandidat ini.</span>
                     </div>
                 </div>
 
@@ -1804,10 +1751,6 @@
                     <button type="button" onclick="resetOdooNikModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
                         Batal / Ganti NIK
                     </button>
-                    <div id="btnBlockedNotice" class="hidden inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-rose-100/90 border border-rose-300 text-rose-800 text-xs font-extrabold shadow-xs">
-                        <i class="fa-solid fa-lock text-rose-600"></i>
-                        <span>Penarikan Ditutup: Data Aktif Dilindungi</span>
-                    </div>
                     <button type="button" id="btnSaveCandidate" onclick="saveCandidateFromOdoo()" 
                             class="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold shadow-md shadow-emerald-600/20 transition hover:-translate-y-0.5 cursor-pointer">
                         <i class="fa-solid fa-cloud-arrow-down"></i>
@@ -2319,16 +2262,13 @@
         currentOdooApplicantData = null;
         document.getElementById('odooNikLoading').classList.add('hidden');
         document.getElementById('odooNikPreview').classList.add('hidden');
-        document.getElementById('previewBlockedAlert')?.classList.add('hidden');
-        document.getElementById('previewSameUserActiveNotice')?.classList.add('hidden');
-        document.getElementById('previewArchiveWarning')?.classList.add('hidden');
+        document.getElementById('previewArchiveNotice')?.classList.add('hidden');
         const btnSave = document.getElementById('btnSaveCandidate');
         if (btnSave) {
             btnSave.classList.remove('hidden');
             btnSave.disabled = false;
             btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> <span>Tarik & Proses Kandidat ke ASystem</span>`;
         }
-        document.getElementById('btnBlockedNotice')?.classList.add('hidden');
         document.getElementById('odooNikSuccess').classList.add('hidden');
         document.getElementById('odooNikFooter').classList.remove('hidden');
         const inp = document.getElementById('odooNikInput');
@@ -2426,84 +2366,17 @@
             if (app.age) ttlText += ` (${app.age} Thn)`;
             document.getElementById('previewTtl').textContent = ttlText;
 
-            // Warning & Proteksi Kandidat Aktif
-            const blockedAlert = document.getElementById('previewBlockedAlert');
-            const sameUserNotice = document.getElementById('previewSameUserActiveNotice');
-            const archiveWarn = document.getElementById('previewArchiveWarning');
+            // Cek status kandidat yang sudah ada di database ASystem (Auto Replace)
+            const archiveNotice = document.getElementById('previewArchiveNotice');
             const btnSave = document.getElementById('btnSaveCandidate');
-            const btnBlockedNotice = document.getElementById('btnBlockedNotice');
 
-            if (data.is_blocked && data.blocked_data) {
-                // KASUS 1: Kandidat aktif milik USER LAIN -> BLOKIR PENARIKAN!
-                const b = data.blocked_data;
-                document.getElementById('previewBlockedAsName').textContent = b.as_name || '-';
-                document.getElementById('previewBlockedAsEmail').textContent = b.as_email || '-';
-                document.getElementById('previewBlockedAreaJob').textContent = `${b.job} • Area ${b.area} (${b.principle})`;
-                document.getElementById('previewBlockedTests').textContent = `${b.profile_status_text} • ${b.tests_text}`;
-
-                blockedAlert.classList.remove('hidden');
-                if (sameUserNotice) sameUserNotice.classList.add('hidden');
-                archiveWarn.classList.add('hidden');
-                btnSave.classList.add('hidden');
-                btnBlockedNotice.classList.remove('hidden');
-
-                Swal.fire({
-                    icon: 'warning',
-                    title: 'Kandidat Aktif Milik AS Lain!',
-                    html: `
-                        <div style="text-align: left; font-size: 12.5px; line-height: 1.6;">
-                            <p style="margin-bottom: 8px;">Kandidat <b>${b.name}</b> (NIK: <code>${b.nik}</code>) sudah terdaftar di ASystem dan saat ini berstatus <b>AKTIF</b> under AS lain.</p>
-                            <div style="background-color: #fff1f2; border: 1px solid #fecdd3; padding: 10px; border-radius: 8px; color: #881337; margin-bottom: 10px;">
-                                <div><b>Terdaftar Under AS:</b> ${b.as_name}</div>
-                                <div><b>Email / Akun AS:</b> ${b.as_email}</div>
-                                <div><b>Area / Penempatan:</b> ${b.area} (${b.principle})</div>
-                                <div><b>Progres CBT & Tes:</b> ${b.profile_status_text} • ${b.tests_text}</div>
-                            </div>
-                            <p style="color: #92400e; background-color: #fef3c7; border: 1px solid #fde68a; padding: 8px; border-radius: 6px; font-size: 11.5px; font-weight: 500;">
-                                ⚠️ Sesuai SOP, tarik NIK tidak diperkenankan jika kandidat masih aktif di AS lain. Data baru hanya bisa masuk jika data yang aktif diarsipkan terlebih dahulu. <b>Harap berkoordinasi dengan AS terkait.</b>
-                            </p>
-                        </div>
-                    `,
-                    confirmButtonText: 'Saya Mengerti',
-                    confirmButtonColor: '#e11d48',
-                });
-            } else if (data.is_same_user && data.same_user_data) {
-                // KASUS 2: Kandidat aktif milik USER / AS YANG SAMA -> BISA TARIK & OTOMATIS ARSIPKAN!
-                const s = data.same_user_data;
-                const sameAsNameEl = document.getElementById('previewSameUserAsName');
-                if (sameAsNameEl) {
-                    sameAsNameEl.textContent = `${s.as_name} (${s.as_email})`;
-                }
-                const sameJobEl = document.getElementById('previewSameUserAreaJob');
-                if (sameJobEl) {
-                    sameJobEl.textContent = `${s.job} • Area ${s.area} (${s.principle})`;
-                }
-                const sameTestsEl = document.getElementById('previewSameUserTests');
-                if (sameTestsEl) {
-                    sameTestsEl.textContent = `${s.profile_status_text} • ${s.tests_text}`;
-                }
-
-                blockedAlert.classList.add('hidden');
-                if (sameUserNotice) sameUserNotice.classList.remove('hidden');
-                archiveWarn.classList.add('hidden');
+            if (data.has_existing || data.existing_candidate) {
+                if (archiveNotice) archiveNotice.classList.remove('hidden');
                 btnSave.classList.remove('hidden');
-                btnBlockedNotice.classList.add('hidden');
-                btnSave.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> <span>Tarik & Arsipkan Data Sebelumnya</span>`;
-            } else if (data.existing_candidate) {
-                // KASUS 3: Kandidat lama sudah berstatus ARSIP
-                blockedAlert.classList.add('hidden');
-                if (sameUserNotice) sameUserNotice.classList.add('hidden');
-                archiveWarn.classList.remove('hidden');
-                btnSave.classList.remove('hidden');
-                btnBlockedNotice.classList.add('hidden');
-                btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> <span>Tarik & Proses Kandidat ke ASystem</span>`;
+                btnSave.innerHTML = `<i class="fa-solid fa-arrows-rotate"></i> <span>Tarik & Auto Replace Data Kandidat</span>`;
             } else {
-                // KASUS 4: Kandidat baru
-                blockedAlert.classList.add('hidden');
-                if (sameUserNotice) sameUserNotice.classList.add('hidden');
-                archiveWarn.classList.add('hidden');
+                if (archiveNotice) archiveNotice.classList.add('hidden');
                 btnSave.classList.remove('hidden');
-                btnBlockedNotice.classList.add('hidden');
                 btnSave.innerHTML = `<i class="fa-solid fa-cloud-arrow-down"></i> <span>Tarik & Proses Kandidat ke ASystem</span>`;
             }
 
@@ -2553,10 +2426,10 @@
 
             if (!data.success) {
                 Swal.fire({
-                    icon: data.is_blocked ? 'warning' : 'error',
-                    title: data.title || (data.is_blocked ? 'Kandidat Aktif Tidak Dapat Di-replace!' : 'Gagal Menyimpan'),
+                    icon: 'error',
+                    title: data.title || 'Gagal Menyimpan',
                     html: `<div style="text-align: left; font-size: 13px; line-height: 1.6;">${(data.message || '').replace(/\n/g, '<br>')}</div>`,
-                    confirmButtonColor: data.is_blocked ? '#e11d48' : '#2563eb',
+                    confirmButtonColor: '#2563eb',
                 });
                 return;
             }
