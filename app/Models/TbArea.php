@@ -304,4 +304,30 @@ class TbArea extends Model
 
         return '-';
     }
+
+    /**
+     * Resolusi kode singkatan area resmi untuk penomoran surat (contoh: SBY, JKT, BDG)
+     */
+    public static function getSingkatanByArea(?string $areaName): string
+    {
+        $clean = strtolower(trim($areaName ?? ''));
+        if (empty($clean)) return 'PST';
+
+        foreach (self::getOfficialAreas() as $item) {
+            if (strtolower($item['area']) === $clean || strtolower($item['singkatan']) === $clean) {
+                return strtoupper($item['singkatan']);
+            }
+        }
+
+        // Token substring matching
+        foreach (self::getOfficialAreas() as $item) {
+            if (str_contains($clean, strtolower($item['area']))) {
+                return strtoupper($item['singkatan']);
+            }
+        }
+
+        $alphanumeric = preg_replace('/[^a-zA-Z]/', '', $clean);
+        return strtoupper(substr($alphanumeric, 0, 3) ?: 'PST');
+    }
 }
+

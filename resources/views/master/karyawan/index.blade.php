@@ -1648,6 +1648,28 @@
                 </div>
                 <div><span class="text-slate-400 block text-[11px]">WhatsApp:</span> <strong class="text-emerald-700">${emp.telepon || '-'}</strong></div>
             </div>
+
+            <!-- Tombol Riwayat & Pengajuan Surat Peringatan -->
+            <div class="p-3 bg-slate-50 rounded-xl border border-slate-200/90 flex items-center justify-between gap-2 mt-3">
+                <div class="flex items-center gap-1.5 text-xs text-slate-700 font-bold">
+                    <i class="fa-solid fa-triangle-exclamation text-rose-500 text-sm"></i>
+                    <span>Disiplin & Surat Peringatan:</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="{{ route('warning-letters.index') }}?q=${encodeURIComponent(emp.nik)}" 
+                       class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white text-slate-700 hover:text-rose-600 font-bold text-xs border border-slate-200 shadow-2xs hover:bg-slate-50 transition-colors"
+                       title="Cek Riwayat SP Karyawan Ini">
+                        <i class="fa-solid fa-clock-rotate-left text-[11px] text-slate-400"></i>
+                        <span>Riwayat SP</span>
+                    </a>
+                    <a href="{{ route('warning-letters.create') }}?employee_id=${emp.id}" 
+                       class="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 font-bold text-xs shadow-2xs transition-colors"
+                       title="Buat Pengajuan SP Baru untuk Karyawan Ini">
+                        <i class="fa-solid fa-plus text-[10px]"></i>
+                        <span>Ajukan SP</span>
+                    </a>
+                </div>
+            </div>
         `;
         openModal('detailEmployeeModal');
     }

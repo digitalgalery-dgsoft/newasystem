@@ -333,4 +333,13 @@ class Employee extends Model
             ]
         };
     }
+
+    /**
+     * Riwayat Surat Peringatan karyawan
+     */
+    public function warningLetters(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(WarningLetter::class, 'employee_id')->latest();
+    }
 }
+

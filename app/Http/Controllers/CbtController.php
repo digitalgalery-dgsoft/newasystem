@@ -539,6 +539,12 @@ class CbtController extends Controller
         $candidate->tes_kepribadian = $formattedDuration;
         $candidate->saveQuietly();
 
+        if (!empty($candidate->nik)) {
+            Candidate::where('nik', $candidate->nik)->update([
+                'tes_kepribadian' => $formattedDuration,
+            ]);
+        }
+
         // 4. Update tabel legacy tb_kandidat jika ada
         if (\Illuminate\Support\Facades\Schema::hasTable('tb_kandidat')) {
             \Illuminate\Support\Facades\DB::table('tb_kandidat')

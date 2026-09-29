@@ -24,6 +24,7 @@ use App\Http\Controllers\Helpdesk\HelpdeskTicketController;
 use App\Http\Controllers\Helpdesk\HelpdeskDivisionController;
 use App\Http\Controllers\Helpdesk\HelpdeskCannedController;
 use App\Http\Controllers\Helpdesk\HelpdeskTemplateController;
+use App\Http\Controllers\WarningLetterController;
 
 // ==============================================================
 // 1. RUTE PUBLIK (DAPAT DIAKSES GUEST / TANPA LOGIN)
@@ -347,6 +348,23 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/tickets/{id}/status', [HelpdeskTicketController::class, 'updateStatus'])->name('tickets.status');
         Route::post('/tickets/{id}/close', [HelpdeskTicketController::class, 'closeByUser'])->name('tickets.close');
         Route::post('/tickets/{id}/reopen', [HelpdeskTicketController::class, 'reopenByUser'])->name('tickets.reopen');
+    });
+
+    // --- MODUL SURAT PERINGATAN (SP) - KHUSUS ADMINISTRATOR ---
+    Route::middleware(['admin'])->prefix('warning-letters')->name('warning-letters.')->group(function () {
+        Route::get('/', [WarningLetterController::class, 'index'])->name('index');
+        Route::get('/create', [WarningLetterController::class, 'create'])->name('create');
+        Route::post('/', [WarningLetterController::class, 'store'])->name('store');
+        Route::get('/search-employees', [WarningLetterController::class, 'searchEmployees'])->name('search-employees');
+        Route::get('/{id}', [WarningLetterController::class, 'show'])->name('show');
+        Route::post('/{id}/approve-head', [WarningLetterController::class, 'approveHead'])->name('approve-head');
+        Route::get('/{id}/review-hrd', [WarningLetterController::class, 'reviewHrd'])->name('review-hrd');
+        Route::post('/{id}/approve-hrd', [WarningLetterController::class, 'approveHrd'])->name('approve-hrd');
+        Route::post('/{id}/reject', [WarningLetterController::class, 'reject'])->name('reject');
+        Route::post('/{id}/upload-signed', [WarningLetterController::class, 'uploadSignedDoc'])->name('upload-signed');
+        Route::get('/{id}/download-signed', [WarningLetterController::class, 'downloadSignedDoc'])->name('download-signed');
+        Route::get('/{id}/print-pdf', [WarningLetterController::class, 'printPdf'])->name('print-pdf');
+        Route::post('/{id}/cancel', [WarningLetterController::class, 'cancel'])->name('cancel');
     });
 
     // Alias redirect sistem lama

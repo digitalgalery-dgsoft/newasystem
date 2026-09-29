@@ -1381,6 +1381,22 @@
                                 @endif
                             </div>
                         </li>
+
+                        <!-- SURAT PERINGATAN (SP) (HANYA ADMINISTRATOR) -->
+                        @if(auth()->user()?->isAdmin())
+                        <li>
+                            <a href="{{ route('warning-letters.index') }}" 
+                               title="Surat Peringatan (SP)"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('warning-letters.*') ? 'bg-rose-50 text-rose-700 shadow-xs' : 'text-slate-700 hover:bg-slate-50 hover:text-rose-600' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-triangle-exclamation text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('warning-letters.*') ? 'text-rose-600' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="truncate">Surat Peringatan</span>
+                                @if(request()->routeIs('warning-letters.*'))
+                                    <span x-show="!sidebarCollapsed" class="w-1.5 h-1.5 rounded-full bg-rose-600 ml-auto"></span>
+                                @endif
+                            </a>
+                        </li>
+                        @endif
                     </ul>
                 </div>
 

@@ -3698,6 +3698,268 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 96. 📜 Implementasi Komprehensif Modul Surat Peringatan (SP 1, SP 2, SP 3) — Workflow Pengajuan, Review HRD, Penomoran Otomatis & Cetak PDF Resmi (29 September 2026)
+- **Kebutuhan Pengguna & Ketentuan Bisnis**:
+  - Implementasi modul disiplin pegawai formal melalui penerbitan **Surat Peringatan (SP)** di lingkungan ESA Groups (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah).
+  - Jenis SP dibatasi secara tegas hanya pada: **SP 1 (Peringatan I)**, **SP 2 (Peringatan II)**, dan **SP 3 (Peringatan III / Terakhir)** tanpa SP 0 / Surat Teguran.
+  - **Form Pengajuan Pemohon (Requester)**:
+    - Pemohon (Atasan langsung / User operasional) **TIDAK menginputkan rujukan pasal**.
+    - Pemohon hanya menginput: Identitas Karyawan Terlapor (auto-lookup NIK/Nama/Entitas/Jabatan), Usulan Jenis SP (SP1, SP2, atau SP3), Butir-butir Pelanggaran & Tanggal Pelanggaran (mendukung multiple pelanggaran dinamis / repeater), Kronologi Detail Pelanggaran, dan berkas bukti lampiran opsional.
+  - **Review & Approval HRD**:
+    - Bagian HRD memiliki kewenangan penuh saat approval untuk **menginputkan rujukan pasal resmi** (Peraturan Perusahaan / PKB yang berlaku).
+    - HRD dapat mengedit dan menyesuaikan Jenis SP yang diajukan (misal eskalasi SP1 ke SP2), menyempurnakan redaksi butir pelanggaran, tanggal kejadian, maupun kronologinya sebelum menyetujui.
+  - **Penomoran Surat Resmi Otomatis**:
+    - Nomor surat resmi digenerate otomatis saat HRD menyetujui pengajuan dengan format standar ESA Groups: `[No. Urut (3 Digit)]/[Kode SP]/[Entitas]-[Kode Area]/[Bulan Romawi]/[Tahun]` (contoh: `001/SPII/AMK-SBY/IX/2026`).
+    - Menggunakan tabel penghitung atomic (`warning_letter_counters`) yang thread-safe per entitas dan tahun.
+  - **Pelacakan Dokumen Fisik Tertandatangani**:
+    - Status visual badge merah *"Dokumen Fisik Belum Diunggah"* saat SP disetujui, dan berubah menjadi hijau *"Dokumen Fisik Terarsip"* setelah berkas basah/scan diunggah.
+  - **Cetak Dokumen Resmi PDF (mPDF)**:
+    - Layout kop surat resmi dinamis sesuai entitas (`kopamknew.png`, `kopakp.png`, dll.) yang disematkan via base64, tabel pelanggaran terstruktur, rujukan pasal PP/PKB, 3 kolom tanda tangan (Karyawan, Atasan, HRD/Manajemen), dan verifikasi QR Code terintegrasi.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Migrasi Database (`database/migrations/2026_09_29_110000_create_warning_letters_tables.php`)**:
+     - Tabel `warning_letters`: Menyimpan data utama SP, status (`draft`, `submitted`, `review_hrd`, `approved`, `rejected`, `cancelled`), nomor surat, tanggal terbit, masa berlaku (default 6 bulan), status dokumen fisik tertandatangani (`is_signed_doc_uploaded`), jalur file PDF dan lampiran.
+     - Tabel `warning_letter_violations`: Menyimpan daftar pelanggaran terperinci per surat (tanggal kejadian, ringkasan pelanggaran, kronologi detail).
+     - Tabel `warning_letter_approvals`: Jejak audit approval HRD/Manajemen beserta catatan dan timestamps.
+     - Tabel `warning_letter_counters`: Menyimpan counter nomor urut terisolasi per kode entitas dan tahun kalender.
+  2. **Model Eloquent (`app/Models/`)**:
+     - `WarningLetter.php`: Relasi ke `Employee`, `User` (creator & approved_by), `WarningLetterViolation`, `WarningLetterApproval`. Disertai helper badge status dan dokumen fisik.
+     - `WarningLetterViolation.php`, `WarningLetterApproval.php`, `WarningLetterCounter.php`.
+     - Update relasi pada `app/Models/Employee.php` (`warningLetters()`) dan `app/Models/User.php` (`warningLettersCreated()`).
+     - Menambahkan helper singkatan area pada `app/Models/TbArea.php` (`getSingkatanByArea()`).
+  3. **Controller & Rute (`app/Http/Controllers/WarningLetterController.php` & `routes/web.php`)**:
+     - Didaftarkan 11 rute di bawah prefix `/warning-letters`:
+       - `index` (`warning-letters.index`): Dashboard ringkasan stat card (Total, Review HRD, Disetujui, Fisik Tertunda, Ditolak), filter status & pencarian.
+       - `create` & `store`: Antarmuka formulir pengajuan dengan pencarian live karyawan terlapor.
+       - `searchEmployees`: Endpoint JSON live-search karyawan untuk autocomplete Alpine.js.
+       - `show`: Halaman detail menyeluruh, status timeline pengajuan, rujukan pasal, butir pelanggaran, dan modal upload dokumen fisik.
+       - `reviewHrd` & `approveHrd`: Halaman interaktif khusus HRD untuk menyesuaikan level SP, butir pelanggaran, kronologi, serta rujukan pasal resmi dan menerbitkan nomor surat.
+       - `reject`: Penolakan pengajuan SP dengan alasan tertulis.
+       - `uploadSignedDoc` & `downloadSignedDoc`: Pengunggahan dan pengunduhan berkas fisik basah yang telah ditandatangani ketiga pihak.
+       - `printPdf`: Render PDF resmi berkualitas tinggi via mPDF dengan kop entitas, tabel butir pelanggaran, rujukan pasal PP/PKB, QR code, dan kolom tanda tangan.
+  4. **Antarmuka & Komponen Tampilan Blade (`resources/views/warning_letters/`)**:
+     - `index.blade.php`: Tampilan modern full-width, kartu metrik, tabel interaktif dengan badge status dan badge dokumen fisik, aksi view/review/PDF/upload.
+     - `create.blade.php`: Dropdown live search karyawan (Alpine.js), seleksi jenis SP1/2/3, dynamic violation repeater (tambah/hapus baris pelanggaran), upload berkas lampiran, dan penegasan tanpa input pasal.
+     - `show.blade.php`: Kartu profil karyawan, kartu surat resmi, tabel butir pelanggaran, rujukan pasal resmi, timeline riwayat persetujuan, dan modal seret-lepas berkas dokumen fisik.
+     - `review_hrd.blade.php`: Form penyesuaian khusus HRD untuk mengoreksi redaksi dan menentukan rujukan pasal PP/PKB.
+     - `pdf.blade.php`: Template siap cetak resmi A4 mPDF yang presisi.
+  5. **Integrasi Navigasi & Master Karyawan (`resources/views/layouts/app.blade.php`, `resources/views/fitur/index.blade.php`, `resources/views/master/karyawan/index.blade.php`)**:
+     - Menambahkan menu **"Surat Peringatan"** (`fa-triangle-exclamation`) pada bilah navigasi samping (*sidebar*).
+     - Mendaftarkan kartu widget **Surat Peringatan** pada katalog desktop fitur (`/fitur`).
+     - Menambahkan tombol aksi cepat **"Riwayat SP"** dan **"Ajukan SP"** pada modal detail profil karyawan di Master Karyawan.
+
+
+### 97. 🏛️ Penyempurnaan Alur Approval Bertingkat Surat Peringatan (Pimpinan Pembuat & HRD Dinamis), Form Fullwidth, Tanggal Otomatis & Kop Surat Entitas PDF (29 September 2026)
+- **Kebutuhan Pengguna & Ketentuan Bisnis**:
+  - **Tanggal Pembuatan Otomatis**: Tanggal surat dibuat otomatis hari ini (`tanggal_surat = now()`) dan tanggal expired dihitung otomatis 6 bulan ke depan. Input tanggal pada form create dibuat read-only berbadge *"Otomatis Hari Ini"*.
+  - **Layout Form & Detail Fullwidth**: Form pengajuan SP (`create.blade.php`), halaman detail SP (`show.blade.php`), dan form review HRD (`review_hrd.blade.php`) diperluas menjadi *fullwidth* (`w-full`) sehingga memaksimalkan area kerja di layar lebar.
+  - **Kop Surat Entitas & Berkas PDF Resmi**:
+    - Berkas surat peringatan resmi dibuat dalam bentuk PDF siap cetak dengan kop surat entitas dinamis (`kopamknew.png`, `kopakp.png`, `kopatk.png`, `kopabo.png`, `kopatb.png`).
+    - Saat HRD menyetujui, sistem otomatis meng-generate berkas PDF ke disk penyimpanan (`storage/app/public/sp_documents/SP_[no_surat].pdf`) dan menyimpan jalurnya ke kolom `file_pdf_surat`.
+  - **Approval Bertingkat (Tiered Approval)**:
+    - **Tahap 1 (Pimpinan User Pembuat SP)**:
+      - Pengajuan baru otomatis masuk ke status `review_head`.
+      - Kolom `pimpinan_pembuat` otomatis terisi berdasarkan data atasan di master profil karyawan pembuat (`employees.pimpinan`), atau atasan cabang/area.
+      - Pimpinan yang bersangkutan dapat melakukan review, memberikan catatan pembinaan, dan menyetujui (`approveHead`) sehingga pengajuan naik ke tahap berikutnya (`review_hrd`), atau menolak (`reject`).
+    - **Tahap 2 (HRD Sesuai Role Akses Dinamis)**:
+      - Approver HRD dikonfigurasi dinamis mengadopsi mekanisme modul Master Alur Approver Dinamis (`/master/approval-workflow?module=surat_peringatan`), sama seperti approval kandidat inhouse.
+      - Aturan approver dapat diatur per Area dan per Prinsiple / Entitas.
+      - HRD yang berwenang meninjau pasal pelanggaran (Peraturan Perusahaan / PKB), menerbitkan nomor surat resmi, dan menyelesaikan SP (`approved`).
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Migrasi Database (`database/migrations/2026_09_29_120000_add_tiered_approval_to_warning_letters_table.php`)**:
+     - Menambahkan kolom `pimpinan_pembuat`, `head_approved_by`, `head_approved_at`, `head_notes`, dan `file_pdf_surat` pada tabel `warning_letters`.
+  2. **Model Eloquent (`app/Models/`)**:
+     - `WarningLetter.php`: Menambahkan relasi `headApprover()`, helper otorisasi dinamis `canUserApproveHead(?User $user)` dan `canUserApproveHrd(?User $user)` yang mengevaluasi role akses dinamis di `ApprovalWorkflowStep`.
+     - `ApprovalWorkflowStep.php`: Menambahkan helper `getMatchingRuleForWarningLetter($sp)` dan `getMatchingApproversForWarningLetter($sp)`.
+  3. **Controller & Rute (`app/Http/Controllers/` & `routes/web.php`)**:
+     - `WarningLetterController.php`:
+       - `index()`: Menambahkan tab dan metrik `review_head` (Review Pimpinan).
+       - `create()`: Mengambil otomatis pimpinan akun pembuat dan menetapkan tanggal hari ini.
+       - `store()`: Menginisialisasi status pengajuan ke `review_head` (atau `review_hrd` jika pembuat adalah HR/Admin tanpa pimpinan).
+       - `approveHead()`: Memvalidasi hak pimpinan pembuat, mencatat timestamp & catatan, lalu memajukan status ke `review_hrd`.
+       - `approveHrd()`: Memverifikasi role akses dinamis HRD, menerbitkan nomor surat, dan otomatis merender & menyimpan PDF fisik ke storage `sp_documents/`.
+       - `reject()`: Mendukung penolakan baik di tahap Pimpinan maupun tahap HRD.
+       - `printPdf()`: Render PDF resmi A4 dengan kop entitas base64, barcode C128A/QR code, dan kolom 3 tanda tangan.
+       - Rute baru: `POST /warning-letters/{id}/approve-head` (`warning-letters.approve-head`).
+     - `ApprovalWorkflowController.php`:
+       - Mendukung parameter query `?module=surat_peringatan`.
+       - Menginisialisasi otomatis workflow default: Step 1 (Pimpinan / Atasan Pembuat SP - tipe `head`) dan Step 2 (Approval & Legalitas HRD - tipe `user` dengan aturan approver dinamis).
+  4. **Antarmuka Blade (`resources/views/`)**:
+     - `warning_letters/create.blade.php`: Fullwidth (`w-full`), input tanggal read-only berbadge *"Otomatis Hari Ini"*, field pimpinan pembuat terisi otomatis.
+     - `warning_letters/show.blade.php`: Fullwidth (`w-full`), banner & modal approval pimpinan pembuat, banner approval HRD, kartu riwayat alur berjenjang 2 tahap, dan tombol download PDF resmi.
+     - `warning_letters/review_hrd.blade.php`: Fullwidth (`w-full`).
+     - `warning_letters/pdf.blade.php`: Penyesuaian layout tanda tangan 3 kolom (Karyawan, Atasan Langsung/Pimpinan, HRD) dan barcode C128A.
+     - `warning_letters/index.blade.php`: Tab & kartu filter Review Pimpinan, tombol pintasan *"Setting Approver HRD"* ke `/master/approval-workflow?module=surat_peringatan`.
+     - `master/approval_workflow/index.blade.php`: Navigasi tab switcher antara *Kandidat Inhouse* dan *Surat Peringatan (SP)*.
+- **Uji Coba & Status**:
+  - Seluruh alur (Pembuatan SP ➔ Approval Pimpinan ➔ Approval HRD ➔ Terbit Nomor & PDF) telah terverifikasi sukses via script automated test dan HTTP request lokal (Status 200 OK).
+  - Sistem dijalankan di browser lokal (`http://127.0.0.1:8000/warning-letters`) tanpa deploy ke server produksi sesuai instruksi.
+
+
+### 98. 🖋️ Penyempurnaan Layout PDF (Jeda Tanda Tangan & Footer Barcode), Scoping Hak Akses Dashboard SP & Fitur Pembatalan (Cancel) HRD Kapanpun (29 September 2026)
+- **Kebutuhan Pengguna & Ketentuan Bisnis**:
+  - **Penyempurnaan Area Tanda Tangan PDF**:
+    - Memberikan ruang/jeda vertikal yang lapang (`65px`) antara label pihak penandatangan (*Karyawan Bersangkutan, Atasan Langsung/Pimpinan, HRD Management*) dengan nama penandatangan agar terdapat ruang tanda tangan basah dan stempel fisik yang leluasa.
+    - Menempatkan barcode identifikasi dan label verifikasi digital resmi sebagai **Footer Halaman Tetap (`htmlpagefooter`)** di bagian paling bawah dokumen (bukan lagi menempel di bawah tabel nama penandatangan).
+  - **Scoping Tampilan Data Dashboard Surat Peringatan**:
+    - **User Pembuat Biasa**: Hanya melihat data SP yang diajukan/dibuat oleh dirinya sendiri (`created_by = $user->id`).
+    - **Dashboard Pimpinan (Atasan Pembuat)**: Menampilkan seluruh data pengajuan yang dibuat oleh timnya (bawahan di master karyawan, atau pengajuan yang mencantumkan nama pimpinan tersebut, atau tim se-area penempatan).
+    - **Batasan Aksi Pimpinan**: Pimpinan **hanya dapat melakukan aksi (Approve / Reject) ketika status SP berada pada tahap `review_head` (Review Pimpinan)**. Saat status sudah beralih ke `review_hrd`, `approved`, atau lainnya, tombol aksi tertutup dan data hanya dapat dilihat (*view/detail*).
+    - **Dashboard HRD (Data Nasional & Hak Pembatalan Penuh)**:
+      - Menampilkan seluruh data Surat Peringatan secara nasional lintas seluruh entitas dan cabang.
+      - Tim HRD / Administrator memiliki wewenang penuh untuk **Approve, Tolak (Reject), atau Batalkan (Cancel) data kapanpun**, baik data yang masih dalam tahap review (pimpinan / HRD) maupun data yang sudah selesai disetujui (*approved*).
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Template PDF (`resources/views/warning_letters/pdf.blade.php`) & Controller (`WarningLetterController.php`)**:
+     - Memisahkan tabel tanda tangan 3 pihak menjadi 3 baris terstruktur: Baris 1 (Label & Jabatan), Baris 2 (Row spasi tanda tangan `height: 65px; line-height: 65px;`), Baris 3 (Nama penandatangan bergaris bawah tebal, NIK/Jabatan/Entitas).
+     - Memindahkan blok barcode C128A/QR dan metadata verifikasi ke `<htmlpagefooter name="documentFooter">` dengan konfigurasi `@page { footer: html_documentFooter; margin-bottom: 22mm; }`.
+     - Mengatur margin bawah mPDF menjadi 22mm agar konten tidak menimpa footer.
+  2. **Migrasi Database (`database/migrations/2026_09_29_130000_allow_cancelled_status_in_warning_letters_table.php`)**:
+     - Mengubah kolom `status` pada tabel `warning_letters` menjadi string 50 default `review_head` agar mendukung status `'cancelled'`.
+     - Mengubah kolom `action` pada tabel `warning_letter_approvals` menjadi string 50 agar dapat mencatat aksi audit `'cancel'`.
+  3. **Model Eloquent (`app/Models/WarningLetter.php`)**:
+     - Menambahkan status `cancelled` pada accessor `status_label` (*"Dibatalkan"*) dan `status_badge` (badge merah dengan ikon `fa-ban`).
+     - Memperbarui helper otorisasi `canUserApproveHrd(?User $user)` agar HRD dapat memproses approval baik pada status `review_hrd` maupun `review_head` (override).
+     - Menambahkan helper otorisasi `canUserCancel(?User $user): bool` khusus untuk role HRD dan Administrator.
+  4. **Controller & Rute (`app/Http/Controllers/WarningLetterController.php` & `routes/web.php`)**:
+     - `index()`: Mengisolasi query data sesuai 3 level peran: HRD (Nasional), Pimpinan (Data tim + pimpinan_pembuat), dan Pembuat biasa (Hanya miliknya). Menambahkan tab filter `cancelled` dan penghitungan metrik terkait.
+     - `approveHead()`: Mengunci aksi persetujuan pimpinan hanya saat `status === 'review_head'`.
+     - `reviewHrd()` & `approveHrd()`: Mengizinkan tim HRD untuk meninjau dan mengesahkan SP.
+     - `reject()`: Mengizinkan HRD menolak pengajuan kapanpun saat dalam tahap review.
+     - `cancel()`: Endpoint baru `POST /warning-letters/{id}/cancel` bagi HRD/Admin untuk membatalkan SP kapanpun disertai catatan alasan pembatalan resmi.
+  5. **Antarmuka Tampilan Blade (`resources/views/warning_letters/`)**:
+     - `index.blade.php`: Menambahkan tab filter *"Dibatalkan"*, tombol aksi interaktif per peran (Aksi pimpinan hanya muncul saat `review_head`, tombol batalkan SP untuk HRD dengan modal pop-up alasan pembatalan).
+     - `show.blade.php`: Penyesuaian banner Tahap 1 & 2 dengan opsi aksi lengkap untuk HRD, tombol *"Batalkan SP"* di header card, dan modal pembatalan `cancelModal`.
+- **Uji Coba & Status**:
+  - Terverifikasi lolos via skrip automated lifecycle (`test_signature_and_scoping.php`):
+    - PDF ter-generate bersih (68.801 bytes) dengan footer terpisah di bawah dan space tanda tangan 65px.
+    - Scoping terverifikasi: Admin melihat 10 record nasional, Pimpinan melihat 9 record tim, User baru dengan 0 SP melihat 0 record.
+    - Pembatasan aksi pimpinan terverifikasi: status `review_head` = YES, status `review_hrd` = NO.
+    - Kemampuan Cancel HRD terverifikasi: SP berstatus `approved` berhasil dibatalkan menjadi `cancelled` dan tercatat pada log audit.
+    - Seluruh HTTP response 200 OK.
+  - Perubahan tetap tersimpan dan berjalan di server lokal tanpa dideploy ke server produksi.
+
+
+### 99. 👔 Penentuan Otomatis Pimpinan User dari Master Karyawan & Penetapan Lampiran Bukti Pendukung sebagai Opsional (29 September 2026)
+- **Kebutuhan Pengguna & Ketentuan Bisnis**:
+  - **Pimpinan User Ditentukan Otomatis dari Master Karyawan (`employees`)**:
+    - Bagian pimpinan/atasan dari user pembuat SP tidak lagi diisi manual atau ditebak, melainkan otomatis ditarik dan diselaraskan secara sistematis dari data master karyawan (`employees.pimpinan` dan `employees.jabatan_pimpinan`).
+    - Akun pembuat dipetakan ke profil Master Karyawan melalui kesesuaian Email, NIK, atau Nama Karyawan.
+    - Jika profil atasan langsung pada master karyawan belum terisi, sistem menerapkan fallback hierarkis otomatis ke pimpinan aktif di area kerja yang bersangkutan (AM/Manager/Supervisor/Lead/AS), atau menyediakan pilihan terkurasi dari daftar pimpinan aktif di Master Karyawan.
+    - Pada form pengajuan SP, bagian pimpinan pembuat ditampilkan sebagai kartu profil terverifikasi yang terkunci (*read-only card*) dengan badge *"Otomatis dari Master Karyawan"*, sehingga menjamin konsistensi alur approval bertingkat.
+  - **Lampiran Bukti Pendukung Dibuat Opsional**:
+    - Bagian upload berkas pendukung (BAP, foto bukti, atau dokumen kejadian) resmi ditetapkan sebagai **opsional (tidak wajib)**.
+    - User dapat mengajukan usulan Surat Peringatan secara sah meskipun tanpa menyertakan berkas lampiran.
+    - Pada form create, header dan label field upload diberikan badge penanda jelas *"Opsional (Boleh Dikosongkan)"* beserta instruksi penjelasan.
+    - Pada detail halaman SP (`show.blade.php`), jika tidak terdapat lampiran berkas, sistem menampilkan kartu informasi elegan yang menegaskan bahwa pengajuan diproses tanpa lampiran berkas fisik.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Controller (`app/Http/Controllers/WarningLetterController.php`)**:
+     - `create()`:
+       - Memetakan akun user yang sedang login ke tabel `employees` menggunakan pembersihan nama (*clean name matching*), email, dan NIK.
+       - Menarik nama pimpinan (`$creatorEmp->pimpinan`) dan jabatan pimpinan (`$creatorEmp->jabatan_pimpinan`).
+       - Menerapkan fallback hierarkis area leader jika kolom pimpinan belum terisi di profil.
+       - Menyediakan data `$masterLeaders` dari tabel `employees` sebagai fallback pilihan terkurasi.
+     - `store()`:
+       - Memperbarui validasi backend agar `file_pendukung` berstatus `nullable|array` dan `file_pendukung.*` berstatus `nullable|file|max:10240|mimes:pdf,jpg,jpeg,png,doc,docx`.
+       - Menetapkan nilai `file_pendukung` menjadi `null` saat tidak ada berkas yang diunggah.
+       - Menjamin bahwa kolom `pimpinan_pembuat` pada rekaman Surat Peringatan diambil secara otomatis dari master karyawan pembuat.
+  2. **Antarmuka Form Pengajuan (`resources/views/warning_letters/create.blade.php`)**:
+     - Blok Pimpinan (Tahap 1): Menampilkan kartu profil terverifikasi dengan nama pimpinan, jabatan, dan badge hijau/biru *"Terverifikasi Master Karyawan"* dengan hidden input yang terkunci. Menyediakan dropdown select dari Master Karyawan jika profil akun pembuat belum memiliki atasan di master.
+     - Blok Lampiran (Seksi 4): Header seksi dilengkapi badge *"Opsional / Jika Ada"*, label input file dilengkapi badge *"Opsional (Boleh Dikosongkan)"*, serta keterangan petunjuk bahwa usulan SP tetap sah dan dapat diproses tanpa lampiran.
+  3. **Antarmuka Detail SP (`resources/views/warning_letters/show.blade.php`)**:
+     - Menambahkan fallback state elegan pada kartu lampiran ketika `file_pendukung` kosong/null: *"Tidak ada lampiran berkas fisik (Pengajuan tanpa lampiran)"* dengan badge *"Opsional"*.
+- **Uji Coba & Status**:
+  - Terverifikasi lolos via skrip automated lifecycle (`scratch/test_pimpinan_and_lampiran.php`):
+    - Deteksi otomatis pimpinan dari Master Karyawan sukses: `creatorPimpinan = Bapak Manager Hebat`, `creatorPimpinanJabatan = Area Operations Manager`.
+    - Pengajuan SP tanpa lampiran file sukses dibuat dengan status `review_head`, `pimpinan_pembuat` otomatis terisi, dan `file_pendukung` bernilai `NULL (Opsional)`.
+    - Render halaman detail (`show.blade.php`) terverifikasi menampilkan indikator opsional tanpa lampiran secara presisi.
+    - Uji endpoint HTTP GET `/warning-letters/create` mengembalikan respon Status 200 OK.
+  - Perubahan tetap tersimpan dan berjalan di server lokal tanpa dideploy ke server produksi.
+
+
+### 100. 📑 Pembaruan Berkas Kop Surat Resmi 5 Entitas dari Direktori Eksternal (`D:\ASystem\KOP ENTITAS`) (29 September 2026)
+- **Kebutuhan Pengguna & Ketentuan Bisnis**:
+  - Mengganti seluruh file kop surat resmi 5 entitas (AMK, AKP, ATK, ABO, dan ATB) menggunakan berkas resmi terbaru yang disediakan pada direktori `D:\ASystem\KOP ENTITAS`.
+  - Berkas sumber:
+    - `KopAMK.png` (PT Arina Multikarya)
+    - `KopAKP.png` (PT Alva Karya Perkasa)
+    - `KopATK.png` (PT Anugrah Terpercaya Kerja)
+    - `KopABO.png` (PT Arina Bintang Oetama)
+    - `KopATB.jpg` (PT Anugrah Tri Berkah / PT Anugrah Talenta Berkarya)
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Sinkronisasi Berkas (`public/kop/` & `public/kop/logo/`)**:
+     - Menyalin seluruh berkas kop resolusi tinggi dari `D:\ASystem\KOP ENTITAS` ke direktori publik sistem `public/kop/` dan subfolder `public/kop/logo/`.
+     - Melakukan optimasi cerdas pada `KopATB.jpg` (pemangkasan padding canvas kosong 1.030px di sisi atas dan bawah menjadi format banner 4.850 x 1.880 px) sehingga proporsional dan tidak meninggalkan jarak renggang vertikal saat dicetak ke PDF.
+     - Mengonversi dan menduplikasi `KopATB.jpg` menjadi `KopATB.png` dan `kopatb.png` dengan kualitas tinggi.
+     - Memperbarui file `kopamknew.png`, `kopakp.png`, `kopatk.png`, `kopabo.png`, dan `kopatb.png` demi menjaga kompatibilitas mundur (*backward compatibility*) dengan modul PDF rekrutmen / interview (`InterviewPdfService.php`).
+  2. **Controller (`app/Http/Controllers/WarningLetterController.php`)**:
+     - Memperbarui method `generatePdfContent(WarningLetter $letter)` agar memprioritaskan nama file resmi (`KopAMK.png`, `KopAKP.png`, `KopATK.png`, `KopABO.png`, `KopATB.png`/`KopATB.jpg`).
+     - Menambahkan deteksi MIME type dinamis (`image/jpeg` vs `image/png`) untuk encode base64 pada mPDF.
+- **Uji Coba & Status**:
+  - Terverifikasi lolos via skrip automated rendering (`scratch/test_kop_all_entities.php`):
+    - PDF AMK: 81.798 bytes (2 halaman, kop tampil presisi).
+    - PDF AKP: 111.994 bytes (2 halaman, kop tampil presisi).
+    - PDF ATK: 103.173 bytes (2 halaman, kop tampil presisi).
+    - PDF ABO: 108.305 bytes (2 halaman, kop tampil presisi).
+    - PDF ATB: 535.671 bytes (2 halaman, kop tampil presisi).
+  - Perubahan tetap tersimpan dan berjalan di server lokal tanpa dideploy ke server produksi.
+
+
+### 101. 📅 Sinkronisasi Tanggal Surat Resmi & Masa Berlaku 6 Bulan Sejak Tanggal Rilis / Approval HRD (29 September 2026)
+- **Kebutuhan Pengguna & Ketentuan Bisnis**:
+  - **Tanggal Surat Resmi dari Waktu Rilis / Approval HRD**:
+    - Tanggal resmi surat peringatan (`tanggal_surat`) tidak lagi dikunci sejak hari pertama pengusulan/pembuatan draft, melainkan ditetapkan secara definitif pada **waktu surat resmi dirilis / disetujui (*Approve*) oleh bagian HRD**.
+    - Masa berlakunya sanksi selama 6 (enam) bulan kalender (`tanggal_expired`) dihitung tepat dimulai dari tanggal persetujuan/rilis HRD tersebut (`$releaseDate->addMonths(6)`).
+    - Selama proses peninjauan (tahap `review_head` maupun `review_hrd`), tanggal surat belum definitif dan status masa berlaku ditampilkan sebagai *"Menunggu Rilis HRD"*.
+    - Nomor surat resmi yang diterbitkan saat approval HRD menggunakan penomoran bulan romawi dan tahun yang bersesuaian dengan tanggal rilis HRD.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Controller (`app/Http/Controllers/WarningLetterController.php`)**:
+     - Pada method `approveHrd()`:
+       - Menginisialisasi `$releaseDate = Carbon::now()` dan `$expiredDate = (clone $releaseDate)->addMonths(6)`.
+       - Menghasilkan nomor surat resmi (`WarningLetterCounter::generateNextNomorSurat`) menggunakan `$releaseDate` agar romawi bulan dan tahun akurat dengan waktu penerbitan resmi.
+       - Memperbarui rekaman surat dengan `'tanggal_surat' => $releaseDate->toDateString()` dan `'tanggal_expired' => $expiredDate->toDateString()`.
+       - Me-refresh model `$letter->refresh()` sebelum merender berkas PDF dan menyimpannya ke storage publik.
+  2. **Antarmuka Form Pengajuan (`resources/views/warning_letters/create.blade.php`)**:
+     - Mengubah label tanggal menjadi *"Tanggal Pembuatan Pengajuan"* dengan petunjuk informatif bahwa tanggal resmi surat & masa berlaku 6 bulan akan dihitung otomatis saat surat disetujui/dirilis oleh HRD.
+  3. **Antarmuka Telaah HRD (`resources/views/warning_letters/review_hrd.blade.php`)**:
+     - Menambahkan kartu konfirmasi rilis: *"Tanggal surat resmi akan ditetapkan pada hari ini saat disetujui, dan masa berlaku 6 bulan otomatis aktif s/d [Tanggal + 6 Bulan]"*.
+  4. **Antarmuka Detail SP (`resources/views/warning_letters/show.blade.php`)**:
+     - Menyesuaikan blok header tanggal: Sebelum disetujui HRD menampilkan *"Jadwal Rilis & Masa Berlaku: Menunggu Rilis HRD"*. Setelah disetujui menampilkan *"Rilis HRD: [Tanggal Rilis]"* dan *"Berlaku s/d: [Tanggal Expired] (6 Bulan)"*.
+  5. **Antarmuka Indeks Tabel (`resources/views/warning_letters/index.blade.php`)**:
+     - Kolom *Masa Berlaku* pada tabel membedakan status: jika belum disetujui menampilkan badge *"Menunggu Rilis"* dan tanggal diajukan, jika sudah disetujui menampilkan tanggal surat dan tanggal expired 6 bulan.
+- **Uji Coba & Status**:
+  - Terverifikasi lolos via skrip automated lifecycle (`scratch/test_release_date_and_expiry.php`):
+    - Pengajuan yang dibuat pada tanggal lampau berhasil diupdate tanggal suratnya menjadi tanggal rilis HRD hari ini (`2026-09-29`).
+    - Tanggal kedaluwarsa otomatis terhitung tepat 6 bulan kalender ke depan (`2027-03-29`).
+    - File PDF resmi yang terbit (`SP_005_SPI_AMK-SBY_IX_2026.pdf`, 79.808 bytes) memuat tanggal penetapan dan klausa masa berlaku 6 bulan yang selaras.
+    - Respon HTTP GET `/warning-letters/create` terverifikasi 200 OK.
+  - Perubahan tetap tersimpan dan berjalan di server lokal tanpa dideploy ke server produksi.
+
+### 102. 🧠 Perbaikan Pembacaan Data Psikotes CBT di Detail Kandidat Portal & Pembatasan Akses Surat Peringatan Khusus Administrator (29 September 2026)
+- **Investigasi & Masalah Kandidat Portal (Kasus Yasir Ihsanuddin - NIK 3311090606050003)**:
+  - **Gejala**: Pada portal CBT (`/cbt/kepribadian/result`), kandidat telah menyelesaikan Tes Kepribadian DISC (Melankolis 15 Poin, Sanguinis 6 Poin, Koleris 10 Poin, Plegmatis 9 Poin, Durasi 00:10:46), namun pada halaman detail evaluasi rekruter di portal kandidat (`/kandidatportal/{id}`, Tab 4), datanya tidak terbaca dan memunculkan status *"Kandidat Belum Mengikuti Tes Kepribadian"*.
+  - **Akar Masalah**:
+    1. Pada [CandidateEvaluationDataService.php](file:///d:/ASystem/newasystem/app/Services/CandidateEvaluationDataService.php), query ke `tb_hasilpsikotes` dan `testResults` terkunci oleh gatekeeper `$isPsikoCompleted = !empty($candidate->tes_kepribadian)`. Karena kolom `tes_kepribadian` pada tabel `candidates` bernilai NULL (meskipun 40 butir jawaban ada di `tb_hasilpsikotes` dan rekaman ada di `test_results`), service mengabaikan data tersebut dan mengembalikan `$hasPsikotes = false`.
+    2. Pengecekan data tes tidak melakukan resolusi kandidat bersaudara (*sibling records*) dengan NIK yang sama. Jika kandidat terdaftar lebih dari satu kali (misal dari Job Portal dan Walk-In/CBT), hasil tes yang tersimpan di satu ID tidak terbaca di ID lainnya.
+    3. Terdapat inkonsistensi pemetaan kunci DISC pada pembacaan `test_details->counts` yang sempat tertukar antara kode Florence Littauer (`A` = Melankolis, `B` = Sanguinis, `C` = Koleris, `D` = Plegmatis).
+- **Solusi & Implementasi**:
+  1. **Pembaruan Resilien [CandidateEvaluationDataService.php](file:///d:/ASystem/newasystem/app/Services/CandidateEvaluationDataService.php)**:
+     - Mengumpulkan seluruh kandidat ID dengan NIK yang sama (`$siblingIds`).
+     - Selalu memeriksa data jawaban `tb_hasilpsikotes` (menggunakan `$siblingIds` dan NIK kandidat) dan rekaman `testResults` (tipe `psychology`), tanpa bergantung pada nilai awal kolom `$candidate->tes_kepribadian`.
+     - Menyediakan fallback teks soal dari `CbtQuestionService::getDefaultLegacyPersonalityQuestions()` jika teks butir soal di `tb_kepribadian` kosong.
+     - Memperbaiki kalkulasi hitungan temperamen DISC dan pemetaan dominan karakter kerja yang selaras 100% dengan portal CBT.
+     - Melakukan auto-sync / backfill kolom `tes_kepribadian = $psikotesDuration` pada model kandidat dan seluruh rekaman ber-NIK sama secara otomatis saat halaman detail dibuka.
+     - Menerapkan arsitektur pencarian resilient yang sama untuk Tes Matematika (`tb_hasilmath` & `testResults` tipe `math`) dan Tes Komputer (`hasil_kompt` & `testResults` tipe `computer`).
+  2. **Pembaruan [CbtController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CbtController.php)**:
+     - Pada `submitKepribadian()`, menambahkan sinkronisasi otomatis kolom `tes_kepribadian` ke seluruh rekaman ber-NIK sama (`Candidate::where('nik', $candidate->nik)->update(...)`).
+- **Pembatasan Akses Modul Surat Peringatan (SP) Khusus Administrator**:
+  - **Ketentuan**: Fitur Surat Peringatan (SP) diizinkan untuk dideploy ke server produksi, namun **HANYA BISA DIAKSES OLEH AKUN ADMINISTRATOR**. Akun lain (rekruter, pimpinan tim, karyawan) fiturnya disembunyikan dan dilarang mengakses.
+  - **Implementasi Keamanan**:
+    1. **Routing ([routes/web.php](file:///d:/ASystem/newasystem/routes/web.php))**: Membungkus seluruh grup rute `warning-letters.*` dengan middleware `admin` (`EnsureUserIsAdmin`).
+    2. **Controller ([WarningLetterController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/WarningLetterController.php))**: Menambahkan konstruktor `$this->middleware(['auth', 'admin']);` untuk proteksi lapis ganda. User non-admin yang mengakses URL langsung otomatis dialihkan dengan pesan *"Akses Ditolak! Menu hanya dapat diakses oleh Administrator"*.
+    3. **Sidebar Navigasi ([resources/views/layouts/app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php))**: Membungkus menu Surat Peringatan dengan kondisi `@if(auth()->user()?->isAdmin()) ... @endif`. Menu tidak akan muncul pada akun non-admin.
+    4. **Katalog Fitur / Beranda ([resources/views/fitur/index.blade.php](file:///d:/ASystem/newasystem/resources/views/fitur/index.blade.php))**: Menetapkan atribut `'role_allowed' => $isAdmin`. Kartu Surat Peringatan tidak ditampilkan pada dashboard pengguna selain administrator.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
@@ -3705,6 +3967,8 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
    php artisan serve --port=8000
    ```
 2. **Akses Dashboard & Fitur**:
+   - Surat Peringatan (SP): `http://127.0.0.1:8000/warning-letters`
+   - Setting Alur Approver SP: `http://127.0.0.1:8000/master/approval-workflow?module=surat_peringatan`
    - Halaman Beranda: `http://127.0.0.1:8000/fitur`
    - Portal CBT & Test Online Kandidat: `http://127.0.0.1:8000/cbt/login`
    - Master Karyawan: `http://127.0.0.1:8000/master/karyawan`

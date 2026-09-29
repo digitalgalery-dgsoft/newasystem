@@ -27,12 +27,79 @@ class ApprovalWorkflowController extends Controller
             ->first();
 
         if (!$workflow) {
+            $isSP = ($module === 'surat_peringatan');
             $workflow = ApprovalWorkflow::create([
                 'module' => $module,
-                'name' => 'Alur Approval Kandidat Inhouse',
-                'description' => 'Alur approval bertingkat dinamis untuk kandidat inhouse 5 entitas resmi perusahaan.',
+                'name' => $isSP ? 'Alur Approval Surat Peringatan' : 'Alur Approval Kandidat Inhouse',
+                'description' => $isSP 
+                    ? 'Alur persetujuan bertingkat penerbitan Surat Peringatan (Tahap 1: Pimpinan Pembuat, Tahap 2: Approval HRD).' 
+                    : 'Alur approval bertingkat dinamis untuk kandidat inhouse 5 entitas resmi perusahaan.',
                 'is_active' => true,
             ]);
+
+            if ($isSP) {
+                // Auto seed Step 1: Pimpinan Pembuat SP
+                ApprovalWorkflowStep::create([
+                    'workflow_id' => $workflow->id,
+                    'step_order' => 1,
+                    'step_name' => 'Pimpinan / Atasan Pembuat SP',
+                    'approver_type' => 'head',
+                    'area_scope' => 'ALL',
+                    'entity_scope' => 'ALL',
+                    'skip_if_direksi' => false,
+                    'description' => 'Verifikasi dan persetujuan awal oleh atasan / pimpinan langsung dari user yang membuat pengajuan SP.',
+                ]);
+
+                // Auto seed Step 2: Approval & Legalitas HRD
+                $step2 = ApprovalWorkflowStep::create([
+                    'workflow_id' => $workflow->id,
+                    'step_order' => 2,
+                    'step_name' => 'Approval & Legalitas HRD',
+                    'approver_type' => 'user',
+                    'area_scope' => 'ALL',
+                    'entity_scope' => 'ALL',
+                    'skip_if_direksi' => false,
+                    'description' => 'Pemeriksaan rujukan pasal resmi PP/PKB, penyesuaian detail pelanggaran, persetujuan akhir dan penerbitan nomor surat resmi.',
+                ]);
+
+                // Auto seed initial HRD users if available
+                $hrdUsers = User::where('is_active', true)
+                    ->where(function($q) {
+                        $q->whereIn('role', ['admin', 'hrd', 'head_hr', 'hr_manager', 'hr_staff'])
+                          ->orWhere('job_title', 'like', '%HR%');
+                    })->take(5)->get();
+
+                if ($hrdUsers->isNotEmpty()) {
+                    $rules = [
+                        [
+                            'id' => 'rule_' . uniqid(),
+                            'area' => 'ALL',
+                            'prinsiple' => 'ALL',
+                            'user_ids' => $hrdUsers->pluck('id')->toArray(),
+                            'users' => $hrdUsers->map(fn($u) => [
+                                'id' => $u->id,
+                                'name' => $u->name,
+                                'email' => $u->email,
+                                'job_title' => $u->job_title,
+                                'role' => $u->role,
+                            ])->toArray(),
+                        ]
+                    ];
+                    $step2->update(['approval_rules' => $rules]);
+                    foreach ($hrdUsers as $u) {
+                        ApprovalWorkflowStepUser::create([
+                            'step_id' => $step2->id,
+                            'user_id' => $u->id,
+                            'area' => 'ALL',
+                            'prinsiple' => 'ALL',
+                            'user_name' => $u->name,
+                            'user_email' => $u->email,
+                        ]);
+                    }
+                }
+
+                $workflow->load(['steps.stepUsers.user', 'steps.stepUsers.employee']);
+            }
         }
 
         // Daftar Entitas Inhouse Resmi
@@ -67,7 +134,8 @@ class ApprovalWorkflowController extends Controller
             'entities',
             'areas',
             'principles',
-            'availableUsers'
+            'availableUsers',
+            'module'
         ));
     }
 

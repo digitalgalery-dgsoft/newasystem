@@ -162,6 +162,108 @@ class ApprovalWorkflowStep extends Model
     }
 
     /**
+     * Mencari aturan pemetaan dinamis (Area + Prinsiple + Users) yang paling cocok untuk Surat Peringatan (SP)
+     */
+    public function getMatchingRuleForWarningLetter($sp): ?array
+    {
+        $rules = $this->approval_rules;
+        if (empty($rules) || !is_array($rules)) {
+            return null;
+        }
+
+        $spArea = strtoupper(trim($sp->area ?? ''));
+        $isJakarta = str_contains($spArea, 'JAKARTA');
+
+        $spPrin = strtoupper(trim($sp->prinsiple ?? ''));
+        $spEntity = strtoupper(trim($sp->entity ?? ''));
+
+        $matchedRules = [];
+
+        foreach ($rules as $rule) {
+            $ruleArea = strtoupper(trim($rule['area'] ?? 'ALL'));
+            $rulePrin = strtoupper(trim($rule['prinsiple'] ?? 'ALL'));
+
+            // 1. Evaluasi Area
+            $areaMatches = false;
+            $areaScore = 0;
+            if ($ruleArea === 'ALL' || empty($ruleArea)) {
+                $areaMatches = true;
+                $areaScore = 1;
+            } elseif ($ruleArea === 'JAKARTA') {
+                if ($isJakarta) {
+                    $areaMatches = true;
+                    $areaScore = 3;
+                }
+            } elseif ($ruleArea === 'OUTSIDE_JAKARTA') {
+                if (!$isJakarta) {
+                    $areaMatches = true;
+                    $areaScore = 3;
+                }
+            } else {
+                if ($spArea === $ruleArea || str_contains($spArea, $ruleArea)) {
+                    $areaMatches = true;
+                    $areaScore = 4;
+                }
+            }
+
+            if (!$areaMatches) {
+                continue;
+            }
+
+            // 2. Evaluasi Prinsiple / Entitas
+            $prinMatches = false;
+            $prinScore = 0;
+            if ($rulePrin === 'ALL' || empty($rulePrin)) {
+                $prinMatches = true;
+                $prinScore = 1;
+            } elseif ($rulePrin === $spEntity || str_contains($spEntity, $rulePrin)) {
+                $prinMatches = true;
+                $prinScore = 3;
+            } elseif (!empty($spPrin) && (str_contains($spPrin, $rulePrin) || str_contains($rulePrin, $spPrin))) {
+                $prinMatches = true;
+                $prinScore = 4;
+            }
+
+            if (!$prinMatches) {
+                continue;
+            }
+
+            $totalScore = $areaScore + $prinScore;
+            $matchedRules[] = [
+                'score' => $totalScore,
+                'rule' => $rule
+            ];
+        }
+
+        if (empty($matchedRules)) {
+            return null;
+        }
+
+        usort($matchedRules, fn($a, $b) => $b['score'] <=> $a['score']);
+        return $matchedRules[0]['rule'];
+    }
+
+    /**
+     * Dapatkan daftar approver HRD spesifik untuk Surat Peringatan berdasarkan aturan yang cocok
+     */
+    public function getMatchingApproversForWarningLetter($sp): Collection
+    {
+        if ($this->approver_type === 'user' && !empty($this->approval_rules)) {
+            $matchingRule = $this->getMatchingRuleForWarningLetter($sp);
+            if ($matchingRule) {
+                if (!empty($matchingRule['users']) && is_array($matchingRule['users'])) {
+                    return collect($matchingRule['users']);
+                }
+                if (!empty($matchingRule['user_ids']) && is_array($matchingRule['user_ids'])) {
+                    return User::whereIn('id', $matchingRule['user_ids'])->get();
+                }
+            }
+        }
+
+        return $this->stepUsers;
+    }
+
+    /**
      * Cek apakah step ini berlaku untuk kandidat tertentu (berdasarkan aturan dinamis atau filter area & entitas)
      */
     public function matchesCandidate($candidate): bool

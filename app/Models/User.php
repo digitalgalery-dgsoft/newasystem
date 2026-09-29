@@ -118,6 +118,12 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    public function warningLettersCreated(): HasMany
+    {
+        return $this->hasMany(WarningLetter::class, 'created_by');
+    }
+
+
     /**
      * Cek apakah user memiliki peran Administrator Talent Pool
      */

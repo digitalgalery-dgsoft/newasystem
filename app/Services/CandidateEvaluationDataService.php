@@ -3,35 +3,50 @@
 namespace App\Services;
 
 use App\Models\Candidate;
+use App\Models\TestResult;
+use App\Services\CbtQuestionService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class CandidateEvaluationDataService
 {
     public static function getEvaluationData(Candidate $candidate): array
     {
-        // 1. Data Tes Kepribadian (DISC)
-        $isPsikoCompleted = !empty($candidate->tes_kepribadian) 
-            && $candidate->tes_kepribadian !== '00:00:00' 
-            && $candidate->tes_kepribadian !== '-';
+        // Kumpulkan semua candidate ID dengan NIK yang sama (agar sinkron antar kandidat portal & CBT)
+        $siblingIds = [$candidate->id];
+        if (!empty($candidate->nik)) {
+            $siblingIds = Candidate::where('nik', $candidate->nik)->pluck('id')->all();
+            if (empty($siblingIds)) {
+                $siblingIds = [$candidate->id];
+            }
+        }
 
+        // 1. Data Tes Kepribadian (DISC)
         $rawPsikotes = collect();
-        if ($isPsikoCompleted) {
+        if (Schema::hasTable('tb_hasilpsikotes')) {
             $rawPsikotes = DB::table('tb_hasilpsikotes')
-                ->where('id_kandidat', $candidate->id)
-                ->orWhere('id_kandidat', (string) $candidate->id)
+                ->whereIn('id_kandidat', $siblingIds)
+                ->orWhere(function ($q) use ($candidate) {
+                    if (!empty($candidate->nik)) {
+                        $q->where('id_kandidat', (string) $candidate->nik);
+                    }
+                })
                 ->orderBy('id_soal', 'asc')
                 ->get();
         }
 
         $psikotesItems = [];
         $psikotesCounts = ['A' => 0, 'B' => 0, 'C' => 0, 'D' => 0];
-        $psikotesDuration = $candidate->tes_kepribadian ?? '00:04:20';
+        $psikotesDuration = (!empty($candidate->tes_kepribadian) && $candidate->tes_kepribadian !== '00:00:00' && $candidate->tes_kepribadian !== '-') 
+            ? $candidate->tes_kepribadian 
+            : null;
         $hasPsikotes = false;
 
         if ($rawPsikotes->isNotEmpty()) {
             $hasPsikotes = true;
-            $questionsBank = DB::table('tb_kepribadian')->get()->keyBy('id');
-            $psikotesDuration = $rawPsikotes->first()->waktu_pengerjaan ?? $candidate->tes_kepribadian ?? '00:04:20';
+            $questionsBank = Schema::hasTable('tb_kepribadian') ? DB::table('tb_kepribadian')->get()->keyBy('id') : collect();
+            $defaultQuestions = collect(CbtQuestionService::getDefaultLegacyPersonalityQuestions())->keyBy('id');
+            $psikotesDuration = $rawPsikotes->first()->waktu_pengerjaan ?? $psikotesDuration ?? '00:04:20';
 
             foreach ($rawPsikotes as $row) {
                 $ansUpper = strtoupper(trim($row->jawaban ?? ''));
@@ -43,37 +58,77 @@ class CandidateEvaluationDataService
                 $prop = 'pilihan_' . $ansLower;
                 $choiceText = $qBank ? ($qBank->$prop ?? '-') : '-';
 
+                if ($choiceText === '-' || empty($choiceText)) {
+                    $dq = $defaultQuestions->get($row->id_soal);
+                    if ($dq && isset($dq[$ansLower])) {
+                        $choiceText = $dq[$ansLower];
+                    }
+                }
+
                 $psikotesItems[$row->id_soal] = [
                     'ans' => $ansUpper,
                     'text' => $choiceText,
                 ];
             }
-        } elseif ($isPsikoCompleted) {
-            // Cek jika ada di testResults (dari modul CBT baru)
-            $cbtPsychology = $candidate->testResults ? $candidate->testResults->firstWhere('test_type', 'psychology') : null;
-            if ($cbtPsychology && !empty($cbtPsychology->test_details)) {
+        }
+
+        // Cek jika ada di testResults (dari modul CBT baru)
+        $cbtPsychology = $candidate->testResults ? $candidate->testResults->firstWhere('test_type', 'psychology') : null;
+        if (!$cbtPsychology) {
+            $cbtPsychology = TestResult::whereIn('candidate_id', $siblingIds)->where('test_type', 'psychology')->latest()->first();
+        }
+
+        if ($cbtPsychology && !empty($cbtPsychology->test_details)) {
+            $details = is_array($cbtPsychology->test_details) ? $cbtPsychology->test_details : json_decode($cbtPsychology->test_details, true);
+            if (!$hasPsikotes || empty($psikotesItems)) {
                 $hasPsikotes = true;
-                $details = is_array($cbtPsychology->test_details) ? $cbtPsychology->test_details : json_decode($cbtPsychology->test_details, true);
                 $psikotesDuration = $details['duration_formatted'] ?? gmdate('H:i:s', $cbtPsychology->duration_seconds ?? 0);
                 $cbtCounts = $details['counts'] ?? [];
-                $psikotesCounts['A'] = $cbtCounts['D'] ?? $cbtCounts['A'] ?? 0;
-                $psikotesCounts['B'] = $cbtCounts['I'] ?? $cbtCounts['B'] ?? 0;
-                $psikotesCounts['C'] = $cbtCounts['S'] ?? $cbtCounts['C'] ?? 0;
-                $psikotesCounts['D'] = $cbtCounts['C'] ?? $cbtCounts['D'] ?? 0;
+                // Direct A, B, C, D mapping (A: Melankolis, B: Sanguinis, C: Koleris, D: Plegmatis)
+                $psikotesCounts['A'] = $cbtCounts['A'] ?? $cbtCounts['C_disc'] ?? 0;
+                $psikotesCounts['B'] = $cbtCounts['B'] ?? $cbtCounts['I_disc'] ?? 0;
+                $psikotesCounts['C'] = $cbtCounts['C'] ?? $cbtCounts['D_disc'] ?? 0;
+                $psikotesCounts['D'] = $cbtCounts['D'] ?? $cbtCounts['S_disc'] ?? 0;
 
-                $questionsBank = DB::table('tb_kepribadian')->get()->keyBy('id');
+                $questionsBank = Schema::hasTable('tb_kepribadian') ? DB::table('tb_kepribadian')->get()->keyBy('id') : collect();
+                $defaultQuestions = collect(CbtQuestionService::getDefaultLegacyPersonalityQuestions())->keyBy('id');
                 $cbtAnswers = $details['answers'] ?? [];
-                foreach ($questionsBank as $qId => $qBank) {
+                for ($qId = 1; $qId <= 40; $qId++) {
                     $ansKey = 'q' . $qId;
                     $ans = strtoupper($cbtAnswers[$ansKey] ?? 'A');
                     $ansLower = strtolower($ans);
                     $prop = 'pilihan_' . $ansLower;
+                    $qBank = $questionsBank->get($qId);
+                    $choiceText = $qBank ? ($qBank->$prop ?? '-') : '-';
+                    if ($choiceText === '-' || empty($choiceText)) {
+                        $dq = $defaultQuestions->get($qId);
+                        if ($dq && isset($dq[$ansLower])) {
+                            $choiceText = $dq[$ansLower];
+                        }
+                    }
                     $psikotesItems[$qId] = [
                         'ans' => $ans,
-                        'text' => $qBank->$prop ?? '-',
+                        'text' => $choiceText,
                     ];
                 }
             }
+        }
+
+        // Pastikan kolom tes_kepribadian tersinkronisasi jika tes sudah selesai
+        if ($hasPsikotes && (empty($candidate->tes_kepribadian) || $candidate->tes_kepribadian === '00:00:00' || $candidate->tes_kepribadian === '-')) {
+            $candidate->tes_kepribadian = $psikotesDuration ?: '00:04:20';
+            try {
+                $candidate->saveQuietly();
+                if (!empty($candidate->nik)) {
+                    Candidate::where('nik', $candidate->nik)->where(function ($q) {
+                        $q->whereNull('tes_kepribadian')->orWhere('tes_kepribadian', '')->orWhere('tes_kepribadian', '00:00:00');
+                    })->update(['tes_kepribadian' => $candidate->tes_kepribadian]);
+
+                    if (Schema::hasTable('tb_kandidat')) {
+                        DB::table('tb_kandidat')->where('no_ktp', $candidate->nik)->update(['tes_kepribadian' => $candidate->tes_kepribadian]);
+                    }
+                }
+            } catch (\Throwable $e) {}
         }
 
         // Hitung watak dominan & kesimpulan DISC
@@ -110,7 +165,9 @@ class CandidateEvaluationDataService
 
         // 2. Data Tes Matematika
         $mathItems = [];
-        $mathDuration = '-';
+        $mathDuration = (!empty($candidate->tes_matematika) && $candidate->tes_matematika !== '00:00:00' && $candidate->tes_matematika !== '-')
+            ? $candidate->tes_matematika
+            : '-';
         $mathTesKe = max(1, intval($candidate->tes_ke ?? 1));
         $mathCorrectCount = 0;
         $mathWrongCount = 0;
@@ -118,17 +175,12 @@ class CandidateEvaluationDataService
         $mathGrade = '-';
         $hasMath = false;
 
-        $isMathCompleted = !empty($candidate->tes_matematika) 
-            && $candidate->tes_matematika !== '00:00:00' 
-            && $candidate->tes_matematika !== '-';
-
-        if ($isMathCompleted) {
-            $targetTesKe = $mathTesKe;
-
-            // Cari di tb_hasilmath sesuai tes_ke kandidat saat ini
+        $targetTesKe = $mathTesKe;
+        $rawMath = collect();
+        if (Schema::hasTable('tb_hasilmath')) {
             $rawMath = DB::table('tb_hasilmath')
                 ->join('tb_math', 'tb_math.id', '=', 'tb_hasilmath.id_soal')
-                ->where('tb_hasilmath.id_kandidat', $candidate->id)
+                ->whereIn('tb_hasilmath.id_kandidat', $siblingIds)
                 ->where('tb_hasilmath.tes_ke', $targetTesKe)
                 ->select('tb_hasilmath.*', 'tb_math.question_text', 'tb_math.correct_answer')
                 ->orderBy('tb_hasilmath.id_soal', 'asc')
@@ -136,11 +188,11 @@ class CandidateEvaluationDataService
 
             // Fallback jika tidak ditemukan dengan tes_ke spesifik
             if ($rawMath->isEmpty()) {
-                $latestTesKe = DB::table('tb_hasilmath')->where('id_kandidat', $candidate->id)->max('tes_ke');
+                $latestTesKe = DB::table('tb_hasilmath')->whereIn('id_kandidat', $siblingIds)->max('tes_ke');
                 if ($latestTesKe) {
                     $rawMath = DB::table('tb_hasilmath')
                         ->join('tb_math', 'tb_math.id', '=', 'tb_hasilmath.id_soal')
-                        ->where('tb_hasilmath.id_kandidat', $candidate->id)
+                        ->whereIn('tb_hasilmath.id_kandidat', $siblingIds)
                         ->where('tb_hasilmath.tes_ke', $latestTesKe)
                         ->select('tb_hasilmath.*', 'tb_math.question_text', 'tb_math.correct_answer')
                         ->orderBy('tb_hasilmath.id_soal', 'asc')
@@ -148,92 +200,102 @@ class CandidateEvaluationDataService
                     $mathTesKe = $latestTesKe;
                 }
             }
+        }
 
-            if ($rawMath->isNotEmpty()) {
-                $hasMath = true;
-                $mathDuration = $rawMath->first()->waktu_pengerjaan ?? $candidate->tes_matematika ?? '00:02:00';
-                $mathTesKe = $rawMath->first()->tes_ke ?? $mathTesKe;
+        if ($rawMath->isNotEmpty()) {
+            $hasMath = true;
+            $mathDuration = $rawMath->first()->waktu_pengerjaan ?? ($candidate->tes_matematika ?: '00:02:00');
+            $mathTesKe = $rawMath->first()->tes_ke ?? $mathTesKe;
 
-                foreach ($rawMath as $mRow) {
-                    $candAns = trim($mRow->jawaban ?? '');
-                    $keyAns = trim($mRow->correct_answer ?? '');
+            foreach ($rawMath as $mRow) {
+                $candAns = trim($mRow->jawaban ?? '');
+                $keyAns = trim($mRow->correct_answer ?? '');
+                $isCorrect = false;
 
-                    $isCorrect = false;
-
-                    // 1. Direct case-insensitive match
-                    if (strtolower($candAns) === strtolower($keyAns)) {
+                if (strtolower($candAns) === strtolower($keyAns)) {
+                    $isCorrect = true;
+                }
+                if (!$isCorrect) {
+                    $normCand = preg_replace('/[^0-9a-zA-Z]/', '', strtolower($candAns));
+                    $normKey = preg_replace('/[^0-9a-zA-Z]/', '', strtolower($keyAns));
+                    if ($normCand !== '' && $normCand === $normKey) {
                         $isCorrect = true;
                     }
-
-                    // 2. Alphanumeric normalization (e.g. 170.000 vs 170000, Rp 170.000 vs 170000)
-                    if (!$isCorrect) {
-                        $normCand = preg_replace('/[^0-9a-zA-Z]/', '', strtolower($candAns));
-                        $normKey = preg_replace('/[^0-9a-zA-Z]/', '', strtolower($keyAns));
-                        if ($normCand !== '' && $normCand === $normKey) {
-                            $isCorrect = true;
-                        }
+                }
+                if (!$isCorrect) {
+                    $cleanCand = trim(str_replace([' ', '%', '.'], ['', '', ','], strtolower($candAns)));
+                    $cleanKey = trim(str_replace([' ', '%', '.'], ['', '', ','], strtolower($keyAns)));
+                    if ($cleanCand !== '' && $cleanKey !== '' && $cleanCand === $cleanKey) {
+                        $isCorrect = true;
                     }
+                }
 
-                    // 3. Decimal, comma, space, and percentage normalization (e.g. 71.43% vs 71.43, 8,4 vs 8.4 or 8, 4)
-                    if (!$isCorrect) {
-                        $cleanCand = trim(str_replace([' ', '%', '.'], ['', '', ','], strtolower($candAns)));
-                        $cleanKey = trim(str_replace([' ', '%', '.'], ['', '', ','], strtolower($keyAns)));
-                        if ($cleanCand !== '' && $cleanCand === $cleanKey) {
-                            $isCorrect = true;
-                        }
-                    }
+                if ($isCorrect) {
+                    $mathCorrectCount++;
+                } else {
+                    $mathWrongCount++;
+                }
 
-                    if ($isCorrect) {
-                        $mathCorrectCount++;
-                    } else {
-                        $mathWrongCount++;
-                    }
+                $mathItems[$mRow->id_soal] = [
+                    'q' => $mRow->question_text,
+                    'cand' => $candAns,
+                    'key' => $keyAns,
+                    'correct' => $isCorrect,
+                ];
+            }
+        }
 
-                    $mathItems[$mRow->id_soal] = [
-                        'q' => $mRow->question_text,
-                        'cand' => $candAns,
-                        'key' => $keyAns,
-                        'correct' => $isCorrect,
+        // Cek jika ada di testResults (CBT baru)
+        $cbtMath = $candidate->testResults ? $candidate->testResults->firstWhere('test_type', 'math') : null;
+        if (!$cbtMath) {
+            $cbtMath = TestResult::whereIn('candidate_id', $siblingIds)->where('test_type', 'math')->latest()->first();
+        }
+
+        if ($cbtMath && !empty($cbtMath->test_details)) {
+            $mDetails = is_array($cbtMath->test_details) ? $cbtMath->test_details : json_decode($cbtMath->test_details, true);
+            if (!$hasMath || empty($mathItems)) {
+                $hasMath = true;
+                $mathDuration = $mDetails['duration_formatted'] ?? gmdate('H:i:s', $cbtMath->duration_seconds ?? 0);
+                $mathCorrectCount = $mDetails['correct_answers'] ?? $mDetails['correct_count'] ?? round(($cbtMath->score / 100) * 10);
+                $mathWrongCount = 10 - $mathCorrectCount;
+                $mathTesKe = $mDetails['tes_ke'] ?? $candidate->tes_ke ?? 1;
+                $mBreakdown = $mDetails['breakdown'] ?? [];
+                foreach ($mBreakdown as $idx => $b) {
+                    $mathItems[$idx] = [
+                        'q' => $b['question'] ?? $b['question_text'] ?? ('Pertanyaan Soal #' . $idx),
+                        'cand' => $b['user_answer'] ?? '-',
+                        'key' => $b['correct_answer'] ?? '-',
+                        'correct' => (bool) ($b['is_correct'] ?? false),
                     ];
                 }
-            } else {
-                // Cek jika ada di testResults (CBT baru)
-                $cbtMath = $candidate->testResults->firstWhere('test_type', 'math');
-                if ($cbtMath && !empty($cbtMath->test_details)) {
-                    $hasMath = true;
-                    $mDetails = is_array($cbtMath->test_details) ? $cbtMath->test_details : json_decode($cbtMath->test_details, true);
-                    $mathDuration = $mDetails['duration_formatted'] ?? gmdate('H:i:s', $cbtMath->duration_seconds ?? 0);
-                    $mathCorrectCount = $mDetails['correct_answers'] ?? $mDetails['correct_count'] ?? round(($cbtMath->score / 100) * 10);
-                    $mathWrongCount = 10 - $mathCorrectCount;
-                    $mathTesKe = $mDetails['tes_ke'] ?? $candidate->tes_ke ?? 1;
-                    $mBreakdown = $mDetails['breakdown'] ?? [];
-                    foreach ($mBreakdown as $idx => $b) {
-                        $mathItems[$idx] = [
-                            'q' => $b['question'] ?? $b['question_text'] ?? ('Pertanyaan Soal #' . $idx),
-                            'cand' => $b['user_answer'] ?? '-',
-                            'key' => $b['correct_answer'] ?? '-',
-                            'correct' => (bool) ($b['is_correct'] ?? false),
-                        ];
-                    }
-                }
             }
+        }
 
-            if ($hasMath) {
-                $mathTotalQuestions = count($mathItems) > 0 ? count($mathItems) : 10;
-                $mathScorePercent = $mathTotalQuestions > 0 ? round(($mathCorrectCount / $mathTotalQuestions) * 100) : 0;
-                $mathGrade = ($mathScorePercent >= 85) ? 'A' : (($mathScorePercent >= 70) ? 'B' : (($mathScorePercent >= 55) ? 'C' : 'D'));
+        if ($hasMath) {
+            $mathTotalQuestions = count($mathItems) > 0 ? count($mathItems) : 10;
+            $mathScorePercent = $mathTotalQuestions > 0 ? round(($mathCorrectCount / $mathTotalQuestions) * 100) : 0;
+            $mathGrade = ($mathScorePercent >= 85) ? 'A' : (($mathScorePercent >= 70) ? 'B' : (($mathScorePercent >= 55) ? 'C' : 'D'));
+
+            // Auto-sync jika kolom kandidat belum terisi
+            if (empty($candidate->tes_matematika) || $candidate->tes_matematika === '00:00:00' || $candidate->tes_matematika === '-') {
+                $candidate->tes_matematika = $mathDuration;
+                $candidate->tes_ke = $mathTesKe;
+                try {
+                    $candidate->saveQuietly();
+                    if (!empty($candidate->nik)) {
+                        Candidate::where('nik', $candidate->nik)->where(function ($q) {
+                            $q->whereNull('tes_matematika')->orWhere('tes_matematika', '')->orWhere('tes_matematika', '00:00:00');
+                        })->update(['tes_matematika' => $mathDuration, 'tes_ke' => $mathTesKe]);
+                    }
+                } catch (\Throwable $e) {}
             }
         }
 
         // 3. Data Tes Komputer
-        $isKomptCompleted = !empty($candidate->tes_komputer) 
-            && $candidate->tes_komputer !== '00:00:00' 
-            && $candidate->tes_komputer !== '-';
-
         $rawKompt = null;
-        if ($isKomptCompleted) {
+        if (Schema::hasTable('hasil_kompt')) {
             $rawKompt = DB::table('hasil_kompt')
-                ->where('id_kandidat', $candidate->id)
+                ->whereIn('id_kandidat', $siblingIds)
                 ->first();
         }
 
@@ -251,18 +313,26 @@ class CandidateEvaluationDataService
 
         $savedComp = [];
         $hasKompt = false;
-        $komptDuration = $isKomptCompleted ? ($candidate->tes_komputer ?? '00:03:02') : '-';
+        $komptDuration = (!empty($candidate->tes_komputer) && $candidate->tes_komputer !== '00:00:00' && $candidate->tes_komputer !== '-') 
+            ? $candidate->tes_komputer 
+            : '-';
 
         if ($rawKompt) {
             $hasKompt = true;
             foreach ($compSkills as $k => $label) {
                 $savedComp[$k] = $rawKompt->$k ?? 'Cukup';
             }
-        } elseif ($isKomptCompleted) {
-            $cTest = $candidate->testResults ? $candidate->testResults->firstWhere('test_type', 'computer') : null;
-            if ($cTest && !empty($cTest->test_details)) {
-                $hasKompt = true;
-                $savedComp = is_array($cTest->test_details) ? $cTest->test_details : json_decode($cTest->test_details, true);
+        }
+
+        $cTest = $candidate->testResults ? $candidate->testResults->firstWhere('test_type', 'computer') : null;
+        if (!$cTest) {
+            $cTest = TestResult::whereIn('candidate_id', $siblingIds)->where('test_type', 'computer')->latest()->first();
+        }
+        if ($cTest && !empty($cTest->test_details)) {
+            $hasKompt = true;
+            $savedComp = is_array($cTest->test_details) ? $cTest->test_details : json_decode($cTest->test_details, true);
+            if ($komptDuration === '-') {
+                $komptDuration = gmdate('H:i:s', $cTest->duration_seconds ?? 0);
             }
         }
 
