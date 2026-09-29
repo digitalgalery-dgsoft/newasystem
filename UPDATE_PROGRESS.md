@@ -3958,6 +3958,16 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
     3. **Sidebar Navigasi ([resources/views/layouts/app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php))**: Membungkus menu Surat Peringatan dengan kondisi `@if(auth()->user()?->isAdmin()) ... @endif`. Menu tidak akan muncul pada akun non-admin.
     4. **Katalog Fitur / Beranda ([resources/views/fitur/index.blade.php](file:///d:/ASystem/newasystem/resources/views/fitur/index.blade.php))**: Menetapkan atribut `'role_allowed' => $isAdmin`. Kartu Surat Peringatan tidak ditampilkan pada dashboard pengguna selain administrator.
 
+### 103. 🚀 Perbaikan HasMiddleware WarningLetterController (Laravel 12) & Akses Publik Form Registrasi Walk-In Interview (29 September 2026)
+- **Investigasi & Solusi Kendala Surat Peringatan (Error 500)**:
+  - **Gejala**: Halaman `/warning-letters` pada server produksi memunculkan pesan error: *"Call to undefined method App\Http\Controllers\WarningLetterController::middleware()"*.
+  - **Akar Masalah**: Pada arsitektur Laravel 12, class induk `App\Http\Controllers\Controller` tidak mewarisi method `$this->middleware()` di dalam konstruktor.
+  - **Solusi**: Mengimplementasikan interface resmi `Illuminate\Routing\Controllers\HasMiddleware` dengan method `public static function middleware(): array` yang mengembalikan `['auth', 'admin']`. Error teratasi 100% dan halaman dapat dibuka dengan lancar oleh administrator (HTTP 200 OK).
+- **Investigasi & Solusi Link Registrasi Walk-in Interview (`/walkinterview/register`)**:
+  - **Gejala**: Link pendaftaran walk-in (`https://new.asystem.co.id/walkinterview/register`) tidak dapat diakses oleh kandidat/publik dan otomatis ter-redirect ke halaman login user (`/login`).
+  - **Akar Masalah**: Rute `GET /walkinterview/create`, `GET /walkinterview/register`, dan `POST /walkinterview` berada di dalam grup `Route::middleware(['auth'])`, padahal method `storeWalkInterview()` dan tampilan `walk_create.blade.php` didesain untuk pelamar/tamu publik yang belum memiliki akun internal.
+  - **Solusi**: Memindahkan rute publik pendaftaran walk-in (`GET /walkinterview/create`, `GET /walkinterview/register`, dan `POST /walkinterview`) ke bagian rute publik di [routes/web.php](file:///d:/ASystem/newasystem/routes/web.php). Kini kandidat/publik dapat mengakses form pendaftaran dan mendaftar secara langsung tanpa login (HTTP 200 OK). Rute internal dashboard rekruter (`GET /walkinterview` dan `GET /walkinterview/export`) tetap diproteksi di dalam middleware `auth`.
+
 ---
 
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal

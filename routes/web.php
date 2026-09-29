@@ -88,6 +88,11 @@ Route::post('/approval/{token}/submit', [PrincipleApprovalController::class, 'su
     ->where('token', '^[A-Za-z0-9]{20,}$')
     ->name('principle.approval.submit');
 
+// Form Pendaftaran Walk-in Interview Kandidat (Publik Tanpa Login)
+Route::get('/walkinterview/create', [InterviewController::class, 'createWalkInterview'])->name('interview.walk.create');
+Route::get('/walkinterview/register', [InterviewController::class, 'createWalkInterview'])->name('interview.walk.register');
+Route::post('/walkinterview', [InterviewController::class, 'storeWalkInterview'])->name('interview.walk.store');
+
 // Modul CBT & Tes Online Pelamar (Terproteksi Sesi Kandidat)
 Route::prefix('cbt')->name('cbt.')->group(function () {
     Route::get('/login', [CbtController::class, 'showLoginForm'])->name('login');
@@ -197,11 +202,8 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/interview/sync-odoo', [InterviewController::class, 'syncOdoo'])->name('interview.sync_odoo');
     Route::post('/interview/{id}/sync-single-odoo', [InterviewController::class, 'syncSingleOdoo'])->name('interview.sync_single_odoo');
 
-    // Submodul Interview Walkin
+    // Submodul Interview Walkin (Dashboard & Rekap Rekruter)
     Route::get('/walkinterview', [InterviewController::class, 'walkInterview'])->name('interview.walk');
-    Route::get('/walkinterview/create', [InterviewController::class, 'createWalkInterview'])->name('interview.walk.create');
-    Route::get('/walkinterview/register', [InterviewController::class, 'createWalkInterview'])->name('interview.walk.register');
-    Route::post('/walkinterview', [InterviewController::class, 'storeWalkInterview'])->name('interview.walk.store');
     Route::get('/walkinterview/export', [InterviewController::class, 'exportWalkInterview'])->name('interview.walk.export');
     Route::get('/interviewdone', [InterviewController::class, 'done'])->name('interview.done');
     Route::get('/interviewarsip', [InterviewController::class, 'arsip'])->name('interview.arsip');
