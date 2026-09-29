@@ -148,4 +148,65 @@ class Task extends Model
 
         return 'https://ui-avatars.com/api/?background=random&color=fff&name=' . urlencode($name);
     }
+
+    /**
+     * Auto-archive tugas berstatus Done yang tanggal selesainya sudah lewat dari hari ini.
+     *
+     * @return int Jumlah tugas yang berhasil diarsipkan
+     */
+    public static function autoArchivePastDoneTasks(): int
+    {
+        $today = Carbon::today()->toDateString();
+
+        $query = self::where('status', 'done')
+            ->where(function ($q) use ($today) {
+                $q->where(function ($sub) use ($today) {
+                    $sub->whereNotNull('date_completed')
+                        ->whereDate('date_completed', '<', $today);
+                })->orWhere(function ($sub) use ($today) {
+                    $sub->whereNull('date_completed')
+                        ->where(function ($fallback) use ($today) {
+                            $fallback->whereNotNull('updated_at')->whereDate('updated_at', '<', $today)
+                                     ->orWhere(function ($fb2) use ($today) {
+                                         $fb2->whereNull('updated_at')
+                                             ->whereNotNull('date_input')
+                                             ->whereDate('date_input', '<', $today);
+                                     });
+                        });
+                });
+            });
+
+        $tasks = $query->get(['id', 'title', 'date_completed', 'updated_at', 'date_input']);
+        if ($tasks->isEmpty()) {
+            return 0;
+        }
+
+        $count = 0;
+        foreach ($tasks as $task) {
+            $dateCompleted = $task->date_completed ?? $task->updated_at ?? $task->date_input ?? now();
+
+            self::where('id', $task->id)->update([
+                'status' => 'archived',
+                'date_completed' => $dateCompleted,
+            ]);
+
+            try {
+                TaskActivity::create([
+                    'task_id' => $task->id,
+                    'user_actor' => 'System Auto-Archive',
+                    'action_type' => 'status_change',
+                    'detail_new' => 'archived',
+                    'detail_old' => 'done',
+                    'created_at' => now(),
+                ]);
+            } catch (\Throwable $e) {
+                // Ignore activity log failure if any
+            }
+
+            $count++;
+        }
+
+        return $count;
+    }
 }
+

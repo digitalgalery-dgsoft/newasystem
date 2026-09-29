@@ -104,7 +104,7 @@
                     <i class="fa-solid fa-circle-check"></i>
                 </div>
                 <div class="min-w-0">
-                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate">Done</div>
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider truncate" title="Tugas yang diselesaikan hari ini (tugas selesai hari sebelumnya otomatis diarsipkan)">Done (Hari Ini)</div>
                     <div class="text-lg font-extrabold text-emerald-600 tracking-tight leading-none">{{ number_format($statsDone) }}</div>
                 </div>
             </div>
@@ -485,12 +485,12 @@
                 <div class="flex items-center gap-2">
                     <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
                     <h3 class="text-xs font-black tracking-wider text-emerald-900 uppercase">Done</h3>
-                    <span class="px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-800 text-[10px] font-extrabold" id="col-count-done" title="Total Seluruh Tugas Selesai">
+                    <span class="px-2 py-0.5 rounded-full bg-emerald-200/80 text-emerald-800 text-[10px] font-extrabold" id="col-count-done" title="Total Tugas Selesai Hari Ini">
                         {{ number_format($statsDone) }}
                     </span>
                 </div>
-                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md">
-                    SELESAI
+                <span class="text-[10px] font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md" title="Tugas selesai hari ini. Tugas yang tanggal selesainya sudah lewat otomatis masuk ke Arsip">
+                    SELESAI HARI INI
                 </span>
             </div>
 
@@ -506,7 +506,7 @@
                 @empty
                     <div class="h-40 flex flex-col items-center justify-center text-emerald-400 text-center p-4 border border-dashed border-emerald-200 rounded-xl pointer-events-none empty-state">
                         <i class="fa-solid fa-award text-2xl mb-1 text-emerald-300"></i>
-                        <span class="text-xs font-medium">Belum ada tugas selesai</span>
+                        <span class="text-xs font-medium">Belum ada tugas selesai hari ini</span>
                     </div>
                 @endforelse
             </div>

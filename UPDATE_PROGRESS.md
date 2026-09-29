@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 28 September 2026*
+*Terakhir diperbarui: 29 September 2026*
 
 ---
 
@@ -3539,6 +3539,32 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
        - Posisi: *MD Signify* (Penempatan Malang).
        - Tipe Dokumen: `surat_lamaran_only` (Terdeteksi hanya mengunggah Surat Lamaran Kerja tanpa CV lengkap).
        - Skor Match: **32 (Red)** - Otomatis dipangkas ke kategori Merah sesuai guard Milestone 89 dengan rekomendasi meminta kandidat mengunggah CV lengkap.
+
+---
+
+### 91. 📦 Fitur Work Plan: Auto-Archive Tugas Selesai (Done) yang Tanggal Selesainya Lewat dari Hari Ini (29 September 2026)
+- **Kebutuhan Pengguna**:
+  - Pada fitur Work Plan (papan Kanban & ToDoList), tugas-tugas yang telah berada di step **Done** (selesai) yang tanggal penyelesaiannya (`date_completed`) sudah lewat dari hari ini (< hari ini) secara otomatis dialihkan dan dipindahkan ke status **Archived** (Arsip).
+  - Kolom **Done** pada papan Kanban hanya mempertahankan tugas yang diselesaikan pada hari ini, menjaga antarmuka papan Kanban tetap bersih, relevan, dan terfokus pada progres hari berjalan.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Logika Sentral Auto-Archive pada Model Tugas (`app/Models/Task.php`)**:
+     - Menambahkan method statis `Task::autoArchivePastDoneTasks(): int`.
+     - Mendeteksi tugas berstatus `done` yang tanggal selesainya sebelum hari ini (`whereNotNull('date_completed')->whereDate('date_completed', '<', Carbon::today())`, dengan fallback `updated_at` / `date_input` jika `date_completed` bernilai null).
+     - Mengubah status tugas menjadi `'archived'` dan memastikan `date_completed` terisi tanggal penyelesaian valid.
+     - Mencatat jejak riwayat aktivitas pada tabel `task_activities` (`action_type = 'status_change'`, `detail_old = 'done'`, `detail_new = 'archived'`, `user_actor = 'System Auto-Archive'`).
+  2. **Artisan Console Command & Penjadwalan Otomatis (`app/Console/Commands/AutoArchiveDoneTasksCommand.php` & `routes/console.php`)**:
+     - Membuat command artisan `php artisan workplan:auto-archive-done` yang dilengkapi opsi `--dry-run` untuk simulasi pratinjau tugas yang memenuhi syarat diarsipkan.
+     - Mendaftarkan command ke dalam Laravel Task Scheduler di `routes/console.php` (`Schedule::command('workplan:auto-archive-done')->hourly()->withoutOverlapping(10)->runInBackground()`), sehingga proses pengarsipan berjalan otomatis setiap jam di latar belakang server.
+  3. **Integrasi Controller Papan Kanban (`app/Http/Controllers/WorkPlanController.php`)**:
+     - Pada `index()`: Menjalankan `Task::autoArchivePastDoneTasks()` di awal pemanggilan sebelum query metrik dan kartu board dieksekusi, memastikan data statistik (`statsDone` & `statsArchived`) dan kartu kolom Done langsung akurat secara instan tanpa menunggu jadwal cron.
+     - Pada `loadMore()`: Menjalankan auto-archive jika request memuat data kolom `done`.
+     - Pada `copyReport()`: Menjalankan auto-archive agar laporan ringkasan teks WhatsApp selalu menghitung tugas Done hari ini secara presisi.
+     - Pada `exportExcel()`: Menjalankan auto-archive sebelum penarikan dataset laporan spreadsheet Excel.
+     - Pada `unarchive()`: Ketika pengguna memulihkan tugas dari arsip kembali ke status Done, sistem otomatis menyetel `date_completed = now()` agar tugas tidak langsung terauto-arsip kembali pada siklus muat halaman berikutnya.
+  4. **Penyempurnaan Tampilan Antarmuka Blade (`resources/views/workplan/index.blade.php`)**:
+     - Mengubah label kartu statistik ringkasan board dari `Done` menjadi `Done (Hari Ini)` lengkap dengan tooltip penjelasan.
+     - Memperbarui header kolom Kanban Done menjadi badge `SELESAI HARI INI` dengan tooltip informatif: *"Tugas selesai hari ini. Tugas yang tanggal selesainya sudah lewat otomatis masuk ke Arsip"*.
+     - Memperbarui empty-state kolom Done menjadi *"Belum ada tugas selesai hari ini"*.
 
 ---
 

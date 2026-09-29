@@ -32,4 +32,10 @@ Schedule::command('odoo:sync-portal-stages --limit=500 --silent')
     ->withoutOverlapping()
     ->runInBackground();
 
+// 5. Cron Job: Auto-Archive Tugas Work Plan yang Sudah Selesai (Done) Lewat Hari Ini
+Schedule::command('workplan:auto-archive-done')
+    ->hourly()
+    ->withoutOverlapping(10)
+    ->runInBackground();
+
 

@@ -342,6 +342,9 @@ class WorkPlanController extends Controller
             return redirect()->route('login');
         }
 
+        // Auto-archive tugas step Done yang tanggal selesainya sudah lewat dari hari ini
+        Task::autoArchivePastDoneTasks();
+
         $isAdmin = $user->isAdmin() || $user->role === 'admin';
         $isHead = false;
         $teamMembers = [];
@@ -548,6 +551,10 @@ class WorkPlanController extends Controller
         $column = $request->query('column', 'todo');
         if (!in_array($column, ['todo', 'inprogress', 'review', 'done'])) {
             return response()->json(['success' => false, 'message' => 'Status kolom tidak valid.'], 400);
+        }
+
+        if ($column === 'done') {
+            Task::autoArchivePastDoneTasks();
         }
 
         $offset = max(0, (int) $request->query('offset', 0));
@@ -848,6 +855,7 @@ class WorkPlanController extends Controller
         $userName = $this->getUserOfficialName($this->getCurrentUser());
 
         $task->status = 'done';
+        $task->date_completed = now(); // Set tanggal selesai ke hari ini agar tidak langsung terauto-arsip kembali
         $task->save();
 
         TaskActivity::create([
@@ -1203,6 +1211,9 @@ class WorkPlanController extends Controller
         $user = $this->getCurrentUser();
         $today = Carbon::today()->translatedFormat('l, d F Y');
 
+        // Auto-archive tugas Done lampau terlebih dahulu
+        Task::autoArchivePastDoneTasks();
+
         $isHead = false;
         $teamMembers = [];
         $officialName = '';
@@ -1306,6 +1317,9 @@ class WorkPlanController extends Controller
     {
         $user = $this->getCurrentUser();
         $isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');
+
+        // Auto-archive tugas Done lampau sebelum ekspor
+        Task::autoArchivePastDoneTasks();
 
         $query = Task::with(['subtasks']);
         $this->applyAccessScope($query, $user);
