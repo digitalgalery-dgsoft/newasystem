@@ -18,6 +18,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css">
 
+    <!-- PWA Web App Manifest & Service Worker -->
+    @include('partials.pwa-head')
+
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
 
@@ -201,5 +204,8 @@
     </footer>
 
     @stack('scripts')
+
+    <!-- PWA Install Banner & Interaction Prompt -->
+    @include('partials.pwa-install-button')
 </body>
 </html>

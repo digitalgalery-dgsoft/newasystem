@@ -21,6 +21,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css">
 
+    <!-- PWA Web App Manifest & Service Worker -->
+    @include('partials.pwa-head')
+
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
 
@@ -302,5 +305,8 @@
 
     @yield('scripts')
     @stack('scripts')
+
+    <!-- PWA Install Banner & Interaction Prompt -->
+    @include('partials.pwa-install-button')
 </body>
 </html>

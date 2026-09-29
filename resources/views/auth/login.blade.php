@@ -14,6 +14,9 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css">
 
+    <!-- PWA Web App Manifest & Service Worker -->
+    @include('partials.pwa-head')
+
     <!-- Tailwind CSS Play CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -655,5 +658,8 @@
         pwdField.addEventListener('focus', refreshCsrfToken, { once: true });
     }
     </script>
+
+    <!-- PWA Install Banner & Interaction Prompt -->
+    @include('partials.pwa-install-button')
 </body>
 </html>

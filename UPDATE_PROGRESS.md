@@ -3568,6 +3568,39 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 92. 📱 Transformasi Sistem Menjadi Progressive Web App (PWA) & Dukungan Instalasi Mandiri Windows Desktop App (29 September 2026)
+- **Kebutuhan Pengguna**:
+  - Mengubah seluruh ekosistem **ASystem Portal** menjadi **Progressive Web App (PWA)** standar modern.
+  - Memungkinkan seluruh pengguna (Admin, Recruiter, Karyawan Inhouse, Karyawan RateCard, hingga Peserta CBT) menginstal ASystem secara langsung ke dalam sistem operasi **Windows** (serta macOS, Linux, dan perangkat mobile).
+  - Setelah terpasang, pengguna dapat membuka ASystem langsung dari Desktop Shortcut, Start Menu, atau Taskbar Windows dalam jendela aplikasi mandiri (*standalone window*) tanpa bilah URL / tab browser.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Web App Manifest Berstandar PWA Modern (`public/manifest.json`)**:
+     - Menetapkan konfigurasi PWA: `display: "standalone"`, `display_override: ["window-controls-overlay", "standalone", "minimal-ui"]`, `theme_color: "#0F52BA"`, `background_color: "#0f172a"`.
+     - Mendefinisikan shortcut navigasi instan: Beranda (`/fitur`), Work Plan (`/workplan`), Talent Pool Rekrutmen (`/interview`), dan Portal CBT Online (`/cbt`).
+     - Menyediakan ikon multi-resolusi (192x192, 512x512, maskable, apple-touch-icon, dan SVG vector).
+  2. **Generator Ikon Presisi Tinggi & Favicon (`public/icons/`)**:
+     - Membuat generator ikon berbasis PHP GD dan SVG (`public/icons/icon.svg`).
+     - Menghasilkan berkas aset ikon: `icon-192x192.png`, `icon-512x512.png`, `icon-maskable-192x192.png`, `icon-maskable-512x512.png`, `apple-touch-icon.png`, `favicon-32x32.png`, `favicon-16x16.png`, dan memperbarui `public/favicon.ico`.
+  3. **Service Worker Berperforma Tinggi & Offline Fallback (`public/sw.js` & `public/offline.html`)**:
+     - Mengembangkan `public/sw.js` dengan strategi caching cerdas:
+       - **Navigation (HTML)**: Network-First dengan dynamic caching dan fallback otomatis ke halaman `offline.html` berdesain modern jika koneksi terputus.
+       - **Static Assets (CSS, JS, Fonts, Images)**: Stale-While-Revalidate untuk kecepatan pemuatan instan.
+       - **Data Mutasi (POST, CSRF, Deploy)**: Dilewatkan langsung ke network tanpa modifikasi cache.
+     - Membuat halaman offline interaktif bertema dark sapphire ASystem (`public/offline.html`) dengan tombol muat ulang dinamis dan auto-detect pemulihan koneksi internet.
+  4. **Komponen PWA Terpusat (`resources/views/partials/pwa-head.blade.php` & `pwa-install-button.blade.php`)**:
+     - `pwa-head.blade.php`: Menyertakan manifest, meta tag mobile web app, apple status bar, tile Windows, dan script registrasi Service Worker.
+     - `pwa-install-button.blade.php`: Menghadirkan banner mengambang (*floating install prompt*) modern beraksen Windows App yang mendengarkan event `beforeinstallprompt`, serta fungsi global `window.installAsystemPwa()`.
+     - Otomatis mendeteksi jika aplikasi sedang berjalan di mode standalone (`display-mode: standalone`) untuk menyembunyikan prompt promosi instalasi.
+  5. **Integrasi ke Seluruh Layout Utama & Antarmuka**:
+     - `resources/views/layouts/app.blade.php`: Terintegrasi di `<head>`, tombol "Install App" berlogo Windows di Topbar navigasi, dan prompt instalasi sebelum penutup `</body>`.
+     - `resources/views/layouts/public.blade.php` & `resources/views/layouts/cbt.blade.php`: Terintegrasi penuh untuk portal karir publik dan CBT ujian online.
+     - `resources/views/auth/login.blade.php`: Terintegrasi pada halaman login agar pengguna dapat langsung memasang aplikasi sebelum masuk akun.
+     - `resources/views/fitur/index.blade.php`: Ditambahkan kartu promosi instalasi Windows App pada halaman Beranda utama.
+  6. **Routing & Fallback MIME Types (`routes/web.php`)**:
+     - Mendaftarkan rute eksplisit `/manifest.json`, `/sw.js`, dan `/offline` dengan header MIME type resmi (`application/manifest+json`, `Service-Worker-Allowed: /`).
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

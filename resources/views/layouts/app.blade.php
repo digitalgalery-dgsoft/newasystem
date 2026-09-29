@@ -19,6 +19,9 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/boxicons@2.1.4/css/boxicons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@3.5.0/fonts/remixicon.css">
 
+    <!-- PWA Web App Manifest & Service Worker -->
+    @include('partials.pwa-head')
+
     <!-- Alpine.js -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.5/dist/cdn.min.js"></script>
 
@@ -1529,6 +1532,16 @@
                         <span>Kandidat</span>
                     </a>
 
+                    <!-- PWA Desktop Install Button (Shows when available) -->
+                    <button type="button" 
+                            id="pwa-topbar-install-btn"
+                            onclick="window.installAsystemPwa && window.installAsystemPwa()"
+                            class="hidden items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-blue-700 via-primary to-sky-600 text-white text-xs font-bold shadow-sm shadow-blue-500/20 hover:shadow-md hover:from-blue-600 hover:to-sky-500 transition-all cursor-pointer"
+                            title="Pasang ASystem sebagai aplikasi desktop Windows (tanpa browser)">
+                        <i class="fa-brands fa-windows"></i>
+                        <span class="hidden md:inline">Install App</span>
+                    </button>
+
                     <div class="h-6 w-px bg-slate-200 mx-1"></div>
 
                     <!-- Quick Dark / Light Mode Toggle Button -->
@@ -2706,5 +2719,8 @@
     
     @yield('scripts')
     @stack('scripts')
+
+    <!-- PWA Install Banner & Interaction Prompt -->
+    @include('partials.pwa-install-button')
 </body>
 </html>

@@ -295,9 +295,41 @@
                 <i class="fa-solid fa-lock text-blue-600 text-sm flex-shrink-0"></i>
                 <span>Pastikan selalu logout setelah selesai jika menggunakan perangkat komputer bersama.</span>
             </div>
+
+            <!-- KARTU PWA WINDOWS APP INSTALL -->
+            <div class="mt-4 p-4 rounded-xl bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 border border-blue-200/90 flex items-center justify-between gap-3 shadow-xs" id="home-pwa-card">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-primary to-sky-500 text-white flex items-center justify-center text-lg shadow-md shadow-blue-500/25 flex-shrink-0">
+                        <i class="fa-brands fa-windows"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-slate-900 text-xs">Pasang ASystem di Windows</div>
+                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Buka langsung dari desktop tanpa browser</p>
+                    </div>
+                </div>
+                <button type="button" 
+                        onclick="window.installAsystemPwa && window.installAsystemPwa()" 
+                        class="py-2 px-3.5 rounded-xl bg-gradient-to-r from-blue-700 via-primary to-sky-600 hover:from-blue-600 hover:to-sky-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 flex-shrink-0 cursor-pointer active:scale-95">
+                    <i class="fa-solid fa-download text-[11px]"></i>
+                    <span>Install App</span>
+                </button>
+            </div>
         </div>
 
     </div>
 
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        var pwaCard = document.getElementById('home-pwa-card');
+        if (pwaCard && isStandalone) {
+            pwaCard.style.display = 'none';
+        }
+    });
+</script>
+@endpush
+

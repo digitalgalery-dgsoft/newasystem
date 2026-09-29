@@ -41,6 +41,28 @@ Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->nam
 Route::get('/login.php', fn() => redirect()->route('login'));
 Route::get('/refresh-csrf', fn() => response()->json(['token' => csrf_token()]))->name('refresh-csrf');
 
+// Progressive Web App (PWA) Manifest, Service Worker & Offline Routes
+Route::get('/manifest.json', function () {
+    return response()->file(public_path('manifest.json'), [
+        'Content-Type' => 'application/manifest+json; charset=utf-8',
+        'Cache-Control' => 'public, max-age=3600',
+    ]);
+})->name('pwa.manifest');
+
+Route::get('/sw.js', function () {
+    return response()->file(public_path('sw.js'), [
+        'Content-Type' => 'application/javascript; charset=utf-8',
+        'Service-Worker-Allowed' => '/',
+        'Cache-Control' => 'no-cache, no-store, must-revalidate',
+    ]);
+})->name('pwa.sw');
+
+Route::get('/offline', function () {
+    return response()->file(public_path('offline.html'), [
+        'Content-Type' => 'text/html; charset=utf-8',
+    ]);
+})->name('pwa.offline');
+
 // Live Chat Bantuan Login & Forgot Password (Publik)
 Route::prefix('auth/chat')->name('auth.chat.')->group(function () {
     Route::post('/check-nik', [\App\Http\Controllers\AuthChatController::class, 'checkNik'])->name('check-nik');

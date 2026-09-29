@@ -1,0 +1,113 @@
+{
+  "id": "/",
+  "name": "ASystem - Support System ESA Groups",
+  "short_name": "ASystem",
+  "description": "Portal Aplikasi Terpadu ESA Groups (HRD, Rekrutmen, Work Plan, CBT & Karyawan)",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "window-controls-overlay",
+    "standalone",
+    "minimal-ui"
+  ],
+  "background_color": "#0f172a",
+  "theme_color": "#0F52BA",
+  "orientation": "any",
+  "lang": "id-ID",
+  "dir": "ltr",
+  "prefer_related_applications": false,
+  "categories": [
+    "business",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Beranda ASystem",
+      "short_name": "Beranda",
+      "description": "Buka Beranda Utama ASystem Portal",
+      "url": "/fitur",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Work Plan & ToDoList",
+      "short_name": "Work Plan",
+      "description": "Buka Papan Kanban Work Plan & Aktivitas Harian",
+      "url": "/workplan",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Talent Pool & Rekrutmen",
+      "short_name": "Rekrutmen",
+      "description": "Buka Manajemen Kandidat & Hasil Interview",
+      "url": "/interview",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "CBT & Online Test",
+      "short_name": "CBT Portal",
+      "description": "Portal Ujian Online & Profil Mandiri Pelamar",
+      "url": "/cbt",
+      "icons": [
+        {
+          "src": "/icons/icon-192x192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

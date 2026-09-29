@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="50%" stop-color="#0f52ba"/>
+      <stop offset="100%" stop-color="#0b2545"/>
+    </linearGradient>
+    <linearGradient id="accentGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#ffffff"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="16" stdDeviation="20" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+  </defs>
+
+  <!-- Background Squircle -->
+  <rect width="512" height="512" rx="115" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle inner border highlight -->
+  <rect x="6" y="6" width="500" height="500" rx="109" fill="none" stroke="#60a5fa" stroke-width="3" stroke-opacity="0.3"/>
+
+  <!-- Glowing background orb -->
+  <circle cx="256" cy="180" r="160" fill="#38bdf8" opacity="0.12"/>
+
+  <!-- Main Symbol: Stylized A Monogram + Modern Wings -->
+  <g filter="url(#shadow)">
+    <!-- Left Leg -->
+    <path d="M 256 100 L 120 400 L 180 400 L 256 210 L 332 400 L 392 400 Z" fill="#ffffff"/>
+    
+    <!-- Dynamic Crossbar with Cyan Accent -->
+    <path d="M 160 310 L 352 310 L 332 355 L 180 355 Z" fill="url(#accentGrad)"/>
+    
+    <!-- Center Apex Gem -->
+    <polygon points="256,125 285,190 227,190" fill="#38bdf8"/>
+
+    <!-- Small ESA Star Dot -->
+    <circle cx="256" cy="260" r="14" fill="#ffffff"/>
+  </g>
+
+  <!-- Subtitle Text -->
+  <text x="256" y="445" font-family="'Outfit', 'Segoe UI', Arial, sans-serif" font-size="34" font-weight="900" fill="#93c5fd" text-anchor="middle" letter-spacing="8">ASYSTEM</text>
+</svg>

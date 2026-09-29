@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-900 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Koneksi Terputus | ASystem Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { font-family: 'Outfit', sans-serif; }
+    </style>
+</head>
+<body class="h-full flex items-center justify-center p-4 bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
+    <div class="max-w-md w-full bg-slate-800/80 backdrop-blur-xl border border-slate-700/80 rounded-3xl p-8 text-center shadow-2xl relative overflow-hidden">
+        <!-- Ambient glow -->
+        <div class="absolute -top-24 -left-24 w-48 h-48 bg-blue-500/20 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-24 -right-24 w-48 h-48 bg-sky-500/20 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- Offline Icon with pulse -->
+        <div class="relative w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+            <div class="absolute inset-0 rounded-2xl bg-gradient-to-tr from-blue-600 to-sky-400 opacity-20 animate-ping"></div>
+            <div class="relative w-20 h-20 rounded-2xl bg-gradient-to-tr from-blue-700 via-primary to-sky-500 flex items-center justify-center text-white text-3xl shadow-lg shadow-blue-500/30">
+                <i class="fa-solid fa-wifi-slash"></i>
+            </div>
+        </div>
+
+        <h1 class="text-2xl font-black text-white tracking-tight mb-2">Koneksi Terputus</h1>
+        <p class="text-sm text-slate-400 leading-relaxed mb-6">
+            Aplikasi desktop <strong>ASystem Portal</strong> tidak dapat terhubung ke server. Periksa koneksi internet atau Wi-Fi Anda.
+        </p>
+
+        <!-- Status badge -->
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-900/60 border border-slate-700 text-xs font-semibold text-amber-400 mb-8" id="connection-status">
+            <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>Mode Offline</span>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="space-y-3">
+            <button type="button" onclick="checkAndReload()" class="w-full py-3 px-5 rounded-xl bg-gradient-to-r from-blue-600 to-sky-500 hover:from-blue-500 hover:to-sky-400 text-white font-bold text-sm shadow-lg shadow-blue-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer active:scale-95">
+                <i class="fa-solid fa-rotate-right" id="reload-icon"></i>
+                <span id="reload-text">Muat Ulang Halaman</span>
+            </button>
+            <a href="/" class="block w-full py-2.5 px-4 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-slate-700/50 transition-all">
+                Kembali ke Beranda ASystem
+            </a>
+        </div>
+    </div>
+
+    <script>
+        function checkAndReload() {
+            const icon = document.getElementById('reload-icon');
+            const text = document.getElementById('reload-text');
+            icon.classList.add('fa-spin');
+            text.textContent = 'Mencoba menghubungkan...';
+            setTimeout(() => {
+                window.location.reload();
+            }, 600);
+        }
+
+        // Auto reload when back online
+        window.addEventListener('online', () => {
+            const status = document.getElementById('connection-status');
+            status.innerHTML = '<span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span><span class="text-emerald-400">Koneksi Pulih! Memuat ulang...</span>';
+            setTimeout(() => {
+                window.location.reload();
+            }, 1200);
+        });
+    </script>
+</body>
+</html>
