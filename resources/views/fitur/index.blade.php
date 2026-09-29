@@ -531,7 +531,225 @@
         </div>
     </div>
 
-    <!-- 2. PAPAN PINTASAN & WIDGET DESKTOP (WINDOWS STYLE) -->
+    <!-- 2. INFORMASI IDENTITAS & PANDUAN -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- KARTU INFORMASI AKUN / PROFIL (2 KOLOM) -->
+        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-7 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center text-lg">
+                            <i class="fa-solid fa-address-card"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Informasi Akun & Pengguna</h2>
+                            <p class="text-xs text-slate-500">Detail identitas Anda yang terdaftar pada sistem</p>
+                        </div>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">
+                        {{ $isAdmin ? 'Admin View' : 'User View' }}
+                    </span>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-y-5 gap-x-6 text-xs">
+                    <div class="space-y-1">
+                        <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Nama Lengkap</div>
+                        <div class="text-slate-800 font-bold text-sm">{{ $userName }}</div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Alamat Email</div>
+                        <div class="text-slate-800 font-medium flex items-center gap-1.5">
+                            <i class="fa-regular fa-envelope text-slate-400"></i>
+                            <span>{{ $userEmail }}</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1">
+                        <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Hak Akses / Peran</div>
+                        <div>
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-bold text-[11px] {{ $isAdmin ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200' }}">
+                                <i class="fa-solid {{ $isAdmin ? 'fa-shield-halved' : 'fa-user-check' }} text-[10px]"></i>
+                                {{ $roleLabel }}
+                            </span>
+                        </div>
+                    </div>
+
+                    @if($employee)
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Nomor Induk Karyawan (NIK)</div>
+                            <div class="text-slate-800 font-bold font-mono tracking-wider">{{ $employee->nik }}</div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Jabatan / Posisi</div>
+                            <div class="text-slate-800 font-semibold">{{ $employee->jabatan ?: 'Staff Operasional' }}</div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Penempatan Area</div>
+                            <div class="text-slate-800 font-medium flex items-center gap-1.5">
+                                <i class="fa-solid fa-location-dot text-slate-400"></i>
+                                <span>{{ $employee->area ?: '-' }} {{ $employee->regional ? '('.$employee->regional.')' : '' }}</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Prinsiple / Mitra</div>
+                            <div class="text-slate-800 font-semibold flex items-center gap-1.5">
+                                <i class="fa-solid fa-building text-slate-400"></i>
+                                <span>{{ $employee->prinsiple ?: 'PT Arina Multikarya' }}</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Tipe & Status Pegawai</div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded text-[11px] font-bold {{ $employee->tipe_karyawan === 'Inhouse' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
+                                    {{ $employee->tipe_karyawan }}
+                                </span>
+                                <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    {{ strtoupper($employee->status) }}
+                                </span>
+                            </div>
+                        </div>
+                    @else
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Jabatan</div>
+                            <div class="text-slate-800 font-bold flex items-center gap-1.5">
+                                <i class="fa-solid fa-briefcase text-slate-400"></i>
+                                <span>{{ $userJabatan }}</span>
+                            </div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Lingkup Sistem</div>
+                            <div class="text-slate-800 font-medium">Enterprise Management, Talent Pool & Odoo ERP</div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Entitas Operasional</div>
+                            <div class="text-slate-800 font-medium">ESA Groups (AMK, AKP, ATK, ABO, ATB)</div>
+                        </div>
+
+                        <div class="space-y-1">
+                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Keamanan & Sesi</div>
+                            <div class="text-emerald-700 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-shield-check"></i> Sesi Login Terproteksi
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                <span class="flex items-center gap-1.5">
+                    <i class="fa-solid fa-info-circle text-primary"></i>
+                    <span>Informasi profil disinkronkan secara otomatis dari database ASystem.</span>
+                </span>
+                <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    @if(session()->has('impersonator_id'))
+                    <a href="{{ route('user.switch-back') }}" class="inline-flex items-center gap-1.5 text-white font-bold py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 transition-all shadow-sm">
+                        <i class="fa-solid fa-rotate-left text-xs"></i>
+                        <span>Kembali ke User Asli ({{ session('impersonator_name', 'Administrator') }})</span>
+                    </a>
+                    @endif
+                    <a href="{{ route('profile.index') }}" class="inline-flex items-center gap-1.5 text-primary hover:text-primary-700 font-bold py-1.5 px-3 rounded-xl bg-primary-50 hover:bg-primary-100 transition-all border border-primary-200 shadow-2xs">
+                        <i class="fa-solid fa-user-pen text-xs"></i>
+                        <span>Edit Profil / Password</span>
+                    </a>
+                    <form method="POST" action="{{ route('logout') }}" class="inline m-0">
+                        @csrf
+                        <button type="submit" class="inline-flex items-center gap-1.5 text-rose-600 hover:text-rose-700 font-semibold py-1.5 px-3 rounded-xl hover:bg-rose-50 transition-all">
+                            <i class="fa-solid fa-power-off text-xs"></i>
+                            <span>Keluar (Logout)</span>
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- KARTU PANDUAN NAVIGASI (1 KOLOM) -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-7 flex flex-col justify-between">
+            <div>
+                <div class="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100">
+                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
+                        <i class="fa-solid fa-compass"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">Panduan Navigasi</h2>
+                        <p class="text-xs text-slate-500">Cara menggunakan sistem</p>
+                    </div>
+                </div>
+
+                <div class="space-y-3.5 text-xs text-slate-600">
+                    <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                            1
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-800">Menu Navigasi Samping</div>
+                            <p class="text-slate-500 mt-0.5 leading-relaxed">
+                                Gunakan bilah menu di sebelah kiri untuk berpindah ke modul yang ingin Anda gunakan.
+                            </p>
+                        </div>
+                    </div>
+
+                    @if($isAdmin)
+                    <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                            2
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-800">Menu Master Data</div>
+                            <p class="text-slate-500 mt-0.5 leading-relaxed">
+                                Menu Master Data hanya tampil dan dapat dikelola oleh akun dengan akses Administrator.
+                            </p>
+                        </div>
+                    </div>
+                    @endif
+
+                    <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
+                        <div class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
+                            {{ $isAdmin ? '3' : '2' }}
+                        </div>
+                        <div>
+                            <div class="font-bold text-slate-800">Bantuan & Kendala</div>
+                            <p class="text-slate-500 mt-0.5 leading-relaxed">
+                                Jika menemukan kendala akses atau data yang tidak sesuai, hubungi tim IT Support / HRD.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-5 p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-[11px] text-blue-800 flex items-center gap-2">
+                <i class="fa-solid fa-lock text-blue-600 text-sm flex-shrink-0"></i>
+                <span>Pastikan selalu logout setelah selesai jika menggunakan perangkat komputer bersama.</span>
+            </div>
+
+            <!-- KARTU PWA WINDOWS APP INSTALL -->
+            <div class="mt-4 p-4 rounded-xl bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 border border-blue-200/90 flex items-center justify-between gap-3 shadow-xs" id="home-pwa-card">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-primary to-sky-500 text-white flex items-center justify-center text-lg shadow-md shadow-blue-500/25 flex-shrink-0">
+                        <i class="fa-brands fa-windows"></i>
+                    </div>
+                    <div>
+                        <div class="font-bold text-slate-900 text-xs">Pasang ASystem di Windows</div>
+                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Buka langsung dari desktop tanpa browser</p>
+                    </div>
+                </div>
+                <button type="button" 
+                        onclick="window.installAsystemPwa && window.installAsystemPwa()" 
+                        class="py-2 px-3.5 rounded-xl bg-gradient-to-r from-blue-700 via-primary to-sky-600 hover:from-blue-600 hover:to-sky-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 flex-shrink-0 cursor-pointer active:scale-95">
+                    <i class="fa-solid fa-download text-[11px]"></i>
+                    <span>Install App</span>
+                </button>
+            </div>
+        </div>
+
+    <!-- 3. PAPAN PINTASAN & WIDGET DESKTOP (WINDOWS STYLE) -->
     <div x-data="desktopWidgetManager()" x-init="init()" class="bg-white/90 dark:bg-slate-900/80 backdrop-blur-md rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm p-6 sm:p-7 relative overflow-hidden transition-all">
         
         <!-- Header Widget -->
@@ -848,225 +1066,6 @@
         </div>
 
     </div>
-
-    <!-- 3. INFORMASI IDENTITAS & PANDUAN -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-        <!-- KARTU INFORMASI AKUN / PROFIL (2 KOLOM) -->
-        <div class="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-7 flex flex-col justify-between">
-            <div>
-                <div class="flex items-center justify-between pb-4 mb-5 border-b border-slate-100">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-xl bg-blue-50 text-primary flex items-center justify-center text-lg">
-                            <i class="fa-solid fa-address-card"></i>
-                        </div>
-                        <div>
-                            <h2 class="text-base font-bold text-slate-900">Informasi Akun & Pengguna</h2>
-                            <p class="text-xs text-slate-500">Detail identitas Anda yang terdaftar pada sistem</p>
-                        </div>
-                    </div>
-                    <span class="px-2.5 py-1 rounded-lg text-xs font-bold bg-slate-100 text-slate-700">
-                        {{ $isAdmin ? 'Admin View' : 'User View' }}
-                    </span>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-y-5 gap-x-6 text-xs">
-                    <div class="space-y-1">
-                        <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Nama Lengkap</div>
-                        <div class="text-slate-800 font-bold text-sm">{{ $userName }}</div>
-                    </div>
-
-                    <div class="space-y-1">
-                        <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Alamat Email</div>
-                        <div class="text-slate-800 font-medium flex items-center gap-1.5">
-                            <i class="fa-regular fa-envelope text-slate-400"></i>
-                            <span>{{ $userEmail }}</span>
-                        </div>
-                    </div>
-
-                    <div class="space-y-1">
-                        <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Hak Akses / Peran</div>
-                        <div>
-                            <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md font-bold text-[11px] {{ $isAdmin ? 'bg-indigo-50 text-indigo-700 border border-indigo-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200' }}">
-                                <i class="fa-solid {{ $isAdmin ? 'fa-shield-halved' : 'fa-user-check' }} text-[10px]"></i>
-                                {{ $roleLabel }}
-                            </span>
-                        </div>
-                    </div>
-
-                    @if($employee)
-                        <div class="space-y-1">
-                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Nomor Induk Karyawan (NIK)</div>
-                            <div class="text-slate-800 font-bold font-mono tracking-wider">{{ $employee->nik }}</div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Jabatan / Posisi</div>
-                            <div class="text-slate-800 font-semibold">{{ $employee->jabatan ?: 'Staff Operasional' }}</div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Penempatan Area</div>
-                            <div class="text-slate-800 font-medium flex items-center gap-1.5">
-                                <i class="fa-solid fa-location-dot text-slate-400"></i>
-                                <span>{{ $employee->area ?: '-' }} {{ $employee->regional ? '('.$employee->regional.')' : '' }}</span>
-                            </div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Prinsiple / Mitra</div>
-                            <div class="text-slate-800 font-semibold flex items-center gap-1.5">
-                                <i class="fa-solid fa-building text-slate-400"></i>
-                                <span>{{ $employee->prinsiple ?: 'PT Arina Multikarya' }}</span>
-                            </div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Tipe & Status Pegawai</div>
-                            <div class="flex items-center gap-2">
-                                <span class="px-2 py-0.5 rounded text-[11px] font-bold {{ $employee->tipe_karyawan === 'Inhouse' ? 'bg-blue-50 text-blue-700 border border-blue-200' : 'bg-amber-50 text-amber-700 border border-amber-200' }}">
-                                    {{ $employee->tipe_karyawan }}
-                                </span>
-                                <span class="px-2 py-0.5 rounded text-[11px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                                    {{ strtoupper($employee->status) }}
-                                </span>
-                            </div>
-                        </div>
-                    @else
-                        <div class="space-y-1">
-                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Jabatan</div>
-                            <div class="text-slate-800 font-bold flex items-center gap-1.5">
-                                <i class="fa-solid fa-briefcase text-slate-400"></i>
-                                <span>{{ $userJabatan }}</span>
-                            </div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Lingkup Sistem</div>
-                            <div class="text-slate-800 font-medium">Enterprise Management, Talent Pool & Odoo ERP</div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Entitas Operasional</div>
-                            <div class="text-slate-800 font-medium">ESA Groups (AMK, AKP, ATK, ABO, ATB)</div>
-                        </div>
-
-                        <div class="space-y-1">
-                            <div class="text-slate-400 font-semibold uppercase tracking-wider text-[10px]">Keamanan & Sesi</div>
-                            <div class="text-emerald-700 font-semibold flex items-center gap-1">
-                                <i class="fa-solid fa-shield-check"></i> Sesi Login Terproteksi
-                            </div>
-                        </div>
-                    @endif
-                </div>
-            </div>
-
-            <div class="mt-6 pt-4 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-                <span class="flex items-center gap-1.5">
-                    <i class="fa-solid fa-info-circle text-primary"></i>
-                    <span>Informasi profil disinkronkan secara otomatis dari database ASystem.</span>
-                </span>
-                <div class="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-                    @if(session()->has('impersonator_id'))
-                    <a href="{{ route('user.switch-back') }}" class="inline-flex items-center gap-1.5 text-white font-bold py-1.5 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 transition-all shadow-sm">
-                        <i class="fa-solid fa-rotate-left text-xs"></i>
-                        <span>Kembali ke User Asli ({{ session('impersonator_name', 'Administrator') }})</span>
-                    </a>
-                    @endif
-                    <a href="{{ route('profile.index') }}" class="inline-flex items-center gap-1.5 text-primary hover:text-primary-700 font-bold py-1.5 px-3 rounded-xl bg-primary-50 hover:bg-primary-100 transition-all border border-primary-200 shadow-2xs">
-                        <i class="fa-solid fa-user-pen text-xs"></i>
-                        <span>Edit Profil / Password</span>
-                    </a>
-                    <form method="POST" action="{{ route('logout') }}" class="inline m-0">
-                        @csrf
-                        <button type="submit" class="inline-flex items-center gap-1.5 text-rose-600 hover:text-rose-700 font-semibold py-1.5 px-3 rounded-xl hover:bg-rose-50 transition-all">
-                            <i class="fa-solid fa-power-off text-xs"></i>
-                            <span>Keluar (Logout)</span>
-                        </button>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <!-- KARTU PANDUAN NAVIGASI (1 KOLOM) -->
-        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 sm:p-7 flex flex-col justify-between">
-            <div>
-                <div class="flex items-center gap-3 pb-4 mb-4 border-b border-slate-100">
-                    <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-lg">
-                        <i class="fa-solid fa-compass"></i>
-                    </div>
-                    <div>
-                        <h2 class="text-base font-bold text-slate-900">Panduan Navigasi</h2>
-                        <p class="text-xs text-slate-500">Cara menggunakan sistem</p>
-                    </div>
-                </div>
-
-                <div class="space-y-3.5 text-xs text-slate-600">
-                    <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div class="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
-                            1
-                        </div>
-                        <div>
-                            <div class="font-bold text-slate-800">Menu Navigasi Samping</div>
-                            <p class="text-slate-500 mt-0.5 leading-relaxed">
-                                Gunakan bilah menu di sebelah kiri untuk berpindah ke modul yang ingin Anda gunakan.
-                            </p>
-                        </div>
-                    </div>
-
-                    @if($isAdmin)
-                    <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div class="w-6 h-6 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
-                            2
-                        </div>
-                        <div>
-                            <div class="font-bold text-slate-800">Menu Master Data</div>
-                            <p class="text-slate-500 mt-0.5 leading-relaxed">
-                                Menu Master Data hanya tampil dan dapat dikelola oleh akun dengan akses Administrator.
-                            </p>
-                        </div>
-                    </div>
-                    @endif
-
-                    <div class="flex items-start gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100">
-                        <div class="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs flex-shrink-0 mt-0.5">
-                            {{ $isAdmin ? '3' : '2' }}
-                        </div>
-                        <div>
-                            <div class="font-bold text-slate-800">Bantuan & Kendala</div>
-                            <p class="text-slate-500 mt-0.5 leading-relaxed">
-                                Jika menemukan kendala akses atau data yang tidak sesuai, hubungi tim IT Support / HRD.
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="mt-5 p-3 rounded-xl bg-blue-50/70 border border-blue-100 text-[11px] text-blue-800 flex items-center gap-2">
-                <i class="fa-solid fa-lock text-blue-600 text-sm flex-shrink-0"></i>
-                <span>Pastikan selalu logout setelah selesai jika menggunakan perangkat komputer bersama.</span>
-            </div>
-
-            <!-- KARTU PWA WINDOWS APP INSTALL -->
-            <div class="mt-4 p-4 rounded-xl bg-gradient-to-br from-blue-50 via-indigo-50 to-sky-50 border border-blue-200/90 flex items-center justify-between gap-3 shadow-xs" id="home-pwa-card">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-700 via-primary to-sky-500 text-white flex items-center justify-center text-lg shadow-md shadow-blue-500/25 flex-shrink-0">
-                        <i class="fa-brands fa-windows"></i>
-                    </div>
-                    <div>
-                        <div class="font-bold text-slate-900 text-xs">Pasang ASystem di Windows</div>
-                        <p class="text-[11px] text-slate-500 mt-0.5 leading-tight">Buka langsung dari desktop tanpa browser</p>
-                    </div>
-                </div>
-                <button type="button" 
-                        onclick="window.installAsystemPwa && window.installAsystemPwa()" 
-                        class="py-2 px-3.5 rounded-xl bg-gradient-to-r from-blue-700 via-primary to-sky-600 hover:from-blue-600 hover:to-sky-500 text-white font-bold text-xs shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5 flex-shrink-0 cursor-pointer active:scale-95">
-                    <i class="fa-solid fa-download text-[11px]"></i>
-                    <span>Install App</span>
-                </button>
-            </div>
-        </div>
-
     </div>
 
 </div>

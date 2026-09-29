@@ -3626,7 +3626,7 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
      - Menyaring array menggunakan `array_filter($desktopWidgetRegistry, fn($item) => $item['role_allowed'] === true)` sehingga browser hanya menerima daftar modul yang benar-benar diizinkan untuk peran user aktif.
      - Menyediakan daftar kunci default per peran (`$defaultWidgetKeys`) untuk Admin, Tim Rekrutmen, dan Karyawan umum.
   2. **Komponen Antarmuka Papan Pintasan Desktop Windows 11**:
-     - Membangun container berdesain glassmorphism (`bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/90 dark:bg-slate-900/80`) tepat di bawah Hero Welcome Banner.
+     - Membangun container berdesain glassmorphism (`bg-white/90 backdrop-blur-md rounded-3xl border border-slate-200/90 dark:bg-slate-900/80`) yang diletakkan tepat di bawah kartu informasi akun dan panduan navigasi.
      - Grid desktop responsif (`grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-9`) yang menata icon layaknya desktop Windows.
      - Setiap item icon memiliki squircle 64x64px dengan gradasi tematik, badge shortcut Windows, label teks 2 baris terpusat, dan tombol hapus cepat saat hover / edit mode.
      - Placeholder tile dashed `+ Tambah` di akhir baris grid untuk memudahkan penambahan modul baru.
