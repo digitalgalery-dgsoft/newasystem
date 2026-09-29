@@ -201,6 +201,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/interview/{id}/alihkan', [InterviewController::class, 'alihkanAS'])->name('interview.alihkan');
     Route::post('/interview/sync-odoo', [InterviewController::class, 'syncOdoo'])->name('interview.sync_odoo');
     Route::post('/interview/{id}/sync-single-odoo', [InterviewController::class, 'syncSingleOdoo'])->name('interview.sync_single_odoo');
+    Route::post('/interview/{id}/update-profile', [InterviewController::class, 'updateProfile'])->name('interview.update_profile');
 
     // Submodul Interview Walkin (Dashboard & Rekap Rekruter)
     Route::get('/walkinterview', [InterviewController::class, 'walkInterview'])->name('interview.walk');
@@ -242,6 +243,7 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/kandidatportal/ai-queue-data', [KandidatPortalController::class, 'aiQueueData'])->name('kandidatportal.ai_queue_data');
     Route::post('/kandidatportal/ai-queue-trigger', [KandidatPortalController::class, 'aiQueueTriggerProcess'])->name('kandidatportal.ai_queue_trigger');
     Route::get('/kandidatportal/{id}', [KandidatPortalController::class, 'show'])->name('kandidatportal.show');
+    Route::post('/kandidatportal/{id}/update-profile', [KandidatPortalController::class, 'updateProfile'])->name('kandidatportal.update_profile');
     Route::post('/kandidatportal/{id}/reset-password', [KandidatPortalController::class, 'resetPassword'])->name('kandidatportal.reset_password');
     Route::post('/kandidatportal/{id}/interview', [KandidatPortalController::class, 'updateInterview'])->name('kandidatportal.interview');
     Route::post('/kandidatportal/{id}/refcek', [KandidatPortalController::class, 'storeRefcek'])->name('kandidatportal.refcek');

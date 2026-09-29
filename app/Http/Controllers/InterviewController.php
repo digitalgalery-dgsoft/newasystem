@@ -3053,5 +3053,121 @@ class InterviewController extends Controller
 
         return $candidates;
     }
+
+    /**
+     * Memperbarui Data Profil Pelamar (Data Pokok Kandidat Interview)
+     */
+    public function updateProfile(Request $request, $id)
+    {
+        $candidate = Candidate::findOrFail($id);
+        $user = $this->getCurrentUser();
+        if (!$user) {
+            return redirect()->route('login');
+        }
+
+        $validated = $request->validate([
+            'full_name'        => 'required|string|max:255',
+            'nik'              => 'required|string|min:10|max:30',
+            'gender'           => 'nullable|string|in:Laki-laki,Perempuan',
+            'birth_place'      => 'nullable|string|max:100',
+            'birth_date'       => 'nullable|date',
+            'phone'            => 'nullable|string|max:30',
+            'education'        => 'nullable|string|max:100',
+            'address_ktp'      => 'nullable|string|max:500',
+            'address_domicile' => 'nullable|string|max:500',
+            'applied_job'      => 'nullable|string|max:255',
+            'principle_id'     => 'nullable|integer',
+            'area'             => 'nullable|string|max:100',
+            'useras'           => 'nullable|string|max:255',
+            'info_lowongan'    => 'nullable|string|max:255',
+            'notes'            => 'nullable|string|max:1000',
+        ]);
+
+        // Tangani relasi principle
+        if (!empty($validated['principle_id'])) {
+            $prin = Principle::find($validated['principle_id']);
+            if ($prin) {
+                $candidate->principle_id = $prin->id;
+                $candidate->principle = $prin->name;
+            }
+        } elseif ($request->has('principle') && !empty($request->input('principle'))) {
+            $candidate->principle = trim($request->input('principle'));
+        }
+
+        // Tangani recruiter / useras
+        if (!empty($validated['useras'])) {
+            $candidate->useras = trim($validated['useras']);
+            $matchedUser = User::whereRaw('LOWER(email) = ?', [strtolower(trim($validated['useras']))])->first();
+            if ($matchedUser) {
+                $candidate->recruiter_id = $matchedUser->id;
+            }
+        }
+
+        // Set attributes
+        $candidate->full_name = trim($validated['full_name']);
+        $candidate->nik = trim($validated['nik']);
+        $candidate->gender = $validated['gender'] ?? $candidate->gender;
+        $candidate->birth_place = $validated['birth_place'] ?? null;
+        $candidate->birth_date = $validated['birth_date'] ?? null;
+        
+        $phone = preg_replace('/[^0-9]/', '', (string)($validated['phone'] ?? ''));
+        if (str_starts_with($phone, '62')) {
+            $phone = '0' . substr($phone, 2);
+        }
+        $candidate->phone = $phone ?: null;
+        $candidate->whatsapp = $phone ?: null;
+        
+        $candidate->education = $validated['education'] ?? null;
+        $candidate->address_ktp = $validated['address_ktp'] ?? null;
+        $candidate->address_domicile = $validated['address_domicile'] ?? null;
+        $candidate->applied_job = $validated['applied_job'] ?? null;
+        $candidate->area = $validated['area'] ?? null;
+        $candidate->penempatan = $validated['area'] ?? null;
+        $candidate->info_lowongan = $validated['info_lowongan'] ?? null;
+        $candidate->notes = $validated['notes'] ?? null;
+
+        $candidate->save();
+
+        // Sinkronkan ke tabel tb_kandidat jika tabel tersedia
+        if (Schema::hasTable('tb_kandidat')) {
+            try {
+                $tbData = [
+                    'nama_lengkap'        => $candidate->full_name,
+                    'applicants_name'     => $candidate->full_name,
+                    'no_ktp'              => $candidate->nik,
+                    'jenis_kelamin'       => $candidate->gender,
+                    'kota_lahir'          => $candidate->birth_place,
+                    'tanggal_lahir'       => $candidate->birth_date,
+                    'pendidikan_terakhir' => $candidate->education,
+                    'phone'               => $candidate->phone,
+                    'mobile'              => $candidate->phone,
+                    'alamat_ktp'          => $candidate->address_ktp,
+                    'alamat_domisili'     => $candidate->address_domicile,
+                    'applied_job'         => $candidate->applied_job,
+                    'area'                => $candidate->area,
+                    'principle'           => $candidate->principle,
+                    'useras'              => $candidate->useras,
+                    'info'                => $candidate->info_lowongan,
+                    'catatan'             => $candidate->notes,
+                ];
+
+                $cols = Schema::getColumnListing('tb_kandidat');
+                $tbFiltered = array_intersect_key($tbData, array_flip($cols));
+
+                if (!empty($tbFiltered)) {
+                    DB::table('tb_kandidat')
+                        ->where('id', $candidate->id)
+                        ->orWhere('no_ktp', $candidate->nik)
+                        ->update($tbFiltered);
+                }
+            } catch (\Throwable $e) {
+                Log::warning("Gagal sinkron tb_kandidat saat update profile kandidat ID {$candidate->id}: " . $e->getMessage());
+            }
+        }
+
+        ActivityLogger::log('UPDATE', 'Profil Pelamar', "Memperbarui data profil kandidat interview {$candidate->full_name} (NIK: {$candidate->nik})", $candidate);
+
+        return back()->with('success', "Data profil kandidat {$candidate->full_name} berhasil diperbarui.");
+    }
 }
 

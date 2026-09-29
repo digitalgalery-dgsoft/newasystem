@@ -1734,6 +1734,17 @@
                         </span>
                     </div>
 
+                    <!-- Info Mantan Karyawan Resign -->
+                    <div id="previewResignNotice" class="hidden p-3 rounded-2xl bg-rose-50 border-2 border-rose-300 text-rose-950 text-xs space-y-1 shadow-xs">
+                        <div class="flex items-center gap-2 font-black text-rose-800 text-xs uppercase tracking-wider">
+                            <i class="fa-solid fa-user-xmark text-rose-600 text-sm shrink-0"></i>
+                            <span>STATUS MASTER KARYAWAN: RESIGN</span>
+                        </div>
+                        <p class="leading-relaxed text-[11px] text-slate-700" id="previewResignText">
+                            Kandidat ini tercatat sebagai mantan karyawan yang sudah <b>RESIGN</b>. Status rekrutmen akan diproses sebagai kandidat pelamar baru (bukan active employee).
+                        </p>
+                    </div>
+
                     <!-- Info Auto Replace jika NIK sudah ada sebelumnya -->
                     <div id="previewArchiveNotice" class="hidden p-3 rounded-2xl bg-amber-50 border-2 border-amber-300 text-amber-950 text-xs space-y-1.5 shadow-xs">
                         <div class="flex items-center gap-2 font-black text-amber-800 text-xs uppercase tracking-wider">
@@ -2263,6 +2274,7 @@
         document.getElementById('odooNikLoading').classList.add('hidden');
         document.getElementById('odooNikPreview').classList.add('hidden');
         document.getElementById('previewArchiveNotice')?.classList.add('hidden');
+        document.getElementById('previewResignNotice')?.classList.add('hidden');
         const btnSave = document.getElementById('btnSaveCandidate');
         if (btnSave) {
             btnSave.classList.remove('hidden');
@@ -2365,6 +2377,18 @@
             if (app.birth_place) ttlText = `${app.birth_place}, ${ttlText}`;
             if (app.age) ttlText += ` (${app.age} Thn)`;
             document.getElementById('previewTtl').textContent = ttlText;
+
+            // Cek status resign mantan karyawan
+            const resignNotice = document.getElementById('previewResignNotice');
+            if (resignNotice) {
+                if (app.is_resigned) {
+                    resignNotice.classList.remove('hidden');
+                    const resignEntity = app.resigned_entity ? ` pada entitas ${app.resigned_entity}` : '';
+                    document.getElementById('previewResignText').innerHTML = `Kandidat ini tercatat sebagai mantan karyawan yang sudah <b>RESIGN</b>${resignEntity}. Status rekrutmen akan diproses sebagai kandidat pelamar baru (bukan active employee).`;
+                } else {
+                    resignNotice.classList.add('hidden');
+                }
+            }
 
             // Cek status kandidat yang sudah ada di database ASystem (Auto Replace)
             const archiveNotice = document.getElementById('previewArchiveNotice');

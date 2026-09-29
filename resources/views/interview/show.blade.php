@@ -12,7 +12,8 @@
     editPrincipleModal: false, 
     archiveModal: false,
     computerEnabled: true,
-    photoUploadModal: false
+    photoUploadModal: false,
+    editProfileModal: false
 }" class="space-y-6">
 
     <!-- TOP BAR / BREADCRUMB & HEADER (Identik dengan Detail Kandidat Portal) -->
@@ -179,11 +180,17 @@
             
             <!-- Left: 11 Data Points Table -->
             <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2 mb-4">
-                    <div class="w-7 h-7 rounded-lg bg-blue-50 text-primary flex items-center justify-center font-bold text-xs">
-                        <i class="fa-solid fa-id-card"></i>
+                <div class="flex items-center justify-between mb-4">
+                    <div class="flex items-center gap-2">
+                        <div class="w-7 h-7 rounded-lg bg-blue-50 text-primary flex items-center justify-center font-bold text-xs">
+                            <i class="fa-solid fa-id-card"></i>
+                        </div>
+                        <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Profil Lengkap Pelamar</h2>
                     </div>
-                    <h2 class="text-sm font-bold text-slate-800 uppercase tracking-wider">Profil Lengkap Pelamar</h2>
+                    <button type="button" @click="editProfileModal = true" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-800 font-bold text-xs border border-amber-300 transition-colors shadow-2xs cursor-pointer">
+                        <i class="fa-solid fa-user-pen text-amber-600"></i>
+                        <span>Edit Profil</span>
+                    </button>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-3 text-xs">
@@ -2458,6 +2465,210 @@
                     </button>
                     <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm transition cursor-pointer">
                         Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL EDIT PROFIL PELAMAR -->
+    <div x-show="editProfileModal" x-cloak class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-3xl w-full p-6 border border-slate-200 my-8 space-y-5 max-h-[90vh] flex flex-col" @click.away="editProfileModal = false">
+            
+            <!-- Modal Header -->
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm">
+                        <i class="fa-solid fa-user-pen"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-extrabold text-slate-900 tracking-tight">Edit Profil Pelamar</h3>
+                        <p class="text-xs text-slate-500">Perbarui data profil & penempatan kandidat {{ $candidate->full_name }}</p>
+                    </div>
+                </div>
+                <button type="button" @click="editProfileModal = false" class="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-700 flex items-center justify-center transition cursor-pointer">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+
+            <!-- Modal Body (Scrollable) -->
+            <form action="{{ route('interview.update_profile', $candidate->id) }}" method="POST" class="space-y-4 overflow-y-auto pr-1 flex-1">
+                @csrf
+
+                <!-- Section 1: Identitas Pokok & Kontak -->
+                <div class="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-id-card text-primary"></i>
+                        <span>Identitas Pokok & Kontak</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap <span class="text-rose-500">*</span></label>
+                            <input type="text" name="full_name" value="{{ old('full_name', $candidate->full_name) }}" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Nama lengkap sesuai KTP...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">No. KTP / NIK <span class="text-rose-500">*</span></label>
+                            <input type="text" name="nik" value="{{ old('nik', $candidate->nik) }}" maxlength="30" required class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="16 digit NIK KTP...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Jenis Kelamin</label>
+                            <select name="gender" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition">
+                                <option value="Laki-laki" {{ in_array(strtolower($candidate->gender ?? ''), ['laki-laki', 'male', 'l']) ? 'selected' : '' }}>Laki-laki</option>
+                                <option value="Perempuan" {{ in_array(strtolower($candidate->gender ?? ''), ['perempuan', 'female', 'p']) ? 'selected' : '' }}>Perempuan</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nomor WhatsApp / HP</label>
+                            <input type="text" name="phone" value="{{ old('phone', $candidate->phone ?? $candidate->whatsapp ?? '') }}" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Contoh: 081234567890">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Tempat Lahir</label>
+                            <input type="text" name="birth_place" value="{{ old('birth_place', $candidate->birth_place ?? '') }}" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Kota/Kabupaten tempat lahir...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Tanggal Lahir</label>
+                            @php
+                                $intBirthDate = '';
+                                if (!empty($candidate->birth_date)) {
+                                    try {
+                                        $intBirthDate = \Illuminate\Support\Carbon::parse($candidate->birth_date)->format('Y-m-d');
+                                    } catch (\Throwable $e) {
+                                        $intBirthDate = (string)$candidate->birth_date;
+                                    }
+                                }
+                            @endphp
+                            <input type="date" name="birth_date" value="{{ old('birth_date', $intBirthDate) }}" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition">
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Pendidikan Terakhir</label>
+                            @php
+                                $intEduOptions = ['SMA / SMK', 'SMA', 'SMK', 'D3', 'S1', 'S2', 'SMP', 'SD', 'Tidak Sekolah'];
+                                $currIntEdu = trim($candidate->education ?? '');
+                                if (!empty($currIntEdu) && !in_array($currIntEdu, $intEduOptions)) {
+                                    $intEduOptions[] = $currIntEdu;
+                                }
+                            @endphp
+                            <select name="education" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition">
+                                <option value="">-- Pilih Pendidikan --</option>
+                                @foreach($intEduOptions as $edu)
+                                    <option value="{{ $edu }}" {{ strcasecmp($currIntEdu, $edu) === 0 ? 'selected' : '' }}>{{ $edu }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Alamat KTP & Domisili -->
+                <div class="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-location-dot text-rose-500"></i>
+                        <span>Alamat KTP & Domisili</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Sesuai KTP</label>
+                            <textarea name="address_ktp" rows="2" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Alamat lengkap sesuai KTP...">{{ old('address_ktp', $candidate->address_ktp) }}</textarea>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Domisili Sekarang</label>
+                            <textarea name="address_domicile" rows="2" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Alamat domisili saat ini...">{{ old('address_domicile', $candidate->address_domicile) }}</textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 3: Rekrutmen & Penempatan -->
+                <div class="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-3">
+                    <div class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-briefcase text-emerald-600"></i>
+                        <span>Rekrutmen & Penempatan</span>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Posisi / Jabatan yang Dilamar</label>
+                            <input type="text" name="applied_job" value="{{ old('applied_job', $candidate->applied_job ?? $candidate->position ?? '') }}" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Contoh: SPG, MD, Kasir, Admin, dll...">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Prinsiple Penempatan</label>
+                            <select name="principle_id" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition">
+                                <option value="">-- Pilih Prinsiple Penempatan --</option>
+                                @foreach($principles as $p)
+                                    <option value="{{ $p->id }}" {{ ($candidate->principle_id == $p->id || (empty($candidate->principle_id) && strcasecmp($candidate->principle ?? '', $p->name) === 0)) ? 'selected' : '' }}>
+                                        {{ $p->name }} {{ $p->entity ? '('.$p->entity.')' : '' }}
+                                    </option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Area Penempatan</label>
+                            <input type="text" name="area" list="areaListEditProfileInt" value="{{ old('area', $candidate->area ?? '') }}" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Pilih atau ketik area penempatan...">
+                            <datalist id="areaListEditProfileInt">
+                                @foreach($areas as $ar)
+                                    <option value="{{ is_object($ar) ? $ar->area : $ar }}"></option>
+                                @endforeach
+                            </datalist>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">User AS / Rekruter</label>
+                            <select name="useras" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition">
+                                <option value="">-- Pilih User AS / Rekruter --</option>
+                                @php
+                                    $currIntUseras = strtolower(trim($candidate->useras ?? ''));
+                                    $matchedIntAs = false;
+                                @endphp
+                                @foreach($asRecruiterOptions as $val => $opt)
+                                    @php
+                                        $optVal = is_array($opt) ? ($opt['value'] ?? $val) : $val;
+                                        $optLabel = is_array($opt) ? ($opt['label'] ?? $optVal) : $opt;
+                                        $optSub = is_array($opt) ? ($opt['sublabel'] ?? '') : '';
+                                        $isSelected = (strtolower(trim($optVal)) === $currIntUseras) || (strtolower(trim($optLabel)) === $currIntUseras);
+                                        if ($isSelected) $matchedIntAs = true;
+                                    @endphp
+                                    <option value="{{ $optVal }}" {{ $isSelected ? 'selected' : '' }}>
+                                        {{ $optLabel }} {{ $optSub ? '— ' . $optSub : '' }}
+                                    </option>
+                                @endforeach
+                                @if(!$matchedIntAs && !empty($candidate->useras))
+                                    <option value="{{ $candidate->useras }}" selected>{{ $candidate->useras }} (Tersimpan Saat Ini)</option>
+                                @endif
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Info / Sumber Lowongan</label>
+                            <input type="text" name="info_lowongan" list="infoLowonganListEditInt" value="{{ old('info_lowongan', $candidate->info_lowongan ?? $candidate->info ?? $candidate->source_type ?? '') }}" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Pilih atau ketik sumber info...">
+                            <datalist id="infoLowonganListEditInt">
+                                <option value="Job Portal (Direct Web)"></option>
+                                <option value="Walk Interview"></option>
+                                <option value="WhatsApp"></option>
+                                <option value="Instagram"></option>
+                                <option value="TikTok"></option>
+                                <option value="Website"></option>
+                                <option value="Teman / Relasi"></option>
+                                <option value="Telegram"></option>
+                                <option value="LinkedIn"></option>
+                                <option value="Jobstreet"></option>
+                                <option value="Lainnya"></option>
+                            </datalist>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 4: Catatan Tambahan -->
+                <div class="bg-slate-50/70 p-4 rounded-xl border border-slate-200/80 space-y-2">
+                    <label class="block text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                        <i class="fa-solid fa-note-sticky text-amber-500"></i>
+                        <span>Catatan Khusus / Evaluasi Tambahan</span>
+                    </label>
+                    <textarea name="notes" rows="2" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition" placeholder="Catatan khusus, ekspektasi gaji, rekomendasi, dll...">{{ old('notes', $candidate->notes) }}</textarea>
+                </div>
+
+                <!-- Modal Actions Footer -->
+                <div class="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 shrink-0">
+                    <button type="button" @click="editProfileModal = false" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition cursor-pointer">
+                        Batal
+                    </button>
+                    <button type="submit" class="px-5 py-2 rounded-xl text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white shadow-sm inline-flex items-center gap-2 transition cursor-pointer">
+                        <i class="fa-solid fa-floppy-disk"></i>
+                        <span>Simpan Perubahan</span>
                     </button>
                 </div>
             </form>

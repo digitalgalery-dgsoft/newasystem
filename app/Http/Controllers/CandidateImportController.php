@@ -10,8 +10,10 @@ use App\Models\TestResult;
 use App\Models\InterviewAssessment;
 use App\Models\PrincipleApproval;
 use App\Models\WorkExperience;
+use App\Models\Employee;
 use App\Services\CandidateImportService;
 use App\Services\OdooSyncService;
+use App\Services\OdooRecruitmentSyncService;
 use App\Services\ActivityLogger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
@@ -203,8 +205,7 @@ class CandidateImportController extends Controller
             ], 200);
         }
 
-        $foundApplicant = null;
-        $foundEntity = null;
+        $allMatchingApplicants = [];
 
         foreach ($entities as $entity) {
             if (!$entity->isConfigured()) {
@@ -227,7 +228,7 @@ class CandidateImportController extends Controller
                     'write_date', 'create_date', 'active',
                 ];
 
-                // 1. Cari berdasarkan No. KTP
+                // 1. Cari berdasarkan No. KTP di entitas ini
                 $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
                     $entity->odoo_db, $uid, $entity->odoo_api_key,
                     'hr.applicant', 'search_read',
@@ -235,49 +236,69 @@ class CandidateImportController extends Controller
                     [
                         'fields' => $applicantFields,
                         'context' => ['active_test' => false],
-                        'order' => 'write_date desc, id desc',
-                        'limit' => 1,
+                        'order' => 'create_date desc, id desc',
                     ]
                 ]);
 
-                // 2. Jika tidak ditemukan, cari berdasarkan No. KK
-                if (!is_array($applicants) || empty($applicants)) {
-                    $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
+                if (is_array($applicants) && !empty($applicants)) {
+                    foreach ($applicants as $app) {
+                        $allMatchingApplicants[] = [
+                            'app' => $app,
+                            'entity' => $entity->code,
+                            'found_via' => 'no_ktp',
+                        ];
+                    }
+                }
+
+                // 2. Jika tidak ditemukan via no_ktp di entitas ini, cari via No. KK
+                if (empty($applicants)) {
+                    $applicantsKk = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
                         $entity->odoo_db, $uid, $entity->odoo_api_key,
                         'hr.applicant', 'search_read',
                         [[['no_kk', '=', $cleanNik]]],
                         [
                             'fields' => $applicantFields,
                             'context' => ['active_test' => false],
-                            'order' => 'write_date desc, id desc',
-                            'limit' => 1,
+                            'order' => 'create_date desc, id desc',
                         ]
                     ]);
-                }
 
-                if (is_array($applicants) && !empty($applicants)) {
-                    $foundApplicant = $applicants[0];
-                    $foundEntity = $entity->code;
-                    break;
+                    if (is_array($applicantsKk) && !empty($applicantsKk)) {
+                        foreach ($applicantsKk as $app) {
+                            $allMatchingApplicants[] = [
+                                'app' => $app,
+                                'entity' => $entity->code,
+                                'found_via' => 'no_kk',
+                            ];
+                        }
+                    }
                 }
             } catch (\Throwable $e) {
                 continue;
             }
         }
 
-        if (!$foundApplicant) {
+        if (empty($allMatchingApplicants)) {
             return response()->json([
                 'success' => false,
                 'message' => "NIK / No. KK {$cleanNik} tidak ditemukan di modul Rekrutmen Odoo ERP (AMK, AKP, ATK, ABO, ATB). Pastikan pelamar sudah diinput di Odoo atau periksa kembali nomor NIK/KK.",
             ], 200);
         }
 
+        // Gunakan pemeringkatan prioritas OdooRecruitmentSyncService:
+        // Memprioritaskan tahap rekrutmen aktif (Data Pelamar, Interview) di atas Joined jika kandidat sudah RESIGN
+        $syncService = app(OdooRecruitmentSyncService::class);
+        $bestMatch = $syncService->selectBestOdooApplicant($allMatchingApplicants, $cleanNik);
+
+        $foundApplicant = $bestMatch['app'];
+        $foundEntity = $bestMatch['entity'];
+        $foundVia = $bestMatch['found_via'] ?? 'no_ktp';
+
         // Format data yang ditemukan
         $rawFoundKtp = preg_replace('/\D/', '', (string)($foundApplicant['no_ktp'] ?? ''));
         $rawFoundKk = preg_replace('/\D/', '', (string)($foundApplicant['no_kk'] ?? ''));
         $targetNik = (strlen($rawFoundKtp) === 16) ? $rawFoundKtp : $cleanNik;
         $targetKk = (strlen($rawFoundKk) === 16) ? $rawFoundKk : null;
-        $foundVia = ($cleanNik === $rawFoundKk && $cleanNik !== $rawFoundKtp) ? 'no_kk' : 'no_ktp';
 
         $name = ucwords(strtolower(trim((string)($foundApplicant['partner_name'] ?: $foundApplicant['name']))));
         $job = is_array($foundApplicant['job_id']) ? $foundApplicant['job_id'][1] : (string)($foundApplicant['job_id'] ?? '-');
@@ -293,6 +314,14 @@ class CandidateImportController extends Controller
         $age = null;
         if ($birth) {
             $age = \Carbon\Carbon::parse($birth)->age;
+        }
+
+        // Cek status resign mantan karyawan
+        $empStatus = OdooRecruitmentSyncService::checkEmployeeResignStatus($targetNik);
+        $isResigned = ($empStatus['is_resigned'] && !$empStatus['has_active']);
+
+        if (str_contains(strtolower($stage), 'joined') && $isResigned) {
+            $stage = 'Joined (Resign)';
         }
 
         $allMatchNiks = array_values(array_unique(array_filter([$cleanNik, $targetNik, $targetKk])));
@@ -330,34 +359,56 @@ class CandidateImportController extends Controller
             }
         }
 
+        // Kumpulkan daftar riwayat lain jika ditemukan lebih dari 1 record di Odoo
+        $otherRecords = [];
+        foreach ($allMatchingApplicants as $match) {
+            if ($match['app']['id'] !== $foundApplicant['id'] || $match['entity'] !== $foundEntity) {
+                $otherStage = is_array($match['app']['stage_id'] ?? null) ? $match['app']['stage_id'][1] : ($match['app']['stage_id'] ?? '-');
+                $otherJob = is_array($match['app']['job_id'] ?? null) ? $match['app']['job_id'][1] : ($match['app']['job_id'] ?? '-');
+                $otherRecords[] = [
+                    'id'          => $match['app']['id'],
+                    'entity'      => $match['entity'],
+                    'stage'       => $otherStage,
+                    'job'         => $otherJob,
+                    'create_date' => $match['app']['create_date'] ?? null,
+                ];
+            }
+        }
+
         return response()->json([
             'success' => true,
             'message' => "Data pelamar ditemukan di Odoo [{$foundEntity}]!" . ($foundVia === 'no_kk' ? " (via No. KK)" : ""),
             'applicant' => [
-                'odoo_id'      => $foundApplicant['id'],
-                'entity'       => $foundEntity,
-                'name'         => $name,
-                'nik'          => $targetNik,
-                'no_ktp'       => $targetNik,
-                'no_kk'        => $targetKk,
-                'searched_nik' => $cleanNik,
-                'found_via'    => $foundVia,
-                'job'          => $job,
-                'principle'    => $principle,
-                'area'         => $area,
-                'stage'        => $stage,
-                'phone'        => $phone,
-                'birth'        => $birth,
-                'age'          => $age,
-                'birth_place'  => $foundApplicant['place_of_birth'] ?? null,
-                'address'      => $foundApplicant['ktp_address'] ?? null,
-                'email'        => $foundApplicant['email_from'] ?? null,
-                'gender'       => $gender,
+                'odoo_id'         => $foundApplicant['id'],
+                'entity'          => $foundEntity,
+                'name'            => $name,
+                'nik'             => $targetNik,
+                'no_ktp'          => $targetNik,
+                'no_kk'           => $targetKk,
+                'searched_nik'    => $cleanNik,
+                'found_via'       => $foundVia,
+                'job'             => $job,
+                'principle'       => $principle,
+                'area'            => $area,
+                'stage'           => $stage,
+                'phone'           => $phone,
+                'birth'           => $birth,
+                'age'             => $age,
+                'birth_place'     => $foundApplicant['place_of_birth'] ?? null,
+                'address'         => $foundApplicant['ktp_address'] ?? null,
+                'email'           => $foundApplicant['email_from'] ?? null,
+                'gender'          => $gender,
+                'is_resigned'     => $isResigned,
+                'resigned_entity' => $empStatus['resigned_entity'],
             ],
-            'is_blocked' => false,
-            'has_existing' => $hasExisting,
-            'is_active_existing' => (bool)$activeCandidate,
-            'existing_candidate' => $existingInfo,
+            'is_blocked'          => false,
+            'has_existing'        => $hasExisting,
+            'is_active_existing'  => (bool)$activeCandidate,
+            'existing_candidate'  => $existingInfo,
+            'is_resigned'         => $isResigned,
+            'resigned_entity'     => $empStatus['resigned_entity'],
+            'total_odoo_records'  => count($allMatchingApplicants),
+            'other_records'       => $otherRecords,
         ]);
     }
 
@@ -386,8 +437,7 @@ class CandidateImportController extends Controller
         }
         $entities = $query->get();
 
-        $foundApplicant = null;
-        $foundEntity = null;
+        $allMatchingApplicants = [];
 
         $searchNiks = array_values(array_unique(array_filter([$cleanNik, $cleanSearched])));
 
@@ -421,34 +471,42 @@ class CandidateImportController extends Controller
                         [
                             'fields' => $applicantFields,
                             'context' => ['active_test' => false],
-                            'order' => 'write_date desc, id desc',
-                            'limit' => 1,
+                            'order' => 'create_date desc, id desc',
                         ]
                     ]);
                     if (is_array($applicants) && !empty($applicants)) {
-                        $foundApplicant = $applicants[0];
-                        $foundEntity = $entity->code;
-                        break 2;
+                        foreach ($applicants as $app) {
+                            $allMatchingApplicants[] = [
+                                'app' => $app,
+                                'entity' => $entity->code,
+                                'found_via' => 'no_ktp',
+                            ];
+                        }
                     }
                 }
 
-                // 2. Cari berdasarkan no_kk
-                foreach ($searchNiks as $sNik) {
-                    $applicants = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
-                        $entity->odoo_db, $uid, $entity->odoo_api_key,
-                        'hr.applicant', 'search_read',
-                        [[['no_kk', '=', $sNik]]],
-                        [
-                            'fields' => $applicantFields,
-                            'context' => ['active_test' => false],
-                            'order' => 'write_date desc, id desc',
-                            'limit' => 1,
-                        ]
-                    ]);
-                    if (is_array($applicants) && !empty($applicants)) {
-                        $foundApplicant = $applicants[0];
-                        $foundEntity = $entity->code;
-                        break 2;
+                // 2. Cari berdasarkan no_kk jika belum ada
+                if (empty($applicants)) {
+                    foreach ($searchNiks as $sNik) {
+                        $applicantsKk = $service->xmlRpcCall('/xmlrpc/2/object', 'execute_kw', [
+                            $entity->odoo_db, $uid, $entity->odoo_api_key,
+                            'hr.applicant', 'search_read',
+                            [[['no_kk', '=', $sNik]]],
+                            [
+                                'fields' => $applicantFields,
+                                'context' => ['active_test' => false],
+                                'order' => 'create_date desc, id desc',
+                            ]
+                        ]);
+                        if (is_array($applicantsKk) && !empty($applicantsKk)) {
+                            foreach ($applicantsKk as $app) {
+                                $allMatchingApplicants[] = [
+                                    'app' => $app,
+                                    'entity' => $entity->code,
+                                    'found_via' => 'no_kk',
+                                ];
+                            }
+                        }
                     }
                 }
             } catch (\Throwable $e) {
@@ -456,12 +514,19 @@ class CandidateImportController extends Controller
             }
         }
 
-        if (!$foundApplicant) {
+        if (empty($allMatchingApplicants)) {
             return response()->json([
                 'success' => false,
                 'message' => "NIK {$cleanNik} tidak ditemukan di modul Rekrutmen Odoo ERP.",
             ], 200);
         }
+
+        // Pilih record terbaik dengan prioritas tahap rekrutmen aktif
+        $syncService = app(OdooRecruitmentSyncService::class);
+        $bestMatch = $syncService->selectBestOdooApplicant($allMatchingApplicants, $cleanNik);
+
+        $foundApplicant = $bestMatch['app'];
+        $foundEntity = $bestMatch['entity'];
 
         $rawFoundKtp = preg_replace('/\D/', '', (string)($foundApplicant['no_ktp'] ?? ''));
         $rawFoundKk = preg_replace('/\D/', '', (string)($foundApplicant['no_kk'] ?? ''));
@@ -477,6 +542,31 @@ class CandidateImportController extends Controller
         $prinName = is_array($foundApplicant['principle_id']) ? $foundApplicant['principle_id'][1] : (string)($foundApplicant['principle_id'] ?? '');
         $area = is_array($foundApplicant['area_id']) ? $foundApplicant['area_id'][1] : (string)($foundApplicant['area_id'] ?? '');
         $stage = is_array($foundApplicant['stage_id']) ? $foundApplicant['stage_id'][1] : (string)($foundApplicant['stage_id'] ?? 'Data Pelamar');
+
+        // Cek status resign mantan karyawan
+        $empStatus = OdooRecruitmentSyncService::checkEmployeeResignStatus($targetNik);
+        $isResigned = ($empStatus['is_resigned'] && !$empStatus['has_active']);
+
+        $stageLower = strtolower($stage);
+        if (str_contains($stageLower, 'joined')) {
+            if ($isResigned) {
+                $statusKandidat = 'Baru';
+                $stage = 'Joined (Resign)';
+            } else {
+                $statusKandidat = 'Terima';
+            }
+        } elseif (
+            str_contains($stageLower, 'interview') ||
+            str_contains($stageLower, 'principal') ||
+            str_contains($stageLower, 'learning') ||
+            str_contains($stageLower, 'pkwt')
+        ) {
+            $statusKandidat = 'Interview';
+        } elseif (str_contains($stageLower, 'refuse') || str_contains($stageLower, 'tolak')) {
+            $statusKandidat = 'Arsip';
+        } else {
+            $statusKandidat = 'Baru';
+        }
 
         // Cari principle_id di database lokal
         $principleId = null;
@@ -612,7 +702,7 @@ class CandidateImportController extends Controller
                 'principle_id'             => $principleId,
                 'applied_job'              => $job,
                 'status'                   => 'Active',
-                'status_kandidat'          => 'Active',
+                'status_kandidat'          => $statusKandidat,
                 'jenis'                    => '', // Walkin / Inhouse Interview list
                 'source_type'              => 'odoo_sync',
                 'useras'                   => $userEmail,
@@ -710,7 +800,7 @@ class CandidateImportController extends Controller
                     'password'            => $passwordHashed,
                     'useras'              => $userEmail,
                     'status'              => 'Active',
-                    'status_kandidat'     => 'Active',
+                    'status_kandidat'     => $statusKandidat,
                     'jenis'               => '',
                     'info'                => 'WhatsApp',
                     'undangan'            => 'WhatsApp',
@@ -749,11 +839,12 @@ class CandidateImportController extends Controller
             $waText = "Halo {$name},\n\nAnda telah terdaftar untuk mengikuti tahapan seleksi tes online di ASystem ESA Groups ({$prinName} - {$job}).\n\nSilakan login untuk mengerjakan tes online (Psikotes DISC, Matematika, dan Profil):\n🔗 *Link Tes Online*: {$cbtLoginUrl}\n🆔 *Username (NIK)*: {$targetNik}\n🔑 *Password*: {$passwordPlain}\n\nMohon segera menyelesaikan tes tersebut. Terima kasih.\n*Tim Rekrutmen ESA Groups*";
             $waLink = !empty($waPhone) ? "https://api.whatsapp.com/send?phone={$waPhone}&text=" . rawurlencode($waText) : null;
 
+            $resignNote = $isResigned ? " (Perhatian: Kandidat terdata mantan karyawan RESIGN di Odoo [{$empStatus['resigned_entity']}])" : "";
             $successMsg = $wasActiveArchived
-                ? "Kandidat {$name} berhasil ditarik ulang dari Odoo [{$foundEntity}]. Data aktif sebelumnya telah otomatis diarsipkan dan proses baru siap dimulai!"
+                ? "Kandidat {$name} berhasil ditarik ulang dari Odoo [{$foundEntity}]. Data aktif sebelumnya telah otomatis diarsipkan dan proses baru siap dimulai!{$resignNote}"
                 : ($isReplaced
-                    ? "Kandidat {$name} berhasil ditarik kembali dari Odoo [{$foundEntity}] dan siap diproses!"
-                    : "Kandidat {$name} berhasil ditarik dari Odoo [{$foundEntity}] dan siap diproses!");
+                    ? "Kandidat {$name} berhasil ditarik kembali dari Odoo [{$foundEntity}] dan siap diproses!{$resignNote}"
+                    : "Kandidat {$name} berhasil ditarik dari Odoo [{$foundEntity}] dan siap diproses!{$resignNote}");
 
             return response()->json([
                 'success'          => true,
@@ -775,6 +866,8 @@ class CandidateImportController extends Controller
                 'wa_link'          => $waLink,
                 'wa_phone'         => $waPhone,
                 'wa_text'          => $waText,
+                'is_resigned'      => $isResigned,
+                'resigned_entity'  => $empStatus['resigned_entity'],
             ]);
 
         } catch (\Throwable $e) {

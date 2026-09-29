@@ -97,6 +97,9 @@ class OdooRecruitmentSyncService
         $movedArsipCount = 0;
         $unmodifiedCount = 0;
 
+        // Kumpulkan semua kecocokan pelamar Odoo dari seluruh entitas
+        $allApplicantMatches = [];
+
         // Iterasi entitas Odoo (AMK, AKP, ATK, ABO, ATB)
         foreach ($activeEntities as $entity) {
             if (!$entity->isConfigured()) {
@@ -146,33 +149,45 @@ class OdooRecruitmentSyncService
                             continue;
                         }
 
-                        $targetCandidates = $nikMap[$appKtp];
-                        foreach ($targetCandidates as $candidate) {
-                            $res = $this->applyOdooApplicantData($candidate, $app, $entity->code);
-                            $matchedCount++;
-
-                            if ($res['status_changed']) {
-                                if ($res['new_status'] === 'Interview') {
-                                    $movedInterviewCount++;
-                                    $log('stage_change', "👉 [{$entity->code}] {$candidate->full_name} (NIK: {$candidate->nik}) beralih ke INTERVIEW (Odoo: {$res['odoo_stage']})");
-                                } elseif ($res['new_status'] === 'Terima') {
-                                    $movedTerimaCount++;
-                                    $log('stage_change', "🎉 [{$entity->code}] {$candidate->full_name} (NIK: {$candidate->nik}) beralih ke TERIMA (Odoo: {$res['odoo_stage']})");
-                                } elseif ($res['new_status'] === 'Arsip') {
-                                    $movedArsipCount++;
-                                    $log('stage_change', "📦 [{$entity->code}] {$candidate->full_name} (NIK: {$candidate->nik}) beralih ke ARSIP (Odoo: {$res['odoo_stage']})");
-                                }
-                            } else {
-                                $unmodifiedCount++;
-                            }
-                        }
-
-                        // Hapus dari nikMap jika sudah ditemukan di entitas ini agar tidak ditimpa
-                        unset($nikMap[$appKtp]);
+                        $allApplicantMatches[$appKtp][] = [
+                            'app' => $app,
+                            'entity' => $entity->code,
+                        ];
                     }
 
                 } catch (\Throwable $e) {
                     $log('warning', "Gagal memeriksa batch chunk #{$chunkIndex} di {$entity->code}: " . $e->getMessage());
+                }
+            }
+        }
+
+        // Sekarang proses setiap kandidat dengan record Odoo terbaik yang diprioritaskan
+        foreach ($nikMap as $appKtp => $targetCandidates) {
+            if (!empty($allApplicantMatches[$appKtp])) {
+                $bestMatch = $this->selectBestOdooApplicant($allApplicantMatches[$appKtp], $appKtp);
+                if ($bestMatch) {
+                    foreach ($targetCandidates as $candidate) {
+                        $res = $this->applyOdooApplicantData($candidate, $bestMatch['app'], $bestMatch['entity']);
+                        $matchedCount++;
+
+                        if ($res['status_changed']) {
+                            if ($res['new_status'] === 'Interview') {
+                                $movedInterviewCount++;
+                                $log('stage_change', "👉 [{$bestMatch['entity']}] {$candidate->full_name} (NIK: {$candidate->nik}) beralih ke INTERVIEW (Odoo: {$res['odoo_stage']})");
+                            } elseif ($res['new_status'] === 'Terima') {
+                                $movedTerimaCount++;
+                                $log('stage_change', "🎉 [{$bestMatch['entity']}] {$candidate->full_name} (NIK: {$candidate->nik}) beralih ke TERIMA (Odoo: {$res['odoo_stage']})");
+                            } elseif ($res['new_status'] === 'Arsip') {
+                                $movedArsipCount++;
+                                $log('stage_change', "📦 [{$bestMatch['entity']}] {$candidate->full_name} (NIK: {$candidate->nik}) beralih ke ARSIP (Odoo: {$res['odoo_stage']})");
+                            }
+                        } else {
+                            $unmodifiedCount++;
+                        }
+                    }
+
+                    // Hapus dari nikMap setelah berhasil diproses agar tidak ditandai sbg belum pernah sinkron
+                    unset($nikMap[$appKtp]);
                 }
             }
         }
@@ -234,8 +249,7 @@ class OdooRecruitmentSyncService
             ];
         }
 
-        $matchedApp = null;
-        $matchedEntityCode = null;
+        $allMatches = [];
 
         foreach ($activeEntities as $entity) {
             if (!$entity->isConfigured()) {
@@ -262,32 +276,39 @@ class OdooRecruitmentSyncService
                             'active',
                         ],
                         'context' => ['active_test' => false],
-                        'limit' => 1,
                         'order' => 'write_date desc, id desc',
                     ]
                 ]);
 
                 if (is_array($applicants) && !empty($applicants)) {
-                    $matchedApp = $applicants[0];
-                    $matchedEntityCode = $entity->code;
-                    break;
+                    foreach ($applicants as $app) {
+                        $allMatches[] = [
+                            'app' => $app,
+                            'entity' => $entity->code,
+                        ];
+                    }
                 }
             } catch (\Throwable $e) {
                 Log::warning("Gagal query Odoo {$entity->code} untuk NIK {$nik}: " . $e->getMessage());
             }
         }
 
-        if ($matchedApp) {
-            $res = $this->applyOdooApplicantData($candidate, $matchedApp, $matchedEntityCode);
-            return [
-                'success'        => true,
-                'found'          => true,
-                'entity'         => $matchedEntityCode,
-                'odoo_stage'     => $candidate->odoo_stage_name,
-                'status_kandidat'=> $candidate->status_kandidat,
-                'status_changed' => $res['status_changed'],
-                'message'        => "Kandidat cocok dengan data Odoo [{$matchedEntityCode}]. Tahapan: {$candidate->odoo_stage_name}.",
-            ];
+        if (!empty($allMatches)) {
+            $bestMatch = $this->selectBestOdooApplicant($allMatches, $nik);
+            if ($bestMatch) {
+                $res = $this->applyOdooApplicantData($candidate, $bestMatch['app'], $bestMatch['entity']);
+                $resignSuffix = ($res['is_resigned'] ?? false) ? ' (Status Karyawan: Resign)' : '';
+                return [
+                    'success'        => true,
+                    'found'          => true,
+                    'entity'         => $bestMatch['entity'],
+                    'odoo_stage'     => $candidate->odoo_stage_name,
+                    'status_kandidat'=> $candidate->status_kandidat,
+                    'status_changed' => $res['status_changed'],
+                    'is_resigned'    => $res['is_resigned'] ?? false,
+                    'message'        => "Kandidat cocok dengan data Odoo [{$bestMatch['entity']}]. Tahapan: {$candidate->odoo_stage_name}.{$resignSuffix}",
+                ];
+            }
         }
 
         // Jika tidak ditemukan di Odoo, perbarui tanggal cek
@@ -321,6 +342,10 @@ class OdooRecruitmentSyncService
         $newStatus = $oldStatus;
         $stageLower = strtolower($stageName);
 
+        // Cek status resign karyawan untuk NIK ini
+        $empStatus = self::checkEmployeeResignStatus($candidate->nik ?? '');
+        $isEmpResigned = ($empStatus['is_resigned'] && !$empStatus['has_active']);
+
         // Periksa apakah data pelamar Odoo ini adalah berkas historis masa lalu (bukan untuk lamaran saat ini)
         $appCreateDate = !empty($odooApp['create_date']) ? Carbon::parse($odooApp['create_date']) : null;
         $candidateApplyDate = $candidate->created_at ? Carbon::parse($candidate->created_at) : null;
@@ -341,11 +366,25 @@ class OdooRecruitmentSyncService
                 $candidate->status = 'Arsip';
             }
         }
-        // ATURAN 2: Joined -> Pindah ke Terima (atau jika di lokal sudah Terima, pertahankan)
+        // ATURAN 2: Joined -> Pindah ke Terima KECUALI jika karyawan di master employee sudah RESIGN
         elseif (str_contains($stageLower, 'joined')) {
-            $newStatus = 'Terima';
-            if (empty($candidate->status) || $candidate->status === 'Arsip' || $candidate->status === 'archived') {
-                $candidate->status = 'Active';
+            if ($isEmpResigned) {
+                // Karyawan sudah resign! Jangan pindahkan ke 'Terima'
+                // Pertahankan status rekrutmen saat ini (Baru atau Interview)
+                if (in_array($oldStatus, ['Baru', 'Interview'])) {
+                    $newStatus = $oldStatus;
+                } else {
+                    $newStatus = 'Baru';
+                }
+                $stageName = 'Joined (Resign)';
+                if (empty($candidate->status) || $candidate->status === 'Arsip' || $candidate->status === 'archived') {
+                    $candidate->status = 'Active';
+                }
+            } else {
+                $newStatus = 'Terima';
+                if (empty($candidate->status) || $candidate->status === 'Arsip' || $candidate->status === 'archived') {
+                    $candidate->status = 'Active';
+                }
             }
         }
         // ATURAN 3: First Interview, Second Interview, Principal, E-Learning, Pembuatan PKWT, Pending PKWT -> Pindah ke Interview
@@ -384,13 +423,16 @@ class OdooRecruitmentSyncService
         $candidate->odoo_stage_name = $stageName;
         $candidate->odoo_synced_at = now();
         $candidate->odoo_applicant_data = [
-            'is_historical' => $isHistoricalPastRecord,
-            'job'         => isset($odooApp['job_id']) && is_array($odooApp['job_id']) ? $odooApp['job_id'][1] : null,
-            'department'  => isset($odooApp['department_id']) && is_array($odooApp['department_id']) ? $odooApp['department_id'][1] : null,
-            'recruiter'   => isset($odooApp['user_id']) && is_array($odooApp['user_id']) ? $odooApp['user_id'][1] : null,
-            'create_date' => $odooApp['create_date'] ?? null,
-            'write_date'  => $odooApp['write_date'] ?? null,
-            'active'      => $isActive,
+            'is_historical'          => $isHistoricalPastRecord,
+            'is_employee_resigned'  => $isEmpResigned,
+            'employee_status'       => $isEmpResigned ? 'Resign' : ($empStatus['has_active'] ? 'Aktiv' : null),
+            'employee_entity'       => $empStatus['resigned_entity'] ?? $empStatus['active_entity'] ?? null,
+            'job'                   => isset($odooApp['job_id']) && is_array($odooApp['job_id']) ? $odooApp['job_id'][1] : null,
+            'department'            => isset($odooApp['department_id']) && is_array($odooApp['department_id']) ? $odooApp['department_id'][1] : null,
+            'recruiter'             => isset($odooApp['user_id']) && is_array($odooApp['user_id']) ? $odooApp['user_id'][1] : null,
+            'create_date'           => $odooApp['create_date'] ?? null,
+            'write_date'            => $odooApp['write_date'] ?? null,
+            'active'                => $isActive,
         ];
 
         $statusChanged = ($newStatus !== $oldStatus);
@@ -403,7 +445,119 @@ class OdooRecruitmentSyncService
             'new_status'     => $newStatus,
             'odoo_stage'     => $stageName,
             'is_historical'  => $isHistoricalPastRecord,
+            'is_resigned'    => $isEmpResigned,
         ];
+    }
+
+    /**
+     * Memeriksa apakah NIK ini terdaftar sebagai karyawan dengan status Resign.
+     */
+    public static function checkEmployeeResignStatus(?string $nik): array
+    {
+        $cleanNik = trim($nik ?? '');
+        if (empty($cleanNik)) {
+            return ['is_resigned' => false, 'has_active' => false, 'resigned_entity' => null, 'active_entity' => null];
+        }
+
+        $employees = \App\Models\Employee::where('nik', $cleanNik)->get();
+        if ($employees->isEmpty()) {
+            return ['is_resigned' => false, 'has_active' => false, 'resigned_entity' => null, 'active_entity' => null];
+        }
+
+        $activeEmp = $employees->first(function($e) {
+            return in_array(strtolower(trim($e->status ?? '')), ['aktiv', 'active']);
+        });
+
+        $resignedEmp = $employees->first(function($e) {
+            return in_array(strtolower(trim($e->status ?? '')), ['resign', 'non-aktif', 'inactive']);
+        });
+
+        return [
+            'is_resigned'     => ($resignedEmp && !$activeEmp),
+            'has_active'      => (bool)$activeEmp,
+            'resigned_entity' => $resignedEmp?->entity,
+            'active_entity'   => $activeEmp?->entity,
+        ];
+    }
+
+    /**
+     * Memilih record pelamar Odoo terbaik dari berbagai entitas:
+     * - Memprioritaskan tahapan rekrutmen aktif (Interview, Data Pelamar, PKWT, dll)
+     * - Menurunkan prioritas Joined jika kandidat sudah berstatus RESIGN di data karyawan
+     * - Memprioritaskan tanggal terbaru (create_date / id)
+     */
+    public function selectBestOdooApplicant(array $matches, string $nik): ?array
+    {
+        if (empty($matches)) {
+            return null;
+        }
+
+        $empStatus = self::checkEmployeeResignStatus($nik);
+
+        usort($matches, function ($a, $b) use ($empStatus) {
+            $scoreA = $this->scoreApplicant($a['app'], $a['entity'], $empStatus);
+            $scoreB = $this->scoreApplicant($b['app'], $b['entity'], $empStatus);
+
+            if ($scoreA === $scoreB) {
+                $createA = $a['app']['create_date'] ?? '';
+                $createB = $b['app']['create_date'] ?? '';
+                if ($createA !== $createB) {
+                    return strcmp($createB, $createA);
+                }
+                return ($b['app']['id'] ?? 0) <=> ($a['app']['id'] ?? 0);
+            }
+
+            return $scoreB <=> $scoreA;
+        });
+
+        return $matches[0];
+    }
+
+    /**
+     * Memberikan skor prioritas pada record pelamar Odoo.
+     */
+    public function scoreApplicant(array $app, string $entityCode, array $empStatus): int
+    {
+        $stageName = is_array($app['stage_id'] ?? null) ? ($app['stage_id'][1] ?? '') : (string)($app['stage_id'] ?? '');
+        $stageLower = strtolower(trim($stageName));
+        $isActive = (bool)($app['active'] ?? true);
+
+        // Tahap aktif dalam proses rekrutmen: Interview, Psikotes, PKWT, Learning, Data Pelamar
+        $isRecruitmentPipeline = (
+            str_contains($stageLower, 'interview') ||
+            str_contains($stageLower, 'principal') ||
+            str_contains($stageLower, 'learning') ||
+            str_contains($stageLower, 'elearning') ||
+            str_contains($stageLower, 'pkwt') ||
+            str_contains($stageLower, 'pelamar') ||
+            str_contains($stageLower, 'initial') ||
+            str_contains($stageLower, 'qualification') ||
+            str_contains($stageLower, 'screening')
+        );
+
+        if ($isRecruitmentPipeline && $isActive) {
+            if (str_contains($stageLower, 'interview') || str_contains($stageLower, 'principal') || str_contains($stageLower, 'pkwt')) {
+                return 1200;
+            }
+            return 1000;
+        }
+
+        // Tahap Joined:
+        if (str_contains($stageLower, 'joined')) {
+            // Jika employee sudah resign, ini adalah berkas lama mantan karyawan
+            if ($empStatus['is_resigned'] && !$empStatus['has_active']) {
+                return 200; // Prioritas jauh lebih rendah dibanding data pelamar / rekrutmen aktif
+            }
+            // Jika employee aktif, Joined adalah status valid
+            return 800;
+        }
+
+        // Tahap Ditolak / Refused / Inaktif
+        if (!$isActive || str_contains($stageLower, 'refuse') || str_contains($stageLower, 'tolak')) {
+            return 100;
+        }
+
+        return 300;
     }
 
     /**

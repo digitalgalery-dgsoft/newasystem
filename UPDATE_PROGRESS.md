@@ -3958,17 +3958,49 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
     3. **Sidebar Navigasi ([resources/views/layouts/app.blade.php](file:///d:/ASystem/newasystem/resources/views/layouts/app.blade.php))**: Membungkus menu Surat Peringatan dengan kondisi `@if(auth()->user()?->isAdmin()) ... @endif`. Menu tidak akan muncul pada akun non-admin.
     4. **Katalog Fitur / Beranda ([resources/views/fitur/index.blade.php](file:///d:/ASystem/newasystem/resources/views/fitur/index.blade.php))**: Menetapkan atribut `'role_allowed' => $isAdmin`. Kartu Surat Peringatan tidak ditampilkan pada dashboard pengguna selain administrator.
 
-### 103. 🚀 Perbaikan HasMiddleware WarningLetterController (Laravel 12) & Akses Publik Form Registrasi Walk-In Interview (29 September 2026)
-- **Investigasi & Solusi Kendala Surat Peringatan (Error 500)**:
-  - **Gejala**: Halaman `/warning-letters` pada server produksi memunculkan pesan error: *"Call to undefined method App\Http\Controllers\WarningLetterController::middleware()"*.
-  - **Akar Masalah**: Pada arsitektur Laravel 12, class induk `App\Http\Controllers\Controller` tidak mewarisi method `$this->middleware()` di dalam konstruktor.
-  - **Solusi**: Mengimplementasikan interface resmi `Illuminate\Routing\Controllers\HasMiddleware` dengan method `public static function middleware(): array` yang mengembalikan `['auth', 'admin']`. Error teratasi 100% dan halaman dapat dibuka dengan lancar oleh administrator (HTTP 200 OK).
-- **Investigasi & Solusi Link Registrasi Walk-in Interview (`/walkinterview/register`)**:
-  - **Gejala**: Link pendaftaran walk-in (`https://new.asystem.co.id/walkinterview/register`) tidak dapat diakses oleh kandidat/publik dan otomatis ter-redirect ke halaman login user (`/login`).
-  - **Akar Masalah**: Rute `GET /walkinterview/create`, `GET /walkinterview/register`, dan `POST /walkinterview` berada di dalam grup `Route::middleware(['auth'])`, padahal method `storeWalkInterview()` dan tampilan `walk_create.blade.php` didesain untuk pelamar/tamu publik yang belum memiliki akun internal.
-  - **Solusi**: Memindahkan rute publik pendaftaran walk-in (`GET /walkinterview/create`, `GET /walkinterview/register`, dan `POST /walkinterview`) ke bagian rute publik di [routes/web.php](file:///d:/ASystem/newasystem/routes/web.php). Kini kandidat/publik dapat mengakses form pendaftaran dan mendaftar secara langsung tanpa login (HTTP 200 OK). Rute internal dashboard rekruter (`GET /walkinterview` dan `GET /walkinterview/export`) tetap diproteksi di dalam middleware `auth`.
+### 104. 🚀 Penyempurnaan Sinkronisasi Rekrutmen Odoo (Prioritas Rekrutmen Aktif vs Mantan Karyawan Resign) & Form Modal Edit Profil Kandidat Portal & Interview (29 September 2026)
+- **Investigasi & Akar Masalah Kasus Odoo Joined & Tarik NIK Mantan Karyawan Resign**:
+  - **Gejala / Laporan**: Pelamar yang melamar di entitas ATK saat ditarik/import by NIK atau saat auto-sync, sebagian data tertarik mengambil data lama dari AMK dengan stage *Joined*, padahal di master data employee status orang tersebut sudah **Resign** dan saat ini sedang dalam proses seleksi baru di ATK. Selain itu, status kandidat otomatis berubah menjadi *Terima* seolah-olah sudah menjadi karyawan aktif kembali.
+  - **Penyebab Utama**:
+    1. Pada `CandidateImportController::lookupOdooByNik` dan `importOdooByNik`, loop pengecekan entitas Odoo (`['AMK', 'AKP', 'ATK', 'ABO', 'ATB']`) menggunakan parameter `limit => 1` dan langsung melakukan `break` pada entitas pertama yang mengembalikan hasil record apa pun. Karena entitas AMK berada di urutan pertama dan pernah mempekerjakan kandidat tersebut di masa lalu, sistem langsung mengambil berkas lama AMK dan mengabaikan berkas rekrutmen aktif terbaru di ATK.
+    2. Pada `OdooRecruitmentSyncService::syncAllCandidates`, pencocokan NIK langsung melakukan `unset($nikMap[$appKtp])` begitu ada record pertama dari entitas mana pun, sehingga berkas rekrutmen baru di entitas lain tidak sempat dievaluasi.
+    3. Pada `applyOdooApplicantData`, setiap record Odoo dengan nama tahapan mengandung kata `joined` secara mutlak mengubah status kandidat menjadi `status_kandidat = 'Terima'` dan `status = 'Active'`, tanpa memeriksa apakah kandidat tersebut sebenarnya sudah resign dari entitas lamanya.
+- **Solusi & Implementasi Odoo Multi-Entitas & Resign Awareness**:
+  1. **Deteksi Status Karyawan Resign (`OdooRecruitmentSyncService::checkEmployeeResignStatus`)**:
+     - Memeriksa seluruh rekaman data pada master `Employee` berdasarkan NIK kandidat.
+     - Jika karyawan memiliki status `Resign`, `Non-Aktif`, atau `Inactive` dan tidak memiliki status `Aktiv`/`Active`, sistem menandai kandidat sebagai `is_resigned = true`.
+  2. **Pemeringkatan Cerdas Multi-Entitas (`selectBestOdooApplicant` & `scoreApplicant`)**:
+     - Sistem kini menghimpun seluruh rekaman pelamar yang cocok di seluruh entitas Odoo, lalu mengurutkannya menggunakan sistem scoring prioritas:
+       - **Skor 1200**: Tahapan seleksi aktif wawancara/kontrak (*Interview*, *Principal*, *Pembuatan PKWT*).
+       - **Skor 1000**: Tahapan pipa seleksi aktif lainnya (*Data Pelamar*, *E-Learning*, *Screening*, *Qualification*).
+       - **Skor 800**: Tahap *Joined* untuk karyawan yang memang berstatus AKTIF di master karyawan.
+       - **Skor 200**: Tahap *Joined* lama untuk mantan karyawan yang berstatus RESIGN (prioritas diturunkan drastis di bawah tahapan rekrutmen aktif).
+       - **Skor 100**: Berkas yang di-*Refuse* / Ditolak / Inaktif.
+       - Jika skor sama, sistem memprioritaskan tanggal pembuatan berkas (`create_date`) dan ID Odoo terbaru.
+  3. **Penanganan Status Kandidat Resign yang Melamar Kembali**:
+     - Pada `applyOdooApplicantData`, jika Odoo mengembalikan stage *Joined* namun kandidat berstatus mantan karyawan resign, sistem **tidak memindahkan status ke `Terima`**, melainkan mempertahankan status seleksinya saat ini (`Baru` / `Interview`), memberi nama stage `Joined (Resign)`, dan menyimpan metadata `is_employee_resigned = true`.
+  4. **Pembaruan Modal Tarik NIK Odoo (`resources/views/interview/index.blade.php`)**:
+     - Ditambahkan banner peringatan dinamis `#previewResignNotice` dengan warna kontras rose pada popup modal pencarian NIK Odoo.
+     - Rekruter mendapatkan transparansi penuh jika pelamar yang ditarik adalah mantan karyawan yang pernah resign, sehingga proses interview dan orientasi dapat disesuaikan.
+
+- **Fitur Form Modal Edit Profil Kandidat (Kandidat Portal & Interview)**:
+  - **Kebutuhan Pengguna**: Memungkinkan Account Supervisor (AS) maupun Rekruter mengedit seluruh data pokok profil kandidat langsung dari halaman detail evaluasi, mencakup seluruh informasi yang terpampang pada kartu *PROFIL LENGKAP PELAMAR*.
+  - **Antarmuka & Pengalaman Pengguna (UI/UX)**:
+    1. **Tombol "Edit Profil"**: Ditambahkan pada header kartu *PROFIL LENGKAP PELAMAR* di kedua modul ([resources/views/kandidatportal/show.blade.php](file:///d:/ASystem/newasystem/resources/views/kandidatportal/show.blade.php) dan [resources/views/interview/show.blade.php](file:///d:/ASystem/newasystem/resources/views/interview/show.blade.php)).
+    2. **Modal Form Komprehensif**: Dibangun dengan Alpine.js (`editProfileModal`), berlatar belakang blur dengan tata letak dua kolom responsif:
+       - **Identitas Pokok & Kontak**: Nama Lengkap (`full_name`), No. KTP / NIK (`nik`), Jenis Kelamin (`gender`), Nomor WhatsApp / HP (`phone`), Tempat Lahir (`birth_place`), Tanggal Lahir (`birth_date`), Pendidikan Terakhir (`education`).
+       - **Alamat Lengkap**: Alamat Sesuai KTP (`address_ktp`) dan Alamat Domisili Sekarang (`address_domicile`).
+       - **Rekrutmen & Penempatan**: Posisi / Jabatan yang Dilamar (`applied_job`), Prinsiple Penempatan (`principle_id`), Area Penempatan (`area` dengan autocomplete `datalist`), User AS / Rekruter (`useras` dengan dropdown rekruter), Info / Sumber Lowongan (`info_lowongan`).
+       - **Catatan Tambahan**: Catatan Khusus / Evaluasi Tambahan (`notes`).
+  - **Backend Controller & Routing**:
+    1. **[KandidatPortalController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/KandidatPortalController.php)**: Method `updateProfile()` memvalidasi input, memperbarui model `Candidate`, menyelaraskan ke tabel lama `tb_kandidat` jika ada, dan mencatat riwayat log ke `ActivityLogger`.
+    2. **[InterviewController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/InterviewController.php)**: Method `updateProfile()` melakukan pembaruan identik pada kandidat modul Interview.
+    3. **[routes/web.php](file:///d:/ASystem/newasystem/routes/web.php)**: Mendaftarkan rute `POST /kandidatportal/{id}/update-profile` (`kandidatportal.update_profile`) dan `POST /interview/{id}/update-profile` (`interview.update_profile`).
+    4. **Normalisasi Kontak**: Sanitasi nomor telepon/WhatsApp otomatis (menghilangkan karakter non-digit dan menstandarkan format 08xx / 62xx).
 
 ---
+
+
 
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
