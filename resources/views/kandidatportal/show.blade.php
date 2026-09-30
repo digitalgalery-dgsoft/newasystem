@@ -1078,14 +1078,25 @@
         <!-- ============================================================= -->
         <div x-show="activeTab === 'matematika'" class="space-y-5">
             <div class="flex items-center justify-between pb-3 border-b border-slate-100">
-                <div class="flex items-center gap-3">
-                    <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
-                        <i class="fa-solid fa-stopwatch text-slate-500"></i>
-                        <span>Waktu Pengerjaan : <strong>{{ $mathDuration }}</strong></span>
-                    </div>
-                    <span class="text-xs font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
-                        Tes Ke - {{ $mathTesKe }}
-                    </span>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    @if(!empty($isMathRemidiPending))
+                        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 text-amber-800 text-xs font-bold border border-amber-200">
+                            <i class="fa-solid fa-arrows-rotate text-amber-600 animate-spin text-[10px]"></i>
+                            <span>Menunggu Ujian Remidi: <strong>Tes Ke - {{ $targetTesKe ?? ($candidate->tes_ke ?? 2) }}</strong></span>
+                        </span>
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-700 text-xs font-medium">
+                            <i class="fa-solid fa-clock-rotate-left text-slate-500"></i>
+                            <span>Riwayat Pengerjaan Terakhir (Tes Ke - {{ $mathTesKe }}): <strong>{{ $mathDuration }}</strong></span>
+                        </div>
+                    @else
+                        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-slate-100 text-slate-800 text-xs font-semibold">
+                            <i class="fa-solid fa-stopwatch text-slate-500"></i>
+                            <span>Waktu Pengerjaan : <strong>{{ $mathDuration }}</strong></span>
+                        </div>
+                        <span class="text-xs font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-md border border-slate-200">
+                            Tes Ke - {{ $mathTesKe }}
+                        </span>
+                    @endif
                 </div>
 
                 <form action="{{ route('interview.remidi', $candidate->id) }}" method="POST">
@@ -1094,7 +1105,7 @@
                             onclick="return confirm('Atur remidi tes matematika untuk kandidat ini? Tautan tes online baru akan dibuatkan.')" 
                             class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold bg-rose-600 hover:bg-rose-700 text-white shadow-sm shadow-rose-600/20 transition-all">
                         <i class="fa-solid fa-arrows-rotate text-xs"></i>
-                        <span>Send Remidi</span>
+                        <span>{{ !empty($isMathRemidiPending) ? 'Kirim Ulang Remidi' : 'Send Remidi' }}</span>
                     </button>
                 </form>
             </div>

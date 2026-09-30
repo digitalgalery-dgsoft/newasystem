@@ -186,7 +186,7 @@ class CandidateEvaluationDataService
                 ->orderBy('tb_hasilmath.id_soal', 'asc')
                 ->get();
 
-            // Fallback jika tidak ditemukan dengan tes_ke spesifik
+            // Fallback jika tidak ditemukan dengan tes_ke spesifik (misal kandidat sedang di-set remidi ke tes berikutnya)
             if ($rawMath->isEmpty()) {
                 $latestTesKe = DB::table('tb_hasilmath')->whereIn('id_kandidat', $siblingIds)->max('tes_ke');
                 if ($latestTesKe) {
@@ -201,6 +201,8 @@ class CandidateEvaluationDataService
                 }
             }
         }
+
+        $isMathRemidiPending = ($targetTesKe > $mathTesKe) || (empty($candidate->tes_matematika) && $targetTesKe > 1);
 
         if ($rawMath->isNotEmpty()) {
             $hasMath = true;
@@ -276,19 +278,10 @@ class CandidateEvaluationDataService
             $mathScorePercent = $mathTotalQuestions > 0 ? round(($mathCorrectCount / $mathTotalQuestions) * 100) : 0;
             $mathGrade = ($mathScorePercent >= 85) ? 'A' : (($mathScorePercent >= 70) ? 'B' : (($mathScorePercent >= 55) ? 'C' : 'D'));
 
-            // Auto-sync jika kolom kandidat belum terisi
-            if (empty($candidate->tes_matematika) || $candidate->tes_matematika === '00:00:00' || $candidate->tes_matematika === '-') {
-                $candidate->tes_matematika = $mathDuration;
-                $candidate->tes_ke = $mathTesKe;
-                try {
-                    $candidate->saveQuietly();
-                    if (!empty($candidate->nik)) {
-                        Candidate::where('nik', $candidate->nik)->where(function ($q) {
-                            $q->whereNull('tes_matematika')->orWhere('tes_matematika', '')->orWhere('tes_matematika', '00:00:00');
-                        })->update(['tes_matematika' => $mathDuration, 'tes_ke' => $mathTesKe]);
-                    }
-                } catch (\Throwable $e) {}
-            }
+            // CATATAN KEAMANAN DATA:
+            // Jangan pernah melakukan auto-sync / menimpa kolom `tes_matematika` dan `tes_ke` kandidat di sini.
+            // Jika kandidat sedang diberikan remidi (`tes_matematika` di-reset ke null & `tes_ke` dinaikkan),
+            // auto-sync akan membatalkan status remidi dan mengunci kembali modul CBT kandidat.
         }
 
         // 3. Data Tes Komputer
@@ -397,6 +390,8 @@ class CandidateEvaluationDataService
             'mathItems' => $mathItems,
             'mathDuration' => $mathDuration,
             'mathTesKe' => $mathTesKe,
+            'targetTesKe' => $targetTesKe,
+            'isMathRemidiPending' => $isMathRemidiPending,
             'mathCorrectCount' => $mathCorrectCount,
             'mathWrongCount' => $mathWrongCount,
             'mathScorePercent' => $mathScorePercent,

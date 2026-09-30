@@ -241,7 +241,9 @@
 
             <!-- 2. TES MATEMATIKA -->
             @php
+                $candidateTesKe = max(1, intval($candidate->tes_ke ?? 1));
                 $mathSelesai = $candidate->is_math_done;
+                $isMathRemidi = !$mathSelesai && $candidateTesKe > 1;
             @endphp
             <div class="bg-white rounded-3xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-all flex flex-col group">
                 <!-- Card Header Art -->
@@ -264,7 +266,11 @@
                             <span class="text-slate-500">Status Tes:</span>
                             @if($mathSelesai)
                                 <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold text-[11px] flex items-center gap-1">
-                                    <i class="fa-solid fa-check text-[10px]"></i> Selesai
+                                    <i class="fa-solid fa-check text-[10px]"></i> Selesai {{ $candidateTesKe > 1 ? "(Tes Ke - {$candidateTesKe})" : '' }}
+                                </span>
+                            @elseif($isMathRemidi)
+                                <span class="px-2.5 py-1 rounded-full bg-rose-50 text-rose-700 border border-rose-200 font-bold text-[11px] flex items-center gap-1 animate-pulse">
+                                    <i class="fa-solid fa-arrows-rotate text-[10px]"></i> Remidi (Tes Ke - {{ $candidateTesKe }})
                                 </span>
                             @else
                                 <span class="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200 font-bold text-[11px] flex items-center gap-1">
@@ -274,11 +280,19 @@
                         </div>
 
                         <div class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3 rounded-xl border border-slate-100">
-                            Menguji ketelitian hitung dagang, persentase, dan deret angka. Batas waktu pengerjaan <strong>10:00 menit</strong>.
-                            @if($mathSelesai && $mathResult)
-                                <div class="mt-2 pt-2 border-t border-slate-200 text-blue-700 font-bold text-[11px]">
-                                    Skor: <span class="text-emerald-600 text-sm font-black">{{ $mathResult->score }}</span> / 100 • Durasi: {{ $mathResult->test_details['duration_formatted'] ?? '-' }}
+                            @if($isMathRemidi)
+                                <div class="text-rose-700 font-semibold mb-1 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-exclamation text-xs"></i>
+                                    <span>Kesempatan Ujian Ulang (Remidi)</span>
                                 </div>
+                                Anda diberikan kesempatan untuk mengulang <strong>Tes Matematika (Tes Ke - {{ $candidateTesKe }})</strong>. Batas waktu pengerjaan <strong>10:00 menit</strong>. Silakan kerjakan dengan fokus dan teliti.
+                            @else
+                                Menguji ketelitian hitung dagang, persentase, dan deret angka. Batas waktu pengerjaan <strong>10:00 menit</strong>.
+                                @if($mathSelesai && $mathResult)
+                                    <div class="mt-2 pt-2 border-t border-slate-200 text-blue-700 font-bold text-[11px]">
+                                        Skor: <span class="text-emerald-600 text-sm font-black">{{ $mathResult->score }}</span> / 100 • Durasi: {{ $mathResult->test_details['duration_formatted'] ?? '-' }}
+                                    </div>
+                                @endif
                             @endif
                         </div>
                     </div>
@@ -295,6 +309,12 @@
                                 <i class="fa-solid fa-lock"></i>
                                 <span>Terkunci (Lengkapi Profil)</span>
                             </button>
+                        @elseif($isMathRemidi)
+                            <a href="{{ route('cbt.matematika') }}" class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-700 hover:to-amber-700 text-white shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-arrows-rotate text-xs"></i>
+                                <span>Kerjakan Remidi (Tes Ke - {{ $candidateTesKe }})</span>
+                                <i class="fa-solid fa-arrow-right text-[10px]"></i>
+                            </a>
                         @else
                             <a href="{{ route('cbt.matematika') }}" class="w-full py-3 px-4 rounded-xl font-bold text-xs bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all flex items-center justify-center gap-2">
                                 <span>Mulai Tes Sekarang</span>

@@ -3998,9 +3998,91 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
     3. **[routes/web.php](file:///d:/ASystem/newasystem/routes/web.php)**: Mendaftarkan rute `POST /kandidatportal/{id}/update-profile` (`kandidatportal.update_profile`) dan `POST /interview/{id}/update-profile` (`interview.update_profile`).
     4. **Normalisasi Kontak**: Sanitasi nomor telepon/WhatsApp otomatis (menghilangkan karakter non-digit dan menstandarkan format 08xx / 62xx).
 
+### 105. 📊 Penambahan Filter & Kolom Region, Area, 2nd City / Kota Penempatan, Nama AS, serta Fitur Pengaturan Kolom Dinamis di Kandidat Portal (30 September 2026)
+- **Kebutuhan Pengguna & Ketentuan Bisnis**:
+  - **Penambahan 4 Filter Spesifik**:
+    1. **Region**: Menyaring kandidat berdasarkan Region penempatan resmi ESA Groups (Region 1 s/d Region 7).
+    2. **Area**: Menyaring kandidat berdasarkan nama area penempatan (Jakarta, Surabaya, Denpasar, Bandung, dll.).
+    3. **2nd City / Kota Penempatan**: Menyaring kandidat berdasarkan kota penempatan kerja sesungguhnya (`penempatan` / `city_domicile`).
+    4. **Nama AS / Rekruter**: Menyaring kandidat berdasarkan nama atau akun Account Supervisor (AS) penanggung jawab.
+  - **Penambahan 4 Kolom Khusus pada Tabel Data**:
+    - Memisahkan kolom Area & Region yang sebelumnya tergabung menjadi kolom mandiri yang presisi:
+      1. **Region**: Menampilkan badge region tematik (`bg-indigo-50 text-indigo-700`).
+      2. **Area**: Menampilkan nama kanonikal area kerja beserta ikon lokasi (`bg-blue-50 text-blue-700`).
+      3. **2nd City / Kota Penempatan**: Menampilkan lokasi kota penempatan kerja sesungguhnya kandidat (`penempatan` / `city_domicile`).
+      4. **Nama AS**: Menampilkan avatar profil rekruter dan nama resmi Account Supervisor yang menangani pelamar.
+  - **Pengaturan Kolom yang Tampil Secara Dinamis (Dynamic Column Visibility Settings)**:
+    - Pengguna dapat mengatur visibilitas setiap kolom tabel secara bebas sesuai kenyamanan kerja melalui tombol dropdown **"Pengaturan Kolom"** di atas tabel.
+    - Dilengkapi counter kolom aktif (misal `19/19 Kolom`), popover dropdown dengan checkbox 19 kolom, penanda badge *"Baru"*, serta tombol instan *"Semua"* dan *"Reset"*.
+    - State pilihan kolom tersimpan secara otomatis dan persisten di browser (`localStorage`) sehingga preferensi tampilan tetap terjaga saat berpindah halaman, tab, maupun melakukan filter data.
+
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Backend Controller ([KandidatPortalController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/KandidatPortalController.php))**:
+     - `index()`:
+       - Menangkap parameter request: `$region`, `$area`, `$penempatan`, dan `$filterRecruiter`.
+       - Menerapkan filter SQL berkinerja tinggi pada `$tableQuery` dengan memanfaatkan pencocokan kanonikal `TbArea` dan multi-entitas.
+       - Menyediakan daftar distinct list `$distinctRegions`, `$distinctAreas`, dan `$distinctPenempatan` untuk dropdown filter.
+       - Menghimpun `$allRecruiters` secara cerdas untuk user admin maupun user non-admin agar filter Nama AS selalu tersedia.
+       - Memperluas query pencarian teks global (`$search`) agar mencakup kata kunci `region`, `penempatan`, dan `useras`.
+     - `exportExcel()`:
+       - Menambahkan parameter dan query filter `$region` serta `$penempatan` pada ekspor Excel sehingga data yang diunduh selaras dengan filter aktif di portal.
+  2. **Antarmuka Tampilan Blade ([resources/views/kandidatportal/index.blade.php](file:///d:/ASystem/newasystem/resources/views/kandidatportal/index.blade.php))**:
+     - **Filter Bar**: Menambahkan 4 dropdown filter interaktif (Nama AS, Region, Area, 2nd City / Kota Penempatan) yang terintegrasi dengan tombol Filter dan Reset.
+     - **Utility Bar & Pengaturan Kolom**: Menambahkan bar ringkasan data di atas tabel dan komponen dropdown interaktif `openColSettings` dengan transisi halus Alpine.js.
+     - **Struktur Tabel**: Menambahkan 4 kolom baru pada `<thead>` dan `<tbody>`, serta menyematkan direktif `x-show="columns.<key>"` pada seluruh 19 kolom tabel agar dapat disembunyikan/ditampilkan secara instan tanpa reload halaman.
+     - **Modal Export**: Menambahkan seleksi filter Region dan 2nd City pada formulir ekspor Excel.
+     - **Manajemen State Alpine.js**: Menambahkan objek `columns`, fungsi `toggleColumn`, `showAllColumns`, `resetColumns`, dan sinkronisasi `localStorage` pada `kandidatPortalManager()`.
+
+- **Uji Coba & Status**:
+  - Terverifikasi lolos via skrip automated lifecycle (`scratch/test_kandidatportal_updates.php`):
+    - Seluruh elemen filter (Region, Area, Penempatan, Recruiter) dan toggle Pengaturan Kolom ter-render lengkap di halaman.
+    - Keempat kolom baru (Region, Area, Penempatan, Nama AS) terintegrasi pada HTML tabel.
+    - Filter GET `/kandidatportal?region=Region+4`, `/kandidatportal?area=Surabaya`, dan `/kandidatportal?penempatan=Denpasar` sukses merespons HTTP Status 200 OK.
+    - Ekspor data XLSX `/kandidatportal/export?region=Region+4&penempatan=Denpasar` berhasil merespons HTTP Status 200 OK.
+
 ---
 
+### 106. 🧮 Perbaikan Bug Alur Remidi Tes Matematika & Sinkronisasi Status Dashboard CBT Kandidat
+- **Latar Belakang & Masalah**:
+  - Kandidat yang telah dikirimkan aksi **"Send Remidi"** untuk Tes Matematika dari halaman detail pelamar (`/interview/{id}` atau `/kandidatportal/{id}`) mengalami kendala di dashboard CBT (`/cbt/dashboard`):
+    1. Kartu Tes Matematika di CBT kandidat masih berstatus **"Selesai"** (badge hijau) dan tombol aksi menampilkan **"Lihat Skor & Hasil"**.
+    2. Saat kandidat mengklik tombol tersebut, mereka diarahkan kembali ke dashboard karena hasil tes (`TestResult`) sebelumnya telah dihapus saat aksi Send Remidi dijalankan, sehingga kandidat terjebak dan tidak dapat memulai pengerjaan tes remidi.
+    3. Pada halaman detail admin, header Tab 5 masih menampilkan *"Tes Ke - 2"* sesaat setelah alert berhasil *"Remidi Berhasil Diset! Tes Matematika telah direset ke Tes Ke - 3"* muncul.
+- **Akar Masalah (Root Cause)**:
+  1. **Mutasi Data di `CandidateEvaluationDataService.php`**:
+     - Service pembaca evaluasi memiliki blok *auto-sync* yang mengecek jika `empty($candidate->tes_matematika)` maka kolom `tes_matematika` diisi kembali dengan durasi tes lama dan `tes_ke` diubah kembali ke nomor tes lama di database.
+     - Akibatnya, sesaat setelah aksi `setRemidi` mereset `tes_matematika = null` dan `tes_ke = 3`, saat redirect memuat kembali halaman detail kandidat, data tersebut langsung tertimpa kembali ke data lama (`00:09:49` dan `tes_ke = 2`).
+  2. **Accessor `getIsMathDoneAttribute()` di `Candidate.php`**:
+     - Hanya mengecek `!empty($this->tes_matematika)`. Jika kandidat sedang dalam alur remidi (`tes_ke > 1`) dan `TestResult` telah di-reset/dihapus, accessor tetap mengembalikan `true`.
+  3. **Tampilan Kartu CBT Dashboard (`cbt/dashboard.blade.php`)**:
+     - Belum membedakan alur pengerjaan normal pertama kali dengan status remidi (`tes_ke > 1` dalam kondisi belum ada hasil tes baru).
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **`app/Services/CandidateEvaluationDataService.php`**:
+     - Menghapus blok auto-sync mutasi database yang menimpa `tes_matematika` dan `tes_ke` kandidat.
+     - Mendeteksi flag `$isMathRemidiPending = ($targetTesKe > $mathTesKe) || (empty($candidate->tes_matematika) && $targetTesKe > 1)`.
+     - Mengirimkan metadata `'isMathRemidiPending'` dan `'targetTesKe'` ke view untuk membedakan antara tes aktif yang sedang ditunggu dengan riwayat pengerjaan sebelumnya.
+  2. **`app/Models/Candidate.php`**:
+     - Memperbarui accessor `getIsMathDoneAttribute()`: jika `$currentTesKe > 1` (alur remidi), wajib memeriksa ketersediaan `TestResult` aktif yang memiliki `tes_ke >= currentTesKe`. Jika belum ada, maka `is_math_done` mengembalikan `false`.
+  3. **`resources/views/cbt/dashboard.blade.php`**:
+     - Menambahkan deteksi `$isMathRemidi = !$mathSelesai && $candidateTesKe > 1`.
+     - Menampilkan badge status tematik `Remidi (Tes Ke - X)` dengan efek pulse.
+     - Menampilkan teks petunjuk khusus ujian ulang remidi.
+     - Menyediakan tombol aksi aktif berkilau `Kerjakan Remidi (Tes Ke - X)` yang langsung mengarahkan ke formulir tes `/cbt/matematika`.
+  4. **`app/Http/Controllers/InterviewController.php`**:
+     - Memutakhirkan perhitungan `$nextTesKe` di `setRemidi()` dengan mengecek `max('tes_ke')` dari histori `tb_hasilmath` agar tidak turun/inkonsisten.
+     - Mencegah penambahan nomor `tes_ke` berulang jika kandidat sudah dalam status menunggu remidi pada ronde tersebut.
+  5. **`resources/views/kandidatportal/show.blade.php` & `resources/views/interview/show.blade.php`**:
+     - Memperbarui header Tab 5: menampilkan badge informatif *"Menunggu Ujian Remidi: Tes Ke - X"* berdampingan dengan *"Riwayat Pengerjaan Terakhir (Tes Ke - Y): [Durasi]"*.
+- **Uji Coba & Status**:
+  - Dibuat automated script lifecycle (`scratch/test_remidi_flow.php`):
+    - Tahap 1: Initial test done (`is_math_done = true`).
+    - Tahap 2: Set remidi (`tes_ke = 2`, `tes_matematika = null`, `is_math_done = false`).
+    - Tahap 3: Load evaluation service (`candidate->tes_matematika` tetap `null`, `tes_ke` tetap `2`, tidak tertimpa).
+    - Tahap 4: CBT dashboard render (`isMathRemidi = true`, status tombol "Kerjakan Remidi").
+    - Tahap 5: Submission remidi CBT (`submitMatematika` sukses, `is_math_done = true`, hasil nilai tersimpan).
+  - Seluruh skenario pengujian lolos 100% tanpa error.
 
+---
 
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 

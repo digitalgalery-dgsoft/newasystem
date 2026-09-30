@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\Employee;
 use App\Models\Candidate;
 use App\Models\Principle;
+use App\Models\TbArea;
 use App\Models\InterviewAssessment;
 use App\Models\WorkExperience;
 use App\Services\AiAnalyzerService;
@@ -186,16 +187,19 @@ class KandidatPortalController extends Controller
         $start = $request->query('start');
         $end = $request->query('end');
         $search = $request->query('q') ?? $request->query('search');
-        $filterRecruiter = $request->query('recruiter');
+        $filterRecruiter = $request->query('recruiter') ?? $request->query('as_name') ?? $request->query('useras');
         $odooStage = $request->query('odoo_stage');
         $infoLowongan = $request->query('info_lowongan');
+        $region = $request->query('region');
+        $area = $request->query('area');
+        $penempatan = $request->query('penempatan') ?? $request->query('city');
 
         $user = $this->getCurrentUser();
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
         $canViewAllRecruiters = $isAdmin || ($user && method_exists($user, 'canViewAllCandidates') && $user->canViewAllCandidates());
         $userIdentifiers = $this->resolveUserIdentifiers($user);
 
-        // Ambil daftar seluruh rekruter dari data kandidat portal (khusus untuk selector filter admin / user berhak semua scope)
+        // Ambil daftar seluruh rekruter / nama AS dari data kandidat portal
         $allRecruiters = [];
         if ($canViewAllRecruiters) {
             $recQuery = DB::table('candidates')
@@ -235,6 +239,45 @@ class KandidatPortalController extends Controller
             }
 
             // Sort grouped recruiters alphabetically by display_name
+            usort($groupedRecruiters, fn($a, $b) => strcasecmp($a->display_name, $b->display_name));
+            $allRecruiters = collect($groupedRecruiters);
+        } else {
+            // Ambil daftar rekruter / AS yang ada dalam cakupan user saat ini
+            $recQuery = DB::table('candidates')
+                ->select('useras', DB::raw('count(*) as total'))
+                ->where('jenis', 'Job Portal')
+                ->whereNotNull('useras')
+                ->where('useras', '!=', '');
+
+            $this->applyAsUserFilter($recQuery, $user, $userIdentifiers);
+
+            $rawRecs = $recQuery->groupBy('useras')->get();
+            $groupedRecruiters = [];
+            foreach ($rawRecs as $r) {
+                $fake = new Candidate(['useras' => $r->useras]);
+                $disp = $fake->user_display_name;
+                if ($disp === '-' || empty($disp)) {
+                    $disp = str_contains($r->useras, '@') ? $r->useras : \App\Services\CandidateXlsxExportService::cleanPersonName($r->useras);
+                }
+                $key = strtolower(trim($disp));
+                if (!isset($groupedRecruiters[$key])) {
+                    $groupedRecruiters[$key] = (object) [
+                        'useras' => $r->useras,
+                        'display_name' => $disp,
+                        'total' => (int) $r->total,
+                        'aliases' => [strtolower(trim($r->useras))],
+                    ];
+                }
+            }
+            if (empty($groupedRecruiters) && $user) {
+                $myDisp = $user->name ?? 'User AS';
+                $groupedRecruiters[strtolower(trim($myDisp))] = (object) [
+                    'useras' => $user->email ?: $user->name,
+                    'display_name' => $myDisp,
+                    'total' => 0,
+                    'aliases' => [strtolower(trim($user->email ?? '')), strtolower(trim($user->name ?? ''))],
+                ];
+            }
             usort($groupedRecruiters, fn($a, $b) => strcasecmp($a->display_name, $b->display_name));
             $allRecruiters = collect($groupedRecruiters);
         }
@@ -375,6 +418,39 @@ class KandidatPortalController extends Controller
             $tableQuery->where('kategori_kandidat', $kategori);
         }
 
+        // Filter Region
+        if (!empty($region)) {
+            $officialAreasInRegion = TbArea::where('region', $region)->pluck('area')->toArray();
+            $tableQuery->where(function ($q) use ($region, $officialAreasInRegion) {
+                $q->where('region', $region);
+                if (!empty($officialAreasInRegion)) {
+                    $q->orWhereIn('area', $officialAreasInRegion);
+                }
+            });
+        }
+
+        // Filter Area
+        if (!empty($area)) {
+            $cleanArea = trim($area);
+            $canonical = TbArea::getCanonicalAreaName($cleanArea);
+            $tableQuery->where(function ($q) use ($cleanArea, $canonical) {
+                $q->where('area', $cleanArea)
+                  ->orWhere('area', $canonical)
+                  ->orWhereRaw("LOWER(TRIM(area)) = ?", [strtolower($cleanArea)]);
+            });
+        }
+
+        // Filter 2nd City / Kota Penempatan
+        if (!empty($penempatan)) {
+            $cleanCity = trim($penempatan);
+            $tableQuery->where(function ($q) use ($cleanCity) {
+                $q->where('penempatan', $cleanCity)
+                  ->orWhereRaw("LOWER(TRIM(penempatan)) = ?", [strtolower($cleanCity)])
+                  ->orWhere('city_domicile', $cleanCity)
+                  ->orWhereRaw("LOWER(TRIM(city_domicile)) = ?", [strtolower($cleanCity)]);
+            });
+        }
+
         // Filter Step Odoo
         if (!empty($odooStage)) {
             if ($odooStage === 'none') {
@@ -456,11 +532,16 @@ class KandidatPortalController extends Controller
                   ->orWhere('nik', 'like', "%{$search}%")
                   ->orWhere('applied_job', 'like', "%{$search}%")
                   ->orWhere('area', 'like', "%{$search}%")
+                  ->orWhere('region', 'like', "%{$search}%")
+                  ->orWhere('penempatan', 'like', "%{$search}%")
+                  ->orWhere('useras', 'like', "%{$search}%")
                   ->orWhere('odoo_stage_name', 'like', "%{$search}%");
             });
         }
 
         $candidates = $tableQuery->orderBy('created_at', 'desc')->paginate(15)->withQueryString();
+
+        $distinctRegions = ['Region 1', 'Region 2', 'Region 3', 'Region 4', 'Region 5', 'Region 6', 'Region 7'];
 
         $distinctAreas = Candidate::where('jenis', 'Job Portal')
             ->whereNotNull('area')
@@ -468,6 +549,13 @@ class KandidatPortalController extends Controller
             ->distinct()
             ->orderBy('area')
             ->pluck('area');
+
+        $distinctPenempatan = Candidate::where('jenis', 'Job Portal')
+            ->whereNotNull('penempatan')
+            ->where('penempatan', '!=', '')
+            ->distinct()
+            ->orderBy('penempatan')
+            ->pluck('penempatan');
 
         $distinctOdooStages = Candidate::where('jenis', 'Job Portal')
             ->whereNotNull('odoo_stage_name')
@@ -488,6 +576,12 @@ class KandidatPortalController extends Controller
             'distinctOdooStages',
             'infoLowongan',
             'distinctInfoLowongan',
+            'region',
+            'distinctRegions',
+            'area',
+            'distinctAreas',
+            'penempatan',
+            'distinctPenempatan',
             'start',
             'end',
             'search',
@@ -497,7 +591,6 @@ class KandidatPortalController extends Controller
             'isAdmin',
             'canViewAllRecruiters',
             'allRecruiters',
-            'distinctAreas',
             'totalPelamar',
             'masukHariIni',
             'kandidatGreen',
@@ -1648,6 +1741,8 @@ class KandidatPortalController extends Controller
         $status_kandidat = $request->query('status_kandidat') ?? $request->query('tab');
         $kategori = $request->query('kategori');
         $area = $request->query('area');
+        $region = $request->query('region');
+        $penempatan = $request->query('penempatan') ?? $request->query('city');
         $start = $request->query('start');
         $end = $request->query('end');
         $search = $request->query('q') ?? $request->query('search');
@@ -1728,6 +1823,28 @@ class KandidatPortalController extends Controller
         // Filter Area Penempatan
         if (!empty($area) && !in_array(strtolower($area), ['all', 'semua', ''])) {
             $baseQuery->where('area', $area);
+        }
+
+        // Filter Region
+        if (!empty($region) && !in_array(strtolower($region), ['all', 'semua', ''])) {
+            $officialAreasInRegion = TbArea::where('region', $region)->pluck('area')->toArray();
+            $baseQuery->where(function ($q) use ($region, $officialAreasInRegion) {
+                $q->where('region', $region);
+                if (!empty($officialAreasInRegion)) {
+                    $q->orWhereIn('area', $officialAreasInRegion);
+                }
+            });
+        }
+
+        // Filter 2nd City / Kota Penempatan
+        if (!empty($penempatan) && !in_array(strtolower($penempatan), ['all', 'semua', ''])) {
+            $cleanCity = trim($penempatan);
+            $baseQuery->where(function ($q) use ($cleanCity) {
+                $q->where('penempatan', $cleanCity)
+                  ->orWhereRaw("LOWER(TRIM(penempatan)) = ?", [strtolower($cleanCity)])
+                  ->orWhere('city_domicile', $cleanCity)
+                  ->orWhereRaw("LOWER(TRIM(city_domicile)) = ?", [strtolower($cleanCity)]);
+            });
         }
 
         // Filter Kategori AI

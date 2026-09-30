@@ -786,6 +786,27 @@ class Candidate extends Model
         if (empty($this->tes_matematika) || $this->tes_matematika === '00:00:00' || $this->tes_matematika === '-') {
             return false;
         }
+
+        $currentTesKe = max(1, intval($this->tes_ke ?? 1));
+
+        // Jika kandidat dalam alur remidi (tes_ke > 1):
+        // Pastikan ada TestResult aktif di CBT. Jika TestResult dihapus (misal saat Send Remidi ditekan),
+        // atau jika TestResult yang tersimpan berasal dari tes_ke sebelumnya, maka tes belum selesai.
+        if ($currentTesKe > 1) {
+            $mathResult = $this->relationLoaded('testResults')
+                ? $this->testResults->firstWhere('test_type', 'math')
+                : $this->testResults()->where('test_type', 'math')->latest()->first();
+
+            if (!$mathResult) {
+                return false;
+            }
+
+            $trTesKe = intval($mathResult->test_details['tes_ke'] ?? 0);
+            if ($trTesKe > 0 && $trTesKe < $currentTesKe) {
+                return false;
+            }
+        }
+
         return true;
     }
 

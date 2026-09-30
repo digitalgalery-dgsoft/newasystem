@@ -398,12 +398,14 @@
                 <form action="{{ route('kandidatportal.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
                     <input type="hidden" name="tab" value="{{ $tab }}">
 
-                    @if((!empty($isAdmin) || !empty($canViewAllRecruiters)) && !empty($allRecruiters) && count($allRecruiters) > 0)
-                    <!-- Filter Rekruter (Administrator & User All Scope) -->
-                    <select name="recruiter" onchange="this.form.submit()" class="px-2.5 py-1.5 rounded-xl border border-blue-200 text-xs font-bold text-blue-900 bg-blue-50/80 focus:ring-2 focus:ring-primary outline-none">
-                        <option value="all" {{ ($filterRecruiter === 'all' || empty($filterRecruiter)) ? 'selected' : '' }}>🌐 Semua Rekruter (Nasional)</option>
+                    <!-- Filter Nama AS / Rekruter -->
+                    @if(!empty($allRecruiters) && count($allRecruiters) > 0)
+                    <select name="recruiter" class="px-2.5 py-1.5 rounded-xl border border-blue-200 text-xs font-bold text-blue-900 bg-blue-50/80 focus:ring-2 focus:ring-primary outline-none">
+                        <option value="all" {{ ($filterRecruiter === 'all' || empty($filterRecruiter)) ? 'selected' : '' }}>👤 Semua Nama AS</option>
+                        @if(!empty($isAdmin) || !empty($canViewAllRecruiters))
                         <option value="my" {{ $filterRecruiter === 'my' ? 'selected' : '' }}>👤 Data Saya ({{ auth()->user()->name ?? 'User' }})</option>
-                        <optgroup label="Pilih Rekruter Spesifik:">
+                        @endif
+                        <optgroup label="Pilih Nama AS / Rekruter:">
                             @foreach($allRecruiters as $r)
                                 <option value="{{ $r->useras }}" {{ ($filterRecruiter === $r->useras || (isset($r->aliases) && in_array(strtolower($filterRecruiter), $r->aliases, true))) ? 'selected' : '' }}>
                                     {{ $r->display_name }} ({{ $r->total }} pelamar)
@@ -412,6 +414,36 @@
                         </optgroup>
                     </select>
                     @endif
+
+                    <!-- Filter Region -->
+                    <select name="region" class="px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 outline-none">
+                        <option value="">Semua Region</option>
+                        @if(!empty($distinctRegions))
+                            @foreach($distinctRegions as $reg)
+                                <option value="{{ $reg }}" {{ ($region ?? '') === $reg ? 'selected' : '' }}>{{ $reg }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+
+                    <!-- Filter Area -->
+                    <select name="area" class="px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 outline-none">
+                        <option value="">Semua Area</option>
+                        @if(!empty($distinctAreas))
+                            @foreach($distinctAreas as $ar)
+                                <option value="{{ $ar }}" {{ ($area ?? '') === $ar ? 'selected' : '' }}>{{ $ar }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+
+                    <!-- Filter 2nd City / Kota Penempatan -->
+                    <select name="penempatan" class="px-2.5 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 outline-none">
+                        <option value="">Semua Kota Penempatan</option>
+                        @if(!empty($distinctPenempatan))
+                            @foreach($distinctPenempatan as $pen)
+                                <option value="{{ $pen }}" {{ ($penempatan ?? '') === $pen ? 'selected' : '' }}>{{ $pen }}</option>
+                            @endforeach
+                        @endif
+                    </select>
 
                     <!-- Kategori AI Filter -->
                     <select name="kategori" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-700 bg-white focus:ring-2 focus:ring-primary-500 outline-none">
@@ -470,13 +502,14 @@
                         <i class="fa-solid fa-magnifying-glass absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
                     </div>
 
-                    <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-700 transition-all shadow-sm">
+                    <button type="submit" class="px-3.5 py-1.5 rounded-xl bg-primary text-white text-xs font-bold hover:bg-primary-700 transition-all shadow-sm cursor-pointer">
                         <i class="fa-solid fa-filter mr-1"></i> Filter
                     </button>
 
-                    @if($kategori || !empty($odooStage) || !empty($infoLowongan) || $start || $end || $search || ($isAdmin && !empty($filterRecruiter)))
-                    <a href="{{ route('kandidatportal.index', ['tab' => $tab]) }}" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all">
-                        Reset
+                    @if($kategori || !empty($odooStage) || !empty($infoLowongan) || !empty($region) || !empty($area) || !empty($penempatan) || $start || $end || $search || (!empty($filterRecruiter) && $filterRecruiter !== 'all'))
+                    <a href="{{ route('kandidatportal.index', ['tab' => $tab]) }}" class="px-3 py-1.5 rounded-xl border border-slate-300 text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-all flex items-center gap-1 cursor-pointer">
+                        <i class="fa-solid fa-rotate-left text-[10px]"></i>
+                        <span>Reset</span>
                     </a>
                     @endif
                 </form>
@@ -538,35 +571,108 @@
             <p class="text-xs text-slate-400 mt-1 max-w-sm mx-auto">Tidak ada kandidat pelamar yang cocok dengan kriteria filter pada tab <strong>{{ strtoupper($tab) }}</strong>.</p>
         </div>
         @else
+        <!-- Action & Column Settings Bar -->
+        <div class="px-4 py-2.5 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2.5">
+            <div class="flex items-center gap-2 text-xs text-slate-500 font-medium">
+                <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 shadow-2xs">
+                    <i class="fa-solid fa-users text-primary"></i>
+                    <span>Menampilkan {{ $candidates->firstItem() ?? 0 }} - {{ $candidates->lastItem() ?? 0 }} dari {{ $candidates->total() }} pelamar</span>
+                </span>
+            </div>
+
+            <div class="flex items-center gap-2">
+                <!-- Dropdown Pengaturan Kolom Dinamis -->
+                <div class="relative inline-block text-left" @click.away="openColSettings = false">
+                    <button @click="openColSettings = !openColSettings" type="button" 
+                            class="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 transition-all shadow-xs cursor-pointer select-none">
+                        <i class="fa-solid fa-table-columns text-primary"></i>
+                        <span>Pengaturan Kolom</span>
+                        <span class="px-1.5 py-0.2 rounded-full bg-blue-100 text-blue-800 text-[10px] font-black" x-text="activeColumnCount + '/' + totalColumnCount"></span>
+                        <i class="fa-solid fa-chevron-down text-[9px] text-slate-400 transition-transform duration-200" :class="openColSettings ? 'rotate-180' : ''"></i>
+                    </button>
+
+                    <!-- Dropdown Menu Pengaturan Kolom -->
+                    <div x-show="openColSettings" 
+                         x-cloak
+                         x-transition:enter="transition ease-out duration-150"
+                         x-transition:enter-start="opacity-0 scale-95"
+                         x-transition:enter-end="opacity-100 scale-100"
+                         x-transition:leave="transition ease-in duration-100"
+                         x-transition:leave-start="opacity-100 scale-100"
+                         x-transition:leave-end="opacity-0 scale-95"
+                         class="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 p-3.5 space-y-3">
+                        
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <div>
+                                <div class="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-sliders text-primary"></i>
+                                    <span>Pilih Kolom Tampil</span>
+                                </div>
+                                <p class="text-[10px] text-slate-400 mt-0.5">Centang kolom yang ingin Anda tampilkan</p>
+                            </div>
+                            <div class="flex items-center gap-1 text-[11px] font-bold">
+                                <button type="button" @click="showAllColumns()" class="text-primary hover:underline px-1 py-0.5 cursor-pointer">Semua</button>
+                                <span class="text-slate-300">&bull;</span>
+                                <button type="button" @click="resetColumns()" class="text-slate-500 hover:underline px-1 py-0.5 cursor-pointer">Reset</button>
+                            </div>
+                        </div>
+
+                        <!-- Checkboxes List -->
+                        <div class="max-h-72 overflow-y-auto space-y-0.5 pr-1 text-xs text-slate-700 divide-y divide-slate-50">
+                            <template x-for="item in columnList" :key="item.key">
+                                <label class="flex items-center justify-between py-1.5 px-2 rounded-lg hover:bg-slate-50 cursor-pointer select-none transition-colors">
+                                    <span class="flex items-center gap-2">
+                                        <input type="checkbox" :checked="columns[item.key]" @change="toggleColumn(item.key)" class="rounded border-slate-300 text-primary focus:ring-primary w-4 h-4 cursor-pointer">
+                                        <span class="font-medium text-xs" :class="columns[item.key] ? 'text-slate-900 font-semibold' : 'text-slate-400 line-through'" x-text="item.label"></span>
+                                    </span>
+                                    <span x-show="item.isNew" class="px-1.5 py-0.2 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 tracking-wider">Baru</span>
+                                </label>
+                            </template>
+                        </div>
+
+                        <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-[10px] text-slate-400">
+                            <span><i class="fa-solid fa-floppy-disk mr-1 text-emerald-500"></i>Tersimpan otomatis</span>
+                            <button type="button" @click="openColSettings = false" class="px-3 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs cursor-pointer">
+                                Tutup
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="overflow-x-auto">
             <table class="w-full text-left text-xs custom-table">
                 <thead>
                     <tr>
-                        <th class="w-10 text-center">No</th>
-                        <th>Tgl Daftar</th>
-                        <th>Foto</th>
-                        <th>No. KTP / NIK</th>
-                        <th>Nama Kandidat</th>
-                        <th>Jenis Kelamin</th>
-                        <th>Tgl Lahir / Usia</th>
-                        <th>Pendidikan</th>
-                        <th>Posisi Dilamar</th>
-                        <th>Area & Region</th>
-                        <th class="text-center">Step Odoo</th>
-                        <th class="text-center">AI Match</th>
-                        <th class="text-center">Kategori</th>
-                        <th class="text-center">CV</th>
-                        <th class="text-center">CV Analisa AI</th>
-                        <th class="text-center w-32">Aksi</th>
+                        <th x-show="columns.no" class="w-10 text-center">No</th>
+                        <th x-show="columns.tgl_daftar">Tgl Daftar</th>
+                        <th x-show="columns.foto" class="text-center">Foto</th>
+                        <th x-show="columns.nik">No. KTP / NIK</th>
+                        <th x-show="columns.nama">Nama Kandidat</th>
+                        <th x-show="columns.gender">Jenis Kelamin</th>
+                        <th x-show="columns.usia">Tgl Lahir / Usia</th>
+                        <th x-show="columns.pendidikan">Pendidikan</th>
+                        <th x-show="columns.posisi">Posisi Dilamar</th>
+                        <th x-show="columns.region">Region</th>
+                        <th x-show="columns.area">Area</th>
+                        <th x-show="columns.penempatan">2nd City / Kota Penempatan</th>
+                        <th x-show="columns.nama_as">Nama AS</th>
+                        <th x-show="columns.odoo" class="text-center">Step Odoo</th>
+                        <th x-show="columns.ai_match" class="text-center">AI Match</th>
+                        <th x-show="columns.kategori" class="text-center">Kategori</th>
+                        <th x-show="columns.cv" class="text-center">CV</th>
+                        <th x-show="columns.cv_analisa" class="text-center">CV Analisa AI</th>
+                        <th x-show="columns.aksi" class="text-center w-32">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-100">
                     @foreach($candidates as $index => $cand)
                     <tr class="hover:bg-slate-50/80 transition-colors">
-                        <td class="text-center font-bold text-slate-400">{{ $candidates->firstItem() + $index }}</td>
+                        <td x-show="columns.no" class="text-center font-bold text-slate-400">{{ $candidates->firstItem() + $index }}</td>
                         
                         <!-- Tgl Daftar -->
-                        <td>
+                        <td x-show="columns.tgl_daftar">
                             @php
                                 $validReg = ($cand->created_at && $cand->created_at->year > 1970)
                                     ? $cand->created_at
@@ -581,7 +687,7 @@
                         </td>
 
                         <!-- Foto Profil -->
-                        <td class="text-center">
+                        <td x-show="columns.foto" class="text-center">
                             @if($cand->photo_path)
                                 <img src="{{ $cand->photo_url }}" 
                                      alt="Avatar" class="w-8 h-8 rounded-full border border-slate-200 mx-auto object-cover" onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name={{ urlencode($cand->full_name) }}&background=0F52BA&color=fff';">
@@ -593,14 +699,14 @@
                         </td>
 
                         <!-- No KTP -->
-                        <td>
+                        <td x-show="columns.nik">
                             <code class="text-[11px] font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                                 {{ $cand->nik }}
                             </code>
                         </td>
 
                         <!-- Nama Kandidat -->
-                        <td>
+                        <td x-show="columns.nama">
                             <a href="{{ route('kandidatportal.show', $cand->id) }}" class="font-bold text-slate-900 hover:text-primary transition-colors text-xs flex items-center gap-1.5">
                                 <span>{{ $cand->full_name }}</span>
                                 <i class="fa-solid fa-arrow-up-right-from-square text-[9px] text-slate-300"></i>
@@ -612,7 +718,7 @@
                         </td>
 
                         <!-- Jenis Kelamin -->
-                        <td>
+                        <td x-show="columns.gender">
                             @if(in_array(strtolower($cand->gender ?? ''), ['perempuan', 'female']))
                                 <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-pink-50 text-pink-700 border border-pink-200">
                                      <i class="fa-solid fa-venus text-[10px]"></i> Perempuan
@@ -625,7 +731,7 @@
                         </td>
 
                         <!-- Tgl Lahir / Usia -->
-                        <td>
+                        <td x-show="columns.usia">
                             <div class="text-slate-700 font-medium">
                                 {{ $cand->formatted_birth_date }}
                             </div>
@@ -635,12 +741,12 @@
                         </td>
 
                         <!-- Pendidikan -->
-                        <td>
+                        <td x-show="columns.pendidikan">
                             <span class="text-slate-700 font-semibold">{{ $cand->education ?? '-' }}</span>
                         </td>
 
                         <!-- Posisi Dilamar & Info Lowongan -->
-                        <td>
+                        <td x-show="columns.posisi">
                             <div class="font-bold text-slate-900 text-xs leading-snug">
                                 {{ $cand->applied_job ?? '-' }}
                             </div>
@@ -673,21 +779,50 @@
                             @endif
                         </td>
 
-                        <!-- Area & Region -->
-                        <td>
-                            <div class="flex flex-col gap-0.5">
-                                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-100 w-fit">
-                                    <i class="fa-solid fa-location-dot text-[9px]"></i>
-                                    {{ $cand->area ? \App\Models\TbArea::getCanonicalAreaName($cand->area) : 'Jakarta' }}
-                                </span>
-                                <span class="inline-flex items-center text-[9px] font-bold text-slate-400 pl-1 tracking-wide">
-                                    {{ $cand->region }}
-                                </span>
+                        <!-- Region -->
+                        <td x-show="columns.region">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-extrabold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs whitespace-nowrap">
+                                <i class="fa-solid fa-map-location-dot text-[9px] text-indigo-500"></i>
+                                <span>{{ $cand->region }}</span>
+                            </span>
+                        </td>
+
+                        <!-- Area -->
+                        <td x-show="columns.area">
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs whitespace-nowrap">
+                                <i class="fa-solid fa-location-dot text-[9px] text-blue-500"></i>
+                                <span>{{ $cand->area ? \App\Models\TbArea::getCanonicalAreaName($cand->area) : 'Jakarta' }}</span>
+                            </span>
+                        </td>
+
+                        <!-- 2nd City / Kota Penempatan -->
+                        <td x-show="columns.penempatan">
+                            @php
+                                $kotaPenempatan = !empty($cand->penempatan) ? trim($cand->penempatan) : (!empty($cand->city_domicile) ? trim($cand->city_domicile) : (!empty($cand->area) ? \App\Models\TbArea::getCanonicalAreaName($cand->area) : '-'));
+                            @endphp
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-slate-100 text-slate-800 border border-slate-200 shadow-2xs whitespace-nowrap" title="2nd City / Kota Penempatan: {{ $kotaPenempatan }}">
+                                <i class="fa-solid fa-city text-[9px] text-slate-500"></i>
+                                <span>{{ $kotaPenempatan }}</span>
+                            </span>
+                        </td>
+
+                        <!-- Nama AS -->
+                        <td x-show="columns.nama_as">
+                            @php
+                                $asDisplayName = $cand->user_as_name ?: ($cand->useras ?: '-');
+                            @endphp
+                            <div class="flex items-center gap-1.5 min-w-[130px]" title="Nama AS: {{ $asDisplayName }}">
+                                <div class="w-6 h-6 rounded-full bg-blue-50 text-primary flex items-center justify-center font-bold text-[10px] flex-shrink-0 border border-blue-200">
+                                    <i class="fa-solid fa-user-tie text-[9px]"></i>
+                                </div>
+                                <div class="truncate text-xs font-bold text-slate-800 max-w-[150px]">
+                                    {{ $asDisplayName }}
+                                </div>
                             </div>
                         </td>
 
                         <!-- Step Odoo -->
-                        <td class="text-center">
+                        <td x-show="columns.odoo" class="text-center">
                             @php
                                 $odooBadge = $cand->odoo_badge_info;
                             @endphp
@@ -709,7 +844,7 @@
                         </td>
 
                         <!-- AI Score -->
-                        <td class="text-center">
+                        <td x-show="columns.ai_match" class="text-center">
                             @php
                                 $hasCv = $cand->hasCv();
                                 $score = ($cand->ai_score !== null) ? intval($cand->ai_score) : 0;
@@ -725,7 +860,7 @@
                         </td>
 
                         <!-- Kategori AI -->
-                        <td class="text-center">
+                        <td x-show="columns.kategori" class="text-center">
                             @if($cand->kategori_kandidat === 'Green')
                                 <span class="badge-pill bg-emerald-50 text-emerald-700 border-emerald-200">
                                     <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Green
@@ -747,7 +882,7 @@
                         </td>
 
                         <!-- File CV -->
-                        <td class="text-center">
+                        <td x-show="columns.cv" class="text-center">
                             @if($cand->cv_path)
                                 <div class="inline-flex items-center gap-1">
                                     <a href="{{ $cand->cv_url }}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors shadow-sm" title="Buka File CV">
@@ -768,7 +903,7 @@
                         </td>
 
                         <!-- CV Hasil Analisa AI -->
-                        <td class="text-center">
+                        <td x-show="columns.cv_analisa" class="text-center">
                             @if(!empty($cand->ai_score) && $cand->ai_score > 0)
                                 <a href="{{ route('kandidatportal.cetak-ai', $cand->id) }}" target="_blank" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 transition-colors shadow-sm" title="Download / Buka PDF CV Hasil Analisa AI">
                                     <i class="fa-solid fa-wand-magic-sparkles text-[9px] text-indigo-600"></i> Ada
@@ -782,11 +917,11 @@
                         </td>
 
                         <!-- Aksi Buttons -->
-                        <td class="text-center">
+                        <td x-show="columns.aksi" class="text-center">
                             <div class="flex items-center justify-center gap-1.5">
                                 <!-- 1. Evaluasi / Detail -->
                                 <a href="{{ route('kandidatportal.show', $cand->id) }}" 
-                                   class="w-7 h-7 rounded-lg bg-primary-50 text-primary hover:bg-primary-100 border border-primary-200 flex items-center justify-center transition-all"
+                                   class="w-7 h-7 rounded-lg bg-primary-50 text-primary hover:bg-primary-100 border border-primary-200 flex items-center justify-center transition-all cursor-pointer"
                                    title="Buka Lembar Evaluasi & Hasil Test">
                                     <i class="fa-solid fa-clipboard-check text-xs"></i>
                                 </a>
@@ -794,7 +929,7 @@
                                 <!-- 2. Reset Password Button -->
                                 <button type="button" 
                                         @click="openResetPasswordModal('{{ $cand->id }}', '{{ $cand->full_name }}', '{{ $cand->birth_date ? $cand->birth_date->format('d-m-Y') : '' }}', '{{ $cand->birth_date ? $cand->birth_date->format('dmY') : '' }}')"
-                                        class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 flex items-center justify-center transition-all"
+                                        class="w-7 h-7 rounded-lg bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 flex items-center justify-center transition-all cursor-pointer"
                                         title="Reset Password Kandidat ke Tanggal Lahir (ddmmyyyy)">
                                     <i class="fa-solid fa-key text-xs"></i>
                                 </button>
@@ -802,7 +937,7 @@
                                 <!-- 3. WhatsApp Direct Broadcast -->
                                 <button type="button" 
                                         @click="sendWhatsAppMessage('{{ $cand->clean_whatsapp }}', '{{ $cand->full_name }}', '{{ $cand->applied_job }}', '{{ $cand->area }}')"
-                                        class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 flex items-center justify-center transition-all"
+                                        class="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 flex items-center justify-center transition-all cursor-pointer"
                                         title="Kirim Undangan / Info via WhatsApp">
                                     <i class="fa-brands fa-whatsapp text-xs"></i>
                                 </button>
@@ -812,7 +947,7 @@
                                 <form action="{{ route('kandidatportal.unarchive', $cand->id) }}" method="POST" class="inline" onsubmit="return confirm('Aktifkan kembali kandidat {{ addslashes($cand->full_name) }} dari arsip?');">
                                     @csrf
                                     <button type="submit" 
-                                            class="w-7 h-7 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 flex items-center justify-center transition-all shadow-sm"
+                                            class="w-7 h-7 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 flex items-center justify-center transition-all shadow-sm cursor-pointer"
                                             title="Aktifkan Kembali (Un-Archive) dari Arsip">
                                         <i class="fa-solid fa-box-open text-xs"></i>
                                     </button>
@@ -974,14 +1109,40 @@
                     </select>
                 </div>
 
-                <!-- 5. Area Penempatan (Filter by Area Baru) -->
+                <!-- 5. Region -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">Region</label>
+                    <select name="region" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer">
+                        <option value="">Semua Region</option>
+                        @if(!empty($distinctRegions))
+                            @foreach($distinctRegions as $regOpt)
+                                <option value="{{ $regOpt }}" {{ ($region ?? '') === $regOpt ? 'selected' : '' }}>{{ $regOpt }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+                </div>
+
+                <!-- 6. Area Penempatan -->
                 <div>
                     <label class="block font-bold text-slate-700 mb-1">Area Penempatan</label>
                     <select name="area" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer">
                         <option value="">Semua Area</option>
                         @if(!empty($distinctAreas))
                             @foreach($distinctAreas as $areaOpt)
-                                <option value="{{ $areaOpt }}">{{ $areaOpt }}</option>
+                                <option value="{{ $areaOpt }}" {{ ($area ?? '') === $areaOpt ? 'selected' : '' }}>{{ $areaOpt }}</option>
+                            @endforeach
+                        @endif
+                    </select>
+                </div>
+
+                <!-- 7. 2nd City / Kota Penempatan -->
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">2nd City / Kota Penempatan</label>
+                    <select name="penempatan" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-xs font-medium text-slate-700 bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all cursor-pointer">
+                        <option value="">Semua Kota Penempatan</option>
+                        @if(!empty($distinctPenempatan))
+                            @foreach($distinctPenempatan as $penOpt)
+                                <option value="{{ $penOpt }}" {{ ($penempatan ?? '') === $penOpt ? 'selected' : '' }}>{{ $penOpt }}</option>
                             @endforeach
                         @endif
                     </select>
@@ -1123,12 +1284,98 @@
 @section('scripts')
 <script>
     function kandidatPortalManager() {
+        const defaultColumns = {
+            no: true,
+            tgl_daftar: true,
+            foto: true,
+            nik: true,
+            nama: true,
+            gender: true,
+            usia: true,
+            pendidikan: true,
+            posisi: true,
+            region: true,
+            area: true,
+            penempatan: true,
+            nama_as: true,
+            odoo: true,
+            ai_match: true,
+            kategori: true,
+            cv: true,
+            cv_analisa: true,
+            aksi: true,
+        };
+
+        const loadSavedColumns = () => {
+            try {
+                const saved = localStorage.getItem('kandidat_portal_columns_v2');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    return Object.assign({}, defaultColumns, parsed);
+                }
+            } catch (e) {}
+            return Object.assign({}, defaultColumns);
+        };
+
         return {
             resetModalOpen: false,
             openExportModal: false,
             openSyncOdooModal: false,
             isSyncingOdoo: false,
             syncResult: null,
+
+            openColSettings: false,
+            columns: loadSavedColumns(),
+            columnList: [
+                { key: 'no', label: 'No' },
+                { key: 'tgl_daftar', label: 'Tgl Daftar' },
+                { key: 'foto', label: 'Foto Profil' },
+                { key: 'nik', label: 'No. KTP / NIK' },
+                { key: 'nama', label: 'Nama Kandidat' },
+                { key: 'gender', label: 'Jenis Kelamin' },
+                { key: 'usia', label: 'Tgl Lahir / Usia' },
+                { key: 'pendidikan', label: 'Pendidikan' },
+                { key: 'posisi', label: 'Posisi Dilamar' },
+                { key: 'region', label: 'Region', isNew: true },
+                { key: 'area', label: 'Area', isNew: true },
+                { key: 'penempatan', label: '2nd City / Kota Penempatan', isNew: true },
+                { key: 'nama_as', label: 'Nama AS', isNew: true },
+                { key: 'odoo', label: 'Step Odoo' },
+                { key: 'ai_match', label: 'AI Match' },
+                { key: 'kategori', label: 'Kategori AI' },
+                { key: 'cv', label: 'File CV' },
+                { key: 'cv_analisa', label: 'CV Analisa AI' },
+                { key: 'aksi', label: 'Aksi' },
+            ],
+
+            toggleColumn(key) {
+                this.columns[key] = !this.columns[key];
+                this.saveColumns();
+            },
+
+            showAllColumns() {
+                this.columnList.forEach(c => this.columns[c.key] = true);
+                this.saveColumns();
+            },
+
+            resetColumns() {
+                this.columns = Object.assign({}, defaultColumns);
+                this.saveColumns();
+            },
+
+            saveColumns() {
+                try {
+                    localStorage.setItem('kandidat_portal_columns_v2', JSON.stringify(this.columns));
+                } catch (e) {}
+            },
+
+            get activeColumnCount() {
+                return Object.values(this.columns).filter(Boolean).length;
+            },
+
+            get totalColumnCount() {
+                return this.columnList.length;
+            },
 
             resetCandidateId: '',
             resetCandidateName: '',

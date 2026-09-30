@@ -1464,9 +1464,27 @@ class InterviewController extends Controller
         $candidate = Candidate::findOrFail($id);
         $user = $this->getCurrentUser();
 
-        // 1. Hitung tes_ke berikutnya (naik 1 tingkat: misal dari 1 jadi 2, dst)
+        // 1. Hitung tes_ke berikutnya secara akurat
         $currentTesKe = max(1, intval($candidate->tes_ke ?? 1));
-        $nextTesKe = $currentTesKe + 1;
+
+        // Cek juga dari max tes_ke di tb_hasilmath agar tidak mundur jika pernah ter-overwrite
+        $maxMathTesKe = 0;
+        if (\Illuminate\Support\Facades\Schema::hasTable('tb_hasilmath')) {
+            $allSiblingIds = Candidate::where('nik', $candidate->nik)->pluck('id')->push($candidate->id)->unique();
+            $maxMathTesKe = (int) \Illuminate\Support\Facades\DB::table('tb_hasilmath')
+                ->whereIn('id_kandidat', $allSiblingIds)
+                ->max('tes_ke');
+            if ($maxMathTesKe >= $currentTesKe) {
+                $currentTesKe = $maxMathTesKe;
+            }
+        }
+
+        // Jika tes_matematika saat ini sudah null dan sudah lebih besar dari histori, pertahankan tes_ke saat ini (hindari loncat angka saat tombol ditekan ulang)
+        if (empty($candidate->tes_matematika) && $candidate->tes_ke > 1 && $candidate->tes_ke > $maxMathTesKe) {
+            $nextTesKe = intval($candidate->tes_ke);
+        } else {
+            $nextTesKe = $currentTesKe + 1;
+        }
 
         // 2. Reset status tes matematika & persetujuan pada kandidat
         $candidate->tes_matematika = null;
