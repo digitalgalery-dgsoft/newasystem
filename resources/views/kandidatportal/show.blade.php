@@ -1904,8 +1904,11 @@
                             <label class="block text-xs font-bold text-slate-700 mb-1">Prinsiple Penempatan</label>
                             <select name="principle_id" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2 text-xs font-medium text-slate-800 focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none transition">
                                 <option value="">-- Pilih Prinsiple Penempatan --</option>
+                                @php
+                                    $candPrinName = is_object($candidate->principle) ? ($candidate->principle->name ?? '') : (string)($candidate->principle ?? '');
+                                @endphp
                                 @foreach($principles as $p)
-                                    <option value="{{ $p->id }}" {{ ($candidate->principle_id == $p->id || (empty($candidate->principle_id) && strcasecmp($candidate->principle ?? '', $p->name) === 0)) ? 'selected' : '' }}>
+                                    <option value="{{ $p->id }}" {{ ($candidate->principle_id == $p->id || (empty($candidate->principle_id) && !empty($candPrinName) && strcasecmp($candPrinName, $p->name) === 0)) ? 'selected' : '' }}>
                                         {{ $p->name }} {{ $p->entity ? '('.$p->entity.')' : '' }}
                                     </option>
                                 @endforeach

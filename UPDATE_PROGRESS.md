@@ -4171,6 +4171,25 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 110. 🐛 Perbaikan TypeError strcasecmp() pada Dropdown Prinsiple Detail Kandidat
+- **Latar Belakang & Gejala Error**:
+  - Saat membuka halaman detail kandidat di modul interview (`/interview/{id}` atau `/kandidatportal/{id}`), terjadi kesalahan server 500:
+    > `TypeError: strcasecmp(): Argument #1 ($string1) must be of type string, stdClass given` pada `resources/views/interview/show.blade.php:2606`.
+- **Akar Masalah (Root Cause)**:
+  - Model `Candidate` memiliki accessor `getPrincipleAttribute()` yang mengembalikan objek `Principle` (atau objek `stdClass` yang memuat `'id'` dan `'name'`).
+  - Pada elemen dropdown pilihan Prinsiple di form edit profil modal (`interview/show.blade.php` dan `kandidatportal/show.blade.php`), atribut `$candidate->principle` langsung diumpankan ke fungsi `strcasecmp($candidate->principle ?? '', $p->name)`.
+  - Karena nilai yang dikembalikan adalah sebuah objek dan bukan string, PHP 8 melempar `TypeError`.
+- **Implementasi Solusi & Perubahan Teknis**:
+  - Memperbarui `resources/views/interview/show.blade.php` dan `resources/views/kandidatportal/show.blade.php`:
+    - Menambahkan resolusi aman string nama prinsiple (`$candPrinName = is_object($candidate->principle) ? ($candidate->principle->name ?? '') : (string)($candidate->principle ?? '')`).
+    - Menggunakan variabel string `$candPrinName` saat melakukan perbandingan `strcasecmp($candPrinName, $p->name)`.
+- **Uji Coba & Hasil**:
+  - Halaman `/interview/{id}`: HTTP 200 OK (Render sukses 729 KB).
+  - Halaman `/kandidatportal/{id}`: HTTP 200 OK (Render sukses 728 KB).
+  - Seluruh alur pengerjaan dan form edit profil berjalan normal tanpa error.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
