@@ -218,10 +218,15 @@ class KandidatPortalController extends Controller
 
             $groupedRecruiters = [];
             foreach ($allRecruiters as $r) {
+                $rawU = strtolower(trim($r->useras));
+                if ($rawU === 'admin@asystem.co.id' || str_starts_with($rawU, 'admin@') || stripos($rawU, 'administrator') !== false || stripos($rawU, 'admin esa') !== false) {
+                    continue;
+                }
+
                 $fake = new Candidate(['useras' => $r->useras]);
                 $disp = $fake->user_display_name;
-                if ($disp === '-' || empty($disp)) {
-                    $disp = str_contains($r->useras, '@') ? $r->useras : \App\Services\CandidateXlsxExportService::cleanPersonName($r->useras);
+                if ($disp === '-' || empty($disp) || stripos($disp, 'administrator') !== false || stripos($disp, 'admin esa') !== false) {
+                    continue;
                 }
 
                 $key = strtolower(trim($disp));
@@ -254,11 +259,17 @@ class KandidatPortalController extends Controller
             $rawRecs = $recQuery->groupBy('useras')->get();
             $groupedRecruiters = [];
             foreach ($rawRecs as $r) {
+                $rawU = strtolower(trim($r->useras));
+                if ($rawU === 'admin@asystem.co.id' || str_starts_with($rawU, 'admin@') || stripos($rawU, 'administrator') !== false || stripos($rawU, 'admin esa') !== false) {
+                    continue;
+                }
+
                 $fake = new Candidate(['useras' => $r->useras]);
                 $disp = $fake->user_display_name;
-                if ($disp === '-' || empty($disp)) {
-                    $disp = str_contains($r->useras, '@') ? $r->useras : \App\Services\CandidateXlsxExportService::cleanPersonName($r->useras);
+                if ($disp === '-' || empty($disp) || stripos($disp, 'administrator') !== false || stripos($disp, 'admin esa') !== false) {
+                    continue;
                 }
+
                 $key = strtolower(trim($disp));
                 if (!isset($groupedRecruiters[$key])) {
                     $groupedRecruiters[$key] = (object) [
@@ -267,6 +278,9 @@ class KandidatPortalController extends Controller
                         'total' => (int) $r->total,
                         'aliases' => [strtolower(trim($r->useras))],
                     ];
+                } else {
+                    $groupedRecruiters[$key]->total += (int) $r->total;
+                    $groupedRecruiters[$key]->aliases[] = strtolower(trim($r->useras));
                 }
             }
             if (empty($groupedRecruiters) && $user) {
@@ -2032,6 +2046,28 @@ class KandidatPortalController extends Controller
         $stripped = strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $filterRecruiter)));
         if (!empty($stripped)) {
             $identifiers[] = $stripped;
+        }
+
+        // Integrasikan seluruh alias dari CANONICAL_AS_MAP
+        $lowerFilter = strtolower(trim($filterRecruiter));
+        foreach (\App\Services\CandidateXlsxExportService::CANONICAL_AS_MAP as $aliasEmail => $info) {
+            $aliasLower = strtolower($aliasEmail);
+            $canonLower = strtolower($info['canonical']);
+            $nameLower = strtolower($info['name']);
+            $emailLower = strtolower($info['email']);
+
+            if (
+                $lowerFilter === $aliasLower ||
+                $lowerFilter === $canonLower ||
+                $lowerFilter === $nameLower ||
+                $lowerFilter === $emailLower ||
+                $stripped === strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $info['canonical'])))
+            ) {
+                $identifiers[] = $aliasLower;
+                $identifiers[] = $emailLower;
+                $identifiers[] = $nameLower;
+                $identifiers[] = $canonLower;
+            }
         }
 
         try {

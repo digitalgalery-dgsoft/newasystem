@@ -841,13 +841,32 @@ class Candidate extends Model
             }
         }
 
-        if (stripos($useras, 'administrator') !== false || stripos($useras, 'admin esa') !== false) {
-            return '-';
+        $lowerUseras = strtolower($useras);
+
+        // Jangan pernah menampilkan Administrator ESA pada nama AS
+        if (
+            stripos($useras, 'administrator') !== false || 
+            stripos($useras, 'admin esa') !== false ||
+            $lowerUseras === 'admin@asystem.co.id' ||
+            str_starts_with($lowerUseras, 'admin@')
+        ) {
+            $areaAs = \App\Services\CandidateXlsxExportService::getAreaAsName($this->area ?: $this->penempatan);
+            return $areaAs ?: '-';
+        }
+
+        // Cek kamus canonical alias rekruter
+        $canonicalMap = \App\Services\CandidateXlsxExportService::CANONICAL_AS_MAP;
+        if (isset($canonicalMap[$lowerUseras])) {
+            return $canonicalMap[$lowerUseras]['canonical'];
+        }
+
+        if ($lowerUseras === 'publik') {
+            return 'Publik';
         }
 
         // 1. Jika useras berupa email
         if (str_contains($useras, '@')) {
-            $cleanEmail = strtolower($useras);
+            $cleanEmail = $lowerUseras;
 
             // Prioritas Utama: Ambil Nama Lengkap & Jabatan dari Data Karyawan (Employee) berdasarkan email
             $employee = Employee::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])

@@ -4112,6 +4112,49 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 108. 🛡️ Eliminasi Administrator ESA, Standardisasi Nama AS Kanonikal, & Searchable Filter Dropdown Kandidat Portal
+- **Latar Belakang & Masalah**:
+  1. Pada Kandidat Portal dan file Export Excel, masih terdapat kandidat yang tercatat di bawah *"Administrator ESA (Head of Recruitment)"* (seharusnya tidak ada pelamar yang berstatus di bawah Administrator ESA).
+  2. Masih ada entri Nama AS yang menampilkan alamat email mentah (seperti `valenringo@gmail.com`, `marshelwilhelmuss22@gmail.com`, `titin.trianingsih333@gmail.com`, `lestarialvakaryaperkasa@gmail.com`, `christonormandebby91@gmail.com`, `krt.kartikasari@gmail.com`, `arumi.surabaya@gmail.com`), yang menyebabkan duplikasi nama AS (misalnya `Marshel Wilhelmus Pinem (AS OPS - Medan)` dan `marshelwilhelmuss22@gmail.com` muncul sebagai dua entri terpisah).
+  3. Filter dropdown di Kandidat Portal (Nama AS, Region, Area, Kota Penempatan, Kategori AI, Step Odoo, Info Lowongan) membutuhkan fitur pencarian (*searchable*) agar rekruter mudah memilih data dari daftar yang panjang.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Standardisasi Kamus AS Kanonikal (`CandidateXlsxExportService.php` & `Candidate.php`)**:
+     - Menambahkan konstanta `CANONICAL_AS_MAP` yang memetakan seluruh varian email personal rekruter ke Nama Resmi dan Akun Sistem:
+       - `valenringo@gmail.com` -> Valentina Siringo Ringo (AS OPS - Samarinda) / `valen.ringo@gmail.com`
+       - `marshelwilhelmuss22@gmail.com` -> Marshel Wilhelmus Pinem (AS OPS - Medan) / `marshelwilhelmus22@gmail.com`
+       - `titin.trianingsih333@gmail.com` -> Titin Trianingsih (AS OPS - Surabaya) / `aro.surabaya1@alvakaryaperkasa.co.id`
+       - `lestarialvakaryaperkasa@gmail.com` & `arumi.surabaya@gmail.com` -> Lestari Meiningsih (AS OPS - Surabaya) / `Lestari.arina.sby@gmail.com`
+       - `christonormandebby91@gmail.com` -> Christo Norman Debby Fredrick (AS OPS - Bandung) / `christonormandebby@gmail.com`
+       - `krt.kartikasari@gmail.com` -> Kartika Sari (AS OPS - Kediri) / `adm.kediri@arina.co.id`
+     - Menghilangkan `Administrator ESA` dari daftar rekruter dan resolusi kolom Nama AS.
+     - Mengembangkan helper `getAreaAsName(?string $area)` dan `getAreaAsEmail(?string $area)` untuk meresolusikan kandidat ke AS resmi cabang jika pelamar tidak memiliki rekruter spesifik.
+  2. **Controller & Filter Grouping (`KandidatPortalController.php` & `PublicJobController.php`)**:
+     - Memperbarui daftar `$allRecruiters` agar menggabungkan (*group by*) alias email ke satu entri nama kanonikal, sehingga tidak lagi terjadi duplikasi pilihan filter AS.
+     - Menyaring kandidat masuk baru (`PublicJobController.php`) agar otomatis diarahkan ke email AS cabang terkait dan bukan `admin@asystem.co.id`.
+     - Menyempurnakan filter `resolveRecruiterFilterIdentifiers` agar pencarian kandidat berdasarkan nama atau alias mencakup seluruh relasi alias email tersebut.
+  3. **Komponen Searchable Dropdown Alpine.js (`resources/views/kandidatportal/index.blade.php`)**:
+     - Menggantikan elemen `<select>` standar dengan custom popover dropdown yang responsif dan searchable via Alpine.js (`portalFilterSelect`):
+       - Filter Nama AS / Rekruter
+       - Filter Region
+       - Filter Area
+       - Filter 2nd City / Kota Penempatan
+       - Filter Kategori AI
+       - Filter Step Odoo
+       - Filter Info Lowongan
+     - Dilengkapi input pencarian instan, highlight opsi terpilih, pembersihan cepat (*clear button*), dan auto-submit saat opsi dipilih.
+  4. **Migrasi Database (`2026_09_30_100000_normalize_candidate_as_and_eliminate_admin_as.php`)**:
+     - Memutakhirkan database tabel `candidates` dan `tb_kandidat`:
+       - Mengubah kandidat under `admin@asystem.co.id` / `recruiter_id = 1` ke User AS cabang masing-masing berdasarkan Area.
+       - Mengubah kandidat yang tercatat dengan email alias lama ke email kanonikal dan menyinkronkan `recruiter_id`.
+       - Mendaftarkan alias ke `users.email_aliases` agar sistem tetap mengenali riwayat akun tersebut.
+- **Uji Coba & Status**:
+  - Pengecekan kandidat under admin di database lokal: 0 data tersisa (telah dipetakan ke AS cabang).
+  - Pengecekan kandidat under raw email: 0 data tersisa (telah dinormalisasi ke email resmi).
+  - Render Kandidat Portal: HTTP 200 OK (503 KB) dengan dropdown searchable berfungsi interaktif.
+  - Export Excel XLSX: Berhasil di-generate tanpa error, kolom Nama AS menampilkan nama resmi dan jabatan kanonikal.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

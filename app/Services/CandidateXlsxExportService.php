@@ -382,20 +382,39 @@ class CandidateXlsxExportService
                 $recName = ($c->recruiter && !empty($c->recruiter->name)) ? strtolower(trim($c->recruiter->name)) : null;
                 $recStripped = $recName ? strtolower(trim(preg_replace('/\s*\([^)]*\)/', '', $recName))) : null;
 
-                if (isset($asLookup[$lowerAs])) {
+                $isAdminRaw = (
+                    $lowerAs === 'admin@asystem.co.id' ||
+                    str_starts_with($lowerAs, 'admin@') ||
+                    stripos($rawAs, 'administrator') !== false ||
+                    stripos($rawAs, 'admin esa') !== false
+                );
+
+                $recIsAdmin = (
+                    $recEmail === 'admin@asystem.co.id' ||
+                    ($recEmail && str_starts_with($recEmail, 'admin@')) ||
+                    stripos($recName ?? '', 'administrator') !== false ||
+                    stripos($recName ?? '', 'admin esa') !== false
+                );
+
+                if ($isAdminRaw) {
+                    // JANGAN pernah menampilkan Administrator ESA pada kolom Nama AS
+                    // Resolusikan ke AS Area bila ada, atau '-' jika tidak ada
+                    $namaAs = self::getAreaAsName($c->area ?: $c->penempatan);
+                } elseif (isset(self::CANONICAL_AS_MAP[$lowerAs])) {
+                    $namaAs = self::CANONICAL_AS_MAP[$lowerAs]['canonical'];
+                } elseif (isset($asLookup[$lowerAs])) {
                     $namaAs = $asLookup[$lowerAs];
                 } elseif (isset($asLookup[$strippedAs])) {
                     $namaAs = $asLookup[$strippedAs];
-                } elseif ($recEmail && isset($asLookup[$recEmail])) {
+                } elseif ($recEmail && !$recIsAdmin && isset($asLookup[$recEmail])) {
                     $namaAs = $asLookup[$recEmail];
-                } elseif ($recName && isset($asLookup[$recName])) {
+                } elseif ($recName && !$recIsAdmin && isset($asLookup[$recName])) {
                     $namaAs = $asLookup[$recName];
-                } elseif ($recStripped && isset($asLookup[$recStripped])) {
+                } elseif ($recStripped && !$recIsAdmin && isset($asLookup[$recStripped])) {
                     $namaAs = $asLookup[$recStripped];
                 } else {
-                    $isAdminText = (stripos($rawAs, 'administrator') !== false || stripos($rawAs, 'admin esa') !== false);
-                    if ($isAdminText) {
-                        $namaAs = '-';
+                    if ($lowerAs === 'publik') {
+                        $namaAs = 'Publik';
                     } elseif (str_contains($rawAs, '@')) {
                         $namaAs = $rawAs;
                     } elseif (preg_match('/^(.*?)\s*\((.*?)\)$/', $rawAs, $m)) {
@@ -643,6 +662,164 @@ class CandidateXlsxExportService
     }
 
     /**
+     * Kamus pemetaan alias kanonikal untuk email/nama AS yang variatif agar seragam dan tidak terduplikasi
+     */
+    public const CANONICAL_AS_MAP = [
+        'valenringo@gmail.com' => [
+            'name' => 'Valentina Siringo Ringo',
+            'job' => 'AS OPS - Samarinda',
+            'email' => 'valen.ringo@gmail.com',
+            'canonical' => 'Valentina Siringo Ringo (AS OPS - Samarinda)',
+        ],
+        'valen.ringo@gmail.com' => [
+            'name' => 'Valentina Siringo Ringo',
+            'job' => 'AS OPS - Samarinda',
+            'email' => 'valen.ringo@gmail.com',
+            'canonical' => 'Valentina Siringo Ringo (AS OPS - Samarinda)',
+        ],
+        'marshelwilhelmuss22@gmail.com' => [
+            'name' => 'Marshel Wilhelmus Pinem',
+            'job' => 'AS OPS - Medan',
+            'email' => 'marshelwilhelmus22@gmail.com',
+            'canonical' => 'Marshel Wilhelmus Pinem (AS OPS - Medan)',
+        ],
+        'marshelwilhelmus22@gmail.com' => [
+            'name' => 'Marshel Wilhelmus Pinem',
+            'job' => 'AS OPS - Medan',
+            'email' => 'marshelwilhelmus22@gmail.com',
+            'canonical' => 'Marshel Wilhelmus Pinem (AS OPS - Medan)',
+        ],
+        'titin.trianingsih333@gmail.com' => [
+            'name' => 'Titin Trianingsih',
+            'job' => 'AS OPS - Surabaya',
+            'email' => 'aro.surabaya1@alvakaryaperkasa.co.id',
+            'canonical' => 'Titin Trianingsih (AS OPS - Surabaya)',
+        ],
+        'aro.surabaya1@alvakaryaperkasa.co.id' => [
+            'name' => 'Titin Trianingsih',
+            'job' => 'AS OPS - Surabaya',
+            'email' => 'aro.surabaya1@alvakaryaperkasa.co.id',
+            'canonical' => 'Titin Trianingsih (AS OPS - Surabaya)',
+        ],
+        'lestarialvakaryaperkasa@gmail.com' => [
+            'name' => 'Lestari Meiningsih',
+            'job' => 'AS OPS - Surabaya',
+            'email' => 'Lestari.arina.sby@gmail.com',
+            'canonical' => 'Lestari Meiningsih (AS OPS - Surabaya)',
+        ],
+        'lestari.arina.sby@gmail.com' => [
+            'name' => 'Lestari Meiningsih',
+            'job' => 'AS OPS - Surabaya',
+            'email' => 'Lestari.arina.sby@gmail.com',
+            'canonical' => 'Lestari Meiningsih (AS OPS - Surabaya)',
+        ],
+        'christonormandebby91@gmail.com' => [
+            'name' => 'Christo Norman Debby Fredrick',
+            'job' => 'AS OPS - Bandung',
+            'email' => 'christonormandebby@gmail.com',
+            'canonical' => 'Christo Norman Debby Fredrick (AS OPS - Bandung)',
+        ],
+        'christonormandebby@gmail.com' => [
+            'name' => 'Christo Norman Debby Fredrick',
+            'job' => 'AS OPS - Bandung',
+            'email' => 'christonormandebby@gmail.com',
+            'canonical' => 'Christo Norman Debby Fredrick (AS OPS - Bandung)',
+        ],
+        'krt.kartikasari@gmail.com' => [
+            'name' => 'Kartika Sari',
+            'job' => 'AS OPS - Kediri',
+            'email' => 'adm.kediri@arina.co.id',
+            'canonical' => 'Kartika Sari (AS OPS - Kediri)',
+        ],
+        'adm.kediri@arina.co.id' => [
+            'name' => 'Kartika Sari',
+            'job' => 'AS OPS - Kediri',
+            'email' => 'adm.kediri@arina.co.id',
+            'canonical' => 'Kartika Sari (AS OPS - Kediri)',
+        ],
+        'arumi.surabaya@gmail.com' => [
+            'name' => 'Lestari Meiningsih',
+            'job' => 'AS OPS - Surabaya',
+            'email' => 'Lestari.arina.sby@gmail.com',
+            'canonical' => 'Lestari Meiningsih (AS OPS - Surabaya)',
+        ],
+    ];
+
+    /**
+     * Helper untuk mengambil nama AS representatif berdasarkan Area
+     */
+    public static function getAreaAsName(?string $area): string
+    {
+        if (empty($area) || trim($area) === '-' || strtolower(trim($area)) === 'indonesia') {
+            return '-';
+        }
+        $cleanArea = trim($area);
+        
+        try {
+            $user = User::whereRaw('LOWER(TRIM(area)) = ?', [strtolower($cleanArea)])
+                ->where(function($q) {
+                    $q->where('job_title', 'like', '%AS OPS%')
+                      ->orWhere('role', 'recruiter');
+                })
+                ->where('email', '!=', 'admin@asystem.co.id')
+                ->where('role', '!=', 'admin')
+                ->orderBy('id', 'asc')
+                ->first();
+
+            if ($user && !empty($user->name)) {
+                $cleanName = self::cleanPersonName($user->name);
+                $job = trim($user->job_title ?? '');
+                if (empty($job)) {
+                    $job = 'AS OPS - ' . $cleanArea;
+                }
+                return "{$cleanName} ({$job})";
+            }
+
+            $emp = Employee::whereRaw('LOWER(TRIM(area)) = ?', [strtolower($cleanArea)])
+                ->where(function($q) {
+                    $q->where('jabatan', 'like', '%AS OPS%')
+                      ->orWhere('jabatan', 'like', '%RECRUIT%');
+                })
+                ->whereRaw("CASE WHEN status = 'Aktiv' THEN 0 ELSE 1 END = 0")
+                ->first();
+
+            if ($emp && !empty($emp->nama_karyawan)) {
+                $cleanName = self::cleanPersonName($emp->nama_karyawan);
+                $job = trim($emp->jabatan ?? '');
+                return !empty($job) ? "{$cleanName} ({$job})" : $cleanName;
+            }
+        } catch (\Throwable $e) {}
+
+        return '-';
+    }
+
+    /**
+     * Helper untuk mengambil email AS representatif berdasarkan Area
+     */
+    public static function getAreaAsEmail(?string $area): ?string
+    {
+        if (empty($area) || trim($area) === '-' || strtolower(trim($area)) === 'indonesia') {
+            return null;
+        }
+        $cleanArea = trim($area);
+        try {
+            $user = User::whereRaw('LOWER(TRIM(area)) = ?', [strtolower($cleanArea)])
+                ->where(function($q) {
+                    $q->where('job_title', 'like', '%AS OPS%')
+                      ->orWhere('role', 'recruiter');
+                })
+                ->where('email', '!=', 'admin@asystem.co.id')
+                ->where('role', '!=', 'admin')
+                ->first();
+            if ($user && !empty($user->email)) {
+                return $user->email;
+            }
+        } catch (\Throwable $e) {}
+
+        return null;
+    }
+
+    /**
      * Pre-fetch dan susun kamus resolusi kanonikal untuk Nama AS / Rekruter.
      * Memetakan seluruh varian input (email, nama lengkap, nama tanpa jabatan dalam kurung, akun rekruter)
      * ke 1 string baku yang identik: "Nama Karyawan (Jabatan)" atau "Nama Karyawan".
@@ -684,6 +861,17 @@ class CandidateXlsxExportService
         $names = array_values(array_unique(array_filter($names)));
 
         $lookup = [];
+
+        // Preload seluruh canonical aliases yang sudah terdefinisi
+        foreach (self::CANONICAL_AS_MAP as $aliasEmail => $info) {
+            $lookup[strtolower($aliasEmail)] = $info['canonical'];
+            if (!empty($info['email'])) {
+                $lookup[strtolower($info['email'])] = $info['canonical'];
+            }
+            if (!empty($info['name'])) {
+                $lookup[strtolower($info['name'])] = $info['canonical'];
+            }
+        }
 
         // 1. Ambil data pegawai dari tabel Employee (prioritaskan status Aktiv)
         if (!empty($emails) || !empty($names)) {
@@ -747,7 +935,14 @@ class CandidateXlsxExportService
                     ->get(['email', 'name', 'job_title', 'area']);
 
                 foreach ($users as $u) {
+                    $cleanEmail = strtolower(trim($u->email ?? ''));
                     $cleanName = self::cleanPersonName($u->name);
+
+                    // JANGAN pernah masukkan akun Administrator ESA / superadmin ke dalam lookup rekruter
+                    if ($cleanEmail === 'admin@asystem.co.id' || str_starts_with($cleanEmail, 'admin@') || stripos($cleanName, 'administrator') !== false || stripos($cleanName, 'admin esa') !== false) {
+                        continue;
+                    }
+
                     $job = trim($u->job_title ?? '');
                     if (empty($job) && !empty($u->area)) {
                         $job = 'AS OPS - ' . trim($u->area);

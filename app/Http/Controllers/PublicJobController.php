@@ -313,7 +313,9 @@ class PublicJobController extends Controller
             'ai_cv_analysis' => null,
             'is_profile_complete' => 1,
             'password' => Hash::make($birthDateFormatted),
-            'useras' => $job->created_by ?? 'Publik',
+            'useras' => (!empty($job->created_by) && !str_starts_with(strtolower($job->created_by), 'admin@')) 
+                ? $job->created_by 
+                : (\App\Services\CandidateXlsxExportService::getAreaAsEmail($job->job_area ?? $job->area ?? $request->input('area')) ?: 'Publik'),
             'created_at' => now(),
             'updated_at' => now(),
         ];
