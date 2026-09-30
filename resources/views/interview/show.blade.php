@@ -353,7 +353,7 @@
                                 <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 border border-rose-100 flex items-center justify-center text-2xl mb-1.5 shadow-2xs group-hover:scale-110 transition-transform">
                                     <i class="fa-solid fa-file-pdf"></i>
                                 </div>
-                                <span class="text-[10px] font-bold text-slate-800 line-clamp-2 px-1 break-all leading-snug">{{ basename($candidate->cv_path) }}</span>
+                                <span class="text-[10px] font-bold text-slate-800 line-clamp-2 px-1 break-all leading-snug">{{ basename((string)($candidate->cv_path ?? '')) }}</span>
                                 <span class="inline-flex items-center gap-1 text-[8.5px] font-extrabold text-emerald-700 bg-emerald-100/90 px-1.5 py-0.5 rounded-full mt-1.5">
                                     <i class="fa-solid fa-circle-check text-[7.5px]"></i> Berkas CV
                                 </span>
@@ -846,7 +846,7 @@
                                             <img id="refcek_proof_thumb" src="{{ $firstExp?->proof_url ?? '' }}" alt="Bukti Refcek" class="w-full h-full object-cover transition-transform group-hover:scale-105" onerror="this.onerror=null; this.src='{{ $firstExp?->proof_legacy_url ?? '' }}';">
                                         </div>
                                         <div class="min-w-0">
-                                            <div class="text-xs font-bold text-slate-800 truncate" id="refcek_proof_filename">{{ $firstExp ? basename($firstExp->proof_attachment_path) : '' }}</div>
+                                            <div class="text-xs font-bold text-slate-800 truncate" id="refcek_proof_filename">{{ ($firstExp && !empty($firstExp->proof_attachment_path)) ? basename((string)$firstExp->proof_attachment_path) : '' }}</div>
                                             <span class="text-[10px] text-emerald-600 font-semibold block">Bukti Verifikasi Terlampir (Server / Fallback V3)</span>
                                         </div>
                                     </div>
