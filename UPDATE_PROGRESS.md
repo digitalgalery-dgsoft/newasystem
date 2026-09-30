@@ -4155,6 +4155,22 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 109. 🤝 Auto-Assign Kandidat Status Publik ke User AS Berdasarkan Area Penempatan
+- **Latar Belakang & Kebutuhan**:
+  - Kandidat yang mendaftar secara mandiri melalui Job Portal publik sebelumnya berstatus `useras = 'Publik'`.
+  - Hal ini menyebabkan berkas pelamar tidak terdistribusi secara langsung ke rekruter/AS cabang yang bertugas di area terkait, sehingga memerlukan alokasi manual dan tidak tampil di filter "Data Saya" milik AS cabang.
+- **Implementasi Solusi & Perubahan Teknis**:
+  - **Migrasi Database (`2026_09_30_101500_auto_assign_publik_candidates_to_area_as.php`)**:
+    - Memetakan dan mengalokasikan seluruh kandidat berstatus `Publik` (atau tanpa rekruter) ke User AS OPS cabang masing-masing berdasarkan kolom `area` / `penempatan` kandidat.
+    - Menetapkan mapping resmi per area (Surabaya, Banyuwangi, Denpasar, Malang, Jember, Kediri, Madiun, Bojonegoro, Bandung, Tasikmalaya, Cirebon, Semarang, Kudus, Tegal, Yogyakarta, Solo, Purwokerto, Medan, Pekanbaru, Jambi, Lampung, Palembang, Jakarta, Pasuruan, Samarinda, Balikpapan, Banjarmasin, Pontianak, Makassar, Manado, Palu, Kupang, Mataram).
+    - Memutakhirkan `useras` dan `recruiter_id` pada tabel `candidates`, serta `nama_as` pada `tb_kandidat`.
+    - Dilengkapi proteksi integritas *foreign key* terhadap `users.id` agar kompatibel dan aman di semua lingkungan database.
+- **Uji Coba & Hasil**:
+  - Database lokal: Dari total 6.622 data berstatus `Publik`, sebanyak 6.621 data berhasil dipasangkan otomatis ke User AS cabang masing-masing (tersisa 1 data area Nasional).
+  - Tampilan Kandidat Portal: Data pelamar kini langsung terdistribusi dan dapat difilter presisi berdasarkan Nama AS masing-masing cabang.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
