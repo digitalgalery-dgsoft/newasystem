@@ -171,6 +171,7 @@ class InterviewInhouseController extends Controller
                 if (!empty($assignedStepIds)) {
                     $q->orWhereIn('current_approval_step_id', $assignedStepIds);
                 }
+                $q->orWhereHas('inhouseApprovals', fn($aq) => $aq->where('user_id', $user->id));
                 $q->orWhere('recruiter_id', $user->id);
             });
 
@@ -194,7 +195,8 @@ class InterviewInhouseController extends Controller
             $countPending = (clone $baseQuery)->where(function ($q) {
                 $q->whereNull('status_approval')
                   ->orWhere('status_approval', '')
-                  ->orWhereIn('status_approval', ['Review HRD', 'Review Head', 'Proses']);
+                  ->orWhereIn('status_approval', ['Review HRD', 'Review Head', 'Proses'])
+                  ->orWhere('status_approval', 'like', 'Review%');
             })->count();
             $countApproved = (clone $baseQuery)->where('status_approval', 'Approve')->count();
             $countProcess = $totalInhouse - $countApproved;
@@ -209,9 +211,19 @@ class InterviewInhouseController extends Controller
             })->count();
             $countReplace = (clone $baseQuery)->where('status_replace', 'Replace')->count();
             // Menunggu Approval Head: yang saat ini sedang di step 'Review Head'
-            $countPending = (clone $baseQuery)->where('status_approval', 'Review Head')->count();
+            $countPending = (clone $baseQuery)->where(function ($q) {
+                $q->where('status_approval', 'Review Head')
+                  ->orWhere('status_approval', 'like', 'Review%Head%')
+                  ->orWhere('current_step_order', 1);
+            })->count();
             // Selesai oleh Head: yang sudah diapprove oleh Head (Review HRD atau Approve)
-            $countApproved = (clone $baseQuery)->whereIn('status_approval', ['Review HRD', 'Approve'])->count();
+            $countApproved = (clone $baseQuery)->where(function ($q) {
+                $q->where('status_approval', 'Approve')
+                  ->orWhere('status_approval', 'like', 'Review%HRD%')
+                  ->orWhere('status_approval', 'like', 'Review%Pusat%')
+                  ->orWhere('status_approval', 'like', 'Review%Jakarta%')
+                  ->orWhere('current_step_order', '>', 1);
+            })->count();
             $countProcess = $countPending;
         }
 
@@ -229,7 +241,13 @@ class InterviewInhouseController extends Controller
                 $query->where('status_approval', 'Approve');
             } else {
                 // Untuk Head: tab done adalah kandidat yang sudah disetujui Head (diteruskan ke HRD atau sudah Approve)
-                $query->whereIn('status_approval', ['Review HRD', 'Approve']);
+                $query->where(function ($q) {
+                    $q->where('status_approval', 'Approve')
+                      ->orWhere('status_approval', 'like', 'Review%HRD%')
+                      ->orWhere('status_approval', 'like', 'Review%Pusat%')
+                      ->orWhere('status_approval', 'like', 'Review%Jakarta%')
+                      ->orWhere('current_step_order', '>', 1);
+                });
             }
         } else {
             if ($user->isHrd()) {
@@ -239,7 +257,11 @@ class InterviewInhouseController extends Controller
                 });
             } else {
                 // Untuk Head: hanya tampil kandidat yang sedang di step approval head
-                $query->where('status_approval', 'Review Head');
+                $query->where(function ($q) {
+                    $q->where('status_approval', 'Review Head')
+                      ->orWhere('status_approval', 'like', 'Review%Head%')
+                      ->orWhere('current_step_order', 1);
+                });
             }
         }
 

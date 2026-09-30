@@ -147,10 +147,21 @@ class ApprovalWorkflowService
         }
 
         // 3. Fallback backward-compatibility berdasarkan string status_approval
-        if ($statusAppr === 'Review Head') {
+        $statusLower = strtolower($statusAppr);
+        if (str_contains($statusLower, 'head')) {
             $headStep = $steps->firstWhere('approver_type', 'head');
             if ($headStep) {
                 return $headStep;
+            }
+        } elseif (str_contains($statusLower, 'jakarta')) {
+            $jktStep = $steps->first(fn($s) => str_contains(strtolower($s->step_name), 'jakarta'));
+            if ($jktStep) {
+                return $jktStep;
+            }
+        } elseif (str_contains($statusLower, 'pusat')) {
+            $pusatStep = $steps->first(fn($s) => str_contains(strtolower($s->step_name), 'pusat'));
+            if ($pusatStep) {
+                return $pusatStep;
             }
         } elseif (in_array($statusAppr, ['Review HRD', 'Proses'])) {
             $userStep = $steps->firstWhere('approver_type', 'user');
@@ -173,10 +184,10 @@ class ApprovalWorkflowService
             return null;
         }
 
-        $currentIndex = $steps->search(fn($s) => $s->id === $currentStep->id);
+        $currentIndex = $steps->search(fn($s) => (int)$s->id === (int)$currentStep->id);
         if ($currentIndex === false) {
             // Jika tidak ditemukan berdasarkan ID, cari berdasarkan step_order
-            $next = $steps->first(fn($s) => $s->step_order > $currentStep->step_order);
+            $next = $steps->first(fn($s) => (int)$s->step_order > (int)$currentStep->step_order);
             return $next;
         }
 

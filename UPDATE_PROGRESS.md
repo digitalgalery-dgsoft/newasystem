@@ -4190,6 +4190,52 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 111. ⚖️ Perbaikan Alur 3 Step Approval Kandidat Inhouse & Sinkronisasi Tahapan HRD Pusat
+- **Latar Belakang & Gejala Masalah**:
+  - Pada alur approval kandidat inhouse (khususnya kandidat **Azanuddin Fakhrozi**, Area: Jakarta, Prinsiple: PT ALVA KARYA PERKASA / AKP), kandidat telah melalui:
+    1. **Tahap 1**: Disetujui Head Approver (*David Oscar Sahala G Sibuea - OM OPS Jakarta*) pada 23/09/2026 17:17.
+    2. **Tahap 2**: Disetujui HRD Jakarta (*Uriyanto - HRD Jakarta*) pada 23/09/2026 18:15 dengan catatan: *"Mohon bantuan dari Ibu Nurul untuk interview lanjutan kandidat tersebut"*.
+  - Namun setelah disetujui oleh HRD Jakarta, status kandidat langsung berubah menjadi `Approve` (Proses Approval Selesai).
+  - Berkas tidak diteruskan ke **HRD Pusat** (*Ibu Nurul Yuliastuti, SH.*) sebagaimana ketentuan alur approval inhouse resmi (seharusnya 3 tahapan sekuensial).
+- **Akar Masalah (Root Cause)**:
+  1. **Konfigurasi `step_order` Duplikat pada Database**:
+     - Pada tabel `approval_workflow_steps` (workflow kandidat inhouse), step `Persetujuan HRD Jakarta` dan `Persetujuan HRD Pusat` keduanya tercatat memiliki nilai `step_order = 2`.
+     - Karena nilai urutan step sama, saat sistem mencari tahapan selanjutnya (`step_order > 2`), sistem menganggap tidak ada lagi step berikutnya dan langsung menandai status kandidat menjadi `Approve`.
+     - Selain itu, pada tampilan visual Alur Approver (`/master/approval-workflow`), kedua kartu step sama-sama menampilkan badge nomor `2`.
+  2. **Tampilan Tab Approval Inhouse Statis 2-Step (`resources/views/interview/show.blade.php`)**:
+     - Pada halaman detail kandidat tab 7 (*Approval Inhouse*), komponen *Stepper Bar* sebelumnya masih meng-hardcode grid 2 kolom (`STEP 1: HEAD` dan `STEP 2: HRD PUSAT`).
+     - Pemfilteran riwayat tabel persetujuan di sisi kiri memisahkan "List Head Approve" dan "Approval HRD" dengan logika pengecekan string jabatan approver yang kurang spesifik, sehingga nama approver HRD Jakarta tampil duplikat di kedua tabel.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Migrasi Database (`2026_09_30_153000_fix_inhouse_approval_step_3_order_and_candidate_status.php`)**:
+     - Memutakhirkan tabel `approval_workflow_steps`:
+       - Step 1: `step_order = 1` (*Persetujuan Head Approver*, tipe `head`, area `ALL`).
+       - Step 2: `step_order = 2` (*Persetujuan HRD Jakarta*, tipe `user`, area `JAKARTA`).
+       - Step 3: `step_order = 3` (*Persetujuan HRD Pusat*, tipe `user`, area `ALL`, approver: *Nurul Yuliastuti, SH.*).
+     - Memutakhirkan relasi riwayat log persetujuan pada tabel `inhouse_approvals` (mengaitkan log Head ke `step_id = 1` dan log HRD Jakarta ke `step_id = 2`).
+     - Mengoreksi dan memulihkan status kandidat **Azanuddin Fakhrozi (ID: 63433)**:
+       - Status approval dikembalikan ke: `Review Persetujuan HRD Pusat`.
+       - Step aktif: `current_approval_step_id = 3` (Persetujuan HRD Pusat) dan `current_step_order = 3`.
+       - Mengosongkan flag keputusan akhir sementara (`ttd_prinsiple = null`, `time_prinsiple = null`) agar siap ditindaklanjuti oleh HRD Pusat.
+  2. **Penyempurnaan Layanan Workflow (`ApprovalWorkflowService.php`)**:
+     - Memperbaiki method `getCurrentStep()` agar mendukung resolusi string status dinamis (`Review Persetujuan HRD Pusat`, `Review HRD Pusat`, `Review Persetujuan HRD Jakarta`, dsb.) tanpa tersangkut fallback default.
+     - Memperbaiki method `getNextStep()` dengan perbandingan integer eksplisit `(int)$s->id` dan fallback `(int)$s->step_order > (int)$currentStep->step_order`.
+  3. **Antarmuka Tab Approval Dinamis (`resources/views/interview/show.blade.php`)**:
+     - Mengubah *Stepper Bar* menjadi dinamis berbasis `$applicableSteps`:
+       - Menampilkan tahapan riil kandidat (Step 1: HEAD, Step 2: HRD JKT, Step 3: HRD PUSAT).
+       - Menampilkan status visual setiap step (*Disetujui* [hijau check], *Sedang Menunggu* [kuning jam berdenyut], *Terkunci* [abu-abu gembok]).
+     - Mengubah daftar riwayat persetujuan di sisi kiri menjadi tabel terstruktur per tahapan workflow (*Tahap 1: Persetujuan Head Approver*, *Tahap 2: Persetujuan HRD Jakarta*, *Tahap 3: Persetujuan HRD Pusat*), sehingga tidak ada lagi data yang tampil ganda.
+     - Menambahkan ringkasan *Tahap Saat Ini* dan *Target Approver* pada panel samping agar pengguna langsung mengetahui siapa approver yang sedang ditunggu.
+  4. **Penyempurnaan Filter Tab & Visibilitas (`InterviewInhouseController.php`)**:
+     - Memperbarui filter query tab `process` dan `done` untuk pengguna dengan role Head dan HRD agar mencakup variasi status approval baru (`Review%HRD%`, `Review%Pusat%`, `Review%Jakarta%`).
+     - Memastikan approver yang telah memberikan persetujuan pada step sebelumnya tetap dapat melihat kandidat di riwayat (*tab done*).
+- **Uji Coba & Hasil**:
+  - Simulasi persetujuan Step 3 oleh HRD Pusat (Ibu Nurul Yuliastuti, SH.):
+    - `canUserApprove` Step 3: YES.
+    - Submit keputusan Approve: Berhasil menyimpan log approval Step 3 dan menyelesaikan seluruh alur pengajuan (`is_completed = true`, status akhir `Approve`).
+  - Data kandidat Azanuddin Fakhrozi (63433): Kini berstatus `Review Persetujuan HRD Pusat`, menunggu evaluasi dan persetujuan dari Ibu Nurul Yuliastuti, SH.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
