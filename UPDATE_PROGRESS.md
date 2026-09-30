@@ -4084,6 +4084,34 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 107. 🧮 Penyempurnaan Deduplikasi 10 Butir Soal Tes Matematika & Koreksi Skor Maksimal 100%
+- **Latar Belakang & Masalah**:
+  - Pada halaman detail pelamar (Tab 5 - Tes Matematika) di modul Talent Pool Rekrutmen maupun Kandidat Portal, kartu ringkasan hasil ujian matematika di bagian bawah menampilkan data kalkulasi yang melebihi batas wajar:
+    - *Jawaban Benar*: 15
+    - *Jawaban Salah*: 5
+    - *Nilai Akhir*: A (150%)
+    - Sementara daftar butir soal yang ditampilkan pada tabel data hanya berjumlah 10 butir pertanyaan (sesuai standar 10 butir soal tes matematika).
+- **Akar Masalah (Root Cause)**:
+  1. Pada `CandidateEvaluationDataService.php`, query pengambilan jawaban peserta `tb_hasilmath` menggunakan `->whereIn('tb_hasilmath.id_kandidat', $siblingIds)`.
+  2. Saat satu nomor identitas/NIK kandidat terdaftar lebih dari satu kali (misalnya memiliki 2 entri ID kandidat untuk posisi berbeda), `tb_hasilmath` mengembalikan 10 baris untuk masing-masing ID kandidat (total 20 baris jawaban).
+  3. Loop evaluasi sebelumnya melakukan kalkulasi `$mathCorrectCount++` dan `$mathWrongCount++` pada setiap baris query mentah tanpa deduplikasi, sehingga terhitung 15 benar dan 5 salah dari total 20 baris jawaban.
+  4. Namun pada array `$mathItems`, data di-key berdasarkan `$mRow->id_soal` (1 s.d. 10), sehingga tabel hanya me-render 10 butir soal, sementara persentase nilai akhir dihitung `($mathCorrectCount / 10) * 100` = (15 / 10) * 100 = 150%.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **`app/Services/CandidateEvaluationDataService.php`**:
+     - Menerapkan deduplikasi presisi pada data mentah `tb_hasilmath` dengan memprioritaskan rekaman kandidat yang sedang dilihat (`id_kandidat == $candidate->id`) dan mengurutkan secara unik berdasarkan `id_soal` (`unique('id_soal')`).
+     - Menghitung `$mathCorrectCount` secara murni dari koleksi `$mathItems` unik (`collect($mathItems)->where('correct', true)->count()`) sehingga nilai maksimal selalu 10.
+     - Menghitung `$mathWrongCount` secara akurat (`max(0, $mathTotalQuestions - $mathCorrectCount)`).
+     - Mengunci persentase nilai akhir dengan batas atas 100% (`min(100, round(($mathCorrectCount / $mathTotalQuestions) * 100))`).
+     - Mengirimkan metadata `'mathTotalQuestions'` ke seluruh antarmuka evaluasi.
+  2. **`app/Services/InterviewPdfService.php`**:
+     - Menerapkan deduplikasi serupa (`unique('id_soal')`) dan menghitung jumlah jawaban benar/salah secara langsung dari array unik `$mathQuestions` untuk memastikan laporan unduhan PDF evaluasi tes kandidat selalu tepat 10 butir soal dan tidak mengalami kalkulasi ganda.
+- **Uji Coba & Status**:
+  - Pengujian skenario normal (1 kandidat): 10 butir soal, benar 7, salah 3, total 10, nilai 70% (Grade B).
+  - Pengujian skenario duplikasi NIK (2 entri kandidat dengan total 20 rekaman `tb_hasilmath`): berhasil di-deduplikasi menjadi tepat 10 butir soal, benar 10, salah 0, total 10, nilai 100% (Grade A).
+  - Seluruh skenario pengujian diverifikasi berhasil dan akurat.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

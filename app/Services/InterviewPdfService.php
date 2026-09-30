@@ -164,13 +164,13 @@ class InterviewPdfService
         if ($rawMath->isNotEmpty()) {
             $mathDuration = $rawMath->first()->waktu_pengerjaan ?? $mathDuration;
             $mathTesKe = $rawMath->first()->tes_ke ?? $mathTesKe;
-            foreach ($rawMath as $mRow) {
+            $dedupMath = $rawMath->sortByDesc('id')->unique('id_soal')->sortBy('id_soal');
+            foreach ($dedupMath as $mRow) {
                 $candAns = trim($mRow->jawaban ?? '');
                 $keyAns = trim($mRow->correct_answer ?? '');
                 $cleanCand = str_replace([' ', '.', ','], ['', '', '.'], strtolower($candAns));
                 $cleanKey = str_replace([' ', '.', ','], ['', '', '.'], strtolower($keyAns));
                 $isCorrect = ($cleanCand === $cleanKey) || (strtolower($candAns) === strtolower($keyAns));
-                if ($isCorrect) $mathCorrectCount++; else $mathWrongCount++;
 
                 $mathQuestions[$mRow->id_soal] = [
                     $mRow->question_text,
@@ -179,6 +179,8 @@ class InterviewPdfService
                     $isCorrect,
                 ];
             }
+            $mathCorrectCount = collect($mathQuestions)->where(3, true)->count();
+            $mathWrongCount = count($mathQuestions) - $mathCorrectCount;
         } else {
             $mathQuestions = [
                 1 => ['Ani membeli Lampu Philips 50 Watt Seharga Rp. 200.000,- di C4 Buaran diskon 15%. Berapa harus dibayar?', '170000', '170000', true],

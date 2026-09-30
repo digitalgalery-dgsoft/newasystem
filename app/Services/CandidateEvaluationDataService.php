@@ -209,7 +209,12 @@ class CandidateEvaluationDataService
             $mathDuration = $rawMath->first()->waktu_pengerjaan ?? ($candidate->tes_matematika ?: '00:02:00');
             $mathTesKe = $rawMath->first()->tes_ke ?? $mathTesKe;
 
-            foreach ($rawMath as $mRow) {
+            // Prioritaskan baris kandidat saat ini dan deduplikasi unik per id_soal agar tidak berlipat ganda
+            $dedupMath = $rawMath->sortByDesc(function ($r) use ($candidate) {
+                return ($r->id_kandidat == $candidate->id ? 1000000 : 0) + intval($r->id ?? 0);
+            })->unique('id_soal')->sortBy('id_soal');
+
+            foreach ($dedupMath as $mRow) {
                 $candAns = trim($mRow->jawaban ?? '');
                 $keyAns = trim($mRow->correct_answer ?? '');
                 $isCorrect = false;
@@ -232,12 +237,6 @@ class CandidateEvaluationDataService
                     }
                 }
 
-                if ($isCorrect) {
-                    $mathCorrectCount++;
-                } else {
-                    $mathWrongCount++;
-                }
-
                 $mathItems[$mRow->id_soal] = [
                     'q' => $mRow->question_text,
                     'cand' => $candAns,
@@ -258,8 +257,6 @@ class CandidateEvaluationDataService
             if (!$hasMath || empty($mathItems)) {
                 $hasMath = true;
                 $mathDuration = $mDetails['duration_formatted'] ?? gmdate('H:i:s', $cbtMath->duration_seconds ?? 0);
-                $mathCorrectCount = $mDetails['correct_answers'] ?? $mDetails['correct_count'] ?? round(($cbtMath->score / 100) * 10);
-                $mathWrongCount = 10 - $mathCorrectCount;
                 $mathTesKe = $mDetails['tes_ke'] ?? $candidate->tes_ke ?? 1;
                 $mBreakdown = $mDetails['breakdown'] ?? [];
                 foreach ($mBreakdown as $idx => $b) {
@@ -273,9 +270,12 @@ class CandidateEvaluationDataService
             }
         }
 
+        $mathTotalQuestions = count($mathItems) > 0 ? count($mathItems) : 10;
         if ($hasMath) {
-            $mathTotalQuestions = count($mathItems) > 0 ? count($mathItems) : 10;
-            $mathScorePercent = $mathTotalQuestions > 0 ? round(($mathCorrectCount / $mathTotalQuestions) * 100) : 0;
+            // Hitung jawaban benar dan salah murni dari daftar $mathItems yang unik (tepat 10 butir soal)
+            $mathCorrectCount = collect($mathItems)->where('correct', true)->count();
+            $mathWrongCount = max(0, $mathTotalQuestions - $mathCorrectCount);
+            $mathScorePercent = $mathTotalQuestions > 0 ? min(100, round(($mathCorrectCount / $mathTotalQuestions) * 100)) : 0;
             $mathGrade = ($mathScorePercent >= 85) ? 'A' : (($mathScorePercent >= 70) ? 'B' : (($mathScorePercent >= 55) ? 'C' : 'D'));
 
             // CATATAN KEAMANAN DATA:
@@ -392,6 +392,7 @@ class CandidateEvaluationDataService
             'mathTesKe' => $mathTesKe,
             'targetTesKe' => $targetTesKe,
             'isMathRemidiPending' => $isMathRemidiPending,
+            'mathTotalQuestions' => $mathTotalQuestions ?? 10,
             'mathCorrectCount' => $mathCorrectCount,
             'mathWrongCount' => $mathWrongCount,
             'mathScorePercent' => $mathScorePercent,
