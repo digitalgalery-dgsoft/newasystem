@@ -540,9 +540,14 @@ class CbtController extends Controller
         $candidate->saveQuietly();
 
         if (!empty($candidate->nik)) {
-            Candidate::where('nik', $candidate->nik)->update([
-                'tes_kepribadian' => $formattedDuration,
-            ]);
+            Candidate::where('nik', $candidate->nik)
+                ->whereNotIn('status', ['Arsip', 'archived'])
+                ->where(function ($q) {
+                    $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+                })
+                ->update([
+                    'tes_kepribadian' => $formattedDuration,
+                ]);
         }
 
         // 4. Update tabel legacy tb_kandidat jika ada
@@ -845,6 +850,10 @@ class CbtController extends Controller
 
         $otherCandidates = Candidate::where('nik', $candidate->nik)
             ->where('id', '!=', $candidate->id)
+            ->whereNotIn('status', ['Arsip', 'archived'])
+            ->where(function ($q) {
+                $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+            })
             ->get();
 
         foreach ($otherCandidates as $other) {

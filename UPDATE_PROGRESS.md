@@ -4367,6 +4367,36 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 115. 🛡️ Perbaikan Isolasi Data Psikotest & Pencegahan Auto-Sync Hasil Tes dari Arsip Lama pada Kandidat Import / Tarik Ulang NIK (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang Masalah**:
+  - Saat kandidat di-import / ditarik ulang by NIK (contoh kasus kandidat Rista Meikawati NIK `3276106405890006`) dan kemudian dialihkan ke AS terkait (`alihkanAS`), kolom status tes psikotes di tabel interview langsung tercentang hijau (selesai), dan di portal CBT status tes kepribadian langsung berstatus "Selesai" sehingga modul tes terkunci, padahal kandidat baru ditarik ulang dan sama sekali belum mengerjakan tes online untuk lamaran baru tersebut.
+- **Akar Masalah (Root Causes)**:
+  1. *Pencampuran ID Kandidat Riwayat Arsip*:
+     Pada `CandidateEvaluationDataService::getEvaluationData`, resolusi `$siblingIds` mengambil seluruh record dengan NIK sama (`Candidate::where('nik', $candidate->nik)->pluck('id')`) tanpa memfilter status arsip. Akibatnya, jawaban dari lamaran arsip lama (e.g. ID `37580`) ikut terbaca pada `tb_hasilpsikotes` dan `test_results`.
+  2. *Mutasi Database yang Berbahaya di Evaluation Getter Service*:
+     Saat data psikotes arsip lama terdeteksi, method `getEvaluationData` mengeksekusi blok kode auto-sync yang memutakhirkan kolom `tes_kepribadian` di database untuk seluruh baris kandidat ber-NIK sama (`Candidate::where('nik', $candidate->nik)->update(['tes_kepribadian' => ...])`) dan `tb_kandidat`. Blok ini secara paksa menimpa kandidat baru yang baru diimport dengan durasi tes lama (`'00:03:29'`).
+  3. *Preservasi Data Lama pada CandidateImportService*:
+     Pada `CandidateImportService`, terdapat logika `unset($tbKandidatData['tes_kepribadian'])` jika NIK lama sudah memiliki nilai tes di `tb_kandidat`, sehingga nilai tes lama tidak tereset ke null saat import ulang.
+  4. *Penyelarasan Tanpa Batasan Status di CbtController*:
+     Pada `CbtController`, method penyelarasan tes (`syncTestAcrossCandidates` dan pembaruan NIK pada `simpanKepribadian`) belum membatasi pembaruan ke kandidat aktif saja.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **`app/Services/CandidateEvaluationDataService.php`**:
+     - Memperketat cakupan `$siblingIds`: Jika kandidat saat ini berstatus aktif/dalam proses (bukan arsip), query `$siblingIds` hanya mengambil kandidat berstatus aktif (`whereNotIn('status', ['Arsip', 'archived'])`). Tidak pernah lagi menyertakan kandidat dari riwayat lamaran arsip lama.
+     - Menghapus klausa `->orWhere('id_kandidat', (string) $candidate->nik)` pada query `tb_hasilpsikotes` agar penarikan data murni berdasarkan ID kandidat yang valid dalam batch aktif.
+     - Mengeliminasi total blok mutasi / auto-sync database pada kolom `tes_kepribadian` di `getEvaluationData()`. Mengadopsi prinsip proteksi keamanan data yang sama seperti modul Matematika bahwa service pembacaan evaluasi tidak boleh memutasi/menimpa status kandidat di database.
+  2. **`app/Services/CandidateImportService.php`**:
+     - Menghilangkan `unset` kolom `tes_kepribadian`, `tes_matematika`, `tes_komputer`, dan `tes_ke` pada saat update `tb_kandidat`, memastikan penarikan/import ulang selalu mereset seluruh status tes online ke `null` (dan `tes_ke = 1`).
+  3. **`app/Http/Controllers/CbtController.php`**:
+     - Menambahkan filter status aktif (`whereNotIn('status', ['Arsip', 'archived'])`) pada pembaruan kandidat berdasarkan NIK dan di method `syncTestAcrossCandidates`, sehingga pengiriman tes CBT hanya menyelaraskan record aktif yang relevan.
+  4. **Migrasi Pembersihan Database (`database/migrations/2026_10_01_131000_fix_uncompleted_psychology_tests_for_reimported_candidates.php`)**:
+     - Mengidentifikasi kandidat aktif yang kolom `tes_kepribadian`-nya terisi secara keliru akibat warisan riwayat lamaran arsip lama (0 record di TestResult dan 0 record di tb_hasilpsikotes untuk ID kandidat aktif tersebut), dan mereset kembali kolom `tes_kepribadian` menjadi `null` baik pada tabel `candidates` maupun `tb_kandidat`.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Kandidat Rista Meikawati (ID 67632) dan kandidat aktif re-import lainnya kini memiliki `tes_kepribadian = null`.
+  - Pada tabel Interview, kolom PSIKOTES kembali menampilkan silang merah (Belum Selesai).
+  - Pada portal CBT kandidat, status Tes Kepribadian kembali menampilkan "Belum Dikerjakan" dengan tombol aktif "Mulai Tes Sekarang".
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

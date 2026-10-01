@@ -463,18 +463,6 @@ class CandidateImportService
 
                         $existingTb = DB::table('tb_kandidat')->where('no_ktp', $cleanKtp)->first();
                         if ($existingTb) {
-                            if (!empty($existingTb->tes_kepribadian) || !empty($candidate->tes_kepribadian)) {
-                                unset($tbKandidatData['tes_kepribadian']);
-                            }
-                            if (!empty($existingTb->tes_matematika) || !empty($candidate->tes_matematika)) {
-                                unset($tbKandidatData['tes_matematika']);
-                            }
-                            if (!empty($existingTb->tes_komputer) || !empty($candidate->tes_komputer)) {
-                                unset($tbKandidatData['tes_komputer']);
-                            }
-                            if (!empty($existingTb->tes_ke) || !empty($candidate->tes_ke)) {
-                                unset($tbKandidatData['tes_ke']);
-                            }
                             if (!empty($existingTb->password)) {
                                 unset($tbKandidatData['password']);
                             }

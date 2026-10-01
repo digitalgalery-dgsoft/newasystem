@@ -12,10 +12,26 @@ class CandidateEvaluationDataService
 {
     public static function getEvaluationData(Candidate $candidate): array
     {
-        // Kumpulkan semua candidate ID dengan NIK yang sama (agar sinkron antar kandidat portal & CBT)
+        $isCandidateArchived = in_array($candidate->status, ['Arsip', 'archived']) || $candidate->status_kandidat === 'Arsip';
+
+        // Kumpulkan candidate ID dengan NIK yang sama yang relevan dengan status kandidat saat ini:
+        // PENTING: Jika kandidat saat ini aktif / dalam proses (bukan arsip), HANYA cari di antara kandidat aktif!
+        // JANGAN PERNAH menyertakan data kandidat dari riwayat Arsip / lamaran lama agar tidak menimpa proses rekrutmen baru!
         $siblingIds = [$candidate->id];
         if (!empty($candidate->nik)) {
-            $siblingIds = Candidate::where('nik', $candidate->nik)->pluck('id')->all();
+            $siblingQuery = Candidate::where('nik', $candidate->nik);
+            if (!$isCandidateArchived) {
+                $siblingQuery->whereNotIn('status', ['Arsip', 'archived'])
+                    ->where(function ($q) {
+                        $q->whereNull('status_kandidat')->orWhere('status_kandidat', '!=', 'Arsip');
+                    });
+            } else {
+                $siblingQuery->where(function ($q) {
+                    $q->whereIn('status', ['Arsip', 'archived'])
+                      ->orWhere('status_kandidat', 'Arsip');
+                });
+            }
+            $siblingIds = $siblingQuery->pluck('id')->all();
             if (empty($siblingIds)) {
                 $siblingIds = [$candidate->id];
             }
@@ -26,11 +42,6 @@ class CandidateEvaluationDataService
         if (Schema::hasTable('tb_hasilpsikotes')) {
             $rawPsikotes = DB::table('tb_hasilpsikotes')
                 ->whereIn('id_kandidat', $siblingIds)
-                ->orWhere(function ($q) use ($candidate) {
-                    if (!empty($candidate->nik)) {
-                        $q->where('id_kandidat', (string) $candidate->nik);
-                    }
-                })
                 ->orderBy('id_soal', 'asc')
                 ->get();
         }
@@ -114,21 +125,11 @@ class CandidateEvaluationDataService
             }
         }
 
-        // Pastikan kolom tes_kepribadian tersinkronisasi jika tes sudah selesai
+        // CATATAN KEAMANAN DATA:
+        // Jangan pernah melakukan auto-sync / menimpa kolom `tes_kepribadian` kandidat ke database di sini.
+        // Jika kandidat baru di-import / ditarik by NIK, tes kepribadian harus tetap kosong sampai dikerjakan.
         if ($hasPsikotes && (empty($candidate->tes_kepribadian) || $candidate->tes_kepribadian === '00:00:00' || $candidate->tes_kepribadian === '-')) {
             $candidate->tes_kepribadian = $psikotesDuration ?: '00:04:20';
-            try {
-                $candidate->saveQuietly();
-                if (!empty($candidate->nik)) {
-                    Candidate::where('nik', $candidate->nik)->where(function ($q) {
-                        $q->whereNull('tes_kepribadian')->orWhere('tes_kepribadian', '')->orWhere('tes_kepribadian', '00:00:00');
-                    })->update(['tes_kepribadian' => $candidate->tes_kepribadian]);
-
-                    if (Schema::hasTable('tb_kandidat')) {
-                        DB::table('tb_kandidat')->where('no_ktp', $candidate->nik)->update(['tes_kepribadian' => $candidate->tes_kepribadian]);
-                    }
-                }
-            } catch (\Throwable $e) {}
         }
 
         // Hitung watak dominan & kesimpulan DISC
