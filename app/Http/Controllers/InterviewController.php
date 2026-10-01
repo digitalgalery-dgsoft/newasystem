@@ -348,11 +348,31 @@ class InterviewController extends Controller
                     $employeeLookup[strtolower(trim($e->email))] = $e;
                 }
             }
+            $userLookup = [];
+            if (!empty($recruiterEmails)) {
+                $users = User::where(function ($q) use ($recruiterEmails) {
+                    $q->whereIn(\Illuminate\Support\Facades\DB::raw('LOWER(email)'), $recruiterEmails);
+                    foreach ($recruiterEmails as $re) {
+                        $q->orWhereJsonContains('email_aliases', $re);
+                    }
+                })->get(['id', 'name', 'email', 'email_aliases', 'area']);
+                foreach ($users as $u) {
+                    $userLookup[strtolower(trim($u->email))] = $u;
+                    if (!empty($u->email_aliases) && is_array($u->email_aliases)) {
+                        foreach ($u->email_aliases as $al) {
+                            $userLookup[strtolower(trim($al))] = $u;
+                        }
+                    }
+                }
+            }
             foreach ($allRecruiters as $r) {
                 $lower = strtolower(trim($r->useras));
                 if (isset($employeeLookup[$lower])) {
                     $r->display_name = $employeeLookup[$lower]->nama_karyawan;
                     $r->area = $employeeLookup[$lower]->area;
+                } elseif (isset($userLookup[$lower])) {
+                    $r->display_name = $userLookup[$lower]->name;
+                    $r->area = $userLookup[$lower]->area ?? '';
                 } elseif (str_contains($r->useras, '@')) {
                     $parts = explode('@', $r->useras)[0];
                     $name = preg_replace('/[0-9_.-]+/', ' ', $parts);

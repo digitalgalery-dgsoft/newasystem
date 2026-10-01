@@ -54,6 +54,12 @@ class JobController extends Controller
         $userName = strtolower(trim($user?->name ?? ''));
         $filterCreator = $request->query('filter_creator');
 
+        // Resolusi seluruh alias/identitas user (email corporate, email alias lama, nama)
+        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
+        if (empty($userIdentifiers)) {
+            $userIdentifiers = array_values(array_filter([$userEmail, $userName]));
+        }
+
         // Edit mode with ownership authorization check
         $editData = null;
         if ($request->has('edit') && is_numeric($request->query('edit'))) {
@@ -61,7 +67,7 @@ class JobController extends Controller
             if ($foundJob) {
                 if (!$isAdmin) {
                     $creator = strtolower(trim($foundJob->created_by ?? ''));
-                    if ($creator !== $userEmail && $creator !== $userName) {
+                    if (!in_array($creator, $userIdentifiers, true)) {
                         return redirect()->route('job.input')->with('error', 'Akses ditolak! Anda hanya dapat mengedit lowongan yang Anda buat sendiri.');
                     }
                 }
@@ -81,40 +87,24 @@ class JobController extends Controller
             ->whereNotNull('tgl_expired')
             ->where('tgl_expired', '<', $today);
 
-        // ACCESS FILTER: Only show jobs created by the logged-in user, EXCEPT for Administrator
+        // ACCESS FILTER: Tampilkan lowongan milik user (termasuk email corporate baru & alias lama)
         if ($isAdmin) {
             if ($filterCreator === 'my') {
-                $activeQuery->where(function ($q) use ($userEmail, $userName) {
-                    $q->whereRaw('LOWER(TRIM(created_by)) = ?', [$userEmail]);
-                    if (!empty($userName)) {
-                        $q->orWhereRaw('LOWER(TRIM(created_by)) = ?', [$userName]);
-                    }
-                });
-                $expiredQuery->where(function ($q) use ($userEmail, $userName) {
-                    $q->whereRaw('LOWER(TRIM(created_by)) = ?', [$userEmail]);
-                    if (!empty($userName)) {
-                        $q->orWhereRaw('LOWER(TRIM(created_by)) = ?', [$userName]);
-                    }
-                });
+                $activeQuery->whereIn(DB::raw('LOWER(TRIM(created_by))'), $userIdentifiers);
+                $expiredQuery->whereIn(DB::raw('LOWER(TRIM(created_by))'), $userIdentifiers);
             } elseif (!empty($filterCreator) && $filterCreator !== 'all') {
-                $activeQuery->whereRaw('LOWER(TRIM(created_by)) = ?', [strtolower(trim($filterCreator))]);
-                $expiredQuery->whereRaw('LOWER(TRIM(created_by)) = ?', [strtolower(trim($filterCreator))]);
+                $creatorIdentifiers = KandidatPortalController::resolveUserIdentifiers($filterCreator);
+                if (empty($creatorIdentifiers)) {
+                    $creatorIdentifiers = [strtolower(trim($filterCreator))];
+                }
+                $activeQuery->whereIn(DB::raw('LOWER(TRIM(created_by))'), $creatorIdentifiers);
+                $expiredQuery->whereIn(DB::raw('LOWER(TRIM(created_by))'), $creatorIdentifiers);
             }
             // If 'all' or empty, administrator sees all jobs across all creators
         } else {
-            // Non-administrator: Strictly filter by the user's email / username
-            $activeQuery->where(function ($q) use ($userEmail, $userName) {
-                $q->whereRaw('LOWER(TRIM(created_by)) = ?', [$userEmail]);
-                if (!empty($userName)) {
-                    $q->orWhereRaw('LOWER(TRIM(created_by)) = ?', [$userName]);
-                }
-            });
-            $expiredQuery->where(function ($q) use ($userEmail, $userName) {
-                $q->whereRaw('LOWER(TRIM(created_by)) = ?', [$userEmail]);
-                if (!empty($userName)) {
-                    $q->orWhereRaw('LOWER(TRIM(created_by)) = ?', [$userName]);
-                }
-            });
+            // Non-administrator: Filter menggunakan seluruh identifier (email aktif, email alias lama, nama)
+            $activeQuery->whereIn(DB::raw('LOWER(TRIM(created_by))'), $userIdentifiers);
+            $expiredQuery->whereIn(DB::raw('LOWER(TRIM(created_by))'), $userIdentifiers);
         }
 
         // Search filter
@@ -236,7 +226,8 @@ class JobController extends Controller
             'userArea',
             'provinces',
             'provincesWithCities',
-            'availableRecruiters'
+            'availableRecruiters',
+            'userIdentifiers'
         ));
     }
 
@@ -316,9 +307,10 @@ class JobController extends Controller
 
         if ($editId > 0) {
             $job = JobSpec::findOrFail($editId);
+            $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
             if (!$isAdmin) {
                 $creator = strtolower(trim($job->created_by ?? ''));
-                if ($creator !== $userEmail && $creator !== $userName) {
+                if (!in_array($creator, $userIdentifiers, true)) {
                     return redirect()->route('job.input')->with('error', 'Akses ditolak! Anda hanya dapat mengubah lowongan yang Anda buat sendiri.');
                 }
             }
@@ -326,7 +318,8 @@ class JobController extends Controller
             if ($isAdmin && $request->filled('created_by')) {
                 $updateData['created_by'] = strtolower(trim($request->input('created_by')));
             } else {
-                unset($updateData['created_by']);
+                // Selaraskan created_by dengan email user saat ini jika sebelumnya memakai alias lama
+                $updateData['created_by'] = $user?->email ?? $job->created_by;
             }
             $oldValues = $job->only(array_keys($updateData));
             $job->update($updateData);
@@ -354,13 +347,12 @@ class JobController extends Controller
     {
         $user = auth()->user() ?? $this->getCurrentUser();
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
-        $userEmail = strtolower(trim($user?->email ?? ''));
-        $userName = strtolower(trim($user?->name ?? ''));
+        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
 
         $job = JobSpec::findOrFail($id);
         if (!$isAdmin) {
             $creator = strtolower(trim($job->created_by ?? ''));
-            if ($creator !== $userEmail && $creator !== $userName) {
+            if (!in_array($creator, $userIdentifiers, true)) {
                 return redirect()->route('job.input')->with('error', 'Akses ditolak! Anda hanya dapat menghapus lowongan yang Anda buat sendiri.');
             }
         }
@@ -382,13 +374,12 @@ class JobController extends Controller
     {
         $user = auth()->user() ?? $this->getCurrentUser();
         $isAdmin = $user && ($user->role === 'admin' || (method_exists($user, 'isAdmin') && $user->isAdmin()));
-        $userEmail = strtolower(trim($user?->email ?? ''));
-        $userName = strtolower(trim($user?->name ?? ''));
+        $userIdentifiers = KandidatPortalController::resolveUserIdentifiers($user);
 
         $job = JobSpec::findOrFail($id);
         if (!$isAdmin) {
             $creator = strtolower(trim($job->created_by ?? ''));
-            if ($creator !== $userEmail && $creator !== $userName) {
+            if (!in_array($creator, $userIdentifiers, true)) {
                 return redirect()->route('job.input')->with('error', 'Akses ditolak! Anda tidak berhak mengubah status lowongan ini.');
             }
         }

@@ -882,9 +882,26 @@ class Candidate extends Model
                 return !empty($empJabatan) ? "{$empName} ({$empJabatan})" : $empName;
             }
 
-            // Fallback ke tabel User
-            $user = User::whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])->first(['name', 'job_title', 'area']);
+            // Fallback ke tabel User (cek email aktif maupun riwayat email_aliases)
+            $user = User::where(function ($q) use ($cleanEmail) {
+                    $q->whereRaw('LOWER(TRIM(email)) = ?', [$cleanEmail])
+                      ->orWhereJsonContains('email_aliases', $cleanEmail);
+                })
+                ->first(['name', 'job_title', 'area', 'email']);
+
             if ($user && !empty($user->name)) {
+                // Coba cek employee dari email aktif user jika belum ditemukan dari email lama
+                if (!empty($user->email) && strtolower(trim($user->email)) !== $cleanEmail) {
+                    $empFromUser = Employee::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($user->email))])
+                        ->whereNotNull('nama_karyawan')
+                        ->first(['nama_karyawan', 'jabatan']);
+                    if ($empFromUser && !empty($empFromUser->nama_karyawan)) {
+                        $empName = \App\Services\CandidateXlsxExportService::cleanPersonName($empFromUser->nama_karyawan);
+                        $empJabatan = trim($empFromUser->jabatan ?? '');
+                        return !empty($empJabatan) ? "{$empName} ({$empJabatan})" : $empName;
+                    }
+                }
+
                 $uName = \App\Services\CandidateXlsxExportService::cleanPersonName($user->name);
                 $uJob = trim($user->job_title ?? '');
                 if (empty($uJob) && !empty($user->area)) {

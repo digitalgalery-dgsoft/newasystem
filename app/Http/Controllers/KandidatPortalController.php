@@ -39,11 +39,16 @@ class KandidatPortalController extends Controller
         }
 
         if (is_string($user)) {
-            $uObj = User::whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($user))])->first();
+            $userClean = strtolower(trim($user));
+            $uObj = User::where(function ($q) use ($userClean) {
+                    $q->whereRaw('LOWER(TRIM(email)) = ?', [$userClean])
+                      ->orWhereJsonContains('email_aliases', $userClean)
+                      ->orWhereRaw('LOWER(TRIM(name)) = ?', [$userClean]);
+                })->first();
             if ($uObj) {
                 $user = $uObj;
             } else {
-                return [strtolower(trim($user))];
+                return [$userClean];
             }
         }
 
@@ -81,12 +86,18 @@ class KandidatPortalController extends Controller
         // Cek data karyawan dari tabel employees jika ada
         $emp = $user->linked_employee ?? null;
         if (!$emp && (!empty($user->email) || !empty($user->name))) {
-            $emp = Employee::where(function ($q) use ($user) {
-                if (!empty($user->email)) {
-                    $q->where('email', $user->email);
+            $userAliasesList = is_array($user->email_aliases) ? $user->email_aliases : (is_string($user->email_aliases) ? json_decode($user->email_aliases, true) : []);
+            $checkEmails = array_values(array_unique(array_filter(array_merge(
+                [!empty($user->email) ? strtolower(trim($user->email)) : null],
+                is_array($userAliasesList) ? array_map('strtolower', array_map('trim', $userAliasesList)) : []
+            ))));
+
+            $emp = Employee::where(function ($q) use ($checkEmails, $user) {
+                if (!empty($checkEmails)) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(email))'), $checkEmails);
                 }
                 if (!empty($user->name)) {
-                    $q->orWhere('nama_karyawan', $user->name);
+                    $q->orWhereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower(trim($user->name))]);
                 }
             })->first();
         }
@@ -2097,7 +2108,8 @@ class KandidatPortalController extends Controller
             $user = User::where(function ($q) use ($filterRecruiter, $stripped) {
                     $q->whereRaw('LOWER(TRIM(email)) = ?', [strtolower(trim($filterRecruiter))])
                       ->orWhereRaw('LOWER(TRIM(name)) = ?', [strtolower(trim($filterRecruiter))])
-                      ->orWhereRaw('LOWER(TRIM(name)) = ?', [$stripped]);
+                      ->orWhereRaw('LOWER(TRIM(name)) = ?', [$stripped])
+                      ->orWhereJsonContains('email_aliases', strtolower(trim($filterRecruiter)));
                 })
                 ->whereNotNull('name')
                 ->first();

@@ -517,7 +517,8 @@
                         <tbody class="divide-y divide-slate-100">
                             @foreach($activeJobs as $index => $job)
                             @php
-                                $canManage = $isAdmin || (strtolower(trim($job->created_by ?? '')) === strtolower(trim($user?->email ?? '')) || strtolower(trim($job->created_by ?? '')) === strtolower(trim($user?->name ?? '')));
+                                $uIdentifiers = $userIdentifiers ?? (\App\Http\Controllers\KandidatPortalController::resolveUserIdentifiers($user));
+                                $canManage = $isAdmin || (in_array(strtolower(trim($job->created_by ?? '')), $uIdentifiers, true));
                             @endphp
                             <tr class="hover:bg-slate-50/80 transition-colors">
                                 <td class="text-center font-bold text-slate-400">{{ $index + 1 }}</td>
@@ -669,7 +670,8 @@
                         <tbody class="divide-y divide-slate-100">
                             @foreach($expiredJobs as $index => $exp)
                             @php
-                                $canManageExp = $isAdmin || (strtolower(trim($exp->created_by ?? '')) === strtolower(trim($user?->email ?? '')) || strtolower(trim($exp->created_by ?? '')) === strtolower(trim($user?->name ?? '')));
+                                $uIdentifiers = $userIdentifiers ?? (\App\Http\Controllers\KandidatPortalController::resolveUserIdentifiers($user));
+                                $canManageExp = $isAdmin || (in_array(strtolower(trim($exp->created_by ?? '')), $uIdentifiers, true));
                             @endphp
                             <tr class="hover:bg-slate-50/80 transition-colors opacity-80">
                                 <td class="text-center font-bold text-slate-400">{{ $index + 1 }}</td>

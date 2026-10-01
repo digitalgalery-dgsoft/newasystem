@@ -4318,6 +4318,53 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
     1. **Skenario 1 (ApproveSelesai)**: Kandidat di Step 2 diproses dengan `ApproveSelesai` -> Hasil: `is_completed = true`, `status_approval = 'Approve'`, `current_step_order = 2`, pesan sukses selesai dini di HRD Jakarta terkonfirmasi.
     2. **Skenario 2 (Approve)**: Kandidat di Step 2 diproses dengan `Approve` -> Hasil: `is_completed = false`, `status_approval = 'Review Persetujuan HRD Pusat'`, `current_step_order = 3`, kandidat berhasil diteruskan ke Step 3.
 
+### 114. 🔄 Penyelarasan Input Job, Kandidat Portal, & Interview Pasca Pergantian Email Corporate User Inhouse (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang Masalah**:
+  - Setelah implementasi kebijakan wajib email corporate (Milestone 112), pengguna inhouse memperbarui alamat email mereka dari email pribadi (Gmail/Yahoo/dll.) ke email corporate (`@arina.co.id`, `@alvakaryaperkasa.co.id`, dll.).
+  - Dampak yang ditemukan user:
+    1. Daftar lowongan pekerjaan (*list job*) di halaman Input Job (`/inputjob`) yang pernah dibuat sebelumnya menjadi tidak tampil.
+    2. User tidak dapat mengedit, menghapus, atau mengubah status lowongan lama mereka (muncul pesan error *"Akses ditolak"*).
+    3. Perlu dipastikan data pelamar di modul **Kandidat Portal** (`/kandidatportal`) dan **Kandidat Interview** (`/interview`) tidak hilang dan tetap tampil utuh sesuai penyelarasan yang pernah dibangun.
+- **Investigasi & Analisis Akar Masalah (Root Causes)**:
+  1. *Salah Target Tabel Sinkronisasi di UserProfileController*:
+     Pada `UserProfileController::update`, baris kode sinkronisasi lowongan sebelumnya menargetkan tabel Laravel queue `jobs` (`Schema::hasTable('jobs')`), bukan tabel master lowongan sebenarnya yaitu **`job_specs`**. Akibatnya, baris lowongan pada tabel `job_specs` tidak pernah diperbarui ketika user berganti email.
+  2. *JobController Tidak Mendukung Riwayat `email_aliases`*:
+     Pada `JobController::index`, query filter lowongan aktif dan expired hanya membandingkan `LOWER(TRIM(created_by)) = $userEmail` (email aktif saat ini) dan `$userName`. Kolom `email_aliases` pada tabel `users` tidak pernah dibaca. Begitu pula otorisasi pada method `edit`, `store` (update), `destroy`, dan `toggleStatus` strictly memeriksa `$userEmail` dan `$userName`.
+  3. *Tampilan Blade Membatasi Hak Kelola*:
+     Pada `resources/views/job/input.blade.php`, variabel `$canManage` dan `$canManageExp` hanya memeriksa string email aktif dan username tanpa memeriksa riwayat alias.
+  4. *Penyelarasan Identitas Rekruter & Karyawan*:
+     Pada `KandidatPortalController::resolveUserIdentifiers`, pencarian entitas `Employee` hanya memeriksa email tunggal saat ini, padahal record employee mungkin masih menggunakan email lama. Begitu pula pencarian `Candidate::getUserDisplayNameAttribute` dan grouping rekruter di `InterviewController` belum merangkul seluruh riwayat alias.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **JobController (`app/Http/Controllers/JobController.php`)**:
+     - Mengintegrasikan pemanggilan `KandidatPortalController::resolveUserIdentifiers($user)` pada method `index()`, `store()`, `destroy()`, dan `toggleStatus()`.
+     - Filter query lowongan aktif (`$activeQuery`) dan expired (`$expiredQuery`) kini menggunakan `whereIn(DB::raw('LOWER(TRIM(created_by))'), $userIdentifiers)`.
+     - Otorisasi edit mode di `index()`, simpan pembaruan di `store()`, hapus di `destroy()`, dan pengubahan status di `toggleStatus()` divalidasi menggunakan `in_array($creator, $userIdentifiers, true)`.
+     - Saat user memperbarui lowongan lama, nilai `created_by` otomatis diselaraskan ke email corporate aktif user.
+     - Menyertakan variabel `$userIdentifiers` ke view `job.input`.
+  2. **View Input Job (`resources/views/job/input.blade.php`)**:
+     - Memperbarui pengecekan izin `$canManage` (lowongan aktif) dan `$canManageExp` (lowongan expired) agar mencocokkan `created_by` terhadap array `$userIdentifiers`.
+  3. **UserProfileController (`app/Http/Controllers/UserProfileController.php`)**:
+     - Memperbaiki target tabel pembaruan lowongan ke tabel **`job_specs`** (dan tetap mempertahankan guard untuk `jobs`).
+     - Mengumpulkan seluruh email historis user (`$oldEmail` digabung dengan seluruh elemen `email_aliases`).
+     - Memperbarui `candidates`, `tb_kandidat`, `job_specs`, `interview_assessments`, dan `candidate_logs` menggunakan `whereIn` pada seluruh email alias lama.
+     - Sinkronisasi master data `Employee` mencocokkan seluruh varian email user (email aktif maupun seluruh alias).
+  4. **KandidatPortalController (`app/Http/Controllers/KandidatPortalController.php`)**:
+     - Memperkaya `resolveUserIdentifiers`: jika parameter `$user` berupa string, dilakukan pencarian ke `User` mencakup kolom `email`, `email_aliases` (JSON contains), maupun `name`.
+     - Pencarian data `Employee` di `resolveUserIdentifiers` memeriksa seluruh riwayat email user.
+     - Pada `resolveRecruiterFilterIdentifiers`, ditambahkan pencarian `orWhereJsonContains('email_aliases', ...)` ke tabel `users`.
+  5. **InterviewController (`app/Http/Controllers/InterviewController.php`)**:
+     - Pada pemetaan `$allRecruiters`, menambahkan lookup `User` dengan pencarian multi-email dan `email_aliases` sehingga kandidat yang masih memiliki string `useras` alias lama tetap terpetakan ke nama lengkap dan area rekruter yang benar.
+  6. **Candidate Model (`app/Models/Candidate.php`)**:
+     - Pada accessor `getUserDisplayNameAttribute`, fallback ke tabel `User` kini memeriksa kolom `email` maupun `email_aliases` (`orWhereJsonContains('email_aliases', $cleanEmail)`), serta menelusuri data `Employee` dari email aktif user.
+  7. **Migrasi Database Penyembuhan Data (`database/migrations/2026_10_01_114000_heal_job_specs_and_candidates_after_corporate_email_change.php`)**:
+     - Dijalankan secara otomatis untuk menyelaraskan seluruh baris di `job_specs`, `candidates`, `tb_kandidat`, `interview_assessments`, dan `candidate_logs` yang tertinggal dengan email lama di database, mencocokkannya ke email corporate aktif user berdasarkan `email_aliases` dan relasi employee.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Divalidasi menggunakan skrip otomasi end-to-end:
+    1. User dengan corporate email dan 2 alias lama -> `resolveUserIdentifiers` mengembalikan seluruh identitas secara lengkap.
+    2. Lowongan kerja di `job_specs` yang dibuat dengan email lama berhasil muncul dalam query lowongan aktif milik user.
+    3. Kandidat dengan `useras` email lama terverifikasi berstatus `isOwnedBy($user) === true` dan accessor `user_display_name` menampilkan nama lengkap dan jabatan AS secara akurat.
+    4. Perubahan email profil berhasil memutakhirkan `job_specs.created_by` dan `candidates.useras` ke email baru tanpa ada data yang tercecer.
+
 ---
 
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal

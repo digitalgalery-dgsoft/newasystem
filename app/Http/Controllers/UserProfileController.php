@@ -127,12 +127,19 @@ class UserProfileController extends Controller
 
         $user->save();
 
-        // JIKA EMAIL BERUBAH: Selaraskan seluruh data kandidat AS ini agar tetap terbaca penuh di Kandidat Portal & Interview
+        // JIKA EMAIL BERUBAH: Selaraskan seluruh data lowongan dan kandidat AS ini agar tetap terbaca penuh di Input Job, Kandidat Portal & Interview
         if ($emailChanged) {
             try {
+                // Kumpulkan seluruh email historis user (oldEmail + semua alias yang pernah dimiliki)
+                $allOldEmails = array_values(array_unique(array_filter(array_merge(
+                    [$oldEmail],
+                    is_array($user->email_aliases) ? $user->email_aliases : []
+                ))));
+                $allOldEmailsLower = array_map('strtolower', array_map('trim', $allOldEmails));
+
                 // 1. Update data di tabel candidates (useras & recruiter_id)
-                Candidate::where(function ($q) use ($oldEmail, $user) {
-                    $q->whereRaw('LOWER(TRIM(useras)) = ?', [$oldEmail])
+                Candidate::where(function ($q) use ($allOldEmailsLower, $user) {
+                    $q->whereIn(DB::raw('LOWER(TRIM(useras))'), $allOldEmailsLower)
                       ->orWhere('recruiter_id', $user->id);
                 })->update([
                     'useras' => $newEmail,
@@ -151,41 +158,52 @@ class UserProfileController extends Controller
                 // 3. Selaraskan tabel legacy tb_kandidat jika ada
                 if (Schema::hasTable('tb_kandidat')) {
                     DB::table('tb_kandidat')
-                        ->whereRaw('LOWER(TRIM(useras)) = ?', [$oldEmail])
+                        ->whereIn(DB::raw('LOWER(TRIM(useras))'), $allOldEmailsLower)
                         ->update([
                             'useras' => $newEmail,
                             'nama_as' => $user->name,
                         ]);
                 }
 
-                // 4. Selaraskan lowongan yang diposting oleh akun AS ini
-                if (Schema::hasTable('jobs')) {
-                    DB::table('jobs')
-                        ->whereRaw('LOWER(TRIM(created_by)) = ?', [$oldEmail])
+                // 4. Selaraskan lowongan yang diposting oleh akun AS ini (Tabel job_specs & jobs)
+                if (Schema::hasTable('job_specs')) {
+                    DB::table('job_specs')
+                        ->whereIn(DB::raw('LOWER(TRIM(created_by))'), $allOldEmailsLower)
                         ->update(['created_by' => $newEmail]);
+                }
+                if (Schema::hasTable('jobs')) {
+                    try {
+                        DB::table('jobs')
+                            ->whereIn(DB::raw('LOWER(TRIM(created_by))'), $allOldEmailsLower)
+                            ->update(['created_by' => $newEmail]);
+                    } catch (\Throwable $e) {}
                 }
 
                 // 5. Selaraskan riwayat assessment interview jika ada
                 if (Schema::hasTable('interview_assessments')) {
                     DB::table('interview_assessments')
-                        ->whereRaw('LOWER(TRIM(interviewer)) = ?', [$oldEmail])
+                        ->whereIn(DB::raw('LOWER(TRIM(interviewer))'), $allOldEmailsLower)
                         ->update(['interviewer' => $newEmail]);
                 }
 
                 // 6. Selaraskan candidate logs jika ada
                 if (Schema::hasTable('candidate_logs')) {
                     DB::table('candidate_logs')
-                        ->whereRaw('LOWER(TRIM("user")) = ?', [$oldEmail])
+                        ->whereIn(DB::raw('LOWER(TRIM("user"))'), $allOldEmailsLower)
                         ->update(['user' => $newEmail]);
                 }
             } catch (\Throwable $e) {
-                \Log::error('Sinkronisasi data kandidat saat user AS ganti email gagal: ' . $e->getMessage());
+                \Log::error('Sinkronisasi data lowongan & kandidat saat user AS ganti email gagal: ' . $e->getMessage());
             }
         }
 
         // Sinkronkan ke data master employee jika akun ini terhubung
         try {
-            $employee = Employee::whereRaw('LOWER(TRIM(email)) = ?', [$oldEmail])
+            $checkEmails = array_values(array_unique(array_filter(array_merge(
+                [$oldEmail, $newEmail],
+                is_array($user->email_aliases) ? $user->email_aliases : []
+            ))));
+            $employee = Employee::whereIn(DB::raw('LOWER(TRIM(email))'), array_map('strtolower', array_map('trim', $checkEmails)))
                 ->orWhere('id', $user->linked_employee?->id)
                 ->orWhereRaw('LOWER(TRIM(nama_karyawan)) = ?', [strtolower(trim($user->name))])
                 ->first();
@@ -206,9 +224,9 @@ class UserProfileController extends Controller
             \Log::warning('Sinkronisasi employee pada edit profile gagal: ' . $e->getMessage());
         }
 
-        ActivityLogger::log('UPDATE', 'Profil Pengguna', "Memperbarui data identitas profil: {$user->name} ({$user->email})" . ($emailChanged ? " (Email diubah dari '{$oldEmail}' ke '{$newEmail}', data kandidat diselaraskan)" : ""), $user);
+        ActivityLogger::log('UPDATE', 'Profil Pengguna', "Memperbarui data identitas profil: {$user->name} ({$user->email})" . ($emailChanged ? " (Email diubah dari '{$oldEmail}' ke '{$newEmail}', lowongan & kandidat diselaraskan)" : ""), $user);
 
-        return redirect()->route('profile.index')->with('success', 'Profil akun Anda berhasil diperbarui.' . ($emailChanged ? ' Seluruh data kandidat Anda telah diselaraskan ke email baru.' : ''));
+        return redirect()->route('profile.index')->with('success', 'Profil akun Anda berhasil diperbarui.' . ($emailChanged ? ' Seluruh data lowongan dan kandidat Anda telah diselaraskan ke email corporate baru.' : ''));
     }
 
     /**
