@@ -31,26 +31,30 @@ echo "Email Aliases: " . json_encode($user->email_aliases) . "\n";
 $identifiers = KandidatPortalController::resolveUserIdentifiers($user);
 echo "Resolved Identifiers: " . json_encode($identifiers) . "\n";
 
-if (Schema::hasTable('tb_kandidat')) {
-    $distinctTbRyan = DB::table('tb_kandidat')
-        ->whereRaw('LOWER(TRIM(useras)) LIKE ?', ['%ryan%'])
-        ->select('useras', DB::raw('count(*) as count'))
-        ->groupBy('useras')
-        ->get();
-    echo "\n=== DISTINCT USERAS IN TB_KANDIDAT LIKE %ryan% ===\n";
-    foreach ($distinctTbRyan as $dtr) {
-        echo "- useras: '{$dtr->useras}' => count: {$dtr->count}\n";
-    }
-
-    // Check if these are present in candidates table
-    $sampleTb = DB::table('tb_kandidat')
-        ->whereRaw('LOWER(TRIM(useras)) LIKE ?', ['%ryan%'])
-        ->take(5)
-        ->get();
-    echo "Sample NIKs from tb_kandidat ryan: " . json_encode($sampleTb->pluck('no_ktp')->toArray()) . "\n";
-    $inCand = Candidate::whereIn('nik', $sampleTb->pluck('no_ktp')->filter())->select('id', 'full_name', 'nik', 'useras', 'recruiter_id', 'jenis')->get();
-    echo "Corresponding in candidates: " . json_encode($inCand->toArray()) . "\n";
+$cand67626 = Candidate::find(67626);
+echo "\n=== DETAIL CANDIDATE 67626 ===\n";
+if ($cand67626) {
+    echo json_encode($cand67626->toArray(), JSON_PRETTY_PRINT) . "\n";
+} else {
+    echo "Not found\n";
 }
+
+$cand67244 = Candidate::find(67244);
+echo "\n=== DETAIL CANDIDATE 67244 ===\n";
+if ($cand67244) {
+    echo json_encode([
+        'id' => $cand67244->id,
+        'full_name' => $cand67244->full_name,
+        'useras' => $cand67244->useras,
+        'recruiter_id' => $cand67244->recruiter_id,
+        'jenis' => $cand67244->jenis,
+        'status' => $cand67244->status,
+        'status_kandidat' => $cand67244->status_kandidat,
+        'info_lowongan' => $cand67244->info_lowongan,
+        'created_at' => (string)$cand67244->created_at,
+    ]) . "\n";
+}
+
 
 // Check candidates who applied to Ryan's jobs
 $ryanJobTitles = JobSpec::where(function($q) use ($user, $identifiers) {
