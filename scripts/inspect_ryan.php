@@ -31,16 +31,45 @@ echo "Email Aliases: " . json_encode($user->email_aliases) . "\n";
 $identifiers = KandidatPortalController::resolveUserIdentifiers($user);
 echo "Resolved Identifiers: " . json_encode($identifiers) . "\n";
 
-echo "=== CHECKING TB_KANDIDAT & CANDIDATES ===\n";
-echo "has tb_kandidat: " . var_export(Schema::hasTable('tb_kandidat'), true) . "\n";
 if (Schema::hasTable('tb_kandidat')) {
-    $tbOld = DB::table('tb_kandidat')->whereRaw('LOWER(TRIM(useras)) = ?', ['ryanfitrianurrachman02@gmail.com'])->count();
-    $tbNew = DB::table('tb_kandidat')->whereRaw('LOWER(TRIM(useras)) = ?', ['as.surabaya@arina.co.id'])->count();
-    $tbLike = DB::table('tb_kandidat')->whereRaw('LOWER(TRIM(useras)) LIKE ?', ['%ryan%'])->count();
-    echo "tb_kandidat with useras = ryan...: {$tbOld}\n";
-    echo "tb_kandidat with useras = as.surabaya...: {$tbNew}\n";
-    echo "tb_kandidat with useras LIKE %ryan%: {$tbLike}\n";
+    $distinctTbRyan = DB::table('tb_kandidat')
+        ->whereRaw('LOWER(TRIM(useras)) LIKE ?', ['%ryan%'])
+        ->select('useras', DB::raw('count(*) as count'))
+        ->groupBy('useras')
+        ->get();
+    echo "\n=== DISTINCT USERAS IN TB_KANDIDAT LIKE %ryan% ===\n";
+    foreach ($distinctTbRyan as $dtr) {
+        echo "- useras: '{$dtr->useras}' => count: {$dtr->count}\n";
+    }
+
+    // Check if these are present in candidates table
+    $sampleTb = DB::table('tb_kandidat')
+        ->whereRaw('LOWER(TRIM(useras)) LIKE ?', ['%ryan%'])
+        ->take(5)
+        ->get();
+    echo "Sample NIKs from tb_kandidat ryan: " . json_encode($sampleTb->pluck('no_ktp')->toArray()) . "\n";
+    $inCand = Candidate::whereIn('nik', $sampleTb->pluck('no_ktp')->filter())->select('id', 'full_name', 'nik', 'useras', 'recruiter_id', 'jenis')->get();
+    echo "Corresponding in candidates: " . json_encode($inCand->toArray()) . "\n";
 }
+
+// Check candidates who applied to Ryan's jobs
+$ryanJobTitles = JobSpec::where(function($q) use ($user, $identifiers) {
+    $q->whereIn(DB::raw('LOWER(TRIM(created_by))'), $identifiers)
+      ->orWhereRaw('LOWER(TRIM(created_by)) = ?', ['ryanfitrianurrachman02@gmail.com']);
+})->pluck('job_title')->toArray();
+
+echo "\n=== RYAN JOB TITLES ===\n" . json_encode($ryanJobTitles) . "\n";
+
+$candsOnRyanJobs = Candidate::whereIn('applied_job', $ryanJobTitles)
+    ->select('useras', 'recruiter_id', 'jenis', DB::raw('count(*) as count'))
+    ->groupBy('useras', 'recruiter_id', 'jenis')
+    ->get();
+
+echo "\n=== CANDIDATES APPLYING TO RYAN'S JOBS ===\n";
+foreach ($candsOnRyanJobs as $crj) {
+    echo "- useras: '{$crj->useras}' | recruiter_id: '{$crj->recruiter_id}' | jenis: '{$crj->jenis}' => count: {$crj->count}\n";
+}
+
 
 $cTotal = Candidate::count();
 echo "Total candidates in DB: {$cTotal}\n";
