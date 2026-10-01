@@ -4278,6 +4278,46 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
     6. Akses `/fitur` kembali: Modal hilang dan seluruh dashboard terbuka normal.
     7. Akun Admin (`admin@asystem.co.id`) dan Akun Ratecard (`fredi.kusumo@gmail.com`): Terverifikasi bebas modal (tidak terdampak).
 
+### 113. 🎯 Tombol Opsi "Approve (Selesai)" di Step HRD Jakarta pada Modul Approval Kandidat Inhouse (01 Oktober 2026)
+- **Kebutuhan Pengguna & Ketentuan Bisnis**:
+  - Pada modul approval kandidat inhouse, terdapat kebutuhan khusus untuk jabatan/posisi tertentu di mana proses persetujuan cukup sampai ke **HRD Jakarta** saja dan tidak memerlukan eskalasi ke **HRD Pusat** (Ibu Nurul Yuliastuti, SH.).
+  - User meminta ditambahkan opsi dan tombol **Approve (Selesai)** pada step **HRD Jakarta**, sehingga approver akun HRD Jakarta memiliki fleksibilitas untuk memilih:
+    1. **Approve (Selesai)**: Pengajuan kandidat disetujui selesai langsung pada tahap HRD Jakarta (proses workflow inhouse selesai, berkas masuk ke tab Selesai/Done, dan step HRD Pusat dilewati).
+    2. **Lanjut ke HRD Pusat** (Approve & Lanjut): Pengajuan kandidat disetujui pada tahap HRD Jakarta dan diteruskan ke Step 3 (HRD Pusat) untuk persetujuan akhir.
+    3. **Tolak Pengajuan**: Membatalkan pengajuan kandidat inhouse.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Backend Service (`app/Services/ApprovalWorkflowService.php`)**:
+     - Memperbarui method `processApproval(Candidate $candidate, User $user, array $data)` dengan deteksi flag `$isFinishDirectly`.
+     - Mendeteksi input decision bernilai `'ApproveSelesai'`, `'approve_selesai'`, `'approve (selesai)'`, `'selesai'`, atau `'finish'`.
+     - Jika `$isFinishDirectly` bernilai `true`:
+       - Menyimpan log persetujuan ke tabel `inhouse_approvals` dan sinkronisasi ke `tb_catataninhouse` dengan status `'Approve'` / `'Yes'`.
+       - Mengabaikan `$nextStep` (Step 3: HRD Pusat dilewati).
+       - Memperbarui status kandidat menjadi `'Approve'` (Selesai/Approved), mengunci `current_approval_step_id` dan `current_step_order` pada step saat ini (Step 2), serta melengkapi `note_principle`, `ttd_prinsiple`, dan `time_prinsiple`.
+       - Mengembalikan status `is_completed => true` dengan notifikasi: *"Persetujuan pada tahap [Persetujuan HRD Jakarta] berhasil disimpan! Pengajuan kandidat inhouse telah disetujui selesai pada tahap ini (Approved - Selesai di Persetujuan HRD Jakarta)."*
+  2. **Tampilan Formulir & Stepper Bar (`resources/views/interviewinhouse/show.blade.php`)**:
+     - **Deteksi Step HRD Jakarta (`$isHrdJakartaStep`)**:
+       Mengecek apakah step aktif saat ini merupakan step HRD Jakarta (`step_order == 2` atau mengandung kata `'jakarta'`).
+     - **Dropdown Hasil Keputusan Dinamis**:
+       Khusus pada step HRD Jakarta, menyajikan pilihan:
+       - `🟢 Approve (Selesai - Cukup Sampai HRD Jakarta)`
+       - `🔵 Approve & Lanjut (Teruskan ke HRD Pusat)`
+       - `🔴 Tolak (Batalkan Pengajuan)`
+       Dilengkapi kartu informasi panduan kebijakan untuk memandu approver.
+     - **Tombol Aksi Cepat Terpisah (Dedicated Action Buttons)**:
+       Menyediakan 3 tombol aksi langsung:
+       - Tombol **Emerald**: **"Approve (Selesai)"** (*Cukup s/d HRD Jakarta*)
+       - Tombol **Sky**: **"Lanjut ke HRD Pusat"** (*Teruskan ke Step 3*)
+       - Tombol **Rose**: **"Tolak Pengajuan Kandidat"**
+     - **Validasi & Konfirmasi JavaScript**:
+       Fungsi `submitInhouseDecision(decision)` dan `handleInhouseFormSubmit(event)` memvalidasi catatan evaluasi, memastikan tanda tangan digital telah dibubuhkan (atau menempelkan TTD profil yang tersimpan), dan memunculkan konfirmasi dialog spesifik sebelum mengirim form.
+     - **Indikator Stepper Bar Dinamis**:
+       - Menangani kasus kandidat yang disetujui selesai di Step 2: Step 3 (HRD Pusat) otomatis menampilkan status *"Selesai di Step 2 (HRD Jakarta)"* dengan badge *"SELESAI DI STEP 2"* dan keterangan *"Dilewati (Cukup sampai Persetujuan HRD Jakarta)"*, sehingga tidak menimbulkan salah tafsir bahwa HRD Pusat telah menyetujui.
+       - Banner penyelesaian approval di formulir menampilkan rincian jelas bahwa kandidat disetujui selesai pada tahap HRD Jakarta tanpa memerlukan persetujuan HRD Pusat.
+- **Uji Coba & Hasil (100% Passed)**:
+  - Diverifikasi via script otomasi simulasi lifecycle approval:
+    1. **Skenario 1 (ApproveSelesai)**: Kandidat di Step 2 diproses dengan `ApproveSelesai` -> Hasil: `is_completed = true`, `status_approval = 'Approve'`, `current_step_order = 2`, pesan sukses selesai dini di HRD Jakarta terkonfirmasi.
+    2. **Skenario 2 (Approve)**: Kandidat di Step 2 diproses dengan `Approve` -> Hasil: `is_completed = false`, `status_approval = 'Review Persetujuan HRD Pusat'`, `current_step_order = 3`, kandidat berhasil diteruskan ke Step 3.
+
 ---
 
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal

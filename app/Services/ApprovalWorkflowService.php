@@ -385,7 +385,17 @@ class ApprovalWorkflowService
     {
         $catatan = trim($data['catatan'] ?? '');
         $decision = trim($data['approval'] ?? $data['status'] ?? 'Approve');
-        $isApprove = in_array(strtolower($decision), ['approve', 'yes', 'setuju']);
+
+        // Deteksi apakah approver memilih opsi "Approve (Selesai)" (selesai langsung di tahap ini tanpa lanjut ke step berikutnya)
+        $isFinishDirectly = in_array(strtolower($decision), [
+            'approveselesai',
+            'approve_selesai',
+            'approve (selesai)',
+            'selesai',
+            'finish'
+        ], true) || !empty($data['is_final_step']);
+
+        $isApprove = $isFinishDirectly || in_array(strtolower($decision), ['approve', 'yes', 'setuju'], true);
         $finalDecision = $isApprove ? 'Approve' : 'Tolak';
         $signaturePath = $data['signature_path'] ?? null;
 
@@ -444,7 +454,8 @@ class ApprovalWorkflowService
         // Jika Disetujui: Cek apakah masih ada step berikutnya
         $nextStep = $currentStep ? self::getNextStep($candidate, $currentStep, $applicableSteps) : null;
 
-        if ($nextStep) {
+        // JIKA ADA NEXT STEP DAN BUKAN APPROVE SELESAI LANGSUNG:
+        if ($nextStep && !$isFinishDirectly) {
             // Maju ke step berikutnya
             $candidate->update([
                 'current_approval_step_id' => $nextStep->id,
@@ -461,18 +472,24 @@ class ApprovalWorkflowService
             ];
         }
 
-        // Jika ini adalah step terakhir: Kandidat Selesai Disetujui (Approved)
+        // Jika ini adalah step terakhir ATAU disetujui selesai langsung di tahap ini (Approve Selesai):
         $candidate->update([
             'status_approval' => 'Approve',
+            'current_approval_step_id' => $stepId,
+            'current_step_order' => $stepOrder,
             'note_principle' => $catatan,
             'ttd_prinsiple' => $signaturePath ?? $candidate->ttd_prinsiple ?? $candidate->signature_path,
             'time_prinsiple' => Carbon::now('Asia/Jakarta'),
         ]);
 
+        $finishMessage = $isFinishDirectly
+            ? "Persetujuan pada tahap [{$stepName}] berhasil disimpan! Pengajuan kandidat inhouse telah disetujui selesai pada tahap ini (Approved - Selesai di {$stepName})."
+            : "Persetujuan tahap akhir [{$stepName}] berhasil disimpan! Seluruh tahapan approval inhouse telah selesai dan kandidat disetujui (Approved).";
+
         return [
             'status' => 'success',
             'decision' => 'Approve',
-            'message' => "Persetujuan tahap akhir [{$stepName}] berhasil disimpan! Seluruh tahapan approval inhouse telah selesai dan kandidat disetujui (Approved).",
+            'message' => $finishMessage,
             'is_completed' => true,
         ];
     }

@@ -912,13 +912,20 @@
                             $isRejectedThisStep = $stepApprovals->whereIn('status', ['Tolak', 'No'])->isNotEmpty();
                             
                             $isCurrentActiveStep = ($currStepId === $st->id && !$isCandidateDone && !$isCandidateRejected);
-                            $isPassed = ($isCandidateDone || ($currentStep && $st->step_order < $currStepOrder) || $isApprovedThisStep);
+
+                            // Deteksi jika kandidat sudah selesai disetujui (Approve) di step sebelumnya (misal selesai di HRD Jakarta tanpa perlu HRD Pusat)
+                            $maxApprovedStepOrder = $candidate->inhouseApprovals->whereIn('status', ['Approve', 'Yes'])->max('step_order') ?? ($candidate->current_step_order ?? 0);
+                            $lastApprovedRecord = $candidate->inhouseApprovals->whereIn('status', ['Approve', 'Yes'])->sortByDesc('step_order')->first();
+                            $isSkippedAfterFinish = $isCandidateDone && !$isApprovedThisStep && ($st->step_order > $maxApprovedStepOrder);
+                            $isPassed = ($isApprovedThisStep || (!$isCandidateDone && $currentStep && $st->step_order < $currStepOrder));
                         @endphp
 
-                        <div class="p-3.5 rounded-xl border transition-all {{ $isPassed ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900 shadow-xs' : ($isCurrentActiveStep ? 'bg-amber-50/90 border-amber-300 text-amber-950 ring-2 ring-amber-200/60 shadow-xs' : ($isRejectedThisStep ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-slate-50 border-slate-200 text-slate-400')) }}">
+                        <div class="p-3.5 rounded-xl border transition-all {{ $isApprovedThisStep ? 'bg-emerald-50/80 border-emerald-300 text-emerald-900 shadow-xs' : ($isSkippedAfterFinish ? 'bg-slate-50/90 border-slate-200 text-slate-500 shadow-xs' : ($isCurrentActiveStep ? 'bg-amber-50/90 border-amber-300 text-amber-950 ring-2 ring-amber-200/60 shadow-xs' : ($isRejectedThisStep ? 'bg-rose-50 border-rose-300 text-rose-900' : 'bg-slate-50 border-slate-200 text-slate-400'))) }}">
                             <div class="flex items-center justify-between text-[10.5px] font-bold">
                                 <span>STEP {{ $st->step_order }}: {{ strtoupper($st->step_name) }}</span>
-                                @if($st->approver_type === 'head')
+                                @if($isSkippedAfterFinish)
+                                    <span class="text-[9px] px-1.5 py-0.2 rounded bg-slate-200 text-slate-600 font-extrabold">SELESAI DI STEP {{ $maxApprovedStepOrder }}</span>
+                                @elseif($st->approver_type === 'head')
                                     <span class="text-[9px] px-1.5 py-0.2 rounded bg-indigo-100 text-indigo-800 font-extrabold">HEAD</span>
                                 @else
                                     <span class="text-[9px] px-1.5 py-0.2 rounded bg-sky-100 text-sky-800 font-extrabold">USER</span>
@@ -926,7 +933,13 @@
                             </div>
 
                             <div class="text-xs font-black flex items-center gap-1.5 mt-2">
-                                @if($isPassed)
+                                @if($isApprovedThisStep)
+                                    <i class="fa-solid fa-circle-check text-emerald-600 text-sm shrink-0"></i>
+                                    <span class="truncate">Disetujui</span>
+                                @elseif($isSkippedAfterFinish)
+                                    <i class="fa-solid fa-forward-step text-slate-400 text-sm shrink-0"></i>
+                                    <span class="truncate text-slate-600">Selesai di {{ $lastApprovedRecord ? $lastApprovedRecord->step_name : 'Step ' . $maxApprovedStepOrder }}</span>
+                                @elseif($isPassed)
                                     <i class="fa-solid fa-circle-check text-emerald-600 text-sm shrink-0"></i>
                                     <span class="truncate">Disetujui</span>
                                 @elseif($isCurrentActiveStep)
@@ -946,9 +959,13 @@
                                 $stepInfo = \App\Services\ApprovalWorkflowService::getStepApproverDisplayInfo($candidate, $st);
                             @endphp
                             <div class="text-[10px] text-slate-600 mt-1 truncate" title="{{ $stepInfo['label'] }} ({{ $stepInfo['rule_condition'] }})">
-                                <span class="font-bold text-slate-700">Approver:</span> {{ $stepInfo['label'] }}
-                                @if(!empty($stepInfo['rule_condition']) && $stepInfo['rule_condition'] !== 'Atasan Langsung Rekruter')
-                                    <span class="text-[9px] text-slate-400 font-normal">({{ $stepInfo['rule_condition'] }})</span>
+                                @if($isSkippedAfterFinish)
+                                    <span class="text-slate-400 italic">Dilewati (Cukup sampai {{ $lastApprovedRecord ? $lastApprovedRecord->step_name : 'Step ' . $maxApprovedStepOrder }})</span>
+                                @else
+                                    <span class="font-bold text-slate-700">Approver:</span> {{ $stepInfo['label'] }}
+                                    @if(!empty($stepInfo['rule_condition']) && $stepInfo['rule_condition'] !== 'Atasan Langsung Rekruter')
+                                        <span class="text-[9px] text-slate-400 font-normal">({{ $stepInfo['rule_condition'] }})</span>
+                                    @endif
                                 @endif
                             </div>
                         </div>
@@ -979,6 +996,10 @@
 
                     <!-- STEP STATUS & PERMISSION CHECKS -->
                     @if($isCandidateDone)
+                        @php
+                            $finalApprovalRecord = $candidate->inhouseApprovals->whereIn('status', ['Approve', 'Yes'])->sortByDesc('step_order')->first();
+                            $isFinishedEarlyAtJkt = $finalApprovalRecord && $finalApprovalRecord->step_order == 2 && count($applicableSteps) > 2;
+                        @endphp
                         <!-- Selesai Disetujui Penuh -->
                         <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs space-y-2">
                             <div class="flex items-center gap-2 font-bold text-sm text-emerald-950">
@@ -986,7 +1007,11 @@
                                 <span>Kandidat Telah Selesai Disetujui (Approved)</span>
                             </div>
                             <p class="text-[11.5px] leading-relaxed text-emerald-800">
-                                Seluruh tahapan approval inhouse telah selesai diproses dan disetujui. Berkas kandidat telah dipindahkan ke tab Selesai.
+                                @if($isFinishedEarlyAtJkt)
+                                    Persetujuan kandidat inhouse ini telah disetujui selesai pada tahap <strong>{{ $finalApprovalRecord->step_name }}</strong> oleh <strong>{{ $finalApprovalRecord->nama_approver }}</strong> (tidak perlu dilanjutkan ke HRD Pusat). Berkas kandidat telah dipindahkan ke tab Selesai.
+                                @else
+                                    Seluruh tahapan approval inhouse telah selesai diproses dan disetujui. Berkas kandidat telah dipindahkan ke tab Selesai.
+                                @endif
                             </p>
                         </div>
                     @elseif($isCandidateRejected)
@@ -1019,25 +1044,50 @@
                             </p>
                         </div>
                     @else
+                        @php
+                            $isHrdJakartaStep = $currentStep && (
+                                str_contains(strtolower($currentStep->step_name), 'jakarta') ||
+                                ($currentStep->step_order == 2 && str_contains(strtolower($currentStep->step_name), 'hrd'))
+                            );
+                        @endphp
                         <!-- FORM AKTIF UNTUK APPROVER YANG BERHAK -->
-                        <form action="{{ route('interviewinhouse.approval', $candidate->id) }}" method="POST" id="inhouseApprovalForm" class="space-y-4">
+                        <form action="{{ route('interviewinhouse.approval', $candidate->id) }}" method="POST" id="inhouseApprovalForm" class="space-y-4" onsubmit="return handleInhouseFormSubmit(event)">
                             @csrf
                             <input type="hidden" name="signature_data" id="signatureDataInput" value="">
 
                             <!-- 1. Keputusan -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1.5">Hasil Keputusan <span class="text-rose-500">*</span></label>
-                                <select name="approval" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
-                                    <option value="" disabled selected>Pilih Hasil Keputusan</option>
-                                    <option value="Approve">Approve (Setujui &amp; Teruskan)</option>
-                                    <option value="Tolak">Tolak (Batalkan Pengajuan)</option>
-                                </select>
+                                @if($isHrdJakartaStep)
+                                    <select name="approval" id="approvalSelect" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-emerald-100 focus:border-emerald-500 outline-none cursor-pointer font-medium" required>
+                                        <option value="" disabled selected>Pilih Hasil Keputusan</option>
+                                        <option value="ApproveSelesai">🟢 Approve (Selesai - Cukup Sampai HRD Jakarta)</option>
+                                        <option value="Approve">🔵 Approve &amp; Lanjut (Teruskan ke HRD Pusat)</option>
+                                        <option value="Tolak">🔴 Tolak (Batalkan Pengajuan)</option>
+                                    </select>
+                                    <div class="mt-2 text-[11px] text-slate-600 bg-slate-50 border border-slate-200 rounded-xl p-2.5 flex items-start gap-2 leading-relaxed">
+                                        <i class="fa-solid fa-circle-info text-blue-500 mt-0.5 shrink-0"></i>
+                                        <div>
+                                            <span class="font-bold text-slate-800">Panduan Keputusan HRD Jakarta:</span>
+                                            <ul class="list-disc list-inside mt-0.5 space-y-0.5 text-slate-600">
+                                                <li>Pilih <strong class="text-emerald-700">Approve (Selesai)</strong>: untuk jabatan yang cukup disetujui sampai HRD Jakarta (tidak perlu ke HRD Pusat).</li>
+                                                <li>Pilih <strong class="text-sky-700">Approve &amp; Lanjut</strong>: jika formasi/jabatan kandidat memerlukan persetujuan dari HRD Pusat (Ibu Nurul Yuliastuti, SH.).</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                @else
+                                    <select name="approval" id="approvalSelect" class="w-full bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none cursor-pointer" required>
+                                        <option value="" disabled selected>Pilih Hasil Keputusan</option>
+                                        <option value="Approve">Approve (Setujui &amp; Teruskan)</option>
+                                        <option value="Tolak">Tolak (Batalkan Pengajuan)</option>
+                                    </select>
+                                @endif
                             </div>
 
                             <!-- 2. Catatan -->
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 mb-1.5">Catatan Evaluasi <span class="text-rose-500">*</span></label>
-                                <textarea name="catatan" rows="3" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none" placeholder="Masukkan catatan hasil evaluasi dan rekomendasi..." required></textarea>
+                                <textarea name="catatan" id="catatanInput" rows="3" class="w-full bg-white border border-slate-200 rounded-xl p-3 text-xs text-slate-800 focus:ring-4 focus:ring-primary-100 focus:border-primary outline-none" placeholder="Masukkan catatan hasil evaluasi dan rekomendasi..." required></textarea>
                             </div>
 
                             <!-- 3. Tanda Tangan Canvas -->
@@ -1064,12 +1114,42 @@
                                 </div>
                             </div>
 
-                            <!-- Tombol Submit -->
+                            <!-- Tombol Submit Action -->
                             <div class="pt-2">
-                                <button type="submit" onclick="syncSigDataBeforeSubmit()" class="w-full py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
-                                    <i class="fa-solid fa-check-double text-xs"></i>
-                                    <span>Simpan &amp; Submit Keputusan {{ $currentStep ? $currentStep->step_name : '' }}</span>
-                                </button>
+                                @if($isHrdJakartaStep)
+                                    <div class="space-y-2.5">
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                            <!-- Tombol 1: Approve Selesai -->
+                                            <button type="button" onclick="submitInhouseDecision('ApproveSelesai')" class="w-full py-3 px-3 rounded-xl text-xs font-extrabold text-white bg-emerald-600 hover:bg-emerald-700 active:scale-[0.99] shadow-md shadow-emerald-600/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer group">
+                                                <i class="fa-solid fa-check-double text-emerald-200 text-sm group-hover:scale-110 transition-transform"></i>
+                                                <div class="text-left">
+                                                    <div class="leading-tight font-extrabold text-[12px]">Approve (Selesai)</div>
+                                                    <div class="text-[9.5px] font-normal text-emerald-100">Cukup s/d HRD Jakarta</div>
+                                                </div>
+                                            </button>
+
+                                            <!-- Tombol 2: Lanjut ke HRD Pusat -->
+                                            <button type="button" onclick="submitInhouseDecision('Approve')" class="w-full py-3 px-3 rounded-xl text-xs font-extrabold text-white bg-sky-600 hover:bg-sky-700 active:scale-[0.99] shadow-md shadow-sky-600/25 transition-all flex items-center justify-center gap-2.5 cursor-pointer group">
+                                                <i class="fa-solid fa-paper-plane text-sky-200 text-sm group-hover:scale-110 transition-transform"></i>
+                                                <div class="text-left">
+                                                    <div class="leading-tight font-extrabold text-[12px]">Lanjut ke HRD Pusat</div>
+                                                    <div class="text-[9.5px] font-normal text-sky-100">Teruskan ke Step 3</div>
+                                                </div>
+                                            </button>
+                                        </div>
+
+                                        <!-- Tombol 3: Tolak Pengajuan -->
+                                        <button type="button" onclick="submitInhouseDecision('Tolak')" class="w-full py-2.5 px-3 rounded-xl text-xs font-bold text-rose-600 hover:text-white bg-rose-50 hover:bg-rose-600 border border-rose-200 hover:border-rose-600 active:scale-[0.99] transition-all flex items-center justify-center gap-1.5 cursor-pointer">
+                                            <i class="fa-solid fa-circle-xmark text-xs"></i>
+                                            <span>Tolak Pengajuan Kandidat</span>
+                                        </button>
+                                    </div>
+                                @else
+                                    <button type="submit" onclick="syncSigDataBeforeSubmit()" class="w-full py-3 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow-md shadow-rose-600/20 transition-all flex items-center justify-center gap-2 cursor-pointer">
+                                        <i class="fa-solid fa-check-double text-xs"></i>
+                                        <span>Simpan &amp; Submit Keputusan {{ $currentStep ? $currentStep->step_name : '' }}</span>
+                                    </button>
+                                @endif
                             </div>
                         </form>
                     @endif
@@ -1357,6 +1437,68 @@
         if (input && hasDrawnOnCanvas) {
             input.value = sigCanvas.toDataURL('image/png');
         }
+    }
+
+    function submitInhouseDecision(decision) {
+        const approvalSelect = document.getElementById('approvalSelect');
+        if (approvalSelect) {
+            approvalSelect.value = decision;
+        }
+
+        const form = document.getElementById('inhouseApprovalForm');
+        if (!form) return;
+
+        const catatanInput = document.getElementById('catatanInput') || form.querySelector('textarea[name="catatan"]');
+        if (catatanInput && !catatanInput.value.trim()) {
+            alert('Harap isi Catatan Evaluasi terlebih dahulu!');
+            catatanInput.focus();
+            return false;
+        }
+
+        syncSigDataBeforeSubmit();
+        const sigDataInput = document.getElementById('signatureDataInput');
+        const hasSigData = sigDataInput && sigDataInput.value && sigDataInput.value.trim().length > 0;
+
+        if (!hasDrawnOnCanvas && !hasSigData) {
+            if (typeof userSavedSigUrl !== 'undefined' && userSavedSigUrl) {
+                pasteMySavedSig();
+                syncSigDataBeforeSubmit();
+            } else {
+                alert('Harap bubuhkan tanda tangan digital Anda terlebih dahulu!');
+                return false;
+            }
+        }
+
+        let confirmMsg = 'Apakah Anda yakin ingin memproses keputusan ini?';
+        if (decision === 'ApproveSelesai') {
+            confirmMsg = 'Konfirmasi:\nKandidat akan DISETUJUI SELESAI di HRD Jakarta (tanpa perlu dilanjutkan ke HRD Pusat).\n\nApakah Anda yakin ingin menyelesaikan persetujuan kandidat ini?';
+        } else if (decision === 'Approve') {
+            confirmMsg = 'Konfirmasi:\nKandidat akan disetujui pada tahap HRD Jakarta dan DITERUSKAN ke HRD Pusat (Ibu Nurul Yuliastuti, SH.).\n\nApakah Anda yakin ingin melanjutkan?';
+        } else if (decision === 'Tolak') {
+            confirmMsg = 'Peringatan:\nPengajuan kandidat inhouse ini akan DITOLAK.\n\nApakah Anda yakin ingin menolak kandidat ini?';
+        }
+
+        if (confirm(confirmMsg)) {
+            form.submit();
+        }
+    }
+
+    function handleInhouseFormSubmit(event) {
+        syncSigDataBeforeSubmit();
+        const sigDataInput = document.getElementById('signatureDataInput');
+        const hasSigData = sigDataInput && sigDataInput.value && sigDataInput.value.trim().length > 0;
+
+        if (!hasDrawnOnCanvas && !hasSigData) {
+            if (typeof userSavedSigUrl !== 'undefined' && userSavedSigUrl) {
+                pasteMySavedSig();
+                syncSigDataBeforeSubmit();
+            } else {
+                event.preventDefault();
+                alert('Harap bubuhkan tanda tangan digital Anda terlebih dahulu!');
+                return false;
+            }
+        }
+        return true;
     }
 
     function openCandidateMedia(type, url, title) {
