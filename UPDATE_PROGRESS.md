@@ -4397,13 +4397,367 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 116. 📜 Penambahan Fitur Form Pengajuan & Approval Bertingkat Paklaring / Surat Referensi Kerja (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  - Penambahan modul baru Form Pengajuan Paklaring (Surat Referensi Kerja) yang memodernisasi form sistem lama (`paklaring/form.php` & `proses_input.php`) serta sistem approval bertingkat (`v3/paklaring.php` & `detailpkl.php`).
+  - Mengimplementasikan alur approval bertingkat berjenjang: **Area (ARO / Admin Operasional)** &rarr; **HRD** &rarr; **Tim DB (Database Pusat)** &rarr; **Tim BPJS (Penerbitan Nomor Referensi Resmi)**.
+  - Alur approval dibuat dinamis dan dapat dikonfigurasi melalui modul **Master Alur Approver Dinamis** (`ApprovalWorkflow`), selaras dengan pola yang telah diterapkan pada *Kandidat Inhouse* dan *Surat Peringatan (SP)*.
+  - Seluruh pekerjaan dijalankan dan diuji terlebih dahulu di lingkungan lokal (tanpa deploy ke live server).
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Struktur Database & Migrasi (`database/migrations/2026_10_01_140000_create_paklarings_tables.php`)**:
+     - Tabel `paklarings`: Menampung data pengajuan lengkap (`kode_validasi` 8 karakter unik, `kode_validasiref`, `nik`, `nama_lengkap`, `tempat_lahir`, `tgl_lahir`, `jenis_kelamin`, `alamat`, `kantor`, `prinsiple`, `area`, `region`, `jabatan`, `no_hp`, `email`, `alasan`, `tgl_masuk`, `tgl_keluar`, `status_deposit`, `nomor_rekening`, `bank`, `nama_rekening`, `jml_deposit`, lampiran berkas lengkap: `foto_ktp`, `form_request`, `exit_cl`, `pengunduran_diri`, `kartu_bpjs`, `serah_terima`, `surat_cl`, `buku_tabungan`, `bukti_deposit`, data ekspedisi: `resi` & `expedisi`, tanda tangan digital Canvas: `ttd_area`, `ttd_hrd`, `ttd_db`, `ttd_bpjs`, `nomor_ref`, `status_bagian`, `status`, `current_step_order`, dan audit trail: `waktu_input`, `pengguna`, `ip`, `user_agent`).
+     - Tabel `paklaring_approvals`: Menyimpan audit trail dan log setiap aksi approval (`paklaring_id`, `step_order`, `step_name`, `user_id`, `user_name`, `user_email`, `user_role`, `action`, `action_to`, `notes`, `signature_path`, `ip_address`, `created_at`).
+  2. **Model Eloquent (`app/Models/Paklaring.php` & `app/Models/PaklaringApproval.php`)**:
+     - Relasi ke `approvals`, `creator`.
+     - Scopes filter status tab: `waitingArea()`, `waitingHrd()`, `waitingDb()`, `waitingBpjs()`, `completed()`, `rejectedOrHold()`.
+     - Accessors: `status_badge`, `bagian_badge`, `duration_string`, `getFileUrl()`.
+  3. **Service Layer (`app/Services/PaklaringApprovalService.php`)**:
+     - Penanganan transisi approval: `approveArea()`, `approveHrd()` (mendukung opsi lanjut ke Tim DB atau bypass langsung ke Tim BPJS sesuai standar ESA Groups), `approveDb()`, dan `approveBpjs()` (otomatis memvalidasi nomor referensi dan mengubah status akhir menjadi Selesai).
+     - Fitur penolakan (`reject`), penahanan berkas (`hold`), dan pengembalian revisi (`returnBack`).
+     - Evaluasi izin approver dinamis (`canUserApprove`) dan penyajian informasi PIC approver per step (`getStepApproverDisplayInfo`).
+  4. **Master Alur Approver Dinamis (`app/Http/Controllers/ApprovalWorkflowController.php`)**:
+     - Penambahan modul `'paklaring'` dengan auto-seeding 4 tahapan alur approval.
+     - Penambahan tab switcher "Paklaring (Surat Referensi Kerja)" pada tampilan konfigurasi approval workflow (`resources/views/master/approval_workflow/index.blade.php`).
+     - Dukungan aturan penugasan dinamis berbasis kombinasi Area & Prinsiple, pivot users, atau role fallback.
+  5. **Controller & Rute (`app/Http/Controllers/PaklaringController.php` & `routes/web.php`)**:
+     - Form Publik (`/pengajuan-paklaring`): Pengajuan mandiri oleh mantan karyawan / staf area tanpa perlu login, dilengkapi validasi upload berkas (maks 4MB) dan proteksi anti-duplikasi pengajuan yang masih berproses.
+     - API Lookup NIK (`/paklaring/lookup-nik`): Pengisian data otomatis real-time (Nama, Tempat/Tgl Lahir, Alamat, Jenis Kelamin, Prinsiple, Area, Jabatan, Tgl Masuk/Keluar) dari database `Employee` atau `Candidate`.
+     - Pelacakan Status Pengajuan (`/cek-paklaring`): Halaman lacak status publik dengan visual stepper 4 tahapan dan riwayat catatan tim approver.
+     - Halaman Sukses (`/paklaring/success/{kode}`): Konfirmasi penerimaan berkas dan kartu bukti permohonan.
+     - Dashboard Internal (`/paklaring`): Manajemen daftar pengajuan dengan tab navigasi live badge counter (Semua, Menunggu Area, Menunggu HRD, Menunggu DB, Menunggu BPJS, Selesai, Ditolak/Hold), filter area, filter prinsiple, dan pencarian serbaguna.
+     - Detail & Approval Panel (`/paklaring/{id}`): Antarmuka interaktif aksi approval bertingkat, pad tanda tangan digital HTML5 Canvas, modal preview dokumen lightbox, form input nomor referensi, serta audit trail riwayat persetujuan.
+     - Cetak Surat Resmi (`/paklaring/{id}/print-pdf`): Format cetak A4 surat keterangan referensi kerja standar ESA Groups lengkap dengan kop surat resmi, nomor surat terverifikasi, detail masa kerja, dan QR code validasi keaslian dokumen secara online.
+     - Kompatibilitas Legacy URL: Route alias untuk `/form.php`, `/paklaring.php`, dan `/v3/paklaring.php`.
+  6. **Navigasi Sidebar (`resources/views/layouts/app.blade.php`)**:
+     - Penambahan menu **Paklaring** pada sidebar dengan badge dinamis jumlah pengajuan yang sedang menunggu proses persetujuan.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Seluruh rute publik dan internal teruji dengan status HTTP 200 OK.
+  - Seluruh view (`public_form`, `check_status`, `success`, `index`, `show`, `print_pdf`, `approval_workflow/index`) teruji bebas error kompilasi Blade.
+  - Siklus penuh approval (Pengajuan &rarr; Area &rarr; HRD &rarr; DB &rarr; BPJS &rarr; Terbit Nomor Ref & Selesai) berhasil dieksekusi secara otomatis dengan integritas audit trail yang lengkap.
+  - **Sesuai instruksi pengguna, seluruh pembaruan dijalankan di lokal dan belum dideploy ke server produksi.**
+
+---
+
+### 117. 📑 Refactoring Terminologi "Veklaring", Pembaruan Label Tahapan "Review", dan Rekonstruksi Form Pencairan Deposit Sistem Lama (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  1. Penggantian istilah **"Paklaring"** menjadi **"Veklaring"** pada seluruh antarmuka, judul, navigasi, dan dokumen cetak resmi.
+  2. Pembaruan label tahapan approval pada dashboard dari format *"Menunggu Area"*, *"Menunggu HRD"*, dst. menjadi **"Review Area"**, **"Review HRD"**, **"Review DB"**, dan **"Review BPJS"**.
+  3. Pembuatan ulang seksi formulir **Pencairan Deposit** agar persis dengan format sistem lama (`form_depo.php`) sesuai tangkapan layar yang dilampirkan pengguna.
+  4. Seluruh fitur tetap dijalankan dan diuji di lingkungan lokal tanpa melakukan deploy ke server produksi.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Penggantian Terminologi Veklaring di Antarmuka & Views**:
+     - `resources/views/layouts/app.blade.php`: Menu sidebar diperbarui menjadi **"Veklaring (Surat Referensi Kerja)"**.
+     - `resources/views/paklaring/index.blade.php`: Header modul, badge status, tabel, dan filter tab diselaraskan dengan kata Veklaring.
+     - `resources/views/paklaring/show.blade.php`: Detail permohonan, visual stepper 4 tahapan, kartu dokumen, dan modal approval diperbarui ke istilah Veklaring.
+     - `resources/views/paklaring/public_form.blade.php` & `create.blade.php`: Form permohonan mandiri & internal disesuaikan dengan judul *Form Request Veklaring*.
+     - `resources/views/paklaring/check_status.blade.php` & `success.blade.php`: Tampilan lacak status dan konfirmasi pengajuan diperbarui ke istilah Veklaring.
+     - `resources/views/paklaring/print_pdf.blade.php`: Kop surat resmi dan judul dicetak sebagai *SURAT KETERANGAN PENGALAMAN KERJA (VEKLARING)*.
+     - `resources/views/master/approval_workflow/index.blade.php`: Tab switcher modul approval diperbarui menjadi *Veklaring (Surat Referensi Kerja)*.
+  2. **Pembaruan Label Tahapan Dashboard Approval ("Review")**:
+     - `app/Models/Paklaring.php`: Method accessor `getBagianBadgeAttribute()` diperbarui menjadi:
+       - `Area` &rarr; `Review Area (ARO)` (badge indigo)
+       - `HRD` &rarr; `Review HRD` (badge amber)
+       - `DB` &rarr; `Review DB` (badge sky)
+       - `BPJS` &rarr; `Review BPJS` (badge emerald)
+     - `resources/views/paklaring/index.blade.php`: Label tab filter dashboard diubah menjadi *Review Area (ARO)*, *Review HRD*, *Review DB*, dan *Review BPJS*.
+     - `resources/views/paklaring/show.blade.php` & `check_status.blade.php`: Stepper tahapan approval diperbarui menjadi *1. Review Area*, *2. Review HRD*, *3. Review DB*, dan *4. Review BPJS*.
+     - Database & Seeder Alur Approval (`ApprovalWorkflowController.php`): Nama workflow dan 4 tahapan disinkronisasi di database SQLite lokal menjadi *Review Area (ARO / Admin Operasional)*, *Review HRD*, *Review Tim DB (Database)*, dan *Review Tim BPJS (Penerbitan No. Ref)*.
+  3. **Rekonstruksi Form Pencairan Deposit Sistem Lama**:
+     - Form pencairan deposit pada `resources/views/paklaring/public_form.blade.php` dan `create.blade.php` dipecah menjadi dua sub-seksi terstruktur persis seperti sistem lama:
+       - **Sub-seksi 1: Data Rekening Bank Pemohon - (Untuk Pencairan Deposit)**:
+         - `Nomor Rekening` (`name="nomorrekening"`, placeholder: "Nomor Rekening Pemohon")
+         - `Bank` (`name="bank"`, placeholder: "Bank")
+         - `Pemilik Rekening` (`name="namarekening"`, placeholder: "Nama Pemilik Rekening")
+         - `Jumlah Deposit` (`name="jmldeposit"`, placeholder: "Jumlah Deposit")
+         - `Buku Tabungan` (`name="bukutabungan"`, input file lampiran)
+       - **Sub-seksi 2: Data Bank Deposit - (Bank Tujuan Deposit)**:
+         - `Transfer Ke` (`name="kebank"`, dropdown pilihan resmi: BRIVA (Virtual Account), Mandiri, BRI, BNI, BSI)
+         - `Nomor Rekening / VA` (`name="kerekening"`, placeholder: "Rekening Tujuan Deposit")
+         - `Tanggal Deposit` (`name="tanggaldeposit"`, input tanggal)
+         - `Bukti Deposit` (`name="buktideposit"`, input file lampiran)
+  4. **Backend Controller & Data Normalization (`app/Http/Controllers/PaklaringController.php`)**:
+     - Menyesuaikan method `store()` untuk memvalidasi seluruh kolom baru maupun alias legacy deposit.
+     - Menangani multi-upload file bukti deposit (`buktideposit` / `bukti_deposit`) dan buku tabungan (`bukutabungan` / `buku_tabungan`).
+     - Membersihkan dan menormalisasi input nominal jumlah deposit dari karakter pemisah ribuan/rupiah menjadi format desimal tersanitasi.
+     - Menyimpan kolom `kebank`, `kerekening`, dan `tanggaldeposit` ke record `Paklaring`.
+     - Memperbarui flash message notifikasi (`hold`, `reject`, `returnBack`) ke istilah Veklaring.
+  5. **Rute & URL Aliases (`routes/web.php`)**:
+     - Menambahkan rute publik ramah pengguna: `/pengajuan-veklaring` dan `/cek-veklaring`.
+     - Menambahkan alias rute internal: `/veklaring` yang langsung mengarahkan ke dashboard approval.
+     - Mempertahankan backward compatibility untuk tautan `/pengajuan-paklaring` dan `/cek-paklaring`.
+- **Pengujian & Verifikasi**:
+  - Tes model badge dan database workflow: 100% Passed.
+  - Simulasi penyimpanan permohonan veklaring lengkap dengan 2 sub-seksi deposit: Data tersimpan utuh dan terverifikasi di SQLite lokal.
+  - Respon HTTP endpoint `/pengajuan-veklaring`: 200 OK.
+  - **Sistem tetap dijalankan di lokal sesuai instruksi (tidak dideploy ke server produksi).**
+
+---
+
+### 118. 📜 Standardisasi Redaksi Surat Keterangan Kerja (Veklaring), Integrasi Kop Entitas Resmi, & Desain Layout Profesional (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  1. Menyamakan format dan susunan redaksi surat rilis resmi (Surat Keterangan Kerja / Veklaring) persis seperti gambar yang dilampirkan oleh pengguna.
+  2. Menerapkan **Kop Entitas Resmi** yang selaras dengan kop surat pada modul *Surat Peringatan (SP)* sesuai 5 entitas resmi ESA Groups (PT Arina Multi Karya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Talenta Berkarya).
+  3. Meningkatkan estetika tata letak (*layout*) dokumen agar tampil lebih profesional, bersih, berwibawa, dan pas satu lembar A4 portrait saat dicetak atau diunduh ke format PDF.
+  4. Tetap dijalankan dan diuji di lingkungan lokal tanpa melakukan deploy ke server produksi.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Integrasi Kop Entitas Resmi (`app/Http/Controllers/PaklaringController.php`)**:
+     - Resolusi entitas otomatis berdasarkan data penempatan karyawan (`kantor` / `prinsiple`) ke 5 entitas resmi:
+       - `AMK` &rarr; `PT ARINA MULTI KARYA` (`kop/kopamknew.png` / `kop/KopAMK.png`)
+       - `AKP` &rarr; `PT ALVA KARYA PERKASA` (`kop/kopakp.png` / `kop/KopAKP.png`)
+       - `ATK` &rarr; `PT ANUGRAH TERPERCAYA KERJA` (`kop/kopatk.png` / `kop/KopATK.png`)
+       - `ABO` &rarr; `PT ARINA BINTANG OETAMA` (`kop/kopabo.png` / `kop/KopABO.png`)
+       - `ATB` &rarr; `PT ANUGRAH TALENTA BERKARYA` (`kop/kopatb.png` / `kop/KopATB.png`)
+     - Mengubah berkas kop surat ke dalam format Data URI Base64 (`$kopBase64`) dan URL aset (`$kopUrl`) sehingga selalu tampil jernih, tajam, dan langsung tertanam saat diprint tanpa kendala loading aset eksternal.
+  2. **Standardisasi Redaksi Surat Sesuai Format Resmi (`resources/views/paklaring/print_pdf.blade.php`)**:
+     - **Judul Dokumen**: `SURAT KETERANGAN` (huruf kapital tebal bergaris bawah), disertai nomor referensi resmi jika telah diterbitkan (`Nomor: {nomor_ref}`).
+     - **Pihak Pertama (Penandatangan)**:
+       - *"Yang bertanda tangan dibawah ini :"*
+       - `NAMA    : Nurul Yuliastuti` (bold)
+       - `Alamat  : Jl.Rajawali No.18 Surabaya`
+       - `Jabatan : Head HRD`
+     - **Pihak Kedua (Karyawan)**:
+       - *"Menerangkan dengan sebenarnya bahwa :"*
+       - `Nama    : {nama_lengkap}`
+       - `NIK     : {nik}`
+       - `Alamat  : {alamat}`
+       - `Bagian  : {jabatan}` (uppercase)
+     - **Pernyataan Masa Bekerja**:
+       - *"Karyawan diatas Pernah Bekerja di **{NAMA ENTITAS}**"*
+       - *"Sejak : **{tgl_masuk} s/d {tgl_keluar}**"* (format nama bulan bahasa Indonesia, misal: *26 Februari 2024 s/d 01 Juni 2025*).
+     - **Kalimat Penutup**:
+       - *"Demikian Surat Keterangan dibuat untuk dapat dipergunakan sebagaimana mestinya"*
+     - **Blok Penandatanganan & Verifikasi**:
+       - Tempat & tanggal terbit: `Surabaya, {tanggal_terbit}`
+       - Nama entitas: `{Nama Entitas Title Case}` (misal: *PT. Anugrah Terpercaya Kerja*)
+       - **QR Code Resmi** berdimensi presisi (125x125 px) yang dapat di-scan secara real-time untuk memverifikasi keaslian surat ke endpoint publik portal.
+       - Tanda tangan digital atas nama: **<u>Nurul Yuliastuti</u>** (Head HRD).
+  3. **Desain Layout Dokumen Profesional**:
+     - Dimensi lembar dokumen standar A4 portrait (210mm x 297mm) dengan margin rapi.
+     - Tipografi korporat resmi (*Tinos / Times New Roman serif*) dengan hierarki pembacaan yang proporsional.
+     - Perataan titik dua (`:`) sejajar sempurna menggunakan tabel data tanpa border.
+     - Mode cetak `@media print` yang mengoptimalkan layout pas 1 lembar A4 tanpa halaman kedua kosong, serta otomatis menyembunyikan action bar navigasi.
+     - **Watermark Kode Validasi Diagonal**:
+       - Menambahkan watermark teks berukuran besar (font-size 68pt) berisi kode validasi permohonan (`kode_validasi`, misal `X2XLLSSW`) dengan posisi persis di tengah dokumen secara diagonal (rotasi `-35deg`).
+       - Dibuat dengan transparansi halus (`color: rgba(100, 116, 139, 0.08)`) serta `print-color-adjust: exact;` sehingga tampak elegan di layar dan tetap tercetak otentik di belakang konten dokumen tanpa mengganggu keterbacaan teks utama.
+     - **Penyesuaian Footer Dokumen**:
+       - Menghilangkan teks tautan *"Verifikasi keaslian surat: http://..."* pada sisi kanan bawah dokumen.
+       - Mengganti label *"ASystem Official Digital Certificate"* menjadi nama entitas resmi, misal: *"{Nama Entitas} Digital Certificate • Kode Validasi: {kode_validasi}"* (contoh: `PT. Anugrah Terpercaya Kerja Digital Certificate • Kode Validasi: X2XLLSSW`).
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji rendering view `print_pdf` dengan entitas default maupun varian entitas `ATK`, `AMK`, `AKP`, `ABO`, `ATB`: Seluruh kop gambar base64 berhasil dimuat utuh.
+  - Tanggal masuk, tanggal keluar, dan tanggal terbit terformat dalam bahasa Indonesia standar.
+  - Watermark kode validasi diagonal di tengah surat dan teks footer terverifikasi bersih dan elegan sesuai permintaan.
+  - Status HTTP response: 200 OK.
+  - **Sistem tetap dijalankan di lokal sesuai instruksi (tidak dideploy ke server produksi).**
+
+---
+
+### 119. 📄 Migrasi Render Surat Resmi Veklaring Menjadi File PDF Native Inline (mPDF) (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  - Mengubah output rilis surat keterangan kerja (Veklaring) agar tidak berupa halaman perantara web HTML biasa, melainkan **langsung berbentuk berkas PDF murni** (`application/pdf`) yang terbuka di PDF viewer browser, persis seperti mekanisme pada modul *Surat Peringatan (SP)*.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Integrasi Engine mPDF (`app/Http/Controllers/PaklaringController.php`)**:
+     - Mengimpor namespace `Mpdf\Mpdf` dan membuat method `generatePdfContent(Paklaring $paklaring): string` untuk merender template PDF secara native.
+     - Mengonfigurasi mPDF: kertas A4 portrait, margin kiri/kanan 20mm, margin atas 14mm, margin bawah 16mm, font resmi `times`.
+     - Mengimplementasikan **Watermark Kode Validasi Diagonal** bawaan mPDF (`$mpdf->SetWatermarkText($paklaring->kode_validasi, 0.08); $mpdf->showWatermarkText = true;`) sehingga watermark tertanam presisi secara diagonal di tengah halaman pada layer PDF.
+     - Method `printPdf($id)` kini langsung mengembalikan HTTP Response binary:
+       ```php
+       return response($pdfString, 200, [
+           'Content-Type' => 'application/pdf',
+           'Content-Disposition' => "inline; filename=\"{$filename}\"",
+       ]);
+       ```
+  2. **Template Khusus mPDF (`resources/views/paklaring/pdf.blade.php`)**:
+     - Dibuat khusus untuk engine mPDF dengan CSS cetak presisi.
+     - Kop surat resmi entitas dimuat melalui Base64 Data URI dari folder `public/kop/`.
+     - QR Code verifikasi online di-cache secara otomatis di `storage/app/public/qrcodes/` agar dapat dibaca langsung dari disk lokal tanpa latensi jaringan.
+     - Redaksi surat, data pihak pertama (Nurul Yuliastuti - Head HRD), data karyawan, riwayat masa kerja, penutup, dan tanda tangan tersusun presisi 1 lembar A4.
+     - Footer sertifikat digital menggunakan `<htmlpagefooter name="veklaringFooter">`:
+       `{Nama Entitas} Digital Certificate • Kode Validasi: {kode_validasi}`.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji eksekusi `printPdf` menghasilkan binary stream PDF valid (`%PDF-1.4`, 128.266 bytes).
+  - Header HTTP terverifikasi: `Content-Type: application/pdf`, `Content-Disposition: inline; filename="Veklaring_X2XLLSSW_BUDI_SANTOSO.pdf"`.
+  - Tautan tombol "Cetak Surat (PDF)" di halaman detail permohonan langsung menampilkan dokumen PDF di tab baru browser.
+  - **Sistem tetap dijalankan di lokal sesuai instruksi (tidak dideploy ke server produksi).**
+
+---
+
+### 120. 📝 Pemisahan Form Pencairan Deposit dari Form Veklaring & Fleksibilitas Penerbitan No. Ref di Step DB / BPJS (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  1. Memisahkan form pengajuan Pencairan Deposit dari Form Pengajuan Surat Keterangan Kerja (Veklaring). Detail form pencairan deposit mandiri akan dikembangkan pada update fitur selanjutnya.
+  2. Fleksibilitas penerbitan Nomor Referensi (`nomor_ref`): nomor referensi kini dapat diterbitkan langsung pada **Step DB** maupun di **Step BPJS**.
+  3. Pada **Step DB**, approver memiliki 3 opsi tindakan yang jelas:
+     - **Kembalikan ke Area**: Jika berkas persyaratan belum lengkap, disertai catatan perbaikan.
+     - **Approve (Surat Rilis)**: Langsung rilis surat keterangan kerja resmi dengan penerbitan No. Ref, status berubah menjadi `Selesai` dan surat PDF langsung dapat dicetak.
+     - **Lanjut ke Step BPJS**: Meneruskan berkas pengajuan ke Step 4 (Tim BPJS) untuk proses verifikasi kepesertaan dan penomoran.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Pembersihan Seksi Deposit dari Form Veklaring**:
+     - `resources/views/paklaring/public_form.blade.php`: Menghapus seksi pencairan deposit (nomor rekening, nama rekening, bank, jumlah deposit, buku tabungan, bank tujuan transfer, bukti transfer) dan toggle `hasDeposit`. Form veklaring kini murni fokus pada identitas pemohon, riwayat kerja, dan berkas persyaratan utama.
+     - `resources/views/paklaring/create.blade.php`: Menghapus seksi deposit dari form permohonan internal admin.
+     - `app/Http/Controllers/PaklaringController.php`: Method `store()` menyesuaikan pemrosesan deposit sebagai data opsional/pasif (`status_deposit = 'Tidak'`).
+     - `resources/views/paklaring/show.blade.php`: Panel rincian deposit pada kolom kiri hanya dimunculkan jika data permohonan tersebut secara spesifik memiliki deposit (`status_deposit === 'Ya'`).
+  2. **Logika & Helper Penerbitan No. Ref Reusable (`app/Services/PaklaringApprovalService.php`)**:
+     - Membuat static method `generateNomorRef(Paklaring $paklaring, ?string $manualRef, ?int $manualUrut, ?Carbon $date): array` yang menyusun nomor urut register buku dan nomor surat standar ESA Groups `{nomor_urut}/SKK/{kantor}/{monthRoman}/{year}`.
+     - Method `approveDb()` diperbarui untuk menerima parameter `action_type`:
+       - `'selesai'`: Memanggil `generateNomorRef()`, mengubah status bagian menjadi `'Selesai'`, status `'Selesai'`, `current_step_order = 5`, serta mencatat approval rilis surat resmi.
+       - `'bpjs'`: Menyimpan nomor ref (jika diisi) dan meneruskan berkas ke status bagian `'BPJS'`, status `'Proses'`, `current_step_order = 4`.
+     - Method `approveBpjs()` diselaraskan menggunakan `generateNomorRef()` dan mempertahankan No. Ref jika sudah terisi sebelumnya di Step DB.
+  3. **Pengembangan Controller Step DB (`app/Http/Controllers/PaklaringController.php`)**:
+     - Memperbarui method `approveDb()` untuk memvalidasi `action_type` (`in:bpjs,selesai,return_area`).
+     - Jika `'return_area'`: memanggil `PaklaringApprovalService::returnBack($paklaring, $user, 'Area', $catatan)` dan mengembalikan feedback sukses pengembalian ke Tim Area.
+     - Jika `'selesai'`: memproses rilis surat resmi dan memberikan feedback penerbitan surat selesai.
+     - Jika `'bpjs'`: meneruskan berkas ke Tim BPJS.
+  4. **Antarmuka Interaktif Step DB (`resources/views/paklaring/show.blade.php`)**:
+     - Mengimplementasikan radio cards interaktif berbasis Alpine.js dengan 3 pilihan:
+       1. *Lanjut ke Step BPJS* (Aksen Cyan - meneruskan ke verifikasi BPJS).
+       2. *Approve (Surat Rilis)* (Aksen Emerald - rilis surat langsung selesai).
+       3. *Kembalikan ke Area* (Aksen Amber - jika berkas/persyaratan belum lengkap).
+     - Menampilkan panel penerbitan nomor referensi kerja dan nomor register urut buku otomatis/manual saat opsi *Approve (Surat Rilis)* atau *Lanjut ke BPJS* dipilih.
+     - Tombol submit formulir menyesuaikan warna dan teks secara dinamis berdasarkan opsi keputusan yang dipilih approver.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji Form Publik: Route `/pengajuan-veklaring` render dengan kode HTTP 200 tanpa sisa kolom/input deposit.
+  - Uji Skenario Step DB via test script (`test_db_step.php`):
+    - Skenario A (Kembalikan ke Area): Status bagian berhasil kembali ke 'Area', step order 1.
+    - Skenario B (Approve Surat Rilis di DB): Status menjadi 'Selesai', nomor ref otomatis terbit (`0002/SKK/AMK/X/2026`), dan berkas PDF native mPDF (107KB) terverifikasi valid.
+    - Skenario C (Lanjut ke BPJS): Status bagian berhasil diteruskan ke 'BPJS' (step order 4), dan saat diapprove di Step BPJS status final menjadi 'Selesai'.
+  - Uji Render View Detail (`test_render_show.php`): Seluruh elemen UI Step DB render mulus (209KB HTML) tanpa error.
+  - **Sistem tetap dijalankan di lokal sesuai instruksi (tidak dideploy ke server produksi).**
+
+---
+
+### 121. 🎯 Pembatasan Tab "Semua" Khusus Administrator & On Focus Otomatis Tab Approver Sesuai Step Approval (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  1. Tab navigation **"Semua"** di dashboard pengajuan Veklaring hanya boleh ditampilkan untuk akun **Administrator** (`role === 'admin'`). Untuk akun approver biasa/non-admin, tab "Semua" disembunyikan agar antarmuka fokus pada beban kerja masing-masing.
+  2. Untuk akun **Approver**: saat pertama kali membuka dashboard approval Veklaring (on focus awal / tanpa parameter `tab`), sistem secara otomatis langsung memfokuskan dan membuka tab yang sesuai dengan **Step Approval** yang menjadi wewenang/penugasan akun tersebut:
+     - Approver Step 1 (Area / ARO) &rarr; on focus ke Tab `Review Area (ARO)` (`tab=area`).
+     - Approver Step 2 (HRD) &rarr; on focus ke Tab `Review HRD` (`tab=hrd`).
+     - Approver Step 3 (Tim DB) &rarr; on focus ke Tab `Review DB` (`tab=db`).
+     - Approver Step 4 (Tim BPJS) &rarr; on focus ke Tab `Review BPJS` (`tab=bpjs`).
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Layanan Identifikasi Step Approval User (`app/Services/PaklaringApprovalService.php`)**:
+     - Membuat method statik `getDefaultTabForUser(?User $user): string`:
+       - Jika user Administrator (`$user->isAdmin()`): default tab tetap `'all'`.
+       - Mengevaluasi role dan job title pengguna secara spesifik (misal role/job mengandung `'bpjs'` &rarr; `'bpjs'`, `'db'` / `'database'` &rarr; `'db'`).
+       - Mengevaluasi penugasan user di master `ApprovalWorkflow` modul `paklaring` (baik melalui tabel pivot `stepUsers` maupun konfigurasi matriks `approval_rules`).
+       - Fallback role HRD &rarr; `'hrd'`, fallback staf operasional area / ARO &rarr; `'area'`.
+     - Membuat helper `mapStepOrderToTab(int $stepOrder): string` untuk konversi nomor step approval (1, 2, 3, 4) menjadi alias tab dashboard (`'area'`, `'hrd'`, `'db'`, `'bpjs'`).
+  2. **Resolusi Tab di Controller (`app/Http/Controllers/PaklaringController.php`)**:
+     - Pada method `index()`, sistem memeriksa hak akses admin (`$isAdmin = $user && ($user->isAdmin() || $user->role === 'admin');`).
+     - Jika parameter query `tab` kosong (on focus awal) ATAU jika user non-admin mencoba memanggil `tab=all`, controller otomatis mengarahkan `$tab` ke default tab step approval user (`PaklaringApprovalService::getDefaultTabForUser($user)`).
+  3. **Antarmuka & Efek Visual On Focus (`resources/views/paklaring/index.blade.php`)**:
+     - Membungkus tombol tab **"Semua"** dengan proteksi Blade `@if(Auth::user() && (Auth::user()->isAdmin() || Auth::user()->role === 'admin'))` sehingga tidak dirender sama sekali untuk akun approver non-admin.
+     - Menyematkan atribut `id="activeApprovalTab"` secara dinamis pada tab yang sedang aktif.
+     - Menambahkan script JavaScript otomatis `activeTab.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })` agar bilah tab horizontal langsung terfokus ke tab aktif approver pada layar perangkat.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji Akun Administrator: Tab default terverifikasi `'all'`, dan tab "Semua" tampil utuh pada HTML view.
+  - Uji Akun Approver BPJS: Tab default otomatis `'bpjs'`, tab "Semua" tidak muncul di antarmuka, dan tab "Review BPJS" berstatus aktif dengan styling hijau.
+  - Uji Akun Approver DB: Tab default otomatis `'db'`, tab "Semua" tidak muncul, dan tab "Review DB" aktif dengan styling cyan.
+  - Uji Akun Approver HRD: Tab default otomatis `'hrd'`, tab "Semua" tidak muncul, dan tab "Review HRD" aktif dengan styling ungu.
+  - Uji Akun Approver Area: Tab default otomatis `'area'`, tab "Semua" tidak muncul, dan tab "Review Area (ARO)" aktif dengan styling indigo.
+  - **Sistem tetap dijalankan di lokal sesuai instruksi (tidak dideploy ke server produksi).**
+
+---
+
+### 122. 📁 Fitur Drag & Drop Lampiran Dokumen, Preview Thumbnail, Client-Side Image Resizing & Batasan Ukuran Berkas 2MB (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  1. Bagian input lampiran persyaratan dokumen formulir permohonan Veklaring (`public_form.blade.php` & `create.blade.php`) dibuat interaktif mendukung mekanisme **Drag & Drop** berkas (tarik & lepas file ke kotak dropzone).
+  2. Terdapat **Preview Thumbnail** file yang diunggah: menampilkan thumbnail gambar mini beresolusi jelas untuk berkas gambar (dengan fitur zoom modal SweetAlert2 saat diklik) dan ikon badge representatif PDF untuk berkas dokumen PDF beserta nama dan ukuran berkas.
+  3. Berkas gambar yang diunggah secara otomatis dilakukan **Auto Resize & Kompresi** cerdas di sisi browser client menggunakan HTML5 Canvas sebelum dikirim, sehingga file foto kamera beresolusi tinggi (5–15MB) mengecil menjadi ukuran yang ringan (~200KB - 800KB) dengan kualitas visual dokumen tetap tajam dan jernih.
+  4. Batas maksimal ukuran berkas yang diperbolehkan adalah **2MB**. Jika file melebihi 2MB (setelah dicoba resize untuk gambar, atau file asli untuk PDF), sistem menampilkan notifikasi peringatan SweetAlert2 yang sangat jelas dan informatif menyebutkan nama file dan ukuran aktualnya serta membatalkan pemilihan berkas.
+  5. Sisi server-side (`PaklaringController.php`) juga memperketat batas validasi upload menjadi `max:2048` (2MB), menambahkan format `webp`, dan menerapkan fallback kompresi/resizing PHP GD melalui `storeOptimizedFile()`.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Komponen Alpine.js `fileDropzone` Reusable**:
+     - Dibuat komponen modular `fileDropzone(config)` yang menangani drag & drop event (`dragover`, `dragleave`, `drop`), pemilihan file manual melalui tombol / klik dropzone (`triggerChoose`), pembersihan file (`clearFile`), dan preview perbesar gambar (`previewFullImage`).
+     - Logika `resizeAndCompressImage(file, maxW, maxH, quality)` menggunakan HTML5 Canvas dengan batas resolusi 1600px dan kualitas JPEG 0.82. Jika ukuran masih mendekati 2MB, dilakukan kompresi sekunder bertahap.
+     - Objek file hasil resize dimasukkan ke elemen `<input type="file">` native menggunakan API `DataTransfer()`, sehingga form submission native Laravel menerima file gambar yang sudah terkompresi.
+     - Notifikasi SweetAlert2 peringatan ukuran berkas `> 2MB` menyajikan rincian nama berkas, ukuran aktual dalam MB (teks merah tebal), batas maksimal 2.00 MB, dan instruksi penyesuaian bagi penginput.
+  2. **Pembaruan Formulir Publik & Admin**:
+     - `resources/views/paklaring/public_form.blade.php`: Seluruh 6 dokumen lampiran wajib (`foto_ktp`, `form_request`, `exit_cl`, `pengunduran_diri`, `kartu_bpjs`, `serah_terima`) serta berkas opsional `surat_cl` diperbarui menggunakan kotak dropzone modern dengan thumbnail preview, indikator auto resize, dan tombol ganti/hapus berkas.
+     - `resources/views/paklaring/create.blade.php`: Diterapkan komponen dropzone yang sama untuk form internal admin.
+     - Penanganan validasi formulir saat submit (`handleSubmit`) memastikan seluruh dokumen persyaratan wajib telah diunggah sebelum data dikirimkan, mencegah error `not focusable` pada browser Chromium.
+  3. **Proteksi & Optimasi Server-Side (`app/Http/Controllers/PaklaringController.php`)**:
+     - Validasi backend diubah dari `max:4096` menjadi `max:2048` (2MB per berkas) dan menambahkan `webp` pada format yang diizinkan (`jpeg,jpg,png,webp,pdf`).
+     - Pesan error kustom berbahasa Indonesia untuk setiap jenis lampiran.
+     - Menambahkan method private `storeOptimizedFile($file, $folder, $filename)` yang memanfaatkan ekstensi PHP `gd` untuk meresize gambar server-side jika diperlukan.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji rendering Blade view `public_form.blade.php` (149KB HTML) dan `create.blade.php` (271KB HTML) sukses tanpa error sintaks.
+  - Uji live HTTP response route `/pengajuan-paklaring` menghasilkan status 200 OK dengan komponen dropzone dan script terverifikasi aktif.
+  - **Sesuai instruksi: Kode tidak dideploy ke server produksi, tetap berjalan dan diverifikasi di server lokal.**
+
+---
+
+### 123. 🔍 Dropdown Searchable Prinsiple & Area, Penyederhanaan Form (Dihilangkannya Alasan Berhenti & Tanggal Kerja), serta Optimalisasi Mobile Responsiveness Form Veklaring (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  1. Inputan pilihan **Prinsiple / Mitra Rekanan** dan **Area / Cabang Penempatan** pada formulir pengajuan surat keterangan kerja (Veklaring) dibuat **Searchable** sehingga karyawan dapat langsung mengetikkan nama prinsiple atau kota/cabang area untuk mempercepat pencarian.
+  2. Input **Alasan Berhenti / Resign** dihilangkan dari antarmuka visual form.
+  3. Input **Tanggal Masuk Kerja (Mulai PK)** dan **Tanggal Keluar / Akhir Kerja (Selesai PK)** dihilangkan dari form permohonan.
+  4. Memastikan tampilan form sangat **responsif di layar smartphone/ponsel** mengingat mayoritas karyawan mengakses dan menginput permohonan melalui ponsel.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Komponen Searchable Dropdown Interaktif (Alpine.js)**:
+     - Diterapkan pada `resources/views/paklaring/public_form.blade.php` (form publik) dan `resources/views/paklaring/create.blade.php` (form internal admin).
+     - **Trigger Button Touch-Friendly**: Didesain dengan ukuran touch target standar ponsel (`min-h-[44px]`), rounded-xl, label terpilih dinamis dengan placeholder informatif, tombol silang (*clear*) untuk membatalkan pilihan, dan panah chevron animasi rotasi 180° saat panel terbuka.
+     - **Popup Panel Pencarian**: Menggunakan absolute floating card (`z-50`) dengan shadow halus, dilengkapi search input field yang otomatis terfokus (*autofocus* via `$nextTick()`) saat dibuka, tombol reset teks cari, dan listbox scrollable `max-h-60 sm:max-h-56` dengan `overscroll-contain` untuk navigasi sentuh yang nyaman di layar HP.
+     - **Touch Targets Ergonomis**: Setiap item pilihan memiliki tinggi minimal `min-h-[42px]` dengan padding vertikal yang lega (`py-3 sm:py-2.5`) sehingga mudah ditekan menggunakan jari tanpa risiko salah klik (*fat-finger friendly*).
+     - **Data Binding Native**: Nilai yang dipilih disinkronkan secara realtime ke `<input type="hidden" name="prinsiple">` dan `<input type="hidden" name="area">` sehingga form submission native Laravel menerima value secara sempurna.
+  2. **Penyederhanaan Form & Integritas Data**:
+     - Kolom `alasan` dihilangkan dari antarmuka visual pengguna dan disematkan sebagai input tersembunyi berpenilai default `<input type="hidden" name="alasan" value="Mengundurkan Diri">` sehingga tidak melanggar integritas skema database `paklarings`.
+     - Kolom `tgl_masuk` dan `tgl_keluar` dihilangkan sepenuhnya dari tampilan visual penginput (pada database bernilai `nullable()`, dan diverifikasi oleh tim operasional/area saat validasi berkas).
+     - Field **Jabatan Terakhir** diperlebar menjadi full-width (`sm:col-span-2`) pada Section 2 agar penamaan jabatan yang panjang dapat tampil rapi dan nyaman dibaca.
+  3. **Optimalisasi Mobile Responsiveness**:
+     - Seluruh touch target pada Section 1 (Identitas Diri: NIK, Nama Lengkap, Tempat & Tanggal Lahir, Jenis Kelamin, No. WhatsApp, Email, Alamat Domisili) dan Section 2 diperbarui dengan tinggi minimum standar `min-h-[44px]`.
+     - Layout dirancang adaptif 1 kolom penuh pada smartphone (`grid-cols-1`) dan 2 kolom pada tablet/desktop (`sm:grid-cols-2`), dengan jarak padding kartu yang proporsional di layar sempit.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji rendering Blade view `public_form.blade.php` (147KB HTML) dan `create.blade.php` (271KB HTML) sukses tanpa error sintaks.
+  - Uji response live endpoint `http://127.0.0.1:8000/pengajuan-paklaring`:
+    - Searchable Prinsiple: **YES** (data `allPrinciples` aktif).
+    - Searchable Area: **YES** (data `allAreas` aktif).
+    - Input visual Alasan Berhenti dihapus: **YES**.
+    - Input visual Tanggal Masuk dihapus: **YES**.
+    - Input visual Tanggal Keluar dihapus: **YES**.
+---
+
+### 124. 📄 Penambahan Tombol Unduh Surat Resmi Rilis di Halaman Cek Status & Pembuatan Halaman Validasi Keabsahan Dokumen Hasil Scan QR Code (01 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  1. Pada halaman pelacakan / cek status pengajuan veklaring (`/cek-paklaring`), belum tersedia tombol untuk mengunduh berkas surat keterangan kerja (PDF) yang sudah resmi terbit/rilis.
+  2. Dibutuhkan **Halaman Validasi Resmi** yang otomatis muncul saat **QR Code pada fisik surat di-scan** melalui kamera ponsel/pemindai QR, menampilkan seluruh data pengajuan paklaring karyawan tersebut secara terverifikasi, transparan, dan sah.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Tombol Unduh Surat Rilis di Halaman Cek Status (`resources/views/paklaring/check_status.blade.php`)**:
+     - Ditambahkan kartu aksi interaktif berdesain *emerald-teal gradient* pada riwayat pengajuan yang telah berstatus `Selesai` atau telah memiliki `nomor_ref`.
+     - Menyediakan tombol utama: **"Unduh Surat Veklaring (PDF)"** (`min-h-[44px]`, ikon unduh dokumen) dan tombol pendamping: **"Verifikasi Keaslian QR"** (ikon perisai perlindungan).
+     - Menghubungkan ke route unduh publik baru: `route('paklaring.public.download', $item->kode_validasi)` (`/cek-paklaring/{kode}/download`).
+     - Tampilan 100% responsif di ponsel dengan tombol tersusun rapi dan nyaman ditekan menggunakan jari.
+  2. **Halaman Validasi Keabsahan Dokumen Hasil Scan QR Code (`resources/views/paklaring/verify.blade.php`)**:
+     - Dibuat route publik khusus: `Route::get('/validasi-paklaring/{kode}', [PaklaringController::class, 'verifyQrCode'])->name('paklaring.public.verify');` beserta alias `/validasi-veklaring/{kode}` dan `/verifikasi-paklaring/{kode}`.
+     - **Tampilan Sertifikat Verifikasi Digital Kelas Enterprise**:
+       - Badge status otentikasi dokumen: **"DOKUMEN RESMI TERVERIFIKASI"** dengan ikon perisai centang besar bercahaya.
+       - Pita identitas surat: **Nomor Surat Referensi Kerja Resmi** dan **Kode Unik Validasi Dokumen**.
+       - **Rincian Data Karyawan & Pekerjaan**: Nama Lengkap Karyawan, NIK terproteksi, Jabatan Terakhir, Prinsiple/Mitra Rekanan, Cabang Area Penempatan, Periode Masa Kerja (Mulai PK s/d Akhir PK), Entitas Perusahaan Penerbit Surat (PT Arina Multikarya, PT Alva Karya Perkasa, dsb.), Pejabat Pengesah (Head HRD), serta Tanggal Terbit Dokumen.
+       - **Audit Trail Pengesahan Bertingkat**: Visualisasi 4 tahapan approval (1. Tim Area, 2. Tim HRD, 3. Tim Database, 4. Tim BPJS) yang seluruhnya terkonfirmasi disetujui.
+       - **Pernyataan Keaslian Hukum**: Keterangan resmi keabsahan dokumen elektronik berkekuatan hukum yang dilindungi enkripsi ASystem Portal.
+       - **Tombol Aksi**: Tombol cepat untuk mengunduh berkas PDF resmi serta tautan pencarian dokumen lain.
+       - **Penanganan Kondisi Khusus**: Tampilan informatif yang ramah jika dokumen masih berstatus dalam proses atau jika kode dokumen tidak terdaftar.
+  3. **Pembaruan Target QR Code Surat PDF (`PaklaringController.php` & `pdf.blade.php`)**:
+     - Memperbarui variabel `$qrVerifyUrl` di generator mPDF agar langsung mengarah ke halaman validasi (`route('paklaring.public.verify', ['kode' => $paklaring->kode_validasi])`).
+     - Menggunakan sistem cache gambar QR lokal baru (`storage/app/public/qrcodes/QR_VERIFY_{kode}.png`) untuk performa render mPDF instan tanpa jeda koneksi.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji Halaman Cek Status (`http://127.0.0.1:8000/cek-paklaring?q=X2XLLSSW`): HTTP 200, tombol "Unduh Surat Veklaring (PDF)" dan tombol "Verifikasi Keaslian QR" terverifikasi tampil dengan sempurna.
+  - Uji Halaman Validasi QR (`http://127.0.0.1:8000/validasi-paklaring/X2XLLSSW`): HTTP 200, status "Dokumen Resmi Terverifikasi", nama karyawan "BUDI SANTOSO", nomor surat "0001/SKK/AMK/X/2026", entitas "PT ARINA MULTI KARYA", serta audit trail tampil lengkap dan responsif.
+  - Uji Unduh PDF Publik (`http://127.0.0.1:8000/cek-paklaring/X2XLLSSW/download`): HTTP 200, Content-Type `application/pdf`, header biner `%PDF` valid (106 KB).
+  - **Sesuai instruksi: Sistem tetap berjalan dan diverifikasi di server lokal, tidak dideploy ke server produksi.**
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
    ```bash
    php artisan serve --port=8000
    ```
-2. **Akses Dashboard & Fitur**:
+2. **Akses Modul Paklaring**:
+   - Form Pengajuan Publik: `http://127.0.0.1:8000/pengajuan-paklaring`
+   - Cek Status Pengajuan: `http://127.0.0.1:8000/cek-paklaring`
+   - Dashboard Approval Paklaring (Internal): `http://127.0.0.1:8000/paklaring`
+   - Pengaturan Alur Approver Paklaring: `http://127.0.0.1:8000/master/approval-workflow?module=paklaring`
+3. **Akses Dashboard & Fitur Lainnya**:
    - Surat Peringatan (SP): `http://127.0.0.1:8000/warning-letters`
    - Setting Alur Approver SP: `http://127.0.0.1:8000/master/approval-workflow?module=surat_peringatan`
    - Halaman Beranda: `http://127.0.0.1:8000/fitur`

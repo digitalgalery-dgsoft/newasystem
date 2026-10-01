@@ -42,6 +42,11 @@
             <i class="fa-solid fa-triangle-exclamation text-amber-500 text-xs"></i>
             <span>Surat Peringatan (SP)</span>
         </a>
+        <a href="{{ route('master.approval-workflow.index', ['module' => 'paklaring']) }}" 
+           class="px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 {{ ($module ?? 'kandidat_inhouse') === 'paklaring' ? 'bg-white text-primary shadow-xs font-black' : 'text-slate-600 hover:text-slate-900' }}">
+            <i class="fa-solid fa-file-contract text-cyan-600 text-xs"></i>
+            <span>Veklaring (Surat Referensi Kerja)</span>
+        </a>
     </div>
 
     <!-- Header Section -->

@@ -1397,6 +1397,20 @@
                             </a>
                         </li>
                         @endif
+
+                        <!-- VEKLARING (SURAT REFERENSI KERJA) -->
+                        <li>
+                            <a href="{{ route('paklaring.index') }}" 
+                               title="Veklaring (Surat Referensi Kerja)"
+                               class="flex items-center rounded-xl text-sm font-semibold transition-all {{ request()->routeIs('paklaring.*') ? 'bg-cyan-50 text-cyan-800 shadow-xs' : 'text-slate-700 hover:bg-slate-50 hover:text-cyan-700' }}"
+                               :class="sidebarCollapsed ? 'justify-center px-0 py-2.5' : 'gap-3 px-3.5 py-2.5'">
+                                <i class="fa-solid fa-file-contract text-base w-5 text-center flex-shrink-0 {{ request()->routeIs('paklaring.*') ? 'text-cyan-700' : 'text-slate-400' }}"></i>
+                                <span x-show="!sidebarCollapsed" class="truncate">Veklaring</span>
+                                @if(request()->routeIs('paklaring.*'))
+                                    <span x-show="!sidebarCollapsed" class="w-1.5 h-1.5 rounded-full bg-cyan-700 ml-auto"></span>
+                                @endif
+                            </a>
+                        </li>
                     </ul>
                 </div>
 

@@ -28,12 +28,24 @@ class ApprovalWorkflowController extends Controller
 
         if (!$workflow) {
             $isSP = ($module === 'surat_peringatan');
+            $isPaklaring = ($module === 'paklaring');
+
+            $wfName = match($module) {
+                'surat_peringatan' => 'Alur Approval Surat Peringatan',
+                'paklaring' => 'Alur Approval Veklaring (Surat Referensi Kerja)',
+                default => 'Alur Approval Kandidat Inhouse',
+            };
+
+            $wfDesc = match($module) {
+                'surat_peringatan' => 'Alur persetujuan bertingkat penerbitan Surat Peringatan (Tahap 1: Pimpinan Pembuat, Tahap 2: Approval HRD).',
+                'paklaring' => 'Alur approval bertingkat penerbitan Surat Referensi Kerja / Veklaring (1. Review Area -> 2. Review HRD -> 3. Review DB -> 4. Review BPJS).',
+                default => 'Alur approval bertingkat dinamis untuk kandidat inhouse 5 entitas resmi perusahaan.',
+            };
+
             $workflow = ApprovalWorkflow::create([
                 'module' => $module,
-                'name' => $isSP ? 'Alur Approval Surat Peringatan' : 'Alur Approval Kandidat Inhouse',
-                'description' => $isSP 
-                    ? 'Alur persetujuan bertingkat penerbitan Surat Peringatan (Tahap 1: Pimpinan Pembuat, Tahap 2: Approval HRD).' 
-                    : 'Alur approval bertingkat dinamis untuk kandidat inhouse 5 entitas resmi perusahaan.',
+                'name' => $wfName,
+                'description' => $wfDesc,
                 'is_active' => true,
             ]);
 
@@ -63,6 +75,92 @@ class ApprovalWorkflowController extends Controller
                 ]);
 
                 // Auto seed initial HRD users if available
+                $hrdUsers = User::where('is_active', true)
+                    ->where(function($q) {
+                        $q->whereIn('role', ['admin', 'hrd', 'head_hr', 'hr_manager', 'hr_staff'])
+                          ->orWhere('job_title', 'like', '%HR%');
+                    })->take(5)->get();
+
+                if ($hrdUsers->isNotEmpty()) {
+                    $rules = [
+                        [
+                            'id' => 'rule_' . uniqid(),
+                            'area' => 'ALL',
+                            'prinsiple' => 'ALL',
+                            'user_ids' => $hrdUsers->pluck('id')->toArray(),
+                            'users' => $hrdUsers->map(fn($u) => [
+                                'id' => $u->id,
+                                'name' => $u->name,
+                                'email' => $u->email,
+                                'job_title' => $u->job_title,
+                                'role' => $u->role,
+                            ])->toArray(),
+                        ]
+                    ];
+                    $step2->update(['approval_rules' => $rules]);
+                    foreach ($hrdUsers as $u) {
+                        ApprovalWorkflowStepUser::create([
+                            'step_id' => $step2->id,
+                            'user_id' => $u->id,
+                            'area' => 'ALL',
+                            'prinsiple' => 'ALL',
+                            'user_name' => $u->name,
+                            'user_email' => $u->email,
+                        ]);
+                    }
+                }
+
+                $workflow->load(['steps.stepUsers.user', 'steps.stepUsers.employee']);
+            } elseif ($isPaklaring) {
+                // Auto seed Step 1: Review Area (ARO / Admin Operasional)
+                ApprovalWorkflowStep::create([
+                    'workflow_id' => $workflow->id,
+                    'step_order' => 1,
+                    'step_name' => 'Review Area (ARO / Admin Operasional)',
+                    'approver_type' => 'user',
+                    'area_scope' => 'ALL',
+                    'entity_scope' => 'ALL',
+                    'skip_if_direksi' => false,
+                    'description' => 'Pemeriksaan berkas pengunduran diri, serah terima aset, exit clearance, tanggal kerja, ekspedisi & resi oleh tim Area.',
+                ]);
+
+                // Auto seed Step 2: Review HRD
+                $step2 = ApprovalWorkflowStep::create([
+                    'workflow_id' => $workflow->id,
+                    'step_order' => 2,
+                    'step_name' => 'Review HRD',
+                    'approver_type' => 'user',
+                    'area_scope' => 'ALL',
+                    'entity_scope' => 'ALL',
+                    'skip_if_direksi' => false,
+                    'description' => 'Verifikasi keabsahan data kerja, riwayat status karyawan, dan persetujuan penerbitan surat referensi kerja.',
+                ]);
+
+                // Auto seed Step 3: Review Tim DB (Database)
+                ApprovalWorkflowStep::create([
+                    'workflow_id' => $workflow->id,
+                    'step_order' => 3,
+                    'step_name' => 'Review Tim DB (Database)',
+                    'approver_type' => 'user',
+                    'area_scope' => 'ALL',
+                    'entity_scope' => 'ALL',
+                    'skip_if_direksi' => false,
+                    'description' => 'Pencocokan dan sinkronisasi data riwayat kerja karyawan di sistem database pusat.',
+                ]);
+
+                // Auto seed Step 4: Review Tim BPJS (Penerbitan No. Ref)
+                ApprovalWorkflowStep::create([
+                    'workflow_id' => $workflow->id,
+                    'step_order' => 4,
+                    'step_name' => 'Review Tim BPJS (Penerbitan No. Ref)',
+                    'approver_type' => 'user',
+                    'area_scope' => 'ALL',
+                    'entity_scope' => 'ALL',
+                    'skip_if_direksi' => false,
+                    'description' => 'Pengecekan status kepesertaan BPJS Ketenagakerjaan dan finalisasi penomoran surat referensi kerja.',
+                ]);
+
+                // Auto seed initial HRD users to Step 2
                 $hrdUsers = User::where('is_active', true)
                     ->where(function($q) {
                         $q->whereIn('role', ['admin', 'hrd', 'head_hr', 'hr_manager', 'hr_staff'])

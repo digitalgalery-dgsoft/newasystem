@@ -93,6 +93,34 @@ Route::get('/walkinterview/create', [InterviewController::class, 'createWalkInte
 Route::get('/walkinterview/register', [InterviewController::class, 'createWalkInterview'])->name('interview.walk.register');
 Route::post('/walkinterview', [InterviewController::class, 'storeWalkInterview'])->name('interview.walk.store');
 
+// Form Pengajuan & Pelacakan Veklaring / Paklaring (Publik Tanpa Login)
+Route::get('/pengajuan-paklaring', [\App\Http\Controllers\PaklaringController::class, 'createPublic'])->name('paklaring.public.create');
+Route::get('/pengajuan-veklaring', [\App\Http\Controllers\PaklaringController::class, 'createPublic'])->name('veklaring.public.create');
+Route::post('/pengajuan-paklaring', [\App\Http\Controllers\PaklaringController::class, 'store'])->name('paklaring.public.store');
+Route::post('/pengajuan-veklaring', [\App\Http\Controllers\PaklaringController::class, 'store'])->name('veklaring.public.store');
+Route::get('/cek-paklaring', [\App\Http\Controllers\PaklaringController::class, 'checkStatus'])->name('paklaring.public.check');
+Route::get('/cek-veklaring', [\App\Http\Controllers\PaklaringController::class, 'checkStatus'])->name('veklaring.public.check');
+
+// Download & Unduh Surat Resmi Publik yang Sudah Rilis
+Route::get('/cek-paklaring/{kode}/download', [\App\Http\Controllers\PaklaringController::class, 'downloadPublicPdf'])->name('paklaring.public.download');
+Route::get('/cek-veklaring/{kode}/download', [\App\Http\Controllers\PaklaringController::class, 'downloadPublicPdf'])->name('veklaring.public.download');
+Route::get('/paklaring/download/{kode}', [\App\Http\Controllers\PaklaringController::class, 'downloadPublicPdf']);
+Route::get('/veklaring/download/{kode}', [\App\Http\Controllers\PaklaringController::class, 'downloadPublicPdf']);
+
+// Halaman Validasi & Verifikasi Keabsahan Dokumen (Hasil Scan QR Code)
+Route::get('/validasi-paklaring/{kode}', [\App\Http\Controllers\PaklaringController::class, 'verifyQrCode'])->name('paklaring.public.verify');
+Route::get('/validasi-veklaring/{kode}', [\App\Http\Controllers\PaklaringController::class, 'verifyQrCode'])->name('veklaring.public.verify');
+Route::get('/verifikasi-paklaring/{kode}', [\App\Http\Controllers\PaklaringController::class, 'verifyQrCode']);
+Route::get('/verifikasi-veklaring/{kode}', [\App\Http\Controllers\PaklaringController::class, 'verifyQrCode']);
+Route::get('/verify/{kode}', [\App\Http\Controllers\PaklaringController::class, 'verifyQrCode']);
+
+Route::get('/paklaring/success/{kode}', [\App\Http\Controllers\PaklaringController::class, 'success'])->name('paklaring.success');
+Route::get('/veklaring/success/{kode}', [\App\Http\Controllers\PaklaringController::class, 'success'])->name('veklaring.success');
+Route::get('/paklaring/lookup-nik', [\App\Http\Controllers\PaklaringController::class, 'lookupNik'])->name('paklaring.lookup-nik');
+Route::get('/veklaring/lookup-nik', [\App\Http\Controllers\PaklaringController::class, 'lookupNik'])->name('veklaring.lookup-nik');
+Route::get('/form.php', fn() => redirect()->route('paklaring.public.create'));
+Route::get('/statusref.php', fn() => redirect()->route('paklaring.public.check'));
+
 // Modul CBT & Tes Online Pelamar (Terproteksi Sesi Kandidat)
 Route::prefix('cbt')->name('cbt.')->group(function () {
     Route::get('/login', [CbtController::class, 'showLoginForm'])->name('login');
@@ -370,6 +398,29 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/{id}/print-pdf', [WarningLetterController::class, 'printPdf'])->name('print-pdf');
         Route::post('/{id}/cancel', [WarningLetterController::class, 'cancel'])->name('cancel');
     });
+
+    // --- MODUL PAKLARING / SURAT REFERENSI KERJA ---
+    Route::prefix('paklaring')->name('paklaring.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\PaklaringController::class, 'index'])->name('index');
+        Route::get('/create', [\App\Http\Controllers\PaklaringController::class, 'create'])->name('create');
+        Route::post('/', [\App\Http\Controllers\PaklaringController::class, 'store'])->name('store');
+        Route::get('/{id}', [\App\Http\Controllers\PaklaringController::class, 'show'])->whereNumber('id')->name('show');
+        Route::post('/{id}/approve-area', [\App\Http\Controllers\PaklaringController::class, 'approveArea'])->whereNumber('id')->name('approve-area');
+        Route::post('/{id}/approve-hrd', [\App\Http\Controllers\PaklaringController::class, 'approveHrd'])->whereNumber('id')->name('approve-hrd');
+        Route::post('/{id}/approve-db', [\App\Http\Controllers\PaklaringController::class, 'approveDb'])->whereNumber('id')->name('approve-db');
+        Route::post('/{id}/approve-bpjs', [\App\Http\Controllers\PaklaringController::class, 'approveBpjs'])->whereNumber('id')->name('approve-bpjs');
+        Route::post('/{id}/hold', [\App\Http\Controllers\PaklaringController::class, 'hold'])->whereNumber('id')->name('hold');
+        Route::post('/{id}/reject', [\App\Http\Controllers\PaklaringController::class, 'reject'])->whereNumber('id')->name('reject');
+        Route::post('/{id}/return-back', [\App\Http\Controllers\PaklaringController::class, 'returnBack'])->whereNumber('id')->name('return-back');
+        Route::get('/{id}/print-pdf', [\App\Http\Controllers\PaklaringController::class, 'printPdf'])->whereNumber('id')->name('print-pdf');
+    });
+
+    // Alias redirect paklaring / veklaring sistem lama
+    Route::get('/veklaring', fn() => redirect()->route('paklaring.index'))->name('veklaring.index');
+    Route::get('/paklaring.php', fn() => redirect()->route('paklaring.index'));
+    Route::get('/detailpkl.php', fn(\Illuminate\Http\Request $r) => redirect()->route('paklaring.show', $r->query('id', 1)));
+    Route::get('/v3/paklaring.php', fn() => redirect()->route('paklaring.index'));
+    Route::get('/v3/detailpkl.php', fn(\Illuminate\Http\Request $r) => redirect()->route('paklaring.show', $r->query('id', 1)));
 
     // Alias redirect sistem lama
     Route::get('/helpdesk.php', fn() => redirect()->route('helpdesk.index'));
