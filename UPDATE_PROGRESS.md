@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 30 September 2026*
+*Terakhir diperbarui: 01 Oktober 2026*
 
 ---
 
@@ -4233,6 +4233,50 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
     - `canUserApprove` Step 3: YES.
     - Submit keputusan Approve: Berhasil menyimpan log approval Step 3 dan menyelesaikan seluruh alur pengajuan (`is_completed = true`, status akhir `Approve`).
   - Data kandidat Azanuddin Fakhrozi (63433): Kini berstatus `Review Persetujuan HRD Pusat`, menunggu evaluasi dan persetujuan dari Ibu Nurul Yuliastuti, SH.
+
+### 112. 🏢 Notifikasi Modal Non-Closable Wajib Update Email Corporate Khusus Karyawan Inhouse (01 Oktober 2026)
+- **Kebutuhan Pengguna & Ketentuan Bisnis**:
+  - **Notifikasi Wajib saat Login dan Masuk Dashboard**:
+    - Khusus untuk pengguna berstatus **Karyawan Inhouse** (`karyawan_inhouse` / pegawai naungan 5 entitas resmi ESA Groups), sistem mewajibkan penggunaan alamat email corporate resmi perusahaan.
+    - Ketika user login dan masuk ke Dashboard (`/fitur`), jika email akun belum menggunakan domain corporate resmi, sistem memunculkan **modal pop-up yang tidak bisa ditutup (non-closable)**.
+    - Modal tersebut mengunci layar secara penuh (*fullscreen backdrop blur*) dan langsung mengarahkan user melalui tombol aksi utama untuk menuju ke halaman **Edit Profil** guna memperbarui email menjadi email corporate resmi.
+  - **6 Domain Email Corporate Resmi yang Diizinkan**:
+    1. `@arina.co.id` — **PT Arina Multikarya**
+    2. `@alvakaryaperkasa.co.id` — **PT Alva Karya Perkasa**
+    3. `@anugrahterpercayakerja.co.id` — **PT Anugrah Terpercaya Kerja**
+    4. `@abadiberkatodelia.co.id` — **PT Arina Bintang Oetama**
+    5. `@anugrahtalentaberkarya.co.id` — **PT Anugrah Tri Berkah**
+    6. `@asystem.co.id` — **ASystem Portal Corporate**
+  - **Penegasan Kebijakan**: Khusus Karyawan Inhouse **WAJIB** menggunakan email corporate. Modul operasional dan menu dashboard tidak dapat diakses sampai email corporate diperbarui.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Model Pengguna (`app/Models/User.php`)**:
+     - Menambahkan konstanta `CORPORATE_EMAIL_DOMAINS` berisi 6 domain email corporate resmi ESA Groups.
+     - Menambahkan helper method `isInhouseUser(): bool` untuk memvalidasi apakah user berstatus karyawan inhouse.
+     - Menambahkan helper method `hasCorporateEmail(): bool` untuk memverifikasi apakah email user berakhiran salah satu dari 6 domain corporate resmi (`str_ends_with($email, '@' . $domain)`).
+     - Menambahkan helper method `mustUpdateCorporateEmail(): bool` yang bernilai `true` hanya jika user adalah inhouse dan emailnya belum corporate.
+  2. **Komponen Partial Modal Non-Closable (`resources/views/partials/corporate-email-modal.blade.php`)**:
+     - Ditampilkan secara otomatis di seluruh halaman berbasis `layouts.app` (termasuk `/fitur` saat login) saat `mustUpdateCorporateEmail()` bernilai true, dan dinonaktifkan di rute `profile.*`.
+     - Dirancang tanpa tombol close (X), backdrop click tidak menutup modal, dan event keyboard `Escape` ditangkal secara penuh via JavaScript listener.
+     - Scroll halaman pada `document.body` dikunci otomatis (`overflow-hidden`).
+     - Menampilkan badge visual penanda wajib, kartu email saat ini, daftar 6 domain corporate resmi berserta nama entitas, tombol aksi utama beranimasi *"Update Email Corporate Sekarang"* menuju `route('profile.index')`, dan tombol logout alternatif.
+  3. **Layout Master (`resources/views/layouts/app.blade.php`)**:
+     - Meng-include `@include('partials.corporate-email-modal')` sebelum penutup `</body>`.
+  4. **Halaman Edit Profil (`resources/views/profile/index.blade.php`)**:
+     - Pada bagian atas halaman, menampilkan banner peringatan resmi bertingkat tinggi dengan daftar domain corporate bagi karyawan inhouse yang wajib update.
+     - Pada formulir input email, menambahkan kartu petunjuk dan badge informasi bahwa khusus inhouse wajib menggunakan salah satu domain resmi perusahaan.
+  5. **Backend Controller (`app/Http/Controllers/UserProfileController.php`)**:
+     - Memperbarui method `update(Request $request)`: menambahkan validasi ketat backend khusus user inhouse (`$user->isInhouseUser()`), jika email baru tidak menggunakan salah satu domain corporate resmi, proses update ditolak dengan pesan error:
+       > *"Khusus Karyawan Inhouse wajib menggunakan alamat email corporate resmi (@arina.co.id, @alvakaryaperkasa.co.id, @anugrahterpercayakerja.co.id, @abadiberkatodelia.co.id, @anugrahtalentaberkarya.co.id, atau @asystem.co.id)."*
+     - Setelah email corporate berhasil disimpan, sistem otomatis menyinkronkan data ke tabel `employees`, `candidates`, `jobs`, `interview_assessments`, dan `users.email_aliases`, serta flag `mustUpdateCorporateEmail()` otomatis menjadi `false` (modal tidak akan muncul lagi).
+- **Uji Coba & Hasil (100% Passed)**:
+  - Diverifikasi via automated test suite lifecycle (`scratch/test_inhouse_corporate_email_flow.php`):
+    1. Akun inhouse Farhan Ramadhan (`farhan.r@gmail.com`): `mustUpdateCorporateEmail = TRUE`.
+    2. Akses `/fitur`: Modal non-closable ter-render lengkap dengan 6 domain resmi dan proteksi tombol ESC.
+    3. Akses `/profile`: Modal blocking dinonaktifkan, banner wajib update dan petunjuk domain tampil presisi.
+    4. Submit email non-corporate (`farhan.test@yahoo.com`): Ditolak sistem dengan pesan validasi resmi.
+    5. Submit email corporate (`farhan.r@arina.co.id`): Berhasil disimpan, `mustUpdateCorporateEmail = FALSE`.
+    6. Akses `/fitur` kembali: Modal hilang dan seluruh dashboard terbuka normal.
+    7. Akun Admin (`admin@asystem.co.id`) dan Akun Ratecard (`fredi.kusumo@gmail.com`): Terverifikasi bebas modal (tidak terdampak).
 
 ---
 

@@ -70,6 +70,25 @@ class UserProfileController extends Controller
         $newName = trim($request->name);
         $emailChanged = (!empty($oldEmail) && $oldEmail !== $newEmail);
 
+        // Khusus Karyawan Inhouse: Wajib menggunakan domain email corporate resmi
+        if ($user->isInhouseUser()) {
+            $hasCorpDomain = false;
+            foreach (User::CORPORATE_EMAIL_DOMAINS as $domain) {
+                if (str_ends_with($newEmail, '@' . strtolower(trim($domain)))) {
+                    $hasCorpDomain = true;
+                    break;
+                }
+            }
+
+            if (!$hasCorpDomain) {
+                return back()
+                    ->withInput()
+                    ->withErrors([
+                        'email' => 'Khusus Karyawan Inhouse wajib menggunakan alamat email corporate resmi (@arina.co.id, @alvakaryaperkasa.co.id, @anugrahterpercayakerja.co.id, @abadiberkatodelia.co.id, @anugrahtalentaberkarya.co.id, atau @asystem.co.id).',
+                    ]);
+            }
+        }
+
         // Upload foto profil baru jika ada
         if ($request->hasFile('avatar')) {
             $avatarDir = public_path('uploads/avatars');

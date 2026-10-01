@@ -2802,6 +2802,9 @@
     @yield('scripts')
     @stack('scripts')
 
+    <!-- Modal Wajib Update Email Corporate Khusus Karyawan Inhouse -->
+    @include('partials.corporate-email-modal')
+
     <!-- PWA Install Banner & Interaction Prompt -->
     @include('partials.pwa-install-button')
 </body>

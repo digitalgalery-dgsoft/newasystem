@@ -32,6 +32,47 @@
         </div>
     </div>
 
+    @if(auth()->user()?->mustUpdateCorporateEmail())
+        <!-- BANNER PERINGATAN WAJIB UPDATE EMAIL CORPORATE UNTUK INHOUSE -->
+        <div class="p-6 rounded-3xl bg-gradient-to-r from-rose-500/10 via-amber-500/10 to-rose-500/10 border-2 border-rose-400 text-slate-900 shadow-md relative overflow-hidden">
+            <div class="flex flex-col sm:flex-row items-start gap-4">
+                <div class="w-12 h-12 rounded-2xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 text-xl shadow-md">
+                    <i class="fa-solid fa-triangle-exclamation animate-bounce"></i>
+                </div>
+                <div class="flex-1 space-y-2">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-rose-600 text-white shadow-xs">
+                            Pemberitahuan Wajib
+                        </span>
+                        <h2 class="text-base sm:text-lg font-black text-rose-950">
+                            Khusus Karyawan Inhouse WAJIB Menggunakan Email Corporate Resmi
+                        </h2>
+                    </div>
+                    <p class="text-xs sm:text-sm text-slate-700 leading-relaxed">
+                        Akun Anda terdaftar sebagai <strong>Karyawan Inhouse</strong>. Sesuai kebijakan tata kelola sistem ESA Groups, seluruh karyawan inhouse <strong>wajib menggunakan alamat email corporate resmi</strong> untuk dapat mengakses seluruh modul operasional.
+                    </p>
+                    <div class="pt-1">
+                        <div class="text-xs font-bold text-slate-800 mb-1.5 flex items-center gap-1.5">
+                            <i class="fa-solid fa-check-double text-emerald-600"></i>
+                            <span>Daftar Domain Corporate Resmi yang Diizinkan:</span>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5">
+                            @foreach(\App\Models\User::CORPORATE_EMAIL_DOMAINS as $domain)
+                                <span class="px-2.5 py-1 rounded-lg text-xs font-mono font-black bg-white text-rose-800 border border-rose-300 shadow-xs">
+                                    {{ '@' }}{{ $domain }}
+                                </span>
+                            @endforeach
+                        </div>
+                    </div>
+                    <p class="text-[11px] text-slate-600 pt-1 flex items-center gap-1.5">
+                        <i class="fa-solid fa-arrow-down text-primary"></i>
+                        <span>Silakan ubah alamat email Anda pada formulir <strong>Alamat Email (Login)</strong> di bawah ini, lalu klik <strong>Simpan Perubahan</strong>.</span>
+                    </p>
+                </div>
+            </div>
+        </div>
+    @endif
+
     @if(isset($errors) && $errors->any())
         <div class="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs sm:text-sm font-semibold flex items-start gap-3 shadow-sm">
             <div class="w-8 h-8 rounded-xl bg-rose-500 text-white flex items-center justify-center flex-shrink-0 text-sm shadow mt-0.5">
@@ -314,6 +355,14 @@
                                        placeholder="nama@perusahaan.com">
                             </div>
                             <p class="text-[10px] text-slate-400">Digunakan sebagai username saat login.</p>
+                            @if($user->isInhouseUser())
+                                <div class="p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-2">
+                                    <i class="fa-solid fa-shield-halved text-amber-600 text-xs mt-0.5 flex-shrink-0"></i>
+                                    <div>
+                                        <strong class="text-amber-950">Khusus Karyawan Inhouse:</strong> Wajib menggunakan domain resmi (<strong>&#64;arina.co.id</strong>, <strong>&#64;alvakaryaperkasa.co.id</strong>, <strong>&#64;anugrahterpercayakerja.co.id</strong>, <strong>&#64;abadiberkatodelia.co.id</strong>, <strong>&#64;anugrahtalentaberkarya.co.id</strong>, atau <strong>&#64;asystem.co.id</strong>).
+                                    </div>
+                                </div>
+                            @endif
                             @error('email')
                                 <p class="text-rose-500 text-[11px] font-semibold mt-1">{{ $message }}</p>
                             @enderror

@@ -118,6 +118,66 @@ class User extends Authenticatable
         return $this->role === 'admin';
     }
 
+    /**
+     * Daftar 6 domain email corporate resmi ESA Groups untuk Karyawan Inhouse
+     */
+    public const CORPORATE_EMAIL_DOMAINS = [
+        'arina.co.id',
+        'alvakaryaperkasa.co.id',
+        'anugrahterpercayakerja.co.id',
+        'abadiberkatodelia.co.id',
+        'anugrahtalentaberkarya.co.id',
+        'asystem.co.id',
+    ];
+
+    /**
+     * Cek apakah user berstatus Karyawan Inhouse (berdasarkan role atau data master employee terkait)
+     */
+    public function isInhouseUser(): bool
+    {
+        if ($this->role === 'karyawan_inhouse') {
+            return true;
+        }
+
+        // Jika bukan admin / staff eksekutif / recruiter, cek data employee terkait
+        if (!in_array($this->role, ['admin', 'superadmin', 'recruiter', 'head_hr'], true)) {
+            $emp = $this->linked_employee;
+            if ($emp && strtolower(trim((string)$emp->tipe_karyawan)) === 'inhouse') {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Cek apakah email user sudah menggunakan salah satu domain email corporate resmi
+     */
+    public function hasCorporateEmail(): bool
+    {
+        $email = strtolower(trim((string)$this->email));
+        if (empty($email) || !str_contains($email, '@')) {
+            return false;
+        }
+
+        foreach (self::CORPORATE_EMAIL_DOMAINS as $domain) {
+            $cleanDomain = strtolower(trim($domain));
+            if (str_ends_with($email, '@' . $cleanDomain)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Cek apakah user karyawan inhouse wajib memperbarui email ke email corporate
+     */
+    public function mustUpdateCorporateEmail(): bool
+    {
+        return $this->isInhouseUser() && !$this->hasCorporateEmail();
+    }
+
     public function warningLettersCreated(): HasMany
     {
         return $this->hasMany(WarningLetter::class, 'created_by');
