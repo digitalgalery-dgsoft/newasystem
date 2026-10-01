@@ -31,16 +31,32 @@ echo "Email Aliases: " . json_encode($user->email_aliases) . "\n";
 $identifiers = KandidatPortalController::resolveUserIdentifiers($user);
 echo "Resolved Identifiers: " . json_encode($identifiers) . "\n";
 
-$candOld = Candidate::whereRaw('LOWER(TRIM(useras)) = ?', ['ryanfitrianurrachman02@gmail.com'])->count();
-$candNew = Candidate::whereRaw('LOWER(TRIM(useras)) = ?', ['as.surabaya@arina.co.id'])->count();
-$candRec = Candidate::where('recruiter_id', $user->id)->count();
-$candLike = Candidate::whereRaw('LOWER(TRIM(useras)) LIKE ?', ['%ryan%'])->count();
+echo "=== CHECKING TB_KANDIDAT & CANDIDATES ===\n";
+echo "has tb_kandidat: " . var_export(Schema::hasTable('tb_kandidat'), true) . "\n";
+if (Schema::hasTable('tb_kandidat')) {
+    $tbOld = DB::table('tb_kandidat')->whereRaw('LOWER(TRIM(useras)) = ?', ['ryanfitrianurrachman02@gmail.com'])->count();
+    $tbNew = DB::table('tb_kandidat')->whereRaw('LOWER(TRIM(useras)) = ?', ['as.surabaya@arina.co.id'])->count();
+    $tbLike = DB::table('tb_kandidat')->whereRaw('LOWER(TRIM(useras)) LIKE ?', ['%ryan%'])->count();
+    echo "tb_kandidat with useras = ryan...: {$tbOld}\n";
+    echo "tb_kandidat with useras = as.surabaya...: {$tbNew}\n";
+    echo "tb_kandidat with useras LIKE %ryan%: {$tbLike}\n";
+}
 
-echo "\n=== CANDIDATES COUNT ===\n";
-echo "Count with useras = ryanfitrianurrachman02@gmail.com: {$candOld}\n";
-echo "Count with useras = as.surabaya@arina.co.id: {$candNew}\n";
-echo "Count with recruiter_id = {$user->id}: {$candRec}\n";
-echo "Count with useras LIKE %ryan%: {$candLike}\n";
+$cTotal = Candidate::count();
+echo "Total candidates in DB: {$cTotal}\n";
+
+// Let's find ANY candidate where useras contains 'surabaya' or 'ryan' or recruiter_id = 88
+$allMatches = Candidate::where(function($q) {
+    $q->where('useras', 'like', '%ryan%')
+      ->orWhere('useras', 'like', '%as.surabaya%')
+      ->orWhere('recruiter_id', 88);
+})->select('useras', 'recruiter_id', DB::raw('count(*) as count'))->groupBy('useras', 'recruiter_id')->get();
+
+echo "Grouped matches in candidates:\n";
+foreach ($allMatches as $m) {
+    echo "- useras: '{$m->useras}' | recruiter_id: '{$m->recruiter_id}' | count: {$m->count}\n";
+}
+
 
 $byJenis = Candidate::where(function ($q) use ($user) {
     $q->whereRaw('LOWER(TRIM(useras)) = ?', ['ryanfitrianurrachman02@gmail.com'])
