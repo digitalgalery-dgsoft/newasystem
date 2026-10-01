@@ -31,29 +31,25 @@ echo "Email Aliases: " . json_encode($user->email_aliases) . "\n";
 $identifiers = KandidatPortalController::resolveUserIdentifiers($user);
 echo "Resolved Identifiers: " . json_encode($identifiers) . "\n";
 
-$cand67626 = Candidate::find(67626);
-echo "\n=== DETAIL CANDIDATE 67626 ===\n";
-if ($cand67626) {
-    echo json_encode($cand67626->toArray(), JSON_PRETTY_PRINT) . "\n";
-} else {
-    echo "Not found\n";
+$allSurabayaJobs = JobSpec::where('job_area', 'Surabaya')
+    ->select('id', 'job_title', 'created_by', 'status')
+    ->get();
+echo "\n=== ALL SURABAYA JOBS ===\n";
+foreach ($allSurabayaJobs as $sj) {
+    echo "ID: {$sj->id} | {$sj->job_title} | Creator: {$sj->created_by} | Status: {$sj->status}\n";
 }
 
-$cand67244 = Candidate::find(67244);
-echo "\n=== DETAIL CANDIDATE 67244 ===\n";
-if ($cand67244) {
-    echo json_encode([
-        'id' => $cand67244->id,
-        'full_name' => $cand67244->full_name,
-        'useras' => $cand67244->useras,
-        'recruiter_id' => $cand67244->recruiter_id,
-        'jenis' => $cand67244->jenis,
-        'status' => $cand67244->status,
-        'status_kandidat' => $cand67244->status_kandidat,
-        'info_lowongan' => $cand67244->info_lowongan,
-        'created_at' => (string)$cand67244->created_at,
-    ]) . "\n";
+$candSurabayaUseras = Candidate::where('area', 'Surabaya')
+    ->select('useras', DB::raw('count(*) as count'))
+    ->groupBy('useras')
+    ->orderByDesc('count')
+    ->take(15)
+    ->get();
+echo "\n=== TOP USERAS FOR SURABAYA CANDIDATES ===\n";
+foreach ($candSurabayaUseras as $cu) {
+    echo "- useras: '{$cu->useras}' => count: {$cu->count}\n";
 }
+
 
 
 // Check candidates who applied to Ryan's jobs
