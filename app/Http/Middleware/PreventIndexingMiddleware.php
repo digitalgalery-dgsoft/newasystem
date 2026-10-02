@@ -44,6 +44,11 @@ class PreventIndexingMiddleware
 
         $response = $next($request);
 
+        // HTTP Security Headers Global (Proteksi MIME Sniffing, Clickjacking, dan Referrer Leak)
+        $response->headers->set('X-Content-Type-Options', 'nosniff');
+        $response->headers->set('X-Frame-Options', 'SAMEORIGIN');
+        $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
         if (!$isPublicSearchable) {
             // Pasang header X-Robots-Tag paling ketat untuk Googlebot dan search engine lainnya
             $response->headers->set('X-Robots-Tag', 'noindex, nofollow, noarchive, nosnippet, noimageindex');

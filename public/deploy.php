@@ -2,10 +2,11 @@
 @ini_set('display_errors', 1);
 @error_reporting(E_ALL);
 
-$token = $_GET['token'] ?? ($argv[1] ?? '');
-if (php_sapi_name() !== 'cli' && $token !== 'dgsoft_rahasia_123') {
+$token = (string)($_GET['token'] ?? ($argv[1] ?? ''));
+$validToken = (string)(getenv('DEPLOY_TOKEN') ?: 'dgsoft_rahasia_123');
+if (php_sapi_name() !== 'cli' && (!hash_equals($validToken, $token))) {
     http_response_code(403);
-    die("Access denied. Token tidak valid.");
+    die("Access Denied: Token tidak valid.");
 }
 
 header('Content-Type: text/plain; charset=utf-8');

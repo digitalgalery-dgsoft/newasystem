@@ -2,9 +2,11 @@
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
-$token = $_GET['token'] ?? '';
-if ($token !== 'dgsoft_rahasia_123') {
-    die("Access denied.");
+$token = (string)($_GET['token'] ?? ($argv[1] ?? ''));
+$validToken = (string)(getenv('DEPLOY_TOKEN') ?: 'dgsoft_rahasia_123');
+if (php_sapi_name() !== 'cli' && (!hash_equals($validToken, $token))) {
+    http_response_code(403);
+    die("Access Denied.");
 }
 
 echo "<pre style='font-family: monospace; background: #111; color: #eee; padding: 20px;'>\n";

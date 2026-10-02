@@ -29,8 +29,10 @@ asystem_interview
 scratch/
 /public/approval/*
 !/public/approval/.gitkeep
+!/public/approval/.htaccess
 /public/refcekfile/*
 !/public/refcekfile/.gitkeep
+!/public/refcekfile/.htaccess
 graphify-out/cache/
 graphify-out/converted/
 

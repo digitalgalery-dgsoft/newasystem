@@ -11,6 +11,13 @@ $kernel->bootstrap();
 
 header('Content-Type: text/plain; charset=utf-8');
 
+$token = (string)($_GET['token'] ?? ($_GET['key'] ?? ($argv[1] ?? '')));
+$validToken = (string)(env('CRON_TOKEN') ?: 'asystem_cron_secure_2026');
+if (php_sapi_name() !== 'cli' && (!hash_equals($validToken, $token))) {
+    http_response_code(403);
+    die("Access Denied: Invalid cron token.\n");
+}
+
 $limit = isset($_GET['limit']) ? intval($_GET['limit']) : 3;
 $limit = max(1, min(20, $limit));
 
