@@ -4457,6 +4457,15 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 121. 📄 Perancangan Dokumen Arsitektur & Implementation Plan: Fitur CV Builder Profesional Kandidat (02 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  - Menyusun cetak biru (*blueprint*) dan rencana implementasi fitur **CV Builder** untuk memfasilitasi kandidat menyusun berkas Curriculum Vitae (CV) yang rapi, profesional, dan berstandar *ATS-friendly* guna melamar pekerjaan di portal lowongan ASystem maupun pengunduhan mandiri.
+- **Hasil Perancangan & Dokumentasi**:
+  - Dokumen teknis komprehensif telah disimpan pada [`IMPLEMENTATION_PLAN_CV_BUILDER.md`](file:///d:/ASystem/newasystem/IMPLEMENTATION_PLAN_CV_BUILDER.md) di direktori root project.
+  - Mencakup: formulir terpandu 6 bagian, 4 template desain modern (*Modern Sapphire, Clean ATS, Executive Corporate, Vibrant Minimal*), live real-time split-screen preview, engine mPDF ukuran A4, serta integrasi auto-fill data CBT dan auto-attach saat apply lowongan.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
