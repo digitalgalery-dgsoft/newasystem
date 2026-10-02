@@ -4841,6 +4841,20 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 129. 📋 Perancangan Dokumen Arsitektur & Implementation Plan: Sistem Notifikasi Email Dinamis & Pengaturan Server SMTP (02 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  - Menyiapkan rencana implementasi menyeluruh untuk membangun sistem notifikasi email otomatis berbasis event yang dapat diatur secara dinamis per modul (Surat Peringatan, Helpdesk Ticketing, Rekrutmen, dan Paklaring), kustomisasi pesan per event dengan variabel tag, serta pusat konfigurasi server SMTP di dashboard admin.
+- **Hasil Perancangan & Dokumentasi**:
+  - Telah disusun dokumen blueprint teknis lengkap pada [`IMPLEMENTATION_PLAN_EMAIL_NOTIFIKASI.md`](file:///d:/ASystem/newasystem/IMPLEMENTATION_PLAN_EMAIL_NOTIFIKASI.md) di direktori root project.
+  - Mencakup:
+    1. **Arsitektur Sistem & Diagram Alur**: Event-driven notification engine dengan runtime SMTP injection dan audit logging.
+    2. **Desain Skema Database**: Tabel `mail_settings`, `notification_templates`, dan `mail_logs`.
+    3. **Katalog Event Bawaan**: 10 event default untuk SP, Helpdesk Ticket, Rekrutmen/Interview, dan Paklaring.
+    4. **Desain UI/UX Dashboard Admin**: Tab Pengaturan SMTP dengan live test connection, katalog event dengan toggle switch, serta modal visual editor template pesan.
+    5. **Roadmap 5 Fase Eksekusi**: Disimpan dan siap dijalankan sewaktu-waktu sesuai arahan pengguna.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
