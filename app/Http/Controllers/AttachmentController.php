@@ -14,7 +14,7 @@ class AttachmentController extends Controller
      */
     private function ensureAuthenticated()
     {
-        if (!Auth::check() && !session()->has('candidate_id')) {
+        if (!Auth::check() && !session()->has('candidate_id') && !session()->has('cbt_candidate_id')) {
             if (request()->expectsJson()) {
                 abort(401, 'Sesi login diperlukan untuk mengakses berkas lampiran.');
             }
@@ -31,6 +31,7 @@ class AttachmentController extends Controller
             'Pragma' => 'no-cache',
             'Expires' => '0',
             'X-Robots-Tag' => 'noindex, nofollow, noarchive, nosnippet, noimageindex',
+            'X-Content-Type-Options' => 'nosniff',
         ];
     }
 

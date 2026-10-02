@@ -37,7 +37,7 @@ Route::get('/index.php', fn() => redirect()->route('home.index'));
 
 // Autentikasi Pengguna (Login & Logout)
 Route::get('/login', [AuthController::class, 'showLoginForm'])->name('login');
-Route::post('/login', [AuthController::class, 'login'])->name('login.post');
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1')->name('login.post');
 Route::match(['get', 'post'], '/logout', [AuthController::class, 'logout'])->name('logout');
 Route::get('/login.php', fn() => redirect()->route('login'));
 Route::get('/refresh-csrf', fn() => response()->json(['token' => csrf_token()]))->name('refresh-csrf');
@@ -96,7 +96,7 @@ Route::post('/walkinterview', [InterviewController::class, 'storeWalkInterview']
 // Modul CBT & Tes Online Pelamar (Terproteksi Sesi Kandidat)
 Route::prefix('cbt')->name('cbt.')->group(function () {
     Route::get('/login', [CbtController::class, 'showLoginForm'])->name('login');
-    Route::post('/login', [CbtController::class, 'login'])->name('login.post');
+    Route::post('/login', [CbtController::class, 'login'])->middleware('throttle:10,1')->name('login.post');
     Route::match(['get', 'post'], '/logout', [CbtController::class, 'logout'])->name('logout');
 
     Route::middleware(['candidate.auth'])->group(function () {
@@ -140,10 +140,11 @@ Route::get('/refcekfile/{filename}', [\App\Http\Controllers\AttachmentController
 Route::get('/approval/{filename}', [\App\Http\Controllers\AttachmentController::class, 'showApproval'])->where('filename', '.*')->name('approval.show');
 Route::get('/prinsiple/ttdfileprinsiple/{filename}', [\App\Http\Controllers\AttachmentController::class, 'showTtdPrinciple'])->where('filename', '.*')->name('prinsiple.ttd.show');
 
-// Deployment Webhook (Terproteksi Token Query Rahasia)
+// Deployment Webhook (Terproteksi Token Query Rahasia & Timing-Safe)
 Route::any('/deploy-webhook', function(\Illuminate\Http\Request $request) {
-    $token = $request->query('token') ?? $request->input('token');
-    if ($token !== 'dgsoft_rahasia_123') {
+    $token = (string)($request->query('token') ?? $request->input('token', ''));
+    $validToken = (string)(env('DEPLOY_TOKEN') ?: 'dgsoft_rahasia_123');
+    if (!hash_equals($validToken, $token)) {
         return response('Unauthorized: Token tidak valid.', 403);
     }
     $baseDir = base_path();
@@ -157,11 +158,21 @@ Route::any('/deploy-webhook', function(\Illuminate\Http\Request $request) {
     return response(implode("\n", $output), 200, ['Content-Type' => 'text/plain']);
 });
 
-// Cron Jobs
-Route::get('/cron_ai_analyzer.php', function() {
+// Cron Jobs (Terproteksi Token Rahasia)
+Route::match(['get', 'post'], '/cron_ai_analyzer.php', function(\Illuminate\Http\Request $request) {
+    $token = (string)($request->query('token') ?? ($request->query('key') ?? $request->input('token', '')));
+    $validToken = (string)(env('CRON_TOKEN') ?: 'asystem_cron_secure_2026');
+    if (!hash_equals($validToken, $token)) {
+        return response('Access Denied: Invalid cron token.', 403);
+    }
     require public_path('cron_ai_analyzer.php');
 });
-Route::get('/v3/cron_ai_analyzer.php', function() {
+Route::match(['get', 'post'], '/v3/cron_ai_analyzer.php', function(\Illuminate\Http\Request $request) {
+    $token = (string)($request->query('token') ?? ($request->query('key') ?? $request->input('token', '')));
+    $validToken = (string)(env('CRON_TOKEN') ?: 'asystem_cron_secure_2026');
+    if (!hash_equals($validToken, $token)) {
+        return response('Access Denied: Invalid cron token.', 403);
+    }
     require public_path('cron_ai_analyzer.php');
 });
 

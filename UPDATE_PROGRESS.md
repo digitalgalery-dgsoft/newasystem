@@ -4418,6 +4418,36 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 119. 🔒 Penguatan Keamanan Siber (Cybersecurity Hardening): Rate Limiting, HTTP Security Headers, Proteksi Berkas Lampiran & Pengamanan Skrip Diagnostik/Cron (02 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  - Melakukan implementasi atas seluruh rekomendasi hasil audit keamanan siber (*Cybersecurity & Vulnerability Assessment*) untuk menutup potensi celah keamanan (vulnerabilities), mencegah serangan *brute force*, melindungi berkas sensitif kandidat dari akses publik tanpa login, mengamankan endpoint cron/diagnostik, dan menambahkan header keamanan HTTP global.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Rate Limiting pada Endpoint Login ([routes/web.php](file:///d:/ASystem/newasystem/routes/web.php))**:
+     - Menambahkan middleware `throttle:10,1` pada rute `POST /login` (login karyawan & admin) dan `POST /cbt/login` (login portal CBT kandidat).
+     - Membatasi percobaan login maksimal 10 kali per menit per alamat IP guna melumpuhkan serangan otomatis *credential stuffing* dan *dictionary/brute-force attacks*.
+  2. **Pengamanan Skrip Diagnostik, Webhook & Token Rahasia**:
+     - [public/fix_cache.php](file:///d:/ASystem/newasystem/public/fix_cache.php): Menghilangkan kebocoran pesan token rahasia, menerapkan perbandingan *timing-safe* `hash_equals()`, dan membaca kunci aman dari environment `DEPLOY_TOKEN`.
+     - [public/diag.php](file:///d:/ASystem/newasystem/public/diag.php) & [public/deploy.php](file:///d:/ASystem/newasystem/public/deploy.php): Memvalidasi secret token secara aman dan mengembalikan respons `403 Forbidden` tanpa membocorkan trace log atau struktur server internal jika token tidak valid.
+     - Rute webhook deployment di [routes/web.php](file:///d:/ASystem/newasystem/routes/web.php) dimutakhirkan menggunakan `hash_equals()`.
+  3. **Pengamanan Endpoint Trigger Cron AI ([public/cron_ai_analyzer.php](file:///d:/ASystem/newasystem/public/cron_ai_analyzer.php))**:
+     - Menambahkan autentikasi token wajib `CRON_TOKEN` (`?token=...` atau `?key=...`) pada wrapper HTTP cron analyzer.
+     - Permintaan tanpa token rahasia langsung diblokir (`403 Forbidden`), mencegah pihak luar memicu pemanggilan berulang ke Gemini AI yang dapat menguras kuota/tagihan (*Denial of Wallet*).
+  4. **Proteksi Akses Berkas Lampiran & Dokumen Kandidat**:
+     - Menempatkan konfigurasi `.htaccess` proteksi di folder `public/lampiran/`, `public/approval/`, dan `public/refcekfile/` untuk mencegah web server melayani file fisik langsung secara bebas.
+     - [app/Http/Controllers/AttachmentController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/AttachmentController.php): Memutakhirkan verifikasi sesi kandidat CBT (`session()->has('cbt_candidate_id')`) dan menyematkan header `X-Content-Type-Options: nosniff`.
+  5. **Pemasangan HTTP Security Headers Global ([app/Http/Middleware/PreventIndexingMiddleware.php](file:///d:/ASystem/newasystem/app/Http/Middleware/PreventIndexingMiddleware.php))**:
+     - Menyematkan header keamanan standar pada seluruh response web:
+       - `X-Content-Type-Options: nosniff` (mencegah eksploitasi MIME type sniffing).
+       - `X-Frame-Options: SAMEORIGIN` (mencegah serangan Clickjacking / UI Redressing).
+       - `Referrer-Policy: strict-origin-when-cross-origin` (mencegah kebocoran URL referer ke pihak luar).
+       - `X-Robots-Tag: noindex, nofollow, noarchive, nosnippet, noimageindex` (menjamin halaman data internal tidak diindeks mesin pencari).
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji Response Header HTTP: Header `X-Content-Type-Options`, `X-Frame-Options`, dan `Referrer-Policy` terverifikasi aktif pada seluruh rute.
+  - Uji Akses Tanpa Token `cron_ai_analyzer.php`: `HTTP 403 Forbidden` (*"Access Denied: Invalid cron token"*).
+  - Uji Akses Tanpa Token `fix_cache.php`, `diag.php`, dan `deploy.php`: `HTTP 403 Forbidden` (*"Access Denied"* tanpa ada token yang bocor).
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:

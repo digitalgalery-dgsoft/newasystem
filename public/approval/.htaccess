@@ -1,0 +1,6 @@
+# Proteksi Berkas Bukti Approval Prinsiple
+# Mencegah akses langsung ke berkas fisik tanpa autentikasi Laravel
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule .* /index.php [L]
+</IfModule>
