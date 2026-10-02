@@ -4397,6 +4397,27 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
 
 ---
 
+### 118. 🛡️ Proteksi Akses Login & Dashboard CBT untuk Kandidat Berstatus Arsip & Interview Selesai (02 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  - Kandidat yang sudah diarsip (`Arsip` / non-aktif) atau yang seluruh tahapan interview-nya telah selesai (`Interview Selesai` / Done / Disetujui Prinsiple) seharusnya **tidak bisa lagi login maupun mengakses kembali dashboard CBT online test**.
+  - Diperlukan proteksi berlapis (Model, Login Controller, dan Middleware Session) agar kandidat tidak dapat masuk kembali, serta pemberian pesan alasan penolakan yang jelas dan informatif.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Enkapsulasi Status & Aturan Hak Akses pada Model ([app/Models/Candidate.php](file:///d:/ASystem/newasystem/app/Models/Candidate.php))**:
+     - Menambahkan method `isArchived(): bool`: Mendeteksi status arsip (`status = 'arsip'/'archived'` atau `status_kandidat = 'arsip'`).
+     - Menambahkan method `isInterviewDone(): bool`: Mendeteksi kelulusan interview jika kolom `ttd_prinsiple` atau `note_principle` terisi, status selesai (`'done'`, `'selesai'`, `'interview done'`, dll.), stage Odoo (`'joined'`, `'pkwt'`), atau relasi approval disetujui.
+     - Menambahkan method `canAccessCbt(?string &$reason = null): bool`: Menghasilkan evaluasi kelayakan akses portal CBT dan pesan penolakan yang ramah serta solutif.
+  2. **Penyempurnaan Autentikasi Login CBT ([app/Http/Controllers/CbtController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CbtController.php))**:
+     - Memvalidasi sesi yang aktif pada `showLoginForm()`.
+     - Pada `login()`: Memprioritaskan record aktif jika kandidat memiliki riwayat lamaran lama, dan menolak login jika seluruh record berstatus arsip/selesai.
+  3. **Proteksi Middleware Sesi Berjalan ([app/Http/Middleware/EnsureCandidateAuthenticated.php](file:///d:/ASystem/newasystem/app/Http/Middleware/EnsureCandidateAuthenticated.php))**:
+     - Memeriksa kelayakan hak akses kandidat di setiap request dashboard CBT. Jika kandidat diubah statusnya saat sesi terbuka, middleware langsung memutus sesi dan me-redirect ke login.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji Kandidat Berstatus Arsip: Akses CBT **DIBLOKIR**.
+  - Uji Kandidat Interview Selesai: Akses CBT **DIBLOKIR**.
+  - Uji Kandidat Aktif / Sedang Proses: Akses CBT **DIIZINKAN**.
+
+---
+
 ## 🖥️ Panduan Menjalankan Sistem Secara Lokal
 
 1. **Memulai Server Web**:
