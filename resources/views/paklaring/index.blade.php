@@ -6,7 +6,7 @@
 <div class="space-y-6">
 
     <!-- Header Section -->
-    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
+    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
         <div class="space-y-1">
             <div class="flex items-center gap-2">
                 <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">
@@ -21,17 +21,6 @@
             <p class="text-xs text-slate-500">
                 Kelola proses persetujuan bertingkat, verifikasi berkas pengunduran diri, serah terima aset, dan penerbitan nomor surat referensi kerja resmi.
             </p>
-        </div>
-
-        <div class="flex items-center gap-2 shrink-0 flex-wrap">
-            <a href="{{ route('master.approval-workflow.index', ['module' => 'paklaring']) }}" class="px-3.5 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold transition-all flex items-center gap-2 border border-slate-200/80">
-                <i class="fa-solid fa-diagram-project text-xs text-slate-500"></i>
-                <span>Pengaturan Alur Approver</span>
-            </a>
-            <a href="{{ route('paklaring.create') }}" class="px-4 py-2.5 rounded-xl bg-primary hover:bg-primary-700 text-white text-xs font-bold transition-all shadow-md shadow-primary/20 flex items-center gap-2 cursor-pointer">
-                <i class="fa-solid fa-plus text-xs"></i>
-                <span>Input Pengajuan Baru</span>
-            </a>
         </div>
     </div>
 
@@ -77,7 +66,7 @@
                @if($tab === 'area') id="activeApprovalTab" @endif
                class="px-3.5 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-2 {{ $tab === 'area' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900' }}">
                 <i class="fa-solid fa-location-dot text-xs"></i>
-                <span>Review Area (ARO)</span>
+                <span>Review Area (AS)</span>
                 <span class="px-1.5 py-0.5 rounded-md text-[10px] {{ $tab === 'area' ? 'bg-white/20 text-white' : 'bg-indigo-100 text-indigo-800' }}">{{ $counts['area'] }}</span>
             </a>
 

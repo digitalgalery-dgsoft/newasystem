@@ -23,7 +23,12 @@ class CbtController extends Controller
     public function showLoginForm()
     {
         if (session()->has('cbt_candidate_id')) {
-            return redirect()->route('cbt.dashboard');
+            $candidate = Candidate::find(session('cbt_candidate_id'));
+            if ($candidate && $candidate->canAccessCbt()) {
+                return redirect()->route('cbt.dashboard');
+            }
+            // Bersihkan sesi jika kandidat sudah berstatus Arsip atau Selesai
+            session()->forget(['cbt_candidate_id', 'cbt_candidate_nik', 'cbt_candidate_name']);
         }
 
         return view('cbt.login');
@@ -39,29 +44,31 @@ class CbtController extends Controller
         $nik = trim($request->nik);
         $password = trim($request->password);
 
-        $candidate = Candidate::where(function($q) use ($nik) {
+        $candidates = Candidate::where(function($q) use ($nik) {
                 $q->where('nik', $nik)
                   ->orWhere('odoo_applicant_data->no_kk', $nik);
                 if (Schema::hasColumn('candidates', 'no_kk')) {
                     $q->orWhere('no_kk', $nik);
                 }
             })
-            ->orderByRaw("CASE 
-                WHEN (status = 'Active' OR status IS NULL) 
-                     AND (status_kandidat IS NULL OR status_kandidat != 'Arsip') 
-                     AND (status NOT IN ('Arsip', 'archived') OR status IS NULL) THEN 0 
-                ELSE 1 
-            END")
             ->orderByDesc('id')
-            ->first();
+            ->get();
 
-        if (!$candidate) {
+        if ($candidates->isEmpty()) {
             return back()->withInput()->with('error', 'NIK tidak terdaftar dalam database penerimaan kandidat.');
         }
 
-        // Pengecekan jika kandidat sudah terikat/ditempatkan di prinsiple tertentu
-        if (!empty($candidate->principle_id) && in_array($candidate->status, ['placed', 'approved_principle', 'Active_Employee'])) {
-            return back()->withInput()->with('error', 'Akun Non Aktif untuk Test Online. Silahkan Hubungi AS Terkait.');
+        // 1. Cari record kandidat yang aktif dan diizinkan mengakses portal CBT
+        $candidate = $candidates->first(function ($c) {
+            return $c->canAccessCbt();
+        });
+
+        // 2. Jika tidak ada record aktif yang memenuhi syarat akses CBT:
+        if (!$candidate) {
+            $latest = $candidates->first();
+            $reason = null;
+            $latest->canAccessCbt($reason);
+            return back()->withInput()->with('error', $reason ?: 'Akun Anda berstatus Nonaktif untuk portal tes online CBT. Silakan hubungi Tim Rekrutmen / AS Terkait.');
         }
 
         // Validasi Password

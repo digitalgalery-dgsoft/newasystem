@@ -23,8 +23,14 @@ class EnsureCandidateAuthenticated
         $candidate = Candidate::find($candidateId);
 
         if (!$candidate) {
-            session()->forget('cbt_candidate_id');
+            session()->forget(['cbt_candidate_id', 'cbt_candidate_nik', 'cbt_candidate_name']);
             return redirect()->route('cbt.login')->with('error', 'Sesi akun kandidat tidak ditemukan. Silakan login kembali.');
+        }
+
+        $reason = null;
+        if (!$candidate->canAccessCbt($reason)) {
+            session()->forget(['cbt_candidate_id', 'cbt_candidate_nik', 'cbt_candidate_name']);
+            return redirect()->route('cbt.login')->with('error', $reason ?: 'Akses portal tes online CBT Anda telah ditutup.');
         }
 
         // Simpan instance candidate pada request untuk kemudahan akses

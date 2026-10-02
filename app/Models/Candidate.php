@@ -249,6 +249,88 @@ class Candidate extends Model
         return !empty($cv) && $cv !== '-';
     }
 
+    /**
+     * Cek apakah kandidat berstatus Arsip
+     */
+    public function isArchived(): bool
+    {
+        $status = strtolower(trim((string)($this->status ?? '')));
+        $statusKandidat = strtolower(trim((string)($this->status_kandidat ?? '')));
+
+        return in_array($status, ['arsip', 'archived'], true) || $statusKandidat === 'arsip';
+    }
+
+    /**
+     * Cek apakah kandidat telah selesai tahapan interview / selesai proses seleksi
+     */
+    public function isInterviewDone(): bool
+    {
+        // 1. Cek tanda tangan persetujuan / catatan prinsiple (Indikator utama Interview Selesai)
+        $ttd = trim((string)($this->ttd_prinsiple ?? ''));
+        $note = trim((string)($this->note_principle ?? ''));
+        if (!empty($ttd) || !empty($note)) {
+            return true;
+        }
+
+        // 2. Cek status kolom status & status_kandidat
+        $status = strtolower(trim((string)($this->status ?? '')));
+        $statusKandidat = strtolower(trim((string)($this->status_kandidat ?? '')));
+        $doneStatuses = ['done', 'selesai', 'interview done', 'interview_done', 'placed', 'approved_principle', 'active_employee'];
+        if (in_array($status, $doneStatuses, true) || in_array($statusKandidat, ['done', 'selesai', 'interview done', 'interview_done'], true)) {
+            return true;
+        }
+
+        // 3. Cek tahapan Odoo ERP jika sudah tahap final (PKWT, Joined, dll)
+        $odooStage = strtolower(trim((string)($this->odoo_stage_name ?? '')));
+        if (in_array($odooStage, ['joined', 'pkwt'], true)) {
+            return true;
+        }
+
+        // 4. Cek relasi PrincipleApproval yang disetujui (Approved)
+        if ($this->relationLoaded('principleApprovals')) {
+            if ($this->principleApprovals->contains(fn($a) => strtolower(trim((string)($a->status ?? ''))) === 'approved')) {
+                return true;
+            }
+        } elseif (\App\Models\PrincipleApproval::where('candidate_id', $this->id)->whereRaw('LOWER(TRIM(status)) = ?', ['approved'])->exists()) {
+            return true;
+        }
+
+        // 5. Cek relasi InhouseApproval yang disetujui (Approve)
+        if ($this->relationLoaded('inhouseApprovals')) {
+            if ($this->inhouseApprovals->contains(fn($a) => strtolower(trim((string)($a->status ?? ''))) === 'approve')) {
+                return true;
+            }
+        } elseif (\App\Models\InhouseApproval::where('candidate_id', $this->id)->whereRaw('LOWER(TRIM(status)) = ?', ['approve'])->exists()) {
+            return true;
+        }
+
+        // 6. Cek jika sudah ditempatkan di prinsiple tertentu
+        if (!empty($this->principle_id) && in_array($status, ['placed', 'approved_principle', 'active_employee'], true)) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Cek apakah kandidat diperbolehkan mengakses portal CBT
+     * Mengembalikan true jika boleh, false jika diblokir (dengan pesan alasan)
+     */
+    public function canAccessCbt(?string &$reason = null): bool
+    {
+        if ($this->isArchived()) {
+            $reason = 'Akun Anda berstatus Arsip / Nonaktif. Akses portal tes online CBT telah ditutup. Silakan hubungi Tim Rekrutmen / AS Terkait.';
+            return false;
+        }
+
+        if ($this->isInterviewDone()) {
+            $reason = 'Tahapan interview Anda telah selesai. Akses portal tes online CBT sudah ditutup. Silakan hubungi Tim Rekrutmen / AS Terkait untuk informasi kelulusan dan penempatan.';
+            return false;
+        }
+
+        return true;
+    }
+
     public function getPhotoUrlAttribute(): string
     {
         $file = trim($this->photo_path ?? '');

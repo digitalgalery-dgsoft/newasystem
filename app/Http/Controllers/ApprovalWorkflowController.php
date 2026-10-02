@@ -112,11 +112,11 @@ class ApprovalWorkflowController extends Controller
 
                 $workflow->load(['steps.stepUsers.user', 'steps.stepUsers.employee']);
             } elseif ($isPaklaring) {
-                // Auto seed Step 1: Review Area (ARO / Admin Operasional)
+                // Auto seed Step 1: Review Area (AS / Admin Operasional)
                 ApprovalWorkflowStep::create([
                     'workflow_id' => $workflow->id,
                     'step_order' => 1,
-                    'step_name' => 'Review Area (ARO / Admin Operasional)',
+                    'step_name' => 'Review Area (AS / Admin Operasional)',
                     'approver_type' => 'user',
                     'area_scope' => 'ALL',
                     'entity_scope' => 'ALL',

@@ -356,7 +356,7 @@ class PaklaringApprovalService
     // =========================================================================
 
     /**
-     * Step 1: Persetujuan Area (ARO / Admin Operasional)
+     * Step 1: Persetujuan Area (AS / Admin Operasional)
      */
     public static function approveArea(Paklaring $paklaring, User $user, array $data, ?string $ip = null): void
     {
@@ -389,7 +389,7 @@ class PaklaringApprovalService
             PaklaringApproval::create([
                 'paklaring_id' => $paklaring->id,
                 'step_order' => 1,
-                'step_name' => 'Persetujuan Area (ARO)',
+                'step_name' => 'Persetujuan Area (AS)',
                 'user_id' => $user->id,
                 'user_name' => $user->name,
                 'user_email' => $user->email,

@@ -173,7 +173,7 @@ class Paklaring extends Model
         return match ($this->status_bagian) {
             'Area' => [
                 'bg' => 'bg-indigo-50 text-indigo-700 border-indigo-200',
-                'label' => 'Review Area (ARO)',
+                'label' => 'Review Area (AS)',
                 'icon' => 'fa-location-dot',
             ],
             'HRD' => [

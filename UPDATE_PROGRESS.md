@@ -1,6 +1,6 @@
 # 🚀 Ringkasan Perkembangan & Progress Update ASystem Portal
 **Support System ESA Groups** (PT Arina Multikarya, PT Alva Karya Perkasa, PT Anugrah Terpercaya Kerja, PT Arina Bintang Oetama, PT Anugrah Tri Berkah)  
-*Terakhir diperbarui: 01 Oktober 2026*
+*Terakhir diperbarui: 02 Oktober 2026*
 
 ---
 
@@ -4743,6 +4743,71 @@ esponse()->file() dengan header keamanan privat (Cache-Control: private, no-cach
   - Uji Halaman Validasi QR (`http://127.0.0.1:8000/validasi-paklaring/X2XLLSSW`): HTTP 200, status "Dokumen Resmi Terverifikasi", nama karyawan "BUDI SANTOSO", nomor surat "0001/SKK/AMK/X/2026", entitas "PT ARINA MULTI KARYA", serta audit trail tampil lengkap dan responsif.
   - Uji Unduh PDF Publik (`http://127.0.0.1:8000/cek-paklaring/X2XLLSSW/download`): HTTP 200, Content-Type `application/pdf`, header biner `%PDF` valid (106 KB).
   - **Sesuai instruksi: Sistem tetap berjalan dan diverifikasi di server lokal, tidak dideploy ke server produksi.**
+
+### 125. 🗑️ Penghapusan Tombol "Input Pengajuan Baru" & "Pengaturan Alur Approver" pada Halaman Daftar Veklaring (02 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  1. Tombol **"Input Pengajuan Baru"** pada header halaman daftar pengajuan veklaring ([paklaring/index.blade.php](file:///d:/ASystem/newasystem/resources/views/paklaring/index.blade.php)) dihilangkan karena seluruh pengajuan surat keterangan kerja kini dipusatkan melalui form pengajuan mandiri terstandar ([/pengajuan-paklaring](http://127.0.0.1:8000/pengajuan-paklaring)).
+  2. Tombol **"Pengaturan Alur Approver"** pada header halaman veklaring juga dihilangkan dari antarmuka visual agar tampilan header dashboard lebih bersih, fokus, dan rapi (konfigurasi master alur approver tetap dapat dikelola secara tersentralisasi melalui menu master alur persetujuan oleh Administrator).
+- **Implementasi Solusi & Perubahan Teknis**:
+  - `resources/views/paklaring/index.blade.php`: Menghapus kontainer elemen aksi `<div class="flex items-center gap-2 shrink-0 flex-wrap">` yang memuat tautan `route('master.approval-workflow.index', ['module' => 'paklaring'])` dan `route('paklaring.create')`.
+  - Menyesuaikan kontainer header card menjadi satu blok rapi dan proporsional tanpa ruang kosong berlebih.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Cache view Blade dibersihkan dan di-compile ulang via `php artisan view:clear` dan `php artisan view:cache` (hasil: *Blade templates cached successfully*).
+  - Tampilan visual header halaman terverifikasi bersih tanpa kedua tombol tersebut.
+
+### 126. 🏷️ Penyesuaian Istilah Nomenklatur "ARO" Menjadi "AS" pada Modul Veklaring (02 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  - Mengubah penyebutan istilah **ARO** (*Area Recruitment Officer*) menjadi **AS** (*Account Supervisor / Area Supervisor*) di seluruh modul Veklaring, seperti pada label tahapan *Review Area (AS)*, *Tim AS / Admin Ops*, dan *Catatan Tim Area (AS)* agar selaras dengan struktur penamaan tim operasional ESA Groups.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Model & Badge Bagian ([app/Models/Paklaring.php](file:///d:/ASystem/newasystem/app/Models/Paklaring.php))**:
+     - Mengubah label `status_bagian = 'Area'` dari `'Review Area (ARO)'` menjadi `'Review Area (AS)'`. Hal ini otomatis memperbarui judul panel keputusan dan badge status approval di seluruh tabel.
+  2. **Tampilan Antarmuka Blade Views**:
+     - [resources/views/paklaring/show.blade.php](file:///d:/ASystem/newasystem/resources/views/paklaring/show.blade.php):
+       - Kartu step tahapan: Mengubah `Tim ARO / Admin Ops` menjadi `Tim AS / Admin Ops`.
+       - Panel keputusan approval: Menampilkan `Panel Keputusan Persetujuan: Review Area (AS)`.
+       - Form input catatan: Mengubah label `Catatan Tim Area (ARO) *` menjadi `Catatan Tim Area (AS) *`.
+     - [resources/views/paklaring/index.blade.php](file:///d:/ASystem/newasystem/resources/views/paklaring/index.blade.php):
+       - Mengubah nama tab filter approval dari `Review Area (ARO)` menjadi `Review Area (AS)`.
+  3. **Layanan & Controller Approval**:
+     - [app/Services/PaklaringApprovalService.php](file:///d:/ASystem/newasystem/app/Services/PaklaringApprovalService.php): Mengubah nama step pencatatan audit log approval dari `Persetujuan Area (ARO)` menjadi `Persetujuan Area (AS)`.
+     - [app/Http/Controllers/ApprovalWorkflowController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/ApprovalWorkflowController.php): Mengubah default nama step pada seeder workflow dari `Review Area (ARO / Admin Operasional)` menjadi `Review Area (AS / Admin Operasional)`.
+  4. **Pembaruan Konsistensi Data Database**:
+     - Memperbarui baris data historis pada tabel `approval_workflow_steps` dan `paklaring_approvals` agar seluruh record yang sebelumnya bertuliskan `ARO` kini terstandardisasi menjadi `AS`.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Cache view Blade dibersihkan via `php artisan view:clear`.
+  - Verifikasi model attribute `bagian_badge['label']` menghasilkan string `"Review Area (AS)"`.
+  - Seluruh teks pada view detail dan tab daftar pengajuan terverifikasi menampilkan `AS`.
+
+---
+
+### 127. 🛡️ Proteksi Akses Login & Dashboard CBT untuk Kandidat Berstatus Arsip & Interview Selesai (02 Oktober 2026)
+- **Kebutuhan Pengguna & Latar Belakang**:
+  - Kandidat yang sudah diarsip (`Arsip` / non-aktif) atau yang seluruh tahapan interview-nya telah selesai (`Interview Selesai` / Done / Disetujui Prinsiple) seharusnya **tidak bisa lagi login maupun mengakses kembali dashboard CBT online test**.
+  - Diperlukan proteksi berlapis (Model, Login Controller, dan Middleware Session) agar kandidat tidak dapat masuk kembali, serta pemberian pesan alasan penolakan yang jelas dan informatif.
+- **Implementasi Solusi & Perubahan Teknis**:
+  1. **Enkapsulasi Status & Aturan Hak Akses pada Model ([app/Models/Candidate.php](file:///d:/ASystem/newasystem/app/Models/Candidate.php))**:
+     - Menambahkan method `isArchived(): bool`:
+       - Mendeteksi apakah kandidat berstatus arsip berdasarkan field `status` (`'arsip'`, `'archived'`) maupun `status_kandidat` (`'arsip'`).
+     - Menambahkan method `isInterviewDone(): bool`:
+       - Mendeteksi kelulusan/penyelesaian interview jika kolom `ttd_prinsiple` atau `note_principle` telah terisi, status tercatat selesai (`'done'`, `'selesai'`, `'interview done'`, `'placed'`, `'approved_principle'`, `'active_employee'`), stage Odoo (`'joined'`, `'pkwt'`), atau relasi approval (`principleApprovals` / `inhouseApprovals`) berstatus `'approved'`.
+     - Menambahkan method `canAccessCbt(?string &$reason = null): bool`:
+       - Mengembalikan `false` dan pesan spesifik:
+         - Untuk kandidat arsip: *"Akun Anda berstatus Arsip / Nonaktif. Akses portal tes online CBT telah ditutup. Silakan hubungi Tim Rekrutmen / AS Terkait."*
+         - Untuk kandidat interview selesai: *"Tahapan interview Anda telah selesai. Akses portal tes online CBT sudah ditutup. Silakan hubungi Tim Rekrutmen / AS Terkait untuk informasi kelulusan dan penempatan."*
+         - Untuk kandidat aktif: Mengembalikan `true`.
+  2. **Penyempurnaan Autentikasi Login CBT ([app/Http/Controllers/CbtController.php](file:///d:/ASystem/newasystem/app/Http/Controllers/CbtController.php))**:
+     - Pada `showLoginForm()`: Memeriksa session kandidat yang aktif. Jika status kandidat di database telah berubah menjadi arsip atau selesai, session otomatis dibersihkan dan dialihkan ke form login.
+     - Pada `login()`:
+       - Mendukung kandidat yang memiliki beberapa record riwayat di database: Sistem secara cerdas memprioritaskan record yang masih aktif/berhak mengikuti tes (`canAccessCbt() == true`).
+       - Jika seluruh record kandidat berstatus arsip atau interview selesai, proses login ditolak dan sistem menampilkan pesan feedback alert SweetAlert2 / error notification sesuai penyebab penolakan.
+  3. **Proteksi Middleware Sesi Berjalan ([app/Http/Middleware/EnsureCandidateAuthenticated.php](file:///d:/ASystem/newasystem/app/Http/Middleware/EnsureCandidateAuthenticated.php))**:
+     - Memeriksa kelayakan akses kandidat secara berkala di setiap request rute CBT (`/cbt/dashboard`, `/cbt/profile`, `/cbt/test/*`, dll).
+     - Jika status kandidat diubah menjadi Arsip atau Selesai saat sesi masih terbuka, middleware langsung memutus sesi (*session flush*) dan me-redirect ke `/cbt/login` dengan pesan larangan akses.
+- **Pengujian & Verifikasi (100% Passed)**:
+  - Uji Kandidat Berstatus Arsip (ID: 630 - Tia agustin): Akses CBT **DIBLOKIR**, pesan penolakan arsip muncul dengan tepat.
+  - Uji Kandidat Interview Selesai (ID: 10 - Refy Nur Mariska): Akses CBT **DIBLOKIR**, pesan penolakan tahapan selesai muncul dengan tepat.
+  - Uji Kandidat Aktif / Sedang Proses (ID: 64775): Akses CBT **DIIZINKAN**, kandidat dapat login dan mengerjakan tes CBT.
+  - **Status Server**: Berjalan normal di local environment (`http://127.0.0.1:8000`).
 
 ---
 

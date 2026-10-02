@@ -121,7 +121,7 @@
                         <i class="fa-regular fa-circle text-slate-300 text-sm"></i>
                     @endif
                 </div>
-                <div class="text-xs font-bold text-slate-800">Tim ARO / Admin Ops</div>
+                <div class="text-xs font-bold text-slate-800">Tim AS / Admin Ops</div>
                 <div class="text-[10px] text-slate-500 line-clamp-1">
                     {{ $stepsInfo[1]['label'] ?? 'Staf Operasional Area' }}
                 </div>
@@ -419,7 +419,7 @@
                             <input type="text" name="noresi" value="{{ old('noresi', $paklaring->noresi) }}" required placeholder="Masukkan nomor resi ekspedisi" class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-primary/20 font-mono">
                         </div>
                         <div class="sm:col-span-2">
-                            <label class="block font-bold text-slate-700 mb-1">Catatan Tim Area (ARO) <span class="text-rose-500">*</span></label>
+                            <label class="block font-bold text-slate-700 mb-1">Catatan Tim Area (AS) <span class="text-rose-500">*</span></label>
                             <textarea name="catatan" rows="2" required placeholder="Catatan kelengkapan berkas fisik, serah terima seragam/ID card, exit interview..." class="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold focus:ring-2 focus:ring-primary/20">{{ old('catatan', $paklaring->catatan_aro) }}</textarea>
                         </div>
                     </div>
